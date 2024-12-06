@@ -21,6 +21,8 @@ public:
     const QPsdGuiLayerTreeItemModel *q;
     QPsdLayerTreeItemModel parentModel;
     QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
+
+    QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
 };
 
 QPsdGuiLayerTreeItemModel::Private::Private(const QPsdGuiLayerTreeItemModel *model) : q(model)
@@ -60,7 +62,27 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
 
             //TODO clipping support
 
-            //TODO linkedFile support
+            if (additionalLayerInformation.contains("SoLd")) {
+                const auto sold = additionalLayerInformation.value("SoLd").value<QPsdPlacedLayerData>();
+                const auto descriptor = sold.descriptor().data();
+                if (descriptor.contains("Idnt")) {
+                    const auto uniqueId = descriptor.value("Idnt").toString().toLatin1();
+                    for (const auto &file : linkedFiles) {
+                        if (file.uniqueId == uniqueId) {
+                            item->setLinkedFile(file);
+                            break;
+                        }
+                    }
+                }
+            } else if (additionalLayerInformation.contains("PlLd")) {
+                const auto plld = additionalLayerInformation.value("PlLd").value<QPsdPlacedLayer>();
+                for (const auto &file : linkedFiles) {
+                    if (file.uniqueId == plld.uniqueId()) {
+                        item->setLinkedFile(file);
+                        break;
+                    }
+                }
+            }
 
             break;
         }
@@ -112,6 +134,14 @@ QVariant QPsdGuiLayerTreeItemModel::data(const QModelIndex &index, int role) con
 void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
     d->parentModel.fromParser(parser);
+
+    const auto layerAndMaskInformation = parser.layerAndMaskInformation();
+    const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
+
+    if (additionalLayerInformation.contains("lnk2")) {
+        const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
+        d->linkedFiles = lnk2.files();
+    }
 }
 
 QT_END_NAMESPACE
