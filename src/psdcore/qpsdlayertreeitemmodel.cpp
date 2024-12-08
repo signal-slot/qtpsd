@@ -226,15 +226,21 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
     d->treeNodeList.clear();
 
+    const auto header = parser.fileHeader();
     const auto layerAndMaskInformation = parser.layerAndMaskInformation();
     const auto layers = layerAndMaskInformation.layerInfo();
     d->layerRecords = layers.records();
-
+    const auto channelImageData = layers.channelImageData();
+    
     quint32 parentNodeIndex = -1;
     
     int i = d->layerRecords.size();
-    std::for_each(d->layerRecords.crbegin(), d->layerRecords.crend(), [this, &i, &parentNodeIndex](const auto &record) {
+    std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [&](auto &record) {
         i--;
+        auto imageData = channelImageData.at(i);
+        imageData.setHeader(header);
+        record.setImageData(imageData);
+    
         const auto additionalLayerInformation = record.additionalLayerInformation();
 
         bool isCloseFolder = false;
