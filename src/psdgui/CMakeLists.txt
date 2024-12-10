@@ -24,7 +24,6 @@ qt_internal_add_module(PsdGui
     PUBLIC_LIBRARIES
         Qt::Gui
         Qt::PsdCore
-    GENERATE_CPP_EXPORTS
 )
 
 ## Scopes:
