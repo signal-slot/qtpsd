@@ -21,6 +21,7 @@ public:
         NameRole = QPsdLayerTreeItemModel::Roles::NameRole,
         LayerRecordObjectRole = QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole,
         FolderTypeRole = QPsdLayerTreeItemModel::Roles::FolderTypeRole,
+        GroupIndexesRole = QPsdLayerTreeItemModel::Roles::GroupIndexesRole,
         LayerItemObjectRole,
     };
     enum Column {

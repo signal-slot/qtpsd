@@ -21,6 +21,7 @@ public:
         NameRole,
         LayerRecordObjectRole,
         FolderTypeRole,
+        GroupIndexesRole,
     };
     enum Column {
         LayerId = 0,

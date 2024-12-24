@@ -32,6 +32,8 @@ public:
 
     QList<QPsdLayerRecord> layerRecords;
     QList<Node> treeNodeList;
+    QList<int> groupIDs;
+    QMultiMap<int, QPersistentModelIndex> groupsMap;
 };
 
 QPsdLayerTreeItemModel::Private::Private(const ::QPsdLayerTreeItemModel *model) : q(model)
@@ -63,7 +65,8 @@ QHash<int, QByteArray> QPsdLayerTreeItemModel::roleNames() const
     roles.insert(Roles::NameRole, QByteArrayLiteral("Name"));
     roles.insert(Roles::LayerRecordObjectRole, QByteArrayLiteral("LayerRecordObject"));
     roles.insert(Roles::FolderTypeRole, QByteArrayLiteral("FolderType"));
-
+    roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
+    
     return roles;
 }
 
@@ -216,6 +219,13 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
         return QVariant::fromValue(layerRecordObject(nodeIndex));
     case Roles::FolderTypeRole:
         return QVariant::fromValue(node.folderType);
+    case Roles::GroupIndexesRole: {
+        const auto list = d->groupsMap.values(d->groupIDs.at(nodeIndex));
+        QList<QVariant> result;
+        for (const auto &index : list) {
+            result.append(QVariant::fromValue(index));
+        }
+        return QVariant(result); }
     default:
         break;
     }
@@ -226,8 +236,27 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
 void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
     d->treeNodeList.clear();
+    d->groupIDs.clear();
+    d->groupsMap.clear();
 
     const auto header = parser.fileHeader();
+    const auto imageResources = parser.imageResources();
+    
+    for (const auto &block : imageResources.imageResourceBlocks()) {
+        switch (block.id()) {
+        case 1026: {
+            const QByteArray groupData = block.data();
+            const quint16 *p = reinterpret_cast<const quint16 *>(groupData.constData());
+            for (int i = 0; i < groupData.size() / 2; i++) {
+                const auto id = *p++;
+                d->groupIDs.append(id);
+            }
+            break; }
+        default:
+            // qDebug() << block.id();
+            break;
+        }
+    }
     const auto layerAndMaskInformation = parser.layerAndMaskInformation();
     const auto layers = layerAndMaskInformation.layerInfo();
     d->layerRecords = layers.records();
@@ -283,6 +312,13 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         QModelIndex modelIndex;
         if (!isCloseFolder) {
             modelIndex = createIndex(row, 0, i);
+            
+            if (i < d->groupIDs.size()) {
+                const auto groupID = d->groupIDs.at(i);
+                if (groupID > 0) {
+                    d->groupsMap.insert(groupID, modelIndex);
+                }
+            }
         }
         
         if (isCloseFolder && !rowStack.isEmpty()) {

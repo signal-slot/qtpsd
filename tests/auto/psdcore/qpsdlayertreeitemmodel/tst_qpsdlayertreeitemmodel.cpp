@@ -10,10 +10,11 @@ class tst_QPsdLayerTreeItemModel : public QObject
 {
     Q_OBJECT
 private slots:
-    void parse();
+    void parse_nested_layers();
+    void parse_group();
 };
 
-void tst_QPsdLayerTreeItemModel::parse()
+void tst_QPsdLayerTreeItemModel::parse_nested_layers()
 {
     QDir dir;
     dir.cd(QFINDTESTDATA("data/"_L1));
@@ -53,6 +54,37 @@ void tst_QPsdLayerTreeItemModel::parse()
     traverseTreeView(QModelIndex());
 
     QCOMPARE(result, QList<qint32>({ 1, 2, 3, 0, 2, 0, 0, 0, 3, 0, 2, 0, 0, 0 }));
+}
+
+void tst_QPsdLayerTreeItemModel::parse_group()
+{
+    QDir dir;
+    dir.cd(QFINDTESTDATA("data/"_L1));
+
+    QPsdParser parser;
+    parser.load(dir.filePath("group.psd"));
+
+    QPsdLayerTreeItemModel layerTree;
+    layerTree.fromParser(parser);
+
+    int rootRowCount = layerTree.rowCount(QModelIndex());
+    QCOMPARE(rootRowCount, 2);
+
+    QModelIndex groupIndex = layerTree.index(0, 0, QModelIndex());
+    int groupRowCount = layerTree.rowCount(groupIndex);
+    QCOMPARE(groupRowCount, 2);
+
+    QModelIndex s1Index = layerTree.index(0, 0, groupIndex);
+    QModelIndex s2Index = layerTree.index(1, 0, groupIndex);
+
+    QVariantList list = layerTree.data(s1Index, QPsdLayerTreeItemModel::Roles::GroupIndexesRole).toList();
+    QCOMPARE(list.size(), 2);
+    QList<QPersistentModelIndex> listIndex;
+    for (auto &v : list) {
+        listIndex.append(v.toModelIndex());
+    }
+    QVERIFY(listIndex.contains(s1Index));
+    QVERIFY(listIndex.contains(s2Index));
 }
 
 QTEST_MAIN(tst_QPsdLayerTreeItemModel)

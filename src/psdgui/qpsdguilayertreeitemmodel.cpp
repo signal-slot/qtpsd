@@ -112,6 +112,7 @@ QHash<int, QByteArray> QPsdGuiLayerTreeItemModel::roleNames() const
     roles.insert(Roles::NameRole, QByteArrayLiteral("Name"));
     roles.insert(Roles::LayerRecordObjectRole, QByteArrayLiteral("LayerRecordObject"));
     roles.insert(Roles::FolderTypeRole, QByteArrayLiteral("FolderType"));
+    roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
     roles.insert(Roles::LayerItemObjectRole, QByteArrayLiteral("LayerItemObject"));
 
     return roles;
@@ -120,7 +121,15 @@ QHash<int, QByteArray> QPsdGuiLayerTreeItemModel::roleNames() const
 QVariant QPsdGuiLayerTreeItemModel::data(const QModelIndex &index, int role) const
 {
     switch (role) {
-    case LayerItemObjectRole:
+    case Roles::GroupIndexesRole: {
+        QList<QVariant> indexes = sourceModel()->data(index, role).toList();
+        QList<QVariant> result;
+        for (const auto &i : indexes) {
+            QModelIndex index = i.value<QPersistentModelIndex>();
+            result.append(QVariant::fromValue(QPersistentModelIndex(mapFromSource(index))));
+        }
+        return QVariant(result); }
+    case Roles::LayerItemObjectRole:
         return QVariant::fromValue(
             d->layerItemObject(
                 sourceModel()->data(index, QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole).value<const QPsdLayerRecord *>(),
