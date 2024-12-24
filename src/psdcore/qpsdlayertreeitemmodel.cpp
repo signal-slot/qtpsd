@@ -20,6 +20,7 @@ public:
         qint32 parentNodeIndex;
         enum FolderType folderType;
         bool isCloseFolder;
+        QPersistentModelIndex modelIndex;
     };
 
     Private(const ::QPsdLayerTreeItemModel *model);
@@ -233,7 +234,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto channelImageData = layers.channelImageData();
     
     quint32 parentNodeIndex = -1;
-    
+    QList<int> rowStack;
+    int row = -1;
     int i = d->layerRecords.size();
     std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [&](auto &record) {
         i--;
@@ -276,6 +278,19 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 break;
             }
         }
+        
+        row++;
+        QModelIndex modelIndex;
+        if (!isCloseFolder) {
+            modelIndex = createIndex(row, 0, i);
+        }
+        
+        if (isCloseFolder && !rowStack.isEmpty()) {
+            row = rowStack.takeLast();
+        } else if (folderType != FolderType::NotFolder) {
+            rowStack.push_back(row);
+            row = -1;
+        }
 
         // Layer ID
         const auto lyid = additionalLayerInformation.value("lyid").template value<quint32>();
@@ -285,7 +300,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             lyid,
             parentNodeIndex,
             folderType,
-            isCloseFolder
+            isCloseFolder,
+            modelIndex
         });
 
         if (folderType != NotFolder) {
