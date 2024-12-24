@@ -34,6 +34,7 @@ public:
     QList<Node> treeNodeList;
     QList<int> groupIDs;
     QMultiMap<int, QPersistentModelIndex> groupsMap;
+    QList<QPersistentModelIndex> clippingMasks;
 };
 
 QPsdLayerTreeItemModel::Private::Private(const ::QPsdLayerTreeItemModel *model) : q(model)
@@ -66,7 +67,8 @@ QHash<int, QByteArray> QPsdLayerTreeItemModel::roleNames() const
     roles.insert(Roles::LayerRecordObjectRole, QByteArrayLiteral("LayerRecordObject"));
     roles.insert(Roles::FolderTypeRole, QByteArrayLiteral("FolderType"));
     roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
-    
+    roles.insert(Roles::ClippingMaskIndexRole, QByteArrayLiteral("ClippingMaskIndex"));
+
     return roles;
 }
 
@@ -226,6 +228,8 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
             result.append(QVariant::fromValue(index));
         }
         return QVariant(result); }
+    case Roles::ClippingMaskIndexRole:
+        return QVariant::fromValue(d->clippingMasks.at(nodeIndex));
     default:
         break;
     }
@@ -238,6 +242,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     d->treeNodeList.clear();
     d->groupIDs.clear();
     d->groupsMap.clear();
+    d->clippingMasks.clear();
 
     const auto header = parser.fileHeader();
     const auto imageResources = parser.imageResources();
@@ -319,6 +324,13 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                     d->groupsMap.insert(groupID, modelIndex);
                 }
             }
+
+            if (record.clipping() == QPsdLayerRecord::Clipping::Base) {
+                while (d->clippingMasks.size() < d->treeNodeList.size()) {
+                    d->clippingMasks.prepend(modelIndex);
+                }
+                d->clippingMasks.prepend(QModelIndex());
+            }
         }
         
         if (isCloseFolder && !rowStack.isEmpty()) {
@@ -337,9 +349,9 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             parentNodeIndex,
             folderType,
             isCloseFolder,
-            modelIndex
+            modelIndex,
         });
-
+        
         if (folderType != NotFolder) {
             parentNodeIndex = i;
         }
@@ -349,6 +361,10 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             parentNodeIndex = node.parentNodeIndex;
         }
     });
+
+    while (d->clippingMasks.size() < d->treeNodeList.size()) {
+        d->clippingMasks.prepend(QModelIndex());
+    }
 }
 
 QT_END_NAMESPACE

@@ -165,6 +165,7 @@ QHash<int, QByteArray> PsdTreeItemModel::roleNames() const
     roles.insert(Roles::LayerRecordObjectRole, QByteArrayLiteral("LayerRecordObject"));
     roles.insert(Roles::FolderTypeRole, QByteArrayLiteral("FolderType"));
     roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
+    roles.insert(Roles::ClippingMaskIndexRole, QByteArrayLiteral("ClippingMaskIndex"));
     roles.insert(Roles::LayerItemObjectRole, QByteArrayLiteral("LayerItemObject"));
     roles.insert(Roles::VisibleRole, QByteArrayLiteral("Visible"));
     roles.insert(Roles::ExportIdRole, QByteArrayLiteral("ExportId"));
@@ -250,6 +251,9 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
             result.append(QVariant::fromValue(QPersistentModelIndex(mapFromSource(index))));
         }
         return QVariant(result); }
+    case Roles::ClippingMaskIndexRole: {
+        QPersistentModelIndex maskIndex = sourceModel()->data(index, role).value<QPersistentModelIndex>();
+        return QVariant::fromValue(mapFromSource(maskIndex)); }
     case Roles::LayerItemObjectRole:
         return QVariant::fromValue(node);
     default:

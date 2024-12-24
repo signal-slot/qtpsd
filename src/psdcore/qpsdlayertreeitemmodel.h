@@ -22,6 +22,7 @@ public:
         LayerRecordObjectRole,
         FolderTypeRole,
         GroupIndexesRole,
+        ClippingMaskIndexRole,
     };
     enum Column {
         LayerId = 0,

@@ -23,6 +23,7 @@ public:
         LayerRecordObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerRecordObjectRole,
         FolderTypeRole = QPsdGuiLayerTreeItemModel::Roles::FolderTypeRole,
         GroupIndexesRole = QPsdGuiLayerTreeItemModel::Roles::GroupIndexesRole,
+        ClippingMaskIndexRole = QPsdGuiLayerTreeItemModel::Roles::ClippingMaskIndexRole,
         LayerItemObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole,
         VisibleRole,
         ExportIdRole,

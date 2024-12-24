@@ -22,6 +22,7 @@ public:
         LayerRecordObjectRole = QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole,
         FolderTypeRole = QPsdLayerTreeItemModel::Roles::FolderTypeRole,
         GroupIndexesRole = QPsdLayerTreeItemModel::Roles::GroupIndexesRole,
+        ClippingMaskIndexRole = QPsdLayerTreeItemModel::Roles::ClippingMaskIndexRole,
         LayerItemObjectRole,
     };
     enum Column {
