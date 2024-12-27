@@ -53,6 +53,7 @@ public:
     QFileInfo fileInfo() const;
     QString fileName() const;
     QString errorMessage() const;
+    QSize size() const;
 
     const QPsdFolderLayerItem *layerTree() const;
     QVariantMap exportHint(const QString& exporterKey) const;

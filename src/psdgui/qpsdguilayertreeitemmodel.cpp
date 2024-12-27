@@ -157,4 +157,9 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
     }
 }
 
+QSize QPsdGuiLayerTreeItemModel::size() const
+{
+    return d->parentModel.size();
+}
+
 QT_END_NAMESPACE

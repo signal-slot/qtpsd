@@ -30,6 +30,7 @@ public:
 
     const ::QPsdLayerTreeItemModel *q;
 
+    QPsdFileHeader fileHeader;
     QList<QPsdLayerRecord> layerRecords;
     QList<Node> treeNodeList;
     QList<int> groupIDs;
@@ -244,7 +245,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     d->groupsMap.clear();
     d->clippingMasks.clear();
 
-    const auto header = parser.fileHeader();
+    d->fileHeader = parser.fileHeader();
     const auto imageResources = parser.imageResources();
     
     for (const auto &block : imageResources.imageResourceBlocks()) {
@@ -274,7 +275,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [&](auto &record) {
         i--;
         auto imageData = channelImageData.at(i);
-        imageData.setHeader(header);
+        imageData.setHeader(d->fileHeader);
         record.setImageData(imageData);
     
         const auto additionalLayerInformation = record.additionalLayerInformation();
@@ -365,6 +366,11 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     while (d->clippingMasks.size() < d->treeNodeList.size()) {
         d->clippingMasks.prepend(QModelIndex());
     }
+}
+
+QSize QPsdLayerTreeItemModel::size() const
+{
+    return d->fileHeader.size();
 }
 
 QT_END_NAMESPACE

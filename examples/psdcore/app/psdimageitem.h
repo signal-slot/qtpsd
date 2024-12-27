@@ -11,7 +11,7 @@ class PsdImageItem : public PsdAbstractItem
 {
     Q_OBJECT
 public:
-    PsdImageItem(const QPsdImageLayerItem *psdData, QWidget *parent = nullptr);
+    PsdImageItem(const QPsdImageLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

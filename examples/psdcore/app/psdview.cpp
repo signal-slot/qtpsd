@@ -51,16 +51,16 @@ void PsdView::setPsdTree(const QPsdFolderLayerItem *root)
         PsdAbstractItem *item = nullptr;
         switch (layer->type()) {
         case QPsdAbstractLayerItem::Text: {
-            item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), parent);
+            item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), layer->maskItem(), parent);
             break; }
         case QPsdAbstractLayerItem::Shape: {
-            item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), parent);
+            item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), layer->maskItem(), parent);
             break; }
         case QPsdAbstractLayerItem::Image: {
-            item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), parent);
+            item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), layer->maskItem(), parent);
             break; }
         case QPsdAbstractLayerItem::Folder: {
-            item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), parent);
+            item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), layer->maskItem(), parent);
             item->resize(size());
             for (const auto *child : reinterpret_cast<const QPsdFolderLayerItem *>(layer)->children()) {
                 traverseTree(child, item);
@@ -75,6 +75,51 @@ void PsdView::setPsdTree(const QPsdFolderLayerItem *root)
     for (const auto *item : root->children()) {
         traverseTree(item, this);
     }
+}
+
+void PsdView::setModel(PsdTreeItemModel *model) {
+    auto items = findChildren<PsdAbstractItem *>(Qt::FindDirectChildrenOnly);
+    qDeleteAll(items);
+
+    resize(model->size());
+    std::function<void(const QModelIndex, QWidget *)> traverseTree = [&](const QModelIndex index, QWidget *parent) {
+        if (index.isValid()) {
+            const QPsdAbstractLayerItem *layer = model->data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+            const QModelIndex maskIndex = model->data(index, PsdTreeItemModel::ClippingMaskIndexRole).toModelIndex();
+            const QPsdAbstractLayerItem *mask = nullptr;
+
+            if (maskIndex.isValid()) {
+                mask = model->data(maskIndex, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+            }
+
+            PsdAbstractItem *item = nullptr;
+            switch (layer->type()) {
+            case QPsdAbstractLayerItem::Text: {
+                item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), mask, parent);
+                break; }
+            case QPsdAbstractLayerItem::Shape: {
+                item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), mask, parent);
+                break; }
+            case QPsdAbstractLayerItem::Image: {
+                item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), mask, parent);
+                break; }
+            case QPsdAbstractLayerItem::Folder: {
+                item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, parent);
+                item->resize(size());
+                parent = item;
+                break; }
+            default:
+                return;
+            }
+            item->lower();
+        }
+
+        for (int r = 0; r < model->rowCount(index); r++) {
+            traverseTree(model->index(r, 0, index), parent);
+        }
+    };
+
+    traverseTree(QModelIndex(), this);
 }
 
 void PsdView::setItemVisible(quint32 id, bool visible)

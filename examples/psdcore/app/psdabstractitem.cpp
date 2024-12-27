@@ -9,26 +9,26 @@
 class PsdAbstractItem::Private
 {
 public:
-    Private(const QPsdAbstractLayerItem *layer, PsdAbstractItem *parent);
-    Private(const QPsdLayerRecord &record, PsdAbstractItem *parent);
+    Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, PsdAbstractItem *parent);
 
 private:
     PsdAbstractItem *q;
 public:
     const QPsdAbstractLayerItem *layer = nullptr;
+    const QPsdAbstractLayerItem *maskItem = nullptr;
 };
 
-PsdAbstractItem::Private::Private(const QPsdAbstractLayerItem *layer, PsdAbstractItem *parent)
+PsdAbstractItem::Private::Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, PsdAbstractItem *parent)
     : q(parent)
-    , layer(layer)
+    , layer(layer), maskItem(maskItem)
 {
     q->setVisible(layer->isVisible());
     q->setGeometry(layer->rect());
 }
 
-PsdAbstractItem::PsdAbstractItem(const QPsdAbstractLayerItem *layer, QWidget *parent)
+PsdAbstractItem::PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, QWidget *parent)
     : QWidget(parent)
-    , d(new Private(layer, this))
+    , d(new Private(layer, maskItem, this))
 {}
 
 PsdAbstractItem::~PsdAbstractItem() = default;
@@ -53,17 +53,19 @@ void PsdAbstractItem::setMask(QPainter *painter) const
         }
         layer = layer->parent();
     }
-    if (d->layer && d->layer->maskItem()) {
+    if (d->layer && d->maskItem) {
         QPixmap pixmap(size());
         pixmap.fill(Qt::transparent);
-        const auto maskItem = d->layer->maskItem();
+        const auto maskItem = d->maskItem;
         const QImage maskImage = maskItem->transparencyMask();
-        const auto intersected = maskItem->rect().intersected(geometry());
-        QPainter p(&pixmap);
-        p.drawImage(intersected.translated(-x(), -y()), maskImage, intersected.translated(-maskItem->rect().x(), -maskItem->rect().y()));
-        p.end();
+        if (!maskImage.size().isEmpty() && maskItem->rect().isValid()) {
+            const auto intersected = maskItem->rect().intersected(geometry());
+            QPainter p(&pixmap);
+            p.drawImage(intersected.translated(-x(), -y()), maskImage, intersected.translated(-maskItem->rect().x(), -maskItem->rect().y()));
+            p.end();
 
-        painter->setClipRegion(QRegion(pixmap.createHeuristicMask()), Qt::IntersectClip);
+            painter->setClipRegion(QRegion(pixmap.createHeuristicMask()), Qt::IntersectClip);
+        }
     }
 }
 

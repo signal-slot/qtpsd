@@ -4,6 +4,8 @@
 #ifndef PSDVIEW_H
 #define PSDVIEW_H
 
+#include <psdtreeitemmodel.h>
+
 #include <QtWidgets/QWidget>
 #include <QtPsdGui/QPsdFolderLayerItem>
 
@@ -16,6 +18,7 @@ public:
 
 public slots:
     void setPsdTree(const QPsdFolderLayerItem *root);
+    void setModel(PsdTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);
 
 signals:

@@ -7,8 +7,8 @@
 #include <QtGui/QPainter>
 #include <QtPsdCore/QPsdSofiEffect>
 
-PsdImageItem::PsdImageItem(const QPsdImageLayerItem *psdData, QWidget *parent)
-    : PsdAbstractItem(psdData, parent)
+PsdImageItem::PsdImageItem(const QPsdImageLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent)
+    : PsdAbstractItem(psdData, maskItem, parent)
 {}
 
 void PsdImageItem::paintEvent(QPaintEvent *event)

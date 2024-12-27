@@ -456,7 +456,7 @@ void PsdWidget::load(const QString &fileName)
     };
     traverseTreeView(d->treeView->rootIndex());
 
-    d->psdView->setPsdTree(d->model.layerTree());
+    d->psdView->setModel(&d->model);
 }
 
 void PsdWidget::reload()

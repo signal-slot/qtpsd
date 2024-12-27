@@ -6,8 +6,8 @@
 #include <QtGui/QPainter>
 #include <QtGui/QWindow>
 
-PsdTextItem::PsdTextItem(const QPsdTextLayerItem *psdData, QWidget *parent)
-    : PsdAbstractItem(psdData, parent)
+PsdTextItem::PsdTextItem(const QPsdTextLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent)
+    : PsdAbstractItem(psdData, maskItem, parent)
 {}
 
 void PsdTextItem::paintEvent(QPaintEvent *event)

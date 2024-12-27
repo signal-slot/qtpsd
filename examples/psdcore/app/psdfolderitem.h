@@ -11,7 +11,7 @@ class PsdFolderItem : public PsdAbstractItem
 {
     Q_OBJECT
 public:
-    PsdFolderItem(const QPsdFolderLayerItem *psdData, QWidget *parent = nullptr);
+    PsdFolderItem(const QPsdFolderLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

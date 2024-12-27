@@ -319,6 +319,11 @@ QString PsdTreeItemModel::errorMessage() const
     return d->errorMessage;
 }
 
+QSize PsdTreeItemModel::size() const
+{
+    return d->parentModel.size();
+}
+
 const QPsdFolderLayerItem *PsdTreeItemModel::layerTree() const
 {
     return d->root;

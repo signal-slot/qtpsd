@@ -13,7 +13,7 @@ class PsdAbstractItem : public QWidget
 {
     Q_OBJECT
 public:
-    PsdAbstractItem(const QPsdAbstractLayerItem *layer, QWidget *parent = nullptr);
+    PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, QWidget *parent = nullptr);
     ~PsdAbstractItem();
 
     quint32 id() const;
