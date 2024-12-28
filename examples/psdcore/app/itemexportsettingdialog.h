@@ -16,7 +16,7 @@ public:
     ~ItemExportSettingDialog() override;
 
 public slots:
-    void setItem(const QPsdAbstractLayerItem *item);
+    void setItem(const QPsdAbstractLayerItem *item, const QMap<quint32, QString> groupMap);
     void accept() override;
 
 private:

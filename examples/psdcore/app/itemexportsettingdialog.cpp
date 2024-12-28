@@ -68,7 +68,7 @@ ItemExportSettingDialog::ItemExportSettingDialog(QWidget *parent)
 
 ItemExportSettingDialog::~ItemExportSettingDialog() = default;
 
-void ItemExportSettingDialog::setItem(const QPsdAbstractLayerItem *item)
+void ItemExportSettingDialog::setItem(const QPsdAbstractLayerItem *item, QMap<quint32, QString> groupMap)
 {
     d->item = item;
 
@@ -116,13 +116,13 @@ void ItemExportSettingDialog::setItem(const QPsdAbstractLayerItem *item)
         break;
     }
 
-    for (const auto *i : item->group()) {
-        if (i == item)
+    for (const auto i : groupMap.keys()) {
+        if (i == item->id())
             continue;
-        d->merge->addItem(i->name());
+        d->merge->addItem(groupMap.value(i));
     }
 
-    d->typeMerge->setEnabled(item->group().size() > 1);
+    d->typeMerge->setEnabled(groupMap.size() > 1);
 
     static const QSet<QString> baseProperties = {
         "visible",

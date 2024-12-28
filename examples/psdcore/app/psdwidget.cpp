@@ -250,8 +250,8 @@ void PsdWidget::Private::updateAttributes()
 
     UniqueOrNot<QPsdAbstractLayerItem::ExportHint::Type> itemTypes(QPsdAbstractLayerItem::ExportHint::None);
     UniqueOrNot<Qt::CheckState> itemWithTouch(Qt::PartiallyChecked);
-    UniqueOrNot<QList<QPsdAbstractLayerItem *>> itemMergeGroup;
-    QSet<const QPsdAbstractLayerItem *> excludeFromMergeGroup;
+    UniqueOrNot<QList<QPersistentModelIndex>> itemMergeGroup;
+    QSet<const QPersistentModelIndex> excludeFromMergeGroup;
     UniqueOrNot<QString> itemComponentName;
     UniqueOrNot<QString> itemCustom;
     UniqueOrNot<QPsdAbstractLayerItem::ExportHint::NativeComponent> itemCustomBase;
@@ -259,13 +259,17 @@ void PsdWidget::Private::updateAttributes()
 
     for (const auto &row : rows) {
         const auto item = model.data(row, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
+        const auto groupVariantList = model.data(row, PsdTreeItemModel::Roles::GroupIndexesRole).toList();
         const auto hint = item->exportHint();
         itemTypes.add(hint.type);
         itemWithTouch.add(hint.baseElement == QPsdAbstractLayerItem::ExportHint::TouchArea ? Qt::Checked : Qt::Unchecked);
         qDebug() << hint.baseElement << itemWithTouch.isUnique() << itemWithTouch.value();
-
-        itemMergeGroup.add(item->group());
-        excludeFromMergeGroup.insert(item);
+        QList<QPersistentModelIndex> groupIndexList;
+        for (auto &v : groupVariantList) {
+            groupIndexList.append(v.toModelIndex());
+        }
+        itemMergeGroup.add(groupIndexList);
+        excludeFromMergeGroup.insert(row);
         itemComponentName.add(hint.componentName);
         itemCustomBase.add(hint.baseElement);
 
@@ -298,11 +302,12 @@ void PsdWidget::Private::updateAttributes()
     merge->clear();
     if (itemMergeGroup.isUnique()) {
         merge->setEnabled(true);
-        for (auto *item : itemMergeGroup.value()) {
+        for (auto item : itemMergeGroup.value()) {
             if (excludeFromMergeGroup.contains(item)) {
                 continue;
             }
-            merge->addItem(item->name());
+            QString name = model.data(item, PsdTreeItemModel::Roles::NameRole).toString();
+            merge->addItem(name);
         }
         merge->setCurrentIndex(-1);
         typeMerge->setEnabled(merge->count() > 0);

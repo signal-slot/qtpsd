@@ -9,26 +9,27 @@
 class PsdAbstractItem::Private
 {
 public:
-    Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, PsdAbstractItem *parent);
+    Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, PsdAbstractItem *parent);
 
 private:
     PsdAbstractItem *q;
 public:
     const QPsdAbstractLayerItem *layer = nullptr;
     const QPsdAbstractLayerItem *maskItem = nullptr;
+    const QMap<quint32, QString> group;
 };
 
-PsdAbstractItem::Private::Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, PsdAbstractItem *parent)
+PsdAbstractItem::Private::Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, PsdAbstractItem *parent)
     : q(parent)
-    , layer(layer), maskItem(maskItem)
+    , layer(layer), maskItem(maskItem), group(group)
 {
     q->setVisible(layer->isVisible());
     q->setGeometry(layer->rect());
 }
 
-PsdAbstractItem::PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, QWidget *parent)
+PsdAbstractItem::PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
     : QWidget(parent)
-    , d(new Private(layer, maskItem, this))
+    , d(new Private(layer, maskItem, group, this))
 {}
 
 PsdAbstractItem::~PsdAbstractItem() = default;
@@ -72,4 +73,9 @@ void PsdAbstractItem::setMask(QPainter *painter) const
 const QPsdAbstractLayerItem *PsdAbstractItem::abstractLayer() const
 {
     return d->layer;
+}
+
+QMap<quint32, QString> PsdAbstractItem::groupMap() const
+{
+    return d->group;
 }

@@ -11,7 +11,7 @@ class PsdTextItem : public PsdAbstractItem
 {
     Q_OBJECT
 public:
-    PsdTextItem(const QPsdTextLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent = nullptr);
+    PsdTextItem(const QPsdTextLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

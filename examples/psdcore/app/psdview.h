@@ -17,8 +17,6 @@ public:
     ~PsdView() override;
 
 public slots:
-    QT_DEPRECATED
-    void setPsdTree(const QPsdFolderLayerItem *root);
     void setModel(PsdTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);
 

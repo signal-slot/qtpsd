@@ -4,8 +4,8 @@
 #include "psdfolderitem.h"
 #include <QtGui/QPainter>
 
-PsdFolderItem::PsdFolderItem(const QPsdFolderLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent)
-    : PsdAbstractItem(psdData, maskItem, parent)
+PsdFolderItem::PsdFolderItem(const QPsdFolderLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
+    : PsdAbstractItem(psdData, maskItem, group, parent)
 {}
 
 void PsdFolderItem::paintEvent(QPaintEvent *event)

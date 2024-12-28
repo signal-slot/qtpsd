@@ -4,8 +4,10 @@
 #ifndef PSDABSTRACTITEM_H
 #define PSDABSTRACTITEM_H
 
-#include <QtWidgets/QWidget>
 #include <QtPsdGui/QPsdAbstractLayerItem>
+
+#include <QtWidgets/QWidget>
+#include <QtCore/QPersistentModelIndex>
 
 class QPainter;
 
@@ -13,12 +15,13 @@ class PsdAbstractItem : public QWidget
 {
     Q_OBJECT
 public:
-    PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, QWidget *parent = nullptr);
+    PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent = nullptr);
     ~PsdAbstractItem();
 
     quint32 id() const;
     QString name() const;
     const QPsdAbstractLayerItem *abstractLayer() const;
+    QMap<quint32, QString> groupMap() const;
 
 protected:
     void setMask(QPainter *painter) const;

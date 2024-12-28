@@ -41,42 +41,6 @@ PsdView::PsdView(QWidget *parent)
 
 PsdView::~PsdView() = default;
 
-void PsdView::setPsdTree(const QPsdFolderLayerItem *root)
-{
-    auto items = findChildren<PsdAbstractItem *>(Qt::FindDirectChildrenOnly);
-    qDeleteAll(items);
-
-    resize(root->rect().size());
-    std::function<void(const QPsdAbstractLayerItem *, QWidget *)> traverseTree = [&](const QPsdAbstractLayerItem *layer, QWidget *parent) {
-        PsdAbstractItem *item = nullptr;
-        switch (layer->type()) {
-        case QPsdAbstractLayerItem::Text: {
-            item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), layer->maskItem(), parent);
-            break; }
-        case QPsdAbstractLayerItem::Shape: {
-            item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), layer->maskItem(), parent);
-            break; }
-        case QPsdAbstractLayerItem::Image: {
-            item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), layer->maskItem(), parent);
-            break; }
-        case QPsdAbstractLayerItem::Folder: {
-            item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), layer->maskItem(), parent);
-            item->resize(size());
-            for (const auto *child : reinterpret_cast<const QPsdFolderLayerItem *>(layer)->children()) {
-                traverseTree(child, item);
-            }
-            break; }
-        default:
-            return;
-        }
-        item->lower();
-    };
-
-    for (const auto *item : root->children()) {
-        traverseTree(item, this);
-    }
-}
-
 void PsdView::setModel(PsdTreeItemModel *model) {
     auto items = findChildren<PsdAbstractItem *>(Qt::FindDirectChildrenOnly);
     qDeleteAll(items);
@@ -84,27 +48,34 @@ void PsdView::setModel(PsdTreeItemModel *model) {
     resize(model->size());
     std::function<void(const QModelIndex, QWidget *)> traverseTree = [&](const QModelIndex index, QWidget *parent) {
         if (index.isValid()) {
-            const QPsdAbstractLayerItem *layer = model->data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+            const QPsdAbstractLayerItem *layer = model->data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();            
             const QModelIndex maskIndex = model->data(index, PsdTreeItemModel::ClippingMaskIndexRole).toModelIndex();
             const QPsdAbstractLayerItem *mask = nullptr;
-
             if (maskIndex.isValid()) {
                 mask = model->data(maskIndex, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+            }
+            const QVariantList groupVariantList = model->data(index, PsdTreeItemModel::GroupIndexesRole).toList();
+            QMap<quint32, QString> groupMap;
+            for (auto &v : groupVariantList) {
+                QModelIndex modelIndex = v.toModelIndex();
+                quint32 id = model->data(modelIndex, PsdTreeItemModel::LayerIdRole).toUInt();
+                QString name = model->data(modelIndex, PsdTreeItemModel::NameRole).toString();
+                groupMap.insert(id, name);
             }
 
             PsdAbstractItem *item = nullptr;
             switch (layer->type()) {
             case QPsdAbstractLayerItem::Text: {
-                item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), mask, parent);
+                item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), mask, groupMap, parent);
                 break; }
             case QPsdAbstractLayerItem::Shape: {
-                item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), mask, parent);
+                item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), mask, groupMap, parent);
                 break; }
             case QPsdAbstractLayerItem::Image: {
-                item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), mask, parent);
+                item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), mask, groupMap, parent);
                 break; }
             case QPsdAbstractLayerItem::Folder: {
-                item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, parent);
+                item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, groupMap, parent);
                 item->resize(size());
                 parent = item;
                 break; }
@@ -167,7 +138,7 @@ void PsdView::mouseDoubleClickEvent(QMouseEvent *event)
         d->rubberBand->show();
 
         ItemExportSettingDialog dialog(this);
-        dialog.setItem(child->abstractLayer());
+        dialog.setItem(child->abstractLayer(), child->groupMap());
         if (dialog.exec() == QDialog::Accepted) {
             emit updateText(child->abstractLayer());
         }

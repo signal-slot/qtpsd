@@ -9,8 +9,8 @@
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdPatternFill>
 
-PsdShapeItem::PsdShapeItem(const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, QWidget *parent)
-    : PsdAbstractItem(psdData, maskItem, parent)
+PsdShapeItem::PsdShapeItem(const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
+    : PsdAbstractItem(psdData, maskItem, group, parent)
 {}
 
 void PsdShapeItem::paintEvent(QPaintEvent *event)
