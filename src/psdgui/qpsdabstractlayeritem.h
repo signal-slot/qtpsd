@@ -65,12 +65,14 @@ public:
     QImage image() const;
     QImage transparencyMask() const;
 
+    QT_DEPRECATED
     QList<QPsdAbstractLayerItem *> group() const;
     void setGroup(const QList<QPsdAbstractLayerItem *> &group);
 
     QPsdLinkedLayer::LinkedFile linkedFile() const;
     void setLinkedFile(const QPsdLinkedLayer::LinkedFile &linkedFile);
 
+    QT_DEPRECATED
     QPsdAbstractLayerItem *maskItem() const;
     void setMaskItem(QPsdAbstractLayerItem *maskItem);
 

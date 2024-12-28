@@ -17,6 +17,7 @@ public:
     ~QPsdFolderLayerItem() override;
     Type type() const override { return Folder; }
 
+    QT_DEPRECATED
     QList<const QPsdAbstractLayerItem *> children() const;
     void addChild(const QPsdAbstractLayerItem *child);
     bool isOpened() const;
