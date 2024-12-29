@@ -37,10 +37,10 @@ Item {
                     y: 89
                     Rectangle {
                         color: "#217903"
-                        height: -10
+                        height: 10
                         width: 137
                         x: 0.999992
-                        y: 11
+                        y: 1
                     }
                 }
                 Item {
@@ -95,10 +95,10 @@ Item {
                     y: 174
                     Rectangle {
                         color: "#217903"
-                        height: -9.99999
+                        height: 9.99999
                         width: 137
                         x: 0.999992
-                        y: 11
+                        y: 1
                     }
                 }
                 Item {
