@@ -391,7 +391,7 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdFolderLayerItem *tree, const 
             for (auto &line : lines)
                 if (line.isEmpty())
                     line = " ";
-            element->properties.insert("text", u"\"%1\""_s.arg(lines.join("\n")));
+            element->properties.insert("text", u"\"%1\""_s.arg(lines.join("\\n")));
             element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
             element->properties.insert("font.pointSize", run.font.pointSizeF() / 1.5 * fontScaleFactor);
             if (run.font.bold())
