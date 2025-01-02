@@ -13,14 +13,17 @@ QT_BEGIN_NAMESPACE
 class Q_PSDGUI_EXPORT QPsdImageStore
 {
 public:
-    QPsdImageStore(const QDir &dir, const QString &path);
+    QPsdImageStore(const QDir &dir = {}, const QString &path = {});
+    QPsdImageStore(const QPsdImageStore &other);
     ~QPsdImageStore();
+
+    QPsdImageStore &operator=(const QPsdImageStore &other);
 
     QString save(const QString &filename, const QImage &image, const char *format);
 
 private:
     class Private;
-    QScopedPointer<Private> d;
+    QSharedDataPointer<Private> d;
 };
 
 QT_END_NAMESPACE

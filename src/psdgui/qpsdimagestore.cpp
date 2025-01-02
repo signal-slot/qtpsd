@@ -8,7 +8,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class QPsdImageStore::Private {
+class QPsdImageStore::Private : public QSharedData {
 public:
     Private(const QDir &d, const QString &p) : dir(d), path(p) {
         dir.mkpath(path);
@@ -30,7 +30,21 @@ QPsdImageStore::QPsdImageStore(const QDir &dir, const QString &path)
 {
 }
 
+QPsdImageStore::QPsdImageStore(const QPsdImageStore &other)
+    : d(other.d)
+{
+}
+
 QPsdImageStore::~QPsdImageStore() = default;
+
+QPsdImageStore &QPsdImageStore::operator=(const QPsdImageStore &other)
+{
+    if (this != &other) {
+        d = other.d;
+    }
+
+    return *this;
+}
 
 QString QPsdImageStore::save(const QString &filename, const QImage &image, const char *format)
 {
