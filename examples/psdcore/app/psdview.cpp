@@ -22,9 +22,12 @@ public:
 
 private:
     PsdView *q;
+
 public:
     QPsdParser psdParser;
     QRubberBand *rubberBand;
+    PsdTreeItemModel *model = nullptr;
+    std::array<QMetaObject::Connection, 1> modelConnections;
 };
 
 PsdView::Private::Private(PsdView *parent)
@@ -42,24 +45,52 @@ PsdView::PsdView(QWidget *parent)
 PsdView::~PsdView() = default;
 
 void PsdView::setModel(PsdTreeItemModel *model) {
+    if (model == d->model) {
+        return;
+    }
+    if (d->model) {
+        for (const QMetaObject::Connection &connection : d->modelConnections) {
+            disconnect(connection);
+        }
+    }
+    d->model = model;
+    
+    if (d->model) {
+        d->modelConnections = {
+            QObject::connect(d->model, &QAbstractItemModel::modelReset,
+                             this, &PsdView::reset)
+        };
+    } else {
+        d->modelConnections = {};
+    }
+
+    reset();
+}
+
+void PsdView::reset()
+{
     auto items = findChildren<PsdAbstractItem *>(Qt::FindDirectChildrenOnly);
     qDeleteAll(items);
 
-    resize(model->size());
+    if (d->model == nullptr) {
+        return;
+    }
+
+    resize(d->model->size());
     std::function<void(const QModelIndex, QWidget *)> traverseTree = [&](const QModelIndex index, QWidget *parent) {
         if (index.isValid()) {
-            const QPsdAbstractLayerItem *layer = model->data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();            
-            const QModelIndex maskIndex = model->data(index, PsdTreeItemModel::ClippingMaskIndexRole).toModelIndex();
+            const QPsdAbstractLayerItem *layer = d->model->data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();            
+            const QModelIndex maskIndex = d->model->data(index, PsdTreeItemModel::ClippingMaskIndexRole).toModelIndex();
             const QPsdAbstractLayerItem *mask = nullptr;
             if (maskIndex.isValid()) {
-                mask = model->data(maskIndex, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+                mask = d->model->data(maskIndex, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
             }
-            const QVariantList groupVariantList = model->data(index, PsdTreeItemModel::GroupIndexesRole).toList();
+            const QVariantList groupVariantList = d->model->data(index, PsdTreeItemModel::GroupIndexesRole).toList();
             QMap<quint32, QString> groupMap;
             for (auto &v : groupVariantList) {
                 QModelIndex modelIndex = v.toModelIndex();
-                quint32 id = model->data(modelIndex, PsdTreeItemModel::LayerIdRole).toUInt();
-                QString name = model->data(modelIndex, PsdTreeItemModel::NameRole).toString();
+                quint32 id = d->model->data(modelIndex, PsdTreeItemModel::LayerIdRole).toUInt();
+                QString name = d->model->data(modelIndex, PsdTreeItemModel::NameRole).toString();
                 groupMap.insert(id, name);
             }
 
@@ -85,8 +116,8 @@ void PsdView::setModel(PsdTreeItemModel *model) {
             item->lower();
         }
 
-        for (int r = 0; r < model->rowCount(index); r++) {
-            traverseTree(model->index(r, 0, index), parent);
+        for (int r = 0; r < d->model->rowCount(index); r++) {
+            traverseTree(d->model->index(r, 0, index), parent);
         }
     };
 

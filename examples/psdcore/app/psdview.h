@@ -19,6 +19,7 @@ public:
 public slots:
     void setModel(PsdTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);
+    void reset();
 
 signals:
     void updateText(const QPsdAbstractLayerItem *item);
