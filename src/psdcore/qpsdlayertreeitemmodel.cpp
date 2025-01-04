@@ -240,6 +240,8 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
 
 void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
+    beginResetModel();
+
     d->treeNodeList.clear();
     d->groupIDs.clear();
     d->groupsMap.clear();
@@ -366,6 +368,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     while (d->clippingMasks.size() < d->treeNodeList.size()) {
         d->clippingMasks.prepend(QModelIndex());
     }
+
+    endResetModel();
 }
 
 QSize QPsdLayerTreeItemModel::size() const
