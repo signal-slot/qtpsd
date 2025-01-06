@@ -27,7 +27,7 @@ public:
     QPsdParser psdParser;
     QRubberBand *rubberBand;
     PsdTreeItemModel *model = nullptr;
-    std::array<QMetaObject::Connection, 1> modelConnections;
+    QMetaObject::Connection modelConnection;
 };
 
 PsdView::Private::Private(PsdView *parent)
@@ -49,19 +49,12 @@ void PsdView::setModel(PsdTreeItemModel *model) {
         return;
     }
     if (d->model) {
-        for (const QMetaObject::Connection &connection : d->modelConnections) {
-            disconnect(connection);
-        }
+        disconnect(d->modelConnection);
     }
     d->model = model;
     
     if (d->model) {
-        d->modelConnections = {
-            QObject::connect(d->model, &QAbstractItemModel::modelReset,
-                             this, &PsdView::reset)
-        };
-    } else {
-        d->modelConnections = {};
+        d->modelConnection = QObject::connect(d->model, &QAbstractItemModel::modelReset, this, &PsdView::reset);
     }
 
     reset();
