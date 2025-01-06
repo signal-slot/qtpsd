@@ -16,6 +16,8 @@ public:
     PsdView(QWidget *parent = nullptr);
     ~PsdView() override;
 
+    PsdTreeItemModel *model();
+
 public slots:
     void setModel(PsdTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);
@@ -23,6 +25,7 @@ public slots:
 
 signals:
     void updateText(const QPsdAbstractLayerItem *item);
+    void modelChanged(PsdTreeItemModel *model);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

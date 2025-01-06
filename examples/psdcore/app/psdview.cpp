@@ -24,6 +24,8 @@ private:
     PsdView *q;
 
 public:
+    void modelChanged(PsdTreeItemModel *model);
+
     QPsdParser psdParser;
     QRubberBand *rubberBand;
     PsdTreeItemModel *model = nullptr;
@@ -37,14 +39,31 @@ PsdView::Private::Private(PsdView *parent)
     rubberBand->hide();
 }
 
+void PsdView::Private::modelChanged(PsdTreeItemModel *model)
+{
+    if (model) {
+        modelConnection = QObject::connect(model, &QAbstractItemModel::modelReset, q, &PsdView::reset);
+    }
+
+    q->reset();
+}
+
 PsdView::PsdView(QWidget *parent)
     : QWidget(parent)
     , d(new Private(this))
-{}
+{
+    connect(this, &PsdView::modelChanged, this, [=](PsdTreeItemModel *model){ d->modelChanged(model); });
+}
 
 PsdView::~PsdView() = default;
 
-void PsdView::setModel(PsdTreeItemModel *model) {
+PsdTreeItemModel *PsdView::model()
+{
+    return d->model;
+}
+
+void PsdView::setModel(PsdTreeItemModel *model)
+{
     if (model == d->model) {
         return;
     }
@@ -53,11 +72,7 @@ void PsdView::setModel(PsdTreeItemModel *model) {
     }
     d->model = model;
     
-    if (d->model) {
-        d->modelConnection = QObject::connect(d->model, &QAbstractItemModel::modelReset, this, &PsdView::reset);
-    }
-
-    reset();
+    emit modelChanged(model);
 }
 
 void PsdView::reset()
