@@ -41,6 +41,8 @@ PsdView::Private::Private(PsdView *parent)
 
 void PsdView::Private::modelChanged(PsdTreeItemModel *model)
 {
+    QObject::disconnect(modelConnection);
+
     if (model) {
         modelConnection = QObject::connect(model, &QAbstractItemModel::modelReset, q, &PsdView::reset);
     }
@@ -66,9 +68,6 @@ void PsdView::setModel(PsdTreeItemModel *model)
 {
     if (model == d->model) {
         return;
-    }
-    if (d->model) {
-        disconnect(d->modelConnection);
     }
     d->model = model;
     
