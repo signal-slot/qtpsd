@@ -16,7 +16,7 @@ public:
     PsdView(QWidget *parent = nullptr);
     ~PsdView() override;
 
-    PsdTreeItemModel *model();
+    PsdTreeItemModel *model() const;
 
 public slots:
     void setModel(PsdTreeItemModel *model);

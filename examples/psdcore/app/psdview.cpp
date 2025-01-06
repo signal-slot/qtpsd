@@ -59,7 +59,7 @@ PsdView::PsdView(QWidget *parent)
 
 PsdView::~PsdView() = default;
 
-PsdTreeItemModel *PsdView::model()
+PsdTreeItemModel *PsdView::model() const
 {
     return d->model;
 }
