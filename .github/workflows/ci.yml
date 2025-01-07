@@ -1,0 +1,116 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - 'devin/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+  checks: write
+  pull-requests: write
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        qt-version: ['6.8.0', '6.8.1']
+        include:
+          - os: ubuntu-latest
+            arch: gcc_64
+          - os: windows-latest
+            arch: win64_msvc2019_64
+          - os: macos-latest
+            arch: clang_64
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: Set up Python virtual environment
+        run: |
+          python -m venv venv
+          python -m pip install --upgrade pip
+        shell: bash
+        if: runner.os != 'Windows'
+
+      - name: Set up Python virtual environment (Windows)
+        run: |
+          python -m venv venv
+          . venv/Scripts/Activate.ps1
+          echo "venv\Scripts" | Out-File -FilePath $env:GITHUB_PATH -Append
+          python -m pip install --upgrade pip
+        shell: pwsh
+        if: runner.os == 'Windows'
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ matrix.qt-version }}
+          arch: ${{ matrix.arch }}
+          cache: true
+          modules: 'qtbase qtbase.debug_information qt5compat'
+          setup-python: false
+          set-env: true
+          aqtversion: '==3.1.*'
+          
+      - name: Install system dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libgl1-mesa-dev \
+            libxkbcommon-x11-0 \
+            libxcb-icccm4 \
+            libxcb-image0 \
+            libxcb-keysyms1 \
+            libxcb-render-util0 \
+            libxcb-xinerama0 \
+            libxcb-randr0 \
+            libxcb-shape0 \
+            ninja-build
+
+      - name: Configure CMake (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=RelWithDebInfo
+
+      - name: Configure CMake (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+
+      - name: Build (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: cmake --build build --config RelWithDebInfo --parallel
+
+      - name: Build (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: cmake --build build --config Release --parallel
+        
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        working-directory: build
+        shell: pwsh
+        run: ctest --output-on-failure -C RelWithDebInfo
+
+      - name: Test (Unix)
+        if: runner.os != 'Windows'
+        working-directory: build
+        shell: bash
+        run: ctest --output-on-failure -C Release

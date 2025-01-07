@@ -5,6 +5,7 @@
 #define QPSDPLACEDLAYER_H
 
 #include <QtPsdCore/qpsdsection.h>
+#include <QtCore/QSharedDataPointer>
 
 QT_BEGIN_NAMESPACE
 
@@ -15,10 +16,11 @@ public:
     QPsdPlacedLayer(QIODevice *source, quint32 length);
     QPsdPlacedLayer(const QPsdPlacedLayer &other);
     QPsdPlacedLayer &operator=(const QPsdPlacedLayer &other);
-    void swap(QPsdPlacedLayer &other) noexcept { d.swap(other.d); }
+    void swap(QPsdPlacedLayer &other) noexcept;
     ~QPsdPlacedLayer() override;
 
     QByteArray uniqueId() const;
+    QList<double> transform() const;
 
 private:
     class Private;

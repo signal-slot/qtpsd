@@ -74,3 +74,8 @@ qt_internal_extend_target(PsdCore CONDITION LINUX
     SOURCES
         qpsdabstractplugin_linux.cpp
 )
+
+qt_internal_extend_target(PsdCore CONDITION APPLE
+    SOURCES
+        qpsdabstractplugin_mac.cpp
+)

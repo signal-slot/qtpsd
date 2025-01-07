@@ -5,6 +5,7 @@
 #include "qpsddescriptor.h"
 
 #include <QtCore/QLoggingCategory>
+#include <QtCore/QSharedData>
 
 QT_BEGIN_NAMESPACE
 
@@ -13,8 +14,18 @@ Q_LOGGING_CATEGORY(lcQPsdPlacedLayer, "qt.psdcore.placedlayer")
 class QPsdPlacedLayer::Private : public QSharedData
 {
 public:
+    Private() = default;
+    Private(const Private &other);
+
     QByteArray uniqueID;
+    QList<double> transform;
 };
+
+QPsdPlacedLayer::Private::Private(const Private &other)
+    : QSharedData(other)
+    , uniqueID(other.uniqueID)
+    , transform(other.transform)
+{}
 
 QPsdPlacedLayer::QPsdPlacedLayer()
     : QPsdSection()
@@ -58,14 +69,15 @@ QPsdPlacedLayer::QPsdPlacedLayer(QIODevice *source, quint32 length)
     qCDebug(lcQPsdPlacedLayer) << "placedLayerType" << placedLayerType;
 
     //Transformation: 8 doubles for x,y location of transform points
-    auto transform1 = readDouble(source, &length);
-    auto transform2 = readDouble(source, &length);
-    auto transform3 = readDouble(source, &length);
-    auto transform4 = readDouble(source, &length);
-    auto transform5 = readDouble(source, &length);
-    auto transform6 = readDouble(source, &length);
-    auto transform7 = readDouble(source, &length);
-    auto transform8 = readDouble(source, &length);
+    d->transform.reserve(8);
+    d->transform.append(readDouble(source, &length)); // transform1
+    d->transform.append(readDouble(source, &length)); // transform2
+    d->transform.append(readDouble(source, &length)); // transform3
+    d->transform.append(readDouble(source, &length)); // transform4
+    d->transform.append(readDouble(source, &length)); // transform5
+    d->transform.append(readDouble(source, &length)); // transform6
+    d->transform.append(readDouble(source, &length)); // transform7
+    d->transform.append(readDouble(source, &length)); // transform8
 
     // Warp version ( = 0 )
     auto warpVersion = readU32(source, &length);
@@ -99,6 +111,16 @@ QPsdPlacedLayer::~QPsdPlacedLayer() = default;
 QByteArray QPsdPlacedLayer::uniqueId() const
 {
     return d->uniqueID;
+}
+
+QList<double> QPsdPlacedLayer::transform() const
+{
+    return d->transform;
+}
+
+void QPsdPlacedLayer::swap(QPsdPlacedLayer &other) noexcept
+{
+    d.swap(other.d);
 }
 
 QT_END_NAMESPACE
