@@ -25,7 +25,7 @@ jobs:
         qt-version: ['6.8.0', '6.8.1']
         include:
           - os: ubuntu-latest
-            arch: gcc_64
+            arch: linux_gcc_64
           - os: windows-latest
             arch: win64_msvc2019_64
           - os: macos-latest
@@ -62,7 +62,7 @@ jobs:
           version: ${{ matrix.qt-version }}
           arch: ${{ matrix.arch }}
           cache: true
-          modules: 'qtbase qtbase.debug_information qt5compat'
+          modules: 'qt5compat qt5compat.debug_information'
           setup-python: false
           set-env: true
           aqtversion: '==3.1.*'
