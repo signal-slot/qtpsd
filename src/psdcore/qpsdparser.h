@@ -25,12 +25,35 @@ public:
     void swap(QPsdParser &other) noexcept { d.swap(other.d); }
     ~QPsdParser();
 
+    /*!
+     * Returns the PSD file header information.
+     */
     QPsdFileHeader fileHeader() const;
+
+    /*!
+     * Returns the color mode data section of the PSD file.
+     */
     QPsdColorModeData colorModeData() const;
+
+    /*!
+     * Returns the image resources section containing metadata.
+     */
     QPsdImageResources imageResources() const;
+
+    /*!
+     * Returns layer and mask information section.
+     */
     QPsdLayerAndMaskInformation layerAndMaskInformation() const;
+
+    /*!
+     * Returns the image data section.
+     */
     QPsdImageData imageData() const;
 
+    /*!
+     * Loads and parses a PSD file from the specified source path.
+     * \param source The path to the PSD file to load.
+     */
     void load(const QString &source);
 
 private:

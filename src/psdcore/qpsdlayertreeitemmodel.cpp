@@ -159,8 +159,9 @@ int QPsdLayerTreeItemModel::rowCount(const QModelIndex &parent) const
     return count;
 }
 
-int QPsdLayerTreeItemModel::columnCount(const QModelIndex &parent) const
+int QPsdLayerTreeItemModel::columnCount(const QModelIndex &parent [[maybe_unused]]) const
 {
+    Q_UNUSED(parent);
     return 2;
 }
 
@@ -349,7 +350,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         d->treeNodeList.prepend(QPsdLayerTreeItemModel::Private::Node {
             i,
             lyid,
-            parentNodeIndex,
+            static_cast<qint32>(parentNodeIndex),
             folderType,
             isCloseFolder,
             modelIndex,
