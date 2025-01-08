@@ -53,7 +53,7 @@ jobs:
 
       - name: Configure
         run: |
-          qt-cmake -B build -G "${{ matrix.generator }}" ${{ matrix.no-error }}
+          qt-cmake -B build -G "${{ matrix.generator }}" -A x64 ${{ matrix.no-error }}
 
       - name: Build
         run: |
