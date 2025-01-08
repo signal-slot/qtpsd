@@ -69,24 +69,27 @@ private:
     mutable QHash<const QPsdAbstractLayerItem *, QRect> rectMap;
     mutable QMultiMap<const QPsdAbstractLayerItem *, const QPsdAbstractLayerItem *> mergeMap;
 
-    bool outputBase(const QPsdAbstractLayerItem *item, Element *element, ImportData *imports, QRect rectBounds = {}) const;
-    bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
-    bool outputPath(const QPainterPath &path, Element *element) const;
-    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
-    bool outputText(const QPsdTextLayerItem *text, Element *element, ImportData *imports) const;
-    bool outputShape(const QPsdShapeLayerItem *shape, Element *element, ImportData *imports) const;
-    bool outputImage(const QPsdImageLayerItem *image, Element *element, ImportData *imports) const;
-
+    // Utility Methods
     void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
     void generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const;
     bool generateMergeData(const QPsdAbstractLayerItem *item) const;
+    bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
+    bool outputPath(const QPainterPath &path, Element *element) const;
+    bool outputBase(const QPsdAbstractLayerItem *item, Element *element, ImportData *imports, QRect rectBounds = {}) const;
 
+    // Core Output Methods
+    bool outputText(const QPsdTextLayerItem *text, Element *element, ImportData *imports) const;
+    bool outputShape(const QPsdShapeLayerItem *shape, Element *element, ImportData *imports) const;
+    bool outputImage(const QPsdImageLayerItem *image, Element *element, ImportData *imports) const;
+    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
+
+    // High-Level Methods
     bool traverseTree(const QPsdAbstractLayerItem *item, Element *parent, ImportData *imports, ExportData *exports, QPsdAbstractLayerItem::ExportHint::Type hintOverload) const;
-
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
 
-bool QPsdExporterQtQuickPlugin::exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const
+// Utility Methods
+void QPsdExporterQtQuickPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
 {
     dir = { to };
     imageStore = { dir, "images"_L1 };

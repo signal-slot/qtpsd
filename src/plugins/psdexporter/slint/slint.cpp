@@ -55,24 +55,28 @@ private:
         QVariant value;
     };
     using ExportData = QList<Export>;
+    // Utility Methods
+    void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
     void generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const;
     bool generateMergeData(const QPsdAbstractLayerItem *item) const;
-    bool traverseTree(const QPsdAbstractLayerItem *, Element *, ImportData *, ExportData *, QPsdAbstractLayerItem::ExportHint::Type) const;
-    bool converTo(Element *element, ImportData *imports, const QPsdAbstractLayerItem::ExportHint &hint) const;
-    bool outputPath(const QPainterPath &path, Element *element) const;
-    void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
-
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
+    bool outputPath(const QPainterPath &path, Element *element) const;
     bool outputBase(const QPsdAbstractLayerItem *item, Element *element, ImportData *imports, QRect rectBounds = {}) const;
-    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
+
+    // Core Output Methods
     bool outputText(const QPsdTextLayerItem *text, Element *element, ImportData *imports) const;
     bool outputShape(const QPsdShapeLayerItem *shape, Element *element, ImportData *imports, const QString &base = u"Rectangle"_s) const;
     bool outputImage(const QPsdImageLayerItem *image, Element *element, ImportData *imports) const;
+    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
 
+    // High-Level Methods
+    bool converTo(Element *element, ImportData *imports, const QPsdAbstractLayerItem::ExportHint &hint) const;
+    bool traverseTree(const QPsdAbstractLayerItem *, Element *, ImportData *, ExportData *, QPsdAbstractLayerItem::ExportHint::Type) const;
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
 
-bool QPsdExporterSlintPlugin::exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const
+// Utility Methods
+void QPsdExporterSlintPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
 {
     dir = QDir(to);
 

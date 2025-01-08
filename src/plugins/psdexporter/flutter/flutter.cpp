@@ -82,29 +82,38 @@ private:
     static QString imagePath(const QString &name);
     static QString colorValue(const QColor &color);
 
-    bool traverseElement(QTextStream &out, const Element *element, int level, bool skipFirstIndent) const;
-    bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
+    // Value Formatting Methods
+    static QByteArray indentString(int level);
+    static QString valueAsText(QVariant value);
+    static QString imagePath(const QString &name);
+    static QString colorValue(const QColor &color);
 
+    // Utility Methods
+    void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
+    void generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const;
+    bool generateMergeData(const QPsdAbstractLayerItem *item) const;
     bool outputRectProp(const QRectF &rect, Element *element, bool skipEmpty = false, bool outputPos = false) const;
     bool outputPath(const QPainterPath &path, Element *element) const;
     bool outputPositioned(const QPsdAbstractLayerItem *item, Element *element) const;
     bool outputPositionedTextBounds(const QPsdTextLayerItem *item, Element *element) const;
-    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
     bool outputTextElement(const QPsdTextLayerItem::Run run, const QString &text, Element *element) const;
-    bool outputText(const QPsdTextLayerItem *text, Element *element) const;
     bool outputGradient(const QGradient *gradient, const QRectF &rect, Element *element) const;
+
+    // Core Output Methods
+    bool outputText(const QPsdTextLayerItem *text, Element *element) const;
     bool outputShape(const QPsdShapeLayerItem *shape, Element *element, ImportData *imports, ExportData *exports) const;
     bool outputImage(const QPsdImageLayerItem *image, Element *element) const;
+    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
 
-    void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
-    void generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const;
-    bool generateMergeData(const QPsdAbstractLayerItem *item) const;
-
+    // High-Level Methods
+    bool traverseElement(QTextStream &out, const Element *element, int level, bool skipFirstIndent) const;
     bool traverseTree(const QPsdAbstractLayerItem *item, Element *parent, ImportData *imports, ExportData *exports, QPsdAbstractLayerItem::ExportHint::Type hintOverload) const;
+    bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
 
 Q_DECLARE_METATYPE(QPsdExporterFlutterPlugin::Element)
 
+// Value Formatting Methods
 QByteArray QPsdExporterFlutterPlugin::indentString(int level)
 {
     return QByteArray(level * 2, ' ');
@@ -145,7 +154,8 @@ QString QPsdExporterFlutterPlugin::colorValue(const QColor &color)
     return u"Color.fromARGB(%1, %2, %3, %4)"_s.arg(color.alpha()).arg(color.red()).arg(color.green()).arg(color.blue());
 }
 
-bool QPsdExporterFlutterPlugin::traverseElement(QTextStream &out, const Element *element, int level, bool skipFirstIndent) const
+// Utility Methods
+void QPsdExporterFlutterPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
 {
     if (!skipFirstIndent) {
         out << indentString(level);
