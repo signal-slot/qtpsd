@@ -20,6 +20,7 @@ Qt::PenCapStyle strokeStyleLineCapTypeToQt(const QPsdEnum &data)
         return Qt::FlatCap;
     }
     qFatal() << type << "not implemented";
+    return Qt::FlatCap;
 }
 }
 

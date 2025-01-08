@@ -11,21 +11,28 @@ jobs:
     name: Build and Test
     runs-on: ${{ matrix.os }}
     strategy:
-      fail-fast: true
+      fail-fast: false
       matrix:
 #        os: [ubuntu-latest, windows-latest, macos-latest]
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, macos-latest]
         qt: ['6.8.0']
         include:
           - os: ubuntu-latest
             host: linux
             arch: linux_gcc_64
+            generator: 'Ninja'
+            archives: 'qtbase icu'
 #          - os: windows-latest
 #            host: windows
 #            arch: win64_msvc2022_64
-#          - os: macos-latest
-#            host: mac
-#            arch: clang_64
+#            generator: 'Visual Studio 17 2022'
+#            generator: 'Ninja'
+#            archives: 'qtbase'
+          - os: macos-latest
+            host: mac
+            arch: clang_64
+            generator: 'Ninja'
+            archives: 'qtbase'
 
     steps:
       - name: Checkout
@@ -36,22 +43,15 @@ jobs:
         with:
           version: ${{ matrix.qt }}
           arch: ${{ matrix.arch }}
-          archives: 'qtbase icu'
+          archives: ${{ matrix.archives }}
           tools: 'tools_cmake tools_ninja'
           cache: true
           setup-python: 'true'
+          install-deps: 'true'
 
-#      - name: Configure CMake (Windows)
-#        if: runner.os == 'Windows'
-#        shell: pwsh
-#        run: |
-#          qt-cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-
-      - name: Configure CMake (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
+      - name: Configure
         run: |
-          qt-cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          qt-cmake -B build -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"
 
       - name: Build
         run: |

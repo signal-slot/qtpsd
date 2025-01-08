@@ -14,6 +14,7 @@ class QPsdPlacedLayer::Private : public QSharedData
 {
 public:
     QByteArray uniqueID;
+    double transform[8];
 };
 
 QPsdPlacedLayer::QPsdPlacedLayer()
@@ -58,14 +59,14 @@ QPsdPlacedLayer::QPsdPlacedLayer(QIODevice *source, quint32 length)
     qCDebug(lcQPsdPlacedLayer) << "placedLayerType" << placedLayerType;
 
     //Transformation: 8 doubles for x,y location of transform points
-    auto transform1 = readDouble(source, &length);
-    auto transform2 = readDouble(source, &length);
-    auto transform3 = readDouble(source, &length);
-    auto transform4 = readDouble(source, &length);
-    auto transform5 = readDouble(source, &length);
-    auto transform6 = readDouble(source, &length);
-    auto transform7 = readDouble(source, &length);
-    auto transform8 = readDouble(source, &length);
+    d->transform[0] = readDouble(source, &length);
+    d->transform[1] = readDouble(source, &length);
+    d->transform[2] = readDouble(source, &length);
+    d->transform[3] = readDouble(source, &length);
+    d->transform[4] = readDouble(source, &length);
+    d->transform[5] = readDouble(source, &length);
+    d->transform[6] = readDouble(source, &length);
+    d->transform[7] = readDouble(source, &length);
 
     // Warp version ( = 0 )
     auto warpVersion = readU32(source, &length);

@@ -16,6 +16,7 @@ public:
             // Q_ASSERT(length == 0);
         });
         Q_UNUSED(source)
+        Q_UNUSED(length)
         return QVariant();
     }
 };
