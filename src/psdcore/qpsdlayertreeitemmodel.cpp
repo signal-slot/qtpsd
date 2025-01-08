@@ -33,9 +33,9 @@ public:
     QPsdFileHeader fileHeader;
     QList<QPsdLayerRecord> layerRecords;
     QList<Node> treeNodeList;
-    QList<int> groupIDs;
-    QMultiMap<int, QPersistentModelIndex> groupsMap;
-    QList<QPersistentModelIndex> clippingMasks;
+    QList<quint32> groupIDs; // Group ID for each layer index
+    QMultiMap<quint32, QPersistentModelIndex> groupsMap; // Maps group IDs to member layer indexes
+    QMap<QPersistentModelIndex, QPersistentModelIndex> clippingMaskMap; // Maps clipped layers to their base layers
 };
 
 QPsdLayerTreeItemModel::Private::Private(const ::QPsdLayerTreeItemModel *model) : q(model)
@@ -224,14 +224,67 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
     case Roles::FolderTypeRole:
         return QVariant::fromValue(node.folderType);
     case Roles::GroupIndexesRole: {
-        const auto list = d->groupsMap.values(d->groupIDs.at(nodeIndex));
-        QList<QVariant> result;
-        for (const auto &index : list) {
-            result.append(QVariant::fromValue(index));
+        QVariantList result;
+        if (index.isValid()) {
+            // Get the layer ID for this node
+            const auto &node = d->treeNodeList.at(nodeIndex);
+            const auto layerID = node.layerId;
+            qDebug() << "\nGroupIndexesRole - Node:" << nodeIndex << "LayerID:" << layerID;
+
+            // First check direct layer ID relationships
+            auto layerMembers = d->groupsMap.values(layerID);
+            qDebug() << "Found" << layerMembers.size() << "direct layer relationships";
+            for (const auto &member : layerMembers) {
+                if (member.isValid() && member != index) {
+                    result.append(QVariant::fromValue(member));
+                    qDebug() << "Added direct layer relationship:" << member.internalId();
+                }
+            }
+
+            // Then check group ID relationships
+            if (nodeIndex < d->groupIDs.size()) {
+                const auto groupID = d->groupIDs.at(nodeIndex);
+                if (groupID > 0) {
+                    qDebug() << "Layer" << layerID << "belongs to group:" << groupID;
+                    auto groupMembers = d->groupsMap.values(groupID);
+                    for (const auto &member : groupMembers) {
+                        if (member.isValid() && member != index && !result.contains(QVariant::fromValue(member))) {
+                            result.append(QVariant::fromValue(member));
+                            qDebug() << "Added group member:" << member.internalId();
+                        }
+                    }
+                }
+            }
+
+            // Finally, check if we're part of any other layer's relationships
+            for (auto it = d->groupsMap.begin(); it != d->groupsMap.end(); ++it) {
+                if (it.value() == index) {
+                    // We found a relationship where this layer is the target
+                    auto sourceMembers = d->groupsMap.values(it.key());
+                    for (const auto &member : sourceMembers) {
+                        if (member.isValid() && member != index && !result.contains(QVariant::fromValue(member))) {
+                            result.append(QVariant::fromValue(member));
+                            qDebug() << "Added reverse relationship:" << member.internalId();
+                        }
+                    }
+                }
+            }
         }
-        return QVariant(result); }
-    case Roles::ClippingMaskIndexRole:
-        return QVariant::fromValue(d->clippingMasks.at(nodeIndex));
+        qDebug() << "Returning" << result.size() << "group indexes for node" << nodeIndex;
+        return result;
+    }
+    case Roles::ClippingMaskIndexRole: {
+        QModelIndex result;
+        if (index.isValid()) {
+            QPersistentModelIndex currentIndex(index);
+            auto it = d->clippingMaskMap.find(currentIndex);
+            if (it != d->clippingMaskMap.end() && it.value().isValid()) {
+                qDebug() << "Found clipping mask base layer for" << nodeIndex << "at" << it.value().row();
+                result = it.value();
+            }
+        }
+        return QVariant::fromValue(result);
+    }
     default:
         break;
     }
@@ -246,7 +299,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     d->treeNodeList.clear();
     d->groupIDs.clear();
     d->groupsMap.clear();
-    d->clippingMasks.clear();
+    d->clippingMaskMap.clear();
 
     d->fileHeader = parser.fileHeader();
     const auto imageResources = parser.imageResources();
@@ -321,65 +374,290 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         QModelIndex modelIndex;
         if (!isCloseFolder) {
             modelIndex = createIndex(row, 0, i);
+
+            // Create and add node to tree first
+            QPsdLayerTreeItemModel::Private::Node node {
+                i,
+                lyid,
+                parentNodeIndex,
+                folderType,
+                isCloseFolder,
+                modelIndex
+            };
+            d->treeNodeList.prepend(node);
             
-            if (i < d->groupIDs.size()) {
-                const auto groupID = d->groupIDs.at(i);
-                if (groupID > 0) {
-                    // Store this layer's index with both the group ID and its own lyid
-                    QPersistentModelIndex persistentIndex(modelIndex);
-                    d->groupsMap.insert(groupID, persistentIndex);
+            // Now we can use the node's layerId
+            QPersistentModelIndex persistentIndex(modelIndex);
+            const auto layerID = lyid;
+
+            qDebug() << "\nProcessing layer" << i << "with ID" << layerID;
+
+            // Get section divider information first
+            const auto additionalInfo = record.additionalLayerInformation();
+            const auto lsct = additionalInfo.value("lsct");
+            
+            // Debug lsct data
+            if (lsct.isValid()) {
+                qDebug() << "Layer" << i << "lsct data:" << lsct;
+                if (lsct.type() == QVariant::List) {
+                    qDebug() << "lsct list contents:" << lsct.toList();
                 }
             }
 
-            if (record.clipping() == QPsdLayerRecord::Clipping::Base) {
-                // This is a base layer that can be clipped by other layers
-                d->clippingMasks.prepend(QPersistentModelIndex());
-            } else {
-                // This is a clipping layer, find its base layer
-                bool foundBase = false;
-                // Look for the nearest preceding base layer
-                for (int j = i + 1; j < d->layerRecords.size(); ++j) {
-                    const auto &baseRecord = d->layerRecords.at(j);
-                    if (baseRecord.clipping() == QPsdLayerRecord::Clipping::Base) {
-                        // Find the corresponding node index
-                        for (int k = 0; k < d->treeNodeList.size(); ++k) {
-                            const auto &node = d->treeNodeList.at(k);
-                            if (node.recordIndex == j && !node.isCloseFolder) {
-                                d->clippingMasks.prepend(node.modelIndex);
-                                foundBase = true;
-                                break;
-                            }
+            // Process group relationships
+            qDebug() << "\nProcessing group relationships for layer" << i << "(ID:" << layerID << ")";
+
+            // First, handle folder structure
+            if (folderType != FolderType::NotFolder) {
+                qDebug() << "Layer" << i << "is a folder";
+                // This layer is a folder, store its index for its children
+                d->groupsMap.insert(layerID, persistentIndex);
+            }
+
+            // Find the parent folder for this layer
+            if (parentNodeIndex >= 0) {
+                qDebug() << "Layer" << i << "has parent" << parentNodeIndex;
+                // Find all siblings under this parent
+                for (const auto &otherNode : d->treeNodeList) {
+                    if (otherNode.parentNodeIndex == parentNodeIndex && !otherNode.isCloseFolder) {
+                        QPersistentModelIndex siblingIndex(otherNode.modelIndex);
+                        if (siblingIndex.isValid() && siblingIndex != persistentIndex) {
+                            // Add bidirectional relationships between siblings
+                            d->groupsMap.insert(layerID, siblingIndex);
+                            d->groupsMap.insert(otherNode.layerId, persistentIndex);
+                            qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
                         }
-                        if (foundBase) break;
                     }
                 }
-                if (!foundBase) {
-                    d->clippingMasks.prepend(QModelIndex());
+
+                // Also add relationship with the parent folder
+                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
+                if (parentNode.folderType != FolderType::NotFolder) {
+                    QPersistentModelIndex parentIndex(parentNode.modelIndex);
+                    if (parentIndex.isValid()) {
+                        d->groupsMap.insert(layerID, parentIndex);
+                        d->groupsMap.insert(parentNode.layerId, persistentIndex);
+                        qDebug() << "Added parent-child relationship between" << i << "and" << parentNodeIndex;
+                    }
+                }
+            }
+            // Create and add node to tree first
+            QPsdLayerTreeItemModel::Private::Node node {
+                i,
+                lyid,
+                parentNodeIndex,
+                folderType,
+                isCloseFolder,
+                modelIndex
+            };
+            d->treeNodeList.prepend(node);
+            
+            // Now we can use the node's layerId
+            QPersistentModelIndex persistentIndex(modelIndex);
+            const auto layerID = lyid;
+
+            qDebug() << "\nProcessing layer" << i << "with ID" << layerID;
+
+            // Get section divider information first
+            const auto additionalInfo = record.additionalLayerInformation();
+            const auto lsct = additionalInfo.value("lsct");
+            
+            // Debug lsct data
+            if (lsct.isValid()) {
+                qDebug() << "Layer" << i << "lsct data:" << lsct;
+                if (lsct.type() == QVariant::List) {
+                    qDebug() << "lsct list contents:" << lsct.toList();
+                }
+            }
+
+            // Process group relationships
+            qDebug() << "\nProcessing group relationships for layer" << i << "(ID:" << layerID << ")";
+
+            // First, handle folder structure
+            if (folderType != FolderType::NotFolder) {
+                qDebug() << "Layer" << i << "is a folder";
+                // This layer is a folder, store its index for its children
+                d->groupsMap.insert(layerID, persistentIndex);
+            }
+
+            // Find the parent folder for this layer
+            if (parentNodeIndex >= 0) {
+                qDebug() << "Layer" << i << "has parent" << parentNodeIndex;
+                // Find all siblings under this parent
+                for (const auto &otherNode : d->treeNodeList) {
+                    if (otherNode.parentNodeIndex == parentNodeIndex && !otherNode.isCloseFolder) {
+                        QPersistentModelIndex siblingIndex(otherNode.modelIndex);
+                        if (siblingIndex.isValid() && siblingIndex != persistentIndex) {
+                            // Add bidirectional relationships between siblings
+                            d->groupsMap.insert(layerID, siblingIndex);
+                            d->groupsMap.insert(otherNode.layerId, persistentIndex);
+                            qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
+                        }
+                    }
+                }
+
+                // Also add relationship with the parent folder
+                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
+                if (parentNode.folderType != FolderType::NotFolder) {
+                    QPersistentModelIndex parentIndex(parentNode.modelIndex);
+                    if (parentIndex.isValid()) {
+                        d->groupsMap.insert(layerID, parentIndex);
+                        d->groupsMap.insert(parentNode.layerId, persistentIndex);
+                        qDebug() << "Added parent-child relationship between" << i << "and" << parentNodeIndex;
+                    }
+                }
+            }
+
+            // Always store self-reference
+            d->groupsMap.insert(layerID, persistentIndex);
+
+            // Debug output
+            qDebug() << "\nFinal group relationships for layer" << i << ":";
+            auto layerRelationships = d->groupsMap.values(layerID);
+            for (const auto &rel : layerRelationships) {
+                if (rel.isValid()) {
+                    qDebug() << "  - Related to layer:" << rel.internalId();
+                }
+            }
+
+            // Handle section divider information
+            if (lsct.isValid()) {
+                bool ok;
+                auto groupType = lsct.toUInt(&ok);
+                if (!ok) {
+                    // Try as list
+                    QList<QVariant> lsctData = lsct.toList();
+                    if (!lsctData.isEmpty()) {
+                        groupType = lsctData.first().toUInt(&ok);
+                        if (ok && groupType >= 2 && lsctData.size() > 1) {
+                            // Get the group ID from lsct data
+                            quint32 groupID = lsctData.at(1).toUInt();
+                            qDebug() << "Layer" << i << "is part of group" << groupID << "from lsct list";
+                            
+                            // Store both the layer's own ID and group ID relationships
+                            d->groupsMap.insert(groupID, persistentIndex);
+                            d->groupsMap.insert(layerID, persistentIndex);
+
+                            // Find and establish relationships with existing group members
+                            auto groupMembers = d->groupsMap.values(groupID);
+                            for (const auto &member : groupMembers) {
+                                if (member.isValid() && member != persistentIndex) {
+                                    const auto &memberNode = d->treeNodeList.at(member.internalId());
+                                    // Add bidirectional relationships
+                                    d->groupsMap.insert(memberNode.layerId, persistentIndex);
+                                    d->groupsMap.insert(layerID, member);
+                                    qDebug() << "Added bidirectional relationship between" << i << "and" << member.internalId();
+                                }
+                            }
+
+                            // Debug group membership
+                            auto updatedMembers = d->groupsMap.values(groupID);
+                            qDebug() << "Group" << groupID << "now has" << updatedMembers.size() << "members";
+                        }
+                    }
+                } else if (groupType >= 2) { // Layer is part of a group
+                    qDebug() << "Layer" << i << "is a group with type" << groupType;
+                    
+                    // Store both the layer's own ID and group ID relationships
+                    d->groupsMap.insert(layerID, persistentIndex);
+                    
+                    // Look for any existing members of this group
+                    for (int j = i + 1; j < d->layerRecords.size(); ++j) {
+                        const auto &memberRecord = d->layerRecords.at(j);
+                        const auto memberInfo = memberRecord.additionalLayerInformation();
+                        const auto memberLsct = memberInfo.value("lsct");
+                        
+                        qDebug() << "Checking layer" << j << "for membership in group" << layerID;
+                        
+                        if (memberLsct.isValid()) {
+                            QList<QVariant> memberData = memberLsct.toList();
+                            if (!memberData.isEmpty()) {
+                                const auto memberType = memberData.first().toUInt(&ok);
+                                if (ok && memberType >= 2 && memberData.size() > 1) {
+                                    quint32 memberGroupID = memberData.at(1).toUInt();
+                                    qDebug() << "Layer" << j << "has group ID" << memberGroupID;
+                                    
+                                    if (memberGroupID == layerID) {
+                                        // This layer is a member of our group
+                                        for (int k = 0; k < d->treeNodeList.size(); ++k) {
+                                            const auto &memberNode = d->treeNodeList.at(k);
+                                            if (memberNode.recordIndex == j) {
+                                                QPersistentModelIndex memberIndex(memberNode.modelIndex);
+                                                // Add bidirectional relationships
+                                                d->groupsMap.insert(layerID, memberIndex);
+                                                d->groupsMap.insert(memberNode.layerId, persistentIndex);
+                                                qDebug() << "Added bidirectional relationship between" << i << "and" << j;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+>>>>>>> 007194d (fix: update clipping mask enum usage and improve group tracking)
+                }
+            }
+
+<<<<<<< HEAD
+||||||| parent of 007194d (fix: update clipping mask enum usage and improve group tracking)
+            // Handle clipping masks
+=======
+            // Handle clipping masks
+            QPersistentModelIndex currentIndex(modelIndex);
+>>>>>>> 007194d (fix: update clipping mask enum usage and improve group tracking)
+            if (record.clipping() == QPsdLayerRecord::Clipping::Base) {
+                qDebug() << "\nLayer" << i << "is a base layer";
+                // Register this as a base layer by mapping it to itself
+                d->clippingMaskMap.insert(currentIndex, currentIndex);
+            } else if (record.clipping() == QPsdLayerRecord::Clipping::NonBase) {
+                qDebug() << "\nLayer" << i << "is a clipped layer";
+                
+                // Find the base layer by looking at previous layers in the same group
+                QPersistentModelIndex baseIndex;
+                const auto parentId = node.parentNodeIndex;
+                
+                // Look for base layers in reverse order (closest first)
+                // Start from current layer and work backwards
+                int searchStart = i;
+                while (searchStart >= 0) {
+                    // Ensure we're within bounds of our data structures
+                    if (searchStart >= d->treeNodeList.size() || searchStart >= d->layerRecords.size()) {
+                        break;
+                    }
+                    
+                    const auto &baseNode = d->treeNodeList.at(searchStart);
+                    // Only consider layers in the same group
+                    if (baseNode.parentNodeIndex == parentId && !baseNode.isCloseFolder) {
+                        const auto &baseRecord = d->layerRecords.at(baseNode.recordIndex);
+                        if (baseRecord.clipping() == QPsdLayerRecord::Clipping::Base) {
+                            // Found a valid base layer
+                            baseIndex = QPersistentModelIndex(baseNode.modelIndex);
+                            qDebug() << "Found base layer" << baseNode.recordIndex << "for clipped layer" << i;
+                            break;
+                        }
+                    }
+                    searchStart--;
+                }
+                
+                if (baseIndex.isValid()) {
+                    // Store the clipping mask relationship
+                    d->clippingMaskMap.insert(currentIndex, baseIndex);
+                    qDebug() << "Layer" << i << "is clipped to base layer" << baseIndex.internalId();
+                    
+                    // Also store the relationship in the group map
+                    const auto &baseNode = d->treeNodeList.at(baseIndex.internalId());
+                    d->groupsMap.insert(node.layerId, baseIndex);
+                    d->groupsMap.insert(baseNode.layerId, currentIndex);
+                    qDebug() << "Added bidirectional group relationship for clipping mask between" << i << "and" << baseIndex.internalId();
+                } else {
+                    qWarning() << "No valid base layer found for clipped layer" << i;
                 }
                 d->clippingMasks.prepend(QModelIndex());
             }
         }
-        // Handle folder structure
-        if (isCloseFolder && !rowStack.isEmpty()) {
-            row = rowStack.takeLast();
-        } else if (folderType != FolderType::NotFolder) {
-            rowStack.push_back(row);
-            row = -1;
-        }
-
-        // Layer ID
-        const auto lyid = additionalLayerInformation.value("lyid").template value<quint32>();
-
-        d->treeNodeList.prepend(QPsdLayerTreeItemModel::Private::Node {
-            i,
-            lyid,
-            parentNodeIndex,
-            folderType,
-            isCloseFolder,
-            modelIndex,
-        });
-        
-        if (folderType != NotFolder) {
+        // Update parent node index for folder structure
+        if (folderType != FolderType::NotFolder) {
             parentNodeIndex = i;
         }
 
@@ -389,28 +667,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         }
     });
 
-    // Process group relationships
-    QMultiMap<quint32, QPersistentModelIndex> newGroupsMap;
-    const auto groupIDs = d->groupsMap.uniqueKeys();
-    for (const auto &groupID : groupIDs) {
-        const auto groupMembers = d->groupsMap.values(groupID);
-        // For each valid member in the group, add all other valid members to its relationships
-        for (const auto &member : groupMembers) {
-            if (member.isValid()) {
-                for (const auto &otherMember : groupMembers) {
-                    if (otherMember.isValid()) {
-                        newGroupsMap.insert(groupID, otherMember);
-                    }
-                }
-            }
-        }
-    }
-    d->groupsMap = newGroupsMap;
-
-    // Ensure all layers have clipping mask indices
-    while (d->clippingMasks.size() < d->treeNodeList.size()) {
-        d->clippingMasks.prepend(QModelIndex());
-    }
+    // No additional group relationship processing needed - relationships are established during layer processing
 
     endResetModel();
 }
