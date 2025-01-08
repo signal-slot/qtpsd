@@ -93,13 +93,13 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData);
     // qDebug().noquote() << QJsonDocument(engineData.toJsonObject()).toJson();
 
-    const auto documentResources = engineData.value("DocumentResources"_L1).toMap();
-    const auto fontSet = documentResources.value("FontSet"_L1).toArray();
-    const auto styleSheetSet = documentResources.value("StyleSheetSet"_L1).toArray();
+    const auto documentResources = engineData.value("DocumentResources").toMap();
+    const auto fontSet = documentResources.value("FontSet").toArray();
+    const auto styleSheetSet = documentResources.value("StyleSheetSet").toArray();
 
-    const auto engineDict = engineData.value("EngineDict"_L1).toMap();
-    const auto editor = engineDict.value("Editor"_L1).toMap();
-    const auto text = editor.value("Text"_L1).toString().replace("\r"_L1, "\n"_L1);
+    const auto engineDict = engineData.value("EngineDict").toMap();
+    const auto editor = engineDict.value("Editor").toMap();
+    const auto text = editor.value("Text").toString().replace("\r"_L1, "\n"_L1);
     const auto styleRun = engineDict.value("StyleRun").toMap();
     const auto runArray = styleRun.value("RunArray").toArray();
     const auto runLengthArray = styleRun.value("RunLengthArray").toArray();
