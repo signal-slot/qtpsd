@@ -410,7 +410,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             // Debug lsct data
             if (lsct.isValid()) {
                 qDebug() << "Layer" << i << "lsct data:" << lsct;
-                if (lsct.type() == QVariant::List) {
+                if (lsct.typeId() == QMetaType::QVariantList) {
                     qDebug() << "lsct list contents:" << lsct.toList();
                 }
             }
@@ -450,17 +450,6 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                             d->groupsMap.insert(otherNode.layerId, persistentIndex);
                             qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
                         }
-                    }
-                }
-
-                // Also add relationship with the parent folder
-                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
-                if (parentNode.folderType != FolderType::NotFolder) {
-                    QPersistentModelIndex parentIndex(parentNode.modelIndex);
-                    if (parentIndex.isValid()) {
-                        d->groupsMap.insert(layerId, parentIndex);
-                        d->groupsMap.insert(parentNode.layerId, persistentIndex);
-                        qDebug() << "Added parent-child relationship between" << i << "and" << parentNodeIndex;
                     }
                 }
             }
