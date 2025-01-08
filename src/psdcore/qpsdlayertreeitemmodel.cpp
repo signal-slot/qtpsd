@@ -335,6 +335,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         record.setImageData(imageData);
     
         const auto additionalLayerInformation = record.additionalLayerInformation();
+        const auto layerId = additionalLayerInformation.value("lyid").template value<quint32>();
 
         bool isCloseFolder = false;
         enum FolderType folderType = FolderType::NotFolder;
@@ -378,7 +379,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             // Create and add node to tree first
             QPsdLayerTreeItemModel::Private::Node node {
                 i,
-                lyid,
+                layerId,
                 parentNodeIndex,
                 folderType,
                 isCloseFolder,
@@ -388,9 +389,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             
             // Now we can use the node's layerId
             QPersistentModelIndex persistentIndex(modelIndex);
-            const auto layerID = lyid;
 
-            qDebug() << "\nProcessing layer" << i << "with ID" << layerID;
+            qDebug() << "\nProcessing layer" << i << "with ID" << layerId;
 
             // Get section divider information first
             const auto additionalInfo = record.additionalLayerInformation();
@@ -405,13 +405,13 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             }
 
             // Process group relationships
-            qDebug() << "\nProcessing group relationships for layer" << i << "(ID:" << layerID << ")";
+            qDebug() << "\nProcessing group relationships for layer" << i << "(ID:" << layerId << ")";
 
             // First, handle folder structure
             if (folderType != FolderType::NotFolder) {
                 qDebug() << "Layer" << i << "is a folder";
                 // This layer is a folder, store its index for its children
-                d->groupsMap.insert(layerID, persistentIndex);
+                d->groupsMap.insert(layerId, persistentIndex);
             }
 
             // Find the parent folder for this layer
@@ -423,7 +423,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                         QPersistentModelIndex siblingIndex(otherNode.modelIndex);
                         if (siblingIndex.isValid() && siblingIndex != persistentIndex) {
                             // Add bidirectional relationships between siblings
-                            d->groupsMap.insert(layerID, siblingIndex);
+                            d->groupsMap.insert(layerId, siblingIndex);
                             d->groupsMap.insert(otherNode.layerId, persistentIndex);
                             qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
                         }
@@ -435,73 +435,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 if (parentNode.folderType != FolderType::NotFolder) {
                     QPersistentModelIndex parentIndex(parentNode.modelIndex);
                     if (parentIndex.isValid()) {
-                        d->groupsMap.insert(layerID, parentIndex);
-                        d->groupsMap.insert(parentNode.layerId, persistentIndex);
-                        qDebug() << "Added parent-child relationship between" << i << "and" << parentNodeIndex;
-                    }
-                }
-            }
-            // Create and add node to tree first
-            QPsdLayerTreeItemModel::Private::Node node {
-                i,
-                lyid,
-                parentNodeIndex,
-                folderType,
-                isCloseFolder,
-                modelIndex
-            };
-            d->treeNodeList.prepend(node);
-            
-            // Now we can use the node's layerId
-            QPersistentModelIndex persistentIndex(modelIndex);
-            const auto layerID = lyid;
-
-            qDebug() << "\nProcessing layer" << i << "with ID" << layerID;
-
-            // Get section divider information first
-            const auto additionalInfo = record.additionalLayerInformation();
-            const auto lsct = additionalInfo.value("lsct");
-            
-            // Debug lsct data
-            if (lsct.isValid()) {
-                qDebug() << "Layer" << i << "lsct data:" << lsct;
-                if (lsct.type() == QVariant::List) {
-                    qDebug() << "lsct list contents:" << lsct.toList();
-                }
-            }
-
-            // Process group relationships
-            qDebug() << "\nProcessing group relationships for layer" << i << "(ID:" << layerID << ")";
-
-            // First, handle folder structure
-            if (folderType != FolderType::NotFolder) {
-                qDebug() << "Layer" << i << "is a folder";
-                // This layer is a folder, store its index for its children
-                d->groupsMap.insert(layerID, persistentIndex);
-            }
-
-            // Find the parent folder for this layer
-            if (parentNodeIndex >= 0) {
-                qDebug() << "Layer" << i << "has parent" << parentNodeIndex;
-                // Find all siblings under this parent
-                for (const auto &otherNode : d->treeNodeList) {
-                    if (otherNode.parentNodeIndex == parentNodeIndex && !otherNode.isCloseFolder) {
-                        QPersistentModelIndex siblingIndex(otherNode.modelIndex);
-                        if (siblingIndex.isValid() && siblingIndex != persistentIndex) {
-                            // Add bidirectional relationships between siblings
-                            d->groupsMap.insert(layerID, siblingIndex);
-                            d->groupsMap.insert(otherNode.layerId, persistentIndex);
-                            qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
-                        }
-                    }
-                }
-
-                // Also add relationship with the parent folder
-                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
-                if (parentNode.folderType != FolderType::NotFolder) {
-                    QPersistentModelIndex parentIndex(parentNode.modelIndex);
-                    if (parentIndex.isValid()) {
-                        d->groupsMap.insert(layerID, parentIndex);
+                        d->groupsMap.insert(layerId, parentIndex);
                         d->groupsMap.insert(parentNode.layerId, persistentIndex);
                         qDebug() << "Added parent-child relationship between" << i << "and" << parentNodeIndex;
                     }
@@ -509,7 +443,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             }
 
             // Always store self-reference
-            d->groupsMap.insert(layerID, persistentIndex);
+            d->groupsMap.insert(layerId, persistentIndex);
 
             // Debug output
             qDebug() << "\nFinal group relationships for layer" << i << ":";
@@ -595,17 +529,11 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                             }
                         }
                     }
->>>>>>> 007194d (fix: update clipping mask enum usage and improve group tracking)
                 }
             }
 
-<<<<<<< HEAD
-||||||| parent of 007194d (fix: update clipping mask enum usage and improve group tracking)
-            // Handle clipping masks
-=======
             // Handle clipping masks
             QPersistentModelIndex currentIndex(modelIndex);
->>>>>>> 007194d (fix: update clipping mask enum usage and improve group tracking)
             if (record.clipping() == QPsdLayerRecord::Clipping::Base) {
                 qDebug() << "\nLayer" << i << "is a base layer";
                 // Register this as a base layer by mapping it to itself
