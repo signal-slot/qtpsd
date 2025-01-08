@@ -87,8 +87,15 @@ QPsdVectorStrokeData::QPsdVectorStrokeData(QIODevice *source, quint32 length)
                 // TODO
             }
         } else if (key == "strokeStyleLineDashSet") {
-            if (!value.toList().isEmpty())
-                qFatal() << value << value.value<QList<double>>();
+            const auto list = value.toList();
+            if (!list.isEmpty()) {
+                QList<double> doubleList;
+                doubleList.reserve(list.size());
+                for (const auto &item : list) {
+                    doubleList.append(item.toDouble());
+                }
+                qFatal() << value << doubleList;
+            }
         }
         if (value.canConvert<QPsdEnum>()) {
             qCDebug(lcQPsdVectorStrokeData) << key << value.value<QPsdEnum>().type() << value.value<QPsdEnum>().value();
