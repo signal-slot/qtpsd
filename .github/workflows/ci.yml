@@ -26,6 +26,7 @@ jobs:
             host: windows
             arch: win64_msvc2022_64
             generator: 'Visual Studio 17 2022'
+            platform: 'x64'
             archives: 'qtbase'
             no-error: ''
           - os: macos-latest
@@ -52,7 +53,11 @@ jobs:
 
       - name: Configure
         run: |
-          qt-cmake -B build -G "Visual Studio 17 2022" -A x64 ${{ matrix.no-error }}
+          if [ "${{ matrix.os }}" = "windows-latest" ]; then
+            qt-cmake -B build -G "${{ matrix.generator }}" -A ${{ matrix.platform }} ${{ matrix.no-error }}
+          else
+            qt-cmake -B build -G "${{ matrix.generator }}" ${{ matrix.no-error }}
+          fi
 
       - name: Build
         run: |
