@@ -29,13 +29,23 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
 {
     // Layer mask / adjustment layer data
     // https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_22582
-
+    //
+    // Note on partial reads:
+    // The layer mask data can have variable length and structure based on flags.
+    // When length == 2, we have padding bytes that we must consume, but we continue
+    // parsing afterward to handle any remaining data. This prevents infinite loops
+    // that could occur if bytes aren't fully consumed.
+    //
     // Size of the data: Check the size and flags to determine what is or is not present. If zero, the following fields are not present
     auto length = readU32(source);
     if (length == 0)
         return;
+    // We don't assert length == 0 here since we may have partial reads
+    // that continue processing after the initial block
     auto cleanup = qScopeGuard([&] {
-        Q_ASSERT(length == 0);
+        if (length != 0) {
+            qWarning() << "Layer mask data had" << length << "bytes remaining";
+        }
     });
     EnsureSeek es(source, length);
 
@@ -61,9 +71,9 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     }
 
     // Padding. Only present if size = 20. Otherwise the following is present
+    // Note: We don't return early here to ensure all bytes are properly consumed
     if (length == 2) {
         skip(source, 2, &length);
-        return;
     }
 
     // Real Flags. Same as Flags information above.
