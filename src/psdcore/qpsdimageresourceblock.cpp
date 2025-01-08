@@ -32,7 +32,7 @@ QPsdImageResourceBlock::QPsdImageResourceBlock(QIODevice *source)
     // Signature: '8BIM'
     const auto signature = source->read(4);
     if (signature != "8BIM") {
-        setErrorString("Signature mismatch");
+        setErrorString("Signature mismatch"_L1);
         return;
     }
 

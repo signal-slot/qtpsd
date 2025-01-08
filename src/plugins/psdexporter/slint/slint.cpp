@@ -148,15 +148,15 @@ bool QPsdExporterSlintPlugin::outputRect(const QRectF &rect, Element *element, b
 bool QPsdExporterSlintPlugin::outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const
 {
     if (element->type.isEmpty())
-        element->type = "Rectangle";
+        element->type = "Rectangle"_L1;
     if (!outputBase(folder, element, imports))
         return false;
 
     if (folder->artboardRect().isValid() && folder->artboardBackground() != Qt::transparent) {
         Element artboard;
-        artboard.type = "Rectangle";
+        artboard.type = "Rectangle"_L1;
         outputRect(folder->artboardRect(), &artboard);
-        artboard.properties.insert("color", folder->artboardBackground().name());
+        artboard.properties.insert("color"_L1, folder->artboardBackground().name());
         element->children.append(artboard);
     }
 
@@ -580,10 +580,10 @@ bool QPsdExporterSlintPlugin::outputShape(const QPsdShapeLayerItem *shape, Eleme
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
-                element2.properties.insert("background", gradString);
+                element2.properties.insert("background"_L1, gradString);
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
         } else {
             if (shape->pen().style() != Qt::NoPen) {

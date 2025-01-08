@@ -99,12 +99,11 @@ QString QPsdSection::readColor(QIODevice *source, quint32 *length)
     uint g = readU16(source, length) / 256;
     uint b = readU16(source, length) / 256;
     skip(source, 2, length);
-    return QString::fromUtf8("#%1%2%3%4")
-        .arg(a, 2, 16, QLatin1Char('0'))
-        .arg(r, 2, 16, QLatin1Char('0'))
-        .arg(g, 2, 16, QLatin1Char('0'))
-        .arg(b, 2, 16, QLatin1Char('0'))
-        ;
+    return QStringLiteral("#%1%2%3%4")
+        .arg(QString::number(a, 16).rightJustified(2, u'0'))
+        .arg(QString::number(r, 16).rightJustified(2, u'0'))
+        .arg(QString::number(g, 16).rightJustified(2, u'0'))
+        .arg(QString::number(b, 16).rightJustified(2, u'0'));
 }
 
 double QPsdSection::readPathNumber(QIODevice *source, quint32 *length)

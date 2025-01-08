@@ -475,7 +475,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QPsdShapeLayerItem *shape, Ele
 
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
         } else {
             Element rectElement;
@@ -551,7 +551,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QPsdShapeLayerItem *shape, Ele
 
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
         } else {
             if (shape->pen().style() != Qt::NoPen) {
@@ -599,7 +599,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QPsdShapeLayerItem *shape, Ele
                 qDebug() << gradient.children.length();
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
             element->children.append(shapePath);
         } else {

@@ -39,17 +39,17 @@ protected:
             QDir pluginsDir = qpsdPluginDir(QLatin1StringView(subdir));
             for (const QString &fileName : pluginsDir.entryList(
 #ifdef Q_OS_LINUX
-                     QStringList() << QStringLiteral("*.so"),
+                     QStringList() << "*.so"_L1,
 #endif
 #ifdef Q_OS_WIN
-                     QStringList() << QStringLiteral("*.dll"),
+                     QStringList() << "*.dll"_L1,
 #endif
                      QDir::Files)) {
                 QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
                 const auto json = loader.metaData();
-                Q_ASSERT(json.value(QLatin1StringView("IID")).toString() == QLatin1StringView(iid));
-                const auto metaData = json.value(QLatin1StringView("MetaData")).toObject();
-                const auto jsonKeys = metaData.value(QLatin1StringView("Keys")).toArray();
+                Q_ASSERT(json.value("IID"_L1).toString() == QLatin1StringView(iid));
+                const auto metaData = json.value("MetaData"_L1).toObject();
+                const auto jsonKeys = metaData.value("Keys"_L1).toArray();
                 for (const QJsonValue &jsonKey : jsonKeys) {
                     keys.append(jsonKey.toString().toUtf8());
                 }
@@ -66,17 +66,17 @@ protected:
             QDir pluginsDir = qpsdPluginDir(QLatin1StringView(subdir));
             for (const QString &fileName : pluginsDir.entryList(
 #ifdef Q_OS_LINUX
-                     QStringList() << QStringLiteral("*.so"),
+                     QStringList() << "*.so"_L1,
 #endif
 #ifdef Q_OS_WIN
-                     QStringList() << QStringLiteral("*.dll"),
+                     QStringList() << "*.dll"_L1,
 #endif
                      QDir::Files)) {
                 QPluginLoader loader(pluginsDir.absoluteFilePath(fileName));
                 const auto json = loader.metaData();
-                Q_ASSERT(json.value(QLatin1StringView("IID")).toString() == QLatin1StringView(iid));
-                const auto metaData = json.value(QLatin1StringView("MetaData")).toObject();
-                const auto jsonKeys = metaData.value(QLatin1StringView("Keys")).toArray();
+                Q_ASSERT(json.value("IID"_L1).toString() == QLatin1StringView(iid));
+                const auto metaData = json.value("MetaData"_L1).toObject();
+                const auto jsonKeys = metaData.value("Keys"_L1).toArray();
                 QObject *object = loader.instance();
                 if (!object) {
                     qFatal() << loader.errorString();

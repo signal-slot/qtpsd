@@ -55,7 +55,7 @@ QPsdLayerRecord::QPsdLayerRecord(QIODevice *source)
     const auto signature = source->read(4);
     if (signature != "8BIM") {
         qWarning() << signature;
-        setErrorString(QStringLiteral("Sigureture mismatch"));
+        setErrorString("Signature mismatch"_L1);
         return;
     }
 

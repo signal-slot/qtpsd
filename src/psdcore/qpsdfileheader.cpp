@@ -39,7 +39,7 @@ QPsdFileHeader::QPsdFileHeader(QIODevice *source)
     const auto signature = source->read(4);
     if (signature != "8BPS") {
         qWarning() << signature;
-        setErrorString(QLatin1String("Signature mismatch"));
+        setErrorString("Signature mismatch"_L1);
         return;
     }
 
@@ -48,7 +48,7 @@ QPsdFileHeader::QPsdFileHeader(QIODevice *source)
     if (version != 1) {
         qWarning() << version;
         source->close();
-        setErrorString(QLatin1String("Version error"));
+        setErrorString("Version error"_L1);
         return;
     }
 

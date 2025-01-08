@@ -496,7 +496,7 @@ bool QPsdExporterFlutterPlugin::outputGradient(const QGradient *gradient, const 
         break;
     }
     default:
-        qFatal() << "Unsupported gradient type" << gradient->type();
+        qFatal() << "Unsupported gradient type"_L1 << gradient->type();
     }
 
     QVariantList stops;
@@ -761,7 +761,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QPsdAbstractLayerItem *item, 
         Element element;
         switch (hint.baseElement) {
         case QPsdAbstractLayerItem::ExportHint::NativeComponent::Container:
-            element.type = "Container";
+            element.type = "Container"_L1;
             break;
         case QPsdAbstractLayerItem::ExportHint::NativeComponent::TouchArea: {
             PropertyInfo prop {
@@ -769,9 +769,9 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QPsdAbstractLayerItem *item, 
             };
             exports->insert(prop.name(), prop);
 
-            element.type = "GestureDetector";
-            element.properties.insert("onTap", prop.name());
-            element.properties.insert("behavior", "HitTestBehavior.opaque");
+            element.type = "GestureDetector"_L1;
+            element.properties.insert("onTap"_L1, prop.name());
+            element.properties.insert("behavior"_L1, "HitTestBehavior.opaque"_L1);
             break;
         }
         case QPsdAbstractLayerItem::ExportHint::NativeComponent::Button:
@@ -781,11 +781,11 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QPsdAbstractLayerItem *item, 
             };
             exports->insert(prop.name(), prop);
             if (hint.baseElement == QPsdAbstractLayerItem::ExportHint::NativeComponent::Button) {
-                element.type = "ElevatedButton";
+                element.type = "ElevatedButton"_L1;
             } else {
-                element.type = "FilledButton";
+                element.type = "FilledButton"_L1;
             }
-            element.properties.insert("onPressed", prop.name());
+            element.properties.insert("onPressed"_L1, prop.name());
 
             if (mergeMap.contains(item)) {
                 for (const auto *i : mergeMap.values(item)) {

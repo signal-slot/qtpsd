@@ -32,7 +32,7 @@ public:
 
         // '<<' の確認
         if (!matchString("<<"))
-            return error("EngineData は '<<' で始まる必要があります。");
+            return error(u"EngineData は '<<' で始まる必要があります。"_s);
 
         // 辞書のパース
         ParseError dictError = parseDictionary(map);
@@ -44,7 +44,7 @@ public:
         // データの終端確認
         if (m_pos != m_length) {
             qDebug() << m_pos << m_length;
-            return error("辞書の終了後に予期せぬデータが存在します。");
+            return error(u"辞書の終了後に予期せぬデータが存在します。"_s);
         }
 
         // パース成功
@@ -82,7 +82,7 @@ private:
      * @brief ホワイトスペースをスキップします。
      */
     void skipWhitespace() {
-        while (m_pos < m_length && QChar(m_data.at(m_pos)).isSpace())
+        while (m_pos < m_length && QChar::fromLatin1(m_data.at(m_pos)).isSpace())
             ++m_pos;
     }
 
@@ -114,12 +114,12 @@ private:
 
             QChar ch = peekNextChar();
             if (ch.isNull())
-                return error("辞書のパース中に予期せぬデータの終端に到達しました。");
+                return error(u"辞書のパース中に予期せぬデータの終端に到達しました。"_s);
 
             if (ch == '>') {
                 // '>>' の確認
                 if (!matchString(">>"))
-                    return error("辞書の終了 '>>' が正しくありません。");
+                    return error(u"辞書の終了 '>>' が正しくありません。"_s);
                 return success(); // 辞書の終了
             }
 
@@ -140,7 +140,7 @@ private:
         }
 
         // 到達しないはず
-        return error("不明なエラーが発生しました。");
+        return error(u"不明なエラーが発生しました。"_s);
     }
 
     /**
@@ -151,18 +151,18 @@ private:
     ParseError parsePropertyName(QString* key) {
         char ch = getNextChar();
         if (ch != '/')
-            return error("プロパティ名は '/' で始まる必要があります。");
+            return error(u"プロパティ名は '/' で始まる必要があります。"_s);
 
         QByteArray keyStr;
         while (m_pos < m_length) {
             ch = peekNextChar();
-            if (QChar(ch).isNull() || !QChar(ch).isLetterOrNumber())
+            if (QChar::fromLatin1(ch).isNull() || !QChar::fromLatin1(ch).isLetterOrNumber())
                 break;
             keyStr += getNextChar();
         }
 
         if (keyStr.isEmpty())
-            return error("プロパティ名が空です。");
+            return error(u"プロパティ名が空です。"_s);
 
         *key = QString::fromUtf8(keyStr);
         return success(); // 成功
@@ -177,13 +177,13 @@ private:
         skipWhitespace();
 
         char ch = peekNextChar();
-        if (QChar(ch).isNull())
-            return error("値のパース中に予期せぬデータの終端に到達しました。");
+        if (QChar::fromLatin1(ch).isNull())
+            return error(u"値のパース中に予期せぬデータの終端に到達しました。"_s);
 
         if (ch == '<') { // 辞書
             // '<<' の確認
             if (!matchString("<<"))
-                return error("辞書の開始 '<<' が正しくありません。");
+                return error(u"辞書の開始 '<<' が正しくありません。"_s);
 
             QCborMap subMap;
             ParseError dictError = parseDictionary(&subMap);
@@ -201,8 +201,8 @@ private:
                 skipWhitespace();
 
                 ch = peekNextChar();
-                if (QChar(ch).isNull())
-                    return error("配列のパース中に予期せぬデータの終端に到達しました。");
+                if (QChar::fromLatin1(ch).isNull())
+                    return error(u"配列のパース中に予期せぬデータの終端に到達しました。"_s);
 
                 if (ch == ']') { // 配列の終了
                     getNextChar(); // ']'
@@ -228,7 +228,7 @@ private:
 
             *value = QCborValue(str);
             return success(); // 成功
-        } else if (QChar(ch).toLower() == 't' || QChar(ch).toLower() == 'f') { // ブール値
+        } else if (QChar::fromLatin1(ch).toLower() == 't' || QChar::fromLatin1(ch).toLower() == 'f') { // ブール値
             QByteArray boolStr;
             ParseError boolError = parseBoolean(&boolStr);
             if (boolError)
@@ -251,7 +251,7 @@ private:
             bool ok = false;
             double num = numStr.toDouble(&ok);
             if (!ok)
-                return error(QString("無効な数値形式: '%1'。").arg(numStr));
+                return error(u"無効な数値形式: '%1'。"_s.arg(numStr));
 
             if (numStr.contains('.')) {
                 *value = QCborValue(num);
@@ -275,7 +275,7 @@ private:
     ParseError parseString(QString* str) {
         char ch = getNextChar();
         if (ch != '(')
-            return error("文字列の開始 '(' が見つかりませんでした。");
+            return error(u"文字列の開始 '(' が見つかりませんでした。"_s);
 
         // 特殊なプレフィックス (˛ˇ) の処理
         const auto prefix4 = m_data.mid(m_pos, 4);
@@ -323,7 +323,7 @@ private:
      */
     ParseError parseBoolean(QByteArray* boolStr) {
         QString boolQString;
-        while (m_pos < m_length && QChar(m_data.at(m_pos)).isLetter()) {
+        while (m_pos < m_length && QChar::fromLatin1(m_data.at(m_pos)).isLetter()) {
             boolQString += m_data.at(m_pos);
             ++m_pos;
         }
@@ -351,14 +351,14 @@ private:
 
         while (m_pos < m_length) {
             char ch = peekNextChar();
-            if (QChar(ch).isDigit() || ch == '.')
+            if (QChar::fromLatin1(ch).isDigit() || ch == '.')
                 numberStr += getNextChar();
             else
                 break;
         }
 
         if (numberStr.isEmpty() || numberStr == "-")
-            return error("数値が期待されましたが、見つかりませんでした。");
+            return error(u"数値が期待されましたが、見つかりませんでした。"_s);
 
         *numStr = numberStr;
         return success(); // 成功

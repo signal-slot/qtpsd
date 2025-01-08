@@ -33,7 +33,7 @@ void PsdTextItem::paintEvent(QPaintEvent *event)
     QList<Chunk> currentLine;
     for (const auto &run : runs) {
         bool isFirst = true;
-        if (layer->name() == QString::fromUtf8("カテゴリ一覧")) {
+        if (layer->name() == u"カテゴリ一覧"_s) {
             qDebug() << this << run.text;
         }
 
@@ -49,7 +49,7 @@ void PsdTextItem::paintEvent(QPaintEvent *event)
             chunk.font.setPointSizeF(chunk.font.pointSizeF() / 1.5);
             chunk.color = run.color;
             chunk.text = line;
-            if (layer->name() == QString::fromUtf8("カテゴリ一覧")) {
+            if (layer->name() == u"カテゴリ一覧"_s) {
                 qDebug() << line;
             }
             chunk.alignment = run.alignment;
