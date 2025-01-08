@@ -30,10 +30,13 @@ QPsdImageResourceBlock::QPsdImageResourceBlock(QIODevice *source)
     // https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_46269
 
     // Signature: '8BIM'
-    const auto signature = source->read(4);
-    if (signature != "8BIM") {
-        setErrorString("Signature mismatch"_L1);
-        return;
+    {
+        EnsureSeek es(source, 4);  // Protect the 4-byte read
+        const auto signature = source->read(4);
+        if (signature != "8BIM") {
+            setErrorString("Signature mismatch"_L1);
+            return;
+        }
     }
 
     // Unique identifier for the resource. Image resource IDs contains a list of resource IDs used by Photoshop.
