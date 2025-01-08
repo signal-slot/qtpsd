@@ -24,7 +24,7 @@ QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
             for (const auto &subDir : subDirs) {
                 QDir newDir = dir.absoluteFilePath(subDir);
                 auto ret = findPluginsDir(newDir);
-                if (ret.dirName() == "plugins")
+                if (ret.dirName() == "plugins"_L1)
                     return ret;
             }
             return QDir();

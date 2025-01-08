@@ -325,14 +325,36 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             if (i < d->groupIDs.size()) {
                 const auto groupID = d->groupIDs.at(i);
                 if (groupID > 0) {
-                    // Store both the group ID and layer ID mappings for bidirectional relationships
-                    d->groupsMap.insert(groupID, QPersistentModelIndex(modelIndex));
+                    // Store this layer's index with both the group ID and its own lyid
+                    QPersistentModelIndex persistentIndex(modelIndex);
+                    d->groupsMap.insert(groupID, persistentIndex);
                 }
             }
 
             if (record.clipping() == QPsdLayerRecord::Clipping::Base) {
-                while (d->clippingMasks.size() < d->treeNodeList.size()) {
-                    d->clippingMasks.prepend(modelIndex);
+                // This is a base layer that can be clipped by other layers
+                d->clippingMasks.prepend(QPersistentModelIndex());
+            } else {
+                // This is a clipping layer, find its base layer
+                bool foundBase = false;
+                // Look for the nearest preceding base layer
+                for (int j = i + 1; j < d->layerRecords.size(); ++j) {
+                    const auto &baseRecord = d->layerRecords.at(j);
+                    if (baseRecord.clipping() == QPsdLayerRecord::Clipping::Base) {
+                        // Find the corresponding node index
+                        for (int k = 0; k < d->treeNodeList.size(); ++k) {
+                            const auto &node = d->treeNodeList.at(k);
+                            if (node.recordIndex == j && !node.isCloseFolder) {
+                                d->clippingMasks.prepend(node.modelIndex);
+                                foundBase = true;
+                                break;
+                            }
+                        }
+                        if (foundBase) break;
+                    }
+                }
+                if (!foundBase) {
+                    d->clippingMasks.prepend(QModelIndex());
                 }
                 d->clippingMasks.prepend(QModelIndex());
             }
@@ -343,7 +365,6 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         } else if (folderType != FolderType::NotFolder) {
             rowStack.push_back(row);
             row = -1;
-        }
         }
 
         // Layer ID
@@ -383,9 +404,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 }
             }
         }
-
-        }
     }
+    d->groupsMap = newGroupsMap;
 
     // Ensure all layers have clipping mask indices
     while (d->clippingMasks.size() < d->treeNodeList.size()) {

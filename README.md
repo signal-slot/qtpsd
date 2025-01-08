@@ -35,14 +35,24 @@ $ cmake --build .
 $ cmake --install .
 ```
 
-## Demo app
+## Building a Demo App
 
-enable QT_BUILD_EXAMPLES and build the example.
+To build and run the demo application:
 
 ```console
 $ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/qt/project -DQT_BUILD_EXAMPLES=ON
 $ cmake --build .
 $ ./examples/psdcore/app/app
+```
+
+## Running Tests
+
+To build and run the test suite:
+
+```console
+$ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/qt/project -DQT_BUILD_TESTS=ON
+$ cmake --build .
+$ ctest --output-on-failure
 ```
 
 ## Use QtPsd module
