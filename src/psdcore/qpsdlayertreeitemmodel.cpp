@@ -357,19 +357,58 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         } else {
             const auto lsct = additionalLayerInformation.value("lsct");
             if (lsct.isValid()) {
-                const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
-                switch (dividerSetting.type()) {
-                case QPsdSectionDividerSetting::OpenFolder:
-                    folderType = FolderType::OpenFolder;
-                    break;
-                case QPsdSectionDividerSetting::ClosedFolder:
-                    folderType = FolderType::ClosedFolder;
-                    break;
-                case QPsdSectionDividerSetting::BoundingSectionDivider:
-                    isCloseFolder = true;
-                    break;
-                default:
-                    break;
+                // Section divider settings can be either a direct value or a list
+                if (lsct.typeId() == QMetaType::QVariantList) {
+                    // Format: [type, key, subtype]
+                    const auto list = lsct.toList();
+                    if (!list.isEmpty()) {
+                        bool ok = false;
+                        int type = list[0].toInt(&ok);
+                        if (ok) {
+                            qDebug() << "Layer" << i << "section divider type:" << type;
+                            // Map the type to QPsdSectionDividerSetting::Type
+                            switch (type) {
+                            case QPsdSectionDividerSetting::OpenFolder:
+                                folderType = FolderType::OpenFolder;
+                                break;
+                            case QPsdSectionDividerSetting::ClosedFolder:
+                                folderType = FolderType::ClosedFolder;
+                                break;
+                            case QPsdSectionDividerSetting::BoundingSectionDivider:
+                                isCloseFolder = true;
+                                break;
+                            case QPsdSectionDividerSetting::AnyOtherTypeOfLayer:
+                                // Non-folder layer, no special handling needed
+                                break;
+                            default:
+                                qDebug() << "Unknown section divider type:" << type;
+                                break;
+                            }
+                        }
+                    }
+                } else if (lsct.canConvert<QPsdSectionDividerSetting>()) {
+                    // Try to handle as direct QPsdSectionDividerSetting
+                    const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
+                    qDebug() << "Layer" << i << "direct section divider type:" << dividerSetting.type();
+                    switch (dividerSetting.type()) {
+                    case QPsdSectionDividerSetting::OpenFolder:
+                        folderType = FolderType::OpenFolder;
+                        break;
+                    case QPsdSectionDividerSetting::ClosedFolder:
+                        folderType = FolderType::ClosedFolder;
+                        break;
+                    case QPsdSectionDividerSetting::BoundingSectionDivider:
+                        isCloseFolder = true;
+                        break;
+                    case QPsdSectionDividerSetting::AnyOtherTypeOfLayer:
+                        // Non-folder layer, no special handling needed
+                        break;
+                    default:
+                        qDebug() << "Unknown direct section divider type:" << dividerSetting.type();
+                        break;
+                    }
+                } else {
+                    qDebug() << "Layer" << i << "has unsupported section divider format";
                 }
             }
         }
@@ -471,11 +510,32 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 
             // Handle section divider information
             if (lsct.isValid()) {
-                auto dividerType = lsct.type();
-                if (dividerType >= QPsdSectionDividerSetting::NonBase) {
-                    // Get the group ID if available
-                    quint32 groupID = lsct.groupId();
-                    if (groupID > 0) {
+                // Check for section divider settings
+                quint32 groupID = 0;
+                if (lsct.typeId() == QMetaType::QVariantList) {
+                    const auto list = lsct.toList();
+                    if (!list.isEmpty()) {
+                        bool ok = false;
+                        // Get the group ID from the list if available (usually in position 3)
+                        if (list.size() > 3) {
+                            groupID = list[3].toUInt(&ok);
+                            if (!ok) {
+                                qDebug() << "Failed to convert group ID to uint:" << list[3];
+                                groupID = 0;
+                            }
+                        }
+                        qDebug() << "Layer" << i << "section divider list:" << list;
+                    }
+                } else if (lsct.canConvert<QPsdSectionDividerSetting>()) {
+                    const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
+                    // Try to get group ID from the setting if available
+                    if (dividerSetting.type() > QPsdSectionDividerSetting::AnyOtherTypeOfLayer) {
+                        groupID = dividerSetting.subType() == QPsdSectionDividerSetting::SceneGroup ? 1 : 0;
+                        qDebug() << "Layer" << i << "direct section divider subtype:" << dividerSetting.subType();
+                    }
+                }
+                
+                if (groupID > 0) {
                             qDebug() << "Layer" << i << "is part of group" << groupID << "from section divider";
                             
                             // Store both the layer's own ID and group ID relationships
@@ -498,39 +558,86 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                             auto updatedMembers = d->groupsMap.values(groupID);
                             qDebug() << "Group" << groupID << "now has" << updatedMembers.size() << "members";
                         }
-                    } else { // Layer is part of a group but no explicit group ID
-                        qDebug() << "Layer" << i << "is a group with type" << dividerType;
-                    
-                    // Store both the layer's own ID and group ID relationships
-                    d->groupsMap.insert(layerID, persistentIndex);
-                    
-                    // Look for any existing members of this group
-                    for (int j = i + 1; j < d->layerRecords.size(); ++j) {
-                        const auto &memberRecord = d->layerRecords.at(j);
-                        const auto memberInfo = memberRecord.additionalLayerInformation();
-                        const auto memberLsct = memberInfo.value("lsct");
+                    } else {
+                        // Try to determine group type from section divider settings
+                        int dividerType = 0;
+                        if (lsct.typeId() == QMetaType::QVariantList) {
+                            const auto list = lsct.toList();
+                            if (!list.isEmpty()) {
+                                bool ok = false;
+                                dividerType = list[0].toInt(&ok);
+                                if (!ok) {
+                                    qDebug() << "Failed to convert divider type to int:" << list[0];
+                                }
+                            }
+                        } else if (lsct.canConvert<QPsdSectionDividerSetting>()) {
+                            const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
+                            dividerType = static_cast<int>(dividerSetting.type());
+                        }
+
+                        if (dividerType > 0) { // Layer is part of a group but no explicit group ID
+                            qDebug() << "Layer" << i << "is a group with type" << dividerType;
                         
-                        qDebug() << "Checking layer" << j << "for membership in group" << layerID;
-                        
-                        if (memberLsct.isValid()) {
-                            QList<QVariant> memberData = memberLsct.toList();
-                            if (!memberData.isEmpty()) {
-                                const auto memberType = memberData.first().toUInt(&ok);
-                                if (ok && memberType >= 2 && memberData.size() > 1) {
-                                    quint32 memberGroupID = memberData.at(1).toUInt();
-                                    qDebug() << "Layer" << j << "has group ID" << memberGroupID;
-                                    
-                                    if (memberGroupID == layerID) {
-                                        // This layer is a member of our group
-                                        for (int k = 0; k < d->treeNodeList.size(); ++k) {
-                                            const auto &memberNode = d->treeNodeList.at(k);
-                                            if (memberNode.recordIndex == j) {
-                                                QPersistentModelIndex memberIndex(memberNode.modelIndex);
-                                                // Add bidirectional relationships
-                                                d->groupsMap.insert(layerID, memberIndex);
-                                                d->groupsMap.insert(memberNode.layerId, persistentIndex);
-                                                qDebug() << "Added bidirectional relationship between" << i << "and" << j;
-                                                break;
+                            // Store both the layer's own ID and group ID relationships
+                            d->groupsMap.insert(layerID, persistentIndex);
+                            
+                            // Look for any existing members of this group
+                            for (int j = i + 1; j < d->layerRecords.size(); ++j) {
+                                const auto &memberRecord = d->layerRecords.at(j);
+                                const auto memberInfo = memberRecord.additionalLayerInformation();
+                                const auto memberLsct = memberInfo.value("lsct");
+                                
+                                qDebug() << "Checking layer" << j << "for membership in group" << layerID;
+                                
+                                if (memberLsct.isValid()) {
+                                    QList<QVariant> memberData = memberLsct.toList();
+                                    if (!memberData.isEmpty()) {
+                                        bool memberOk = false;
+                                        const auto memberType = memberData.first().toUInt(&memberOk);
+                                        if (!memberOk) {
+                                            qDebug() << "Failed to convert member type to uint:" << memberData.first();
+                                            continue;
+                                        }
+                                        
+                                        // Check if this is a valid section divider type
+                                        if (memberType != QPsdSectionDividerSetting::OpenFolder &&
+                                            memberType != QPsdSectionDividerSetting::ClosedFolder &&
+                                            memberType != QPsdSectionDividerSetting::BoundingSectionDivider) {
+                                            qDebug() << "Invalid section divider type:" << memberType;
+                                            continue;
+                                        }
+                                        
+                                        if (memberData.size() > 1) {
+                                            bool groupOk = false;
+                                            quint32 memberGroupID = memberData.at(1).toUInt(&groupOk);
+                                            if (!groupOk) {
+                                                qDebug() << "Failed to convert group ID to uint:" << memberData.at(1);
+                                                continue;
+                                            }
+                                            qDebug() << "Layer" << j << "has group ID" << memberGroupID;
+                                            
+                                            if (memberGroupID == layerID) {
+                                                // This layer is a member of our group
+                                                for (int k = 0; k < d->treeNodeList.size(); ++k) {
+                                                    const auto &memberNode = d->treeNodeList.at(k);
+                                                    if (memberNode.recordIndex == j) {
+                                                        QPersistentModelIndex memberIndex(memberNode.modelIndex);
+                                                        if (memberIndex.isValid()) {
+                                                            // Add bidirectional relationships
+                                                            d->groupsMap.insert(layerID, memberIndex);
+                                                            d->groupsMap.insert(memberNode.layerId, persistentIndex);
+                                                            
+                                                            // If this is a folder, also establish parent-child relationship
+                                                            if (memberNode.folderType != FolderType::NotFolder) {
+                                                                d->groupsMap.insert(memberNode.layerId, persistentIndex);
+                                                                d->groupsMap.insert(layerID, memberIndex);
+                                                            }
+                                                            
+                                                            qDebug() << "Added bidirectional relationship between" << i << "and" << j;
+                                                        }
+                                                        break;
+                                                    }
+                                                }
                                             }
                                         }
                                     }
@@ -539,7 +646,6 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                         }
                     }
                 }
-            }
 
             // Handle clipping masks
             QPersistentModelIndex currentIndex(modelIndex);
@@ -547,6 +653,9 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 qDebug() << "\nLayer" << i << "is a base layer";
                 // Register this as a base layer by mapping it to itself
                 d->clippingMaskMap.insert(currentIndex, currentIndex);
+                
+                // Also store in group map for relationship tracking
+                d->groupsMap.insert(node.layerId, currentIndex);
             } else if (record.clipping() == QPsdLayerRecord::Clipping::NonBase) {
                 qDebug() << "\nLayer" << i << "is a clipped layer";
                 
