@@ -428,9 +428,9 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             // Find the parent folder for this layer
             if (parentNodeIndex >= 0 && parentNodeIndex < d->treeNodeList.size()) {
                 qDebug() << "Layer" << i << "has parent" << parentNodeIndex;
-                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
                 
                 // First establish relationship with parent
+                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
                 if (parentNode.folderType != FolderType::NotFolder) {
                     QPersistentModelIndex parentIndex(parentNode.modelIndex);
                     if (parentIndex.isValid()) {
