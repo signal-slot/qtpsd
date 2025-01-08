@@ -55,20 +55,23 @@ private:
         QVariant value;
     };
     using ExportData = QList<Export>;
+    // Utility Methods
+    void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
     void generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const;
     bool generateMergeData(const QPsdAbstractLayerItem *item) const;
-    bool traverseTree(const QPsdAbstractLayerItem *, Element *, ImportData *, ExportData *, QPsdAbstractLayerItem::ExportHint::Type) const;
-    bool converTo(Element *element, ImportData *imports, const QPsdAbstractLayerItem::ExportHint &hint) const;
-    bool outputPath(const QPainterPath &path, Element *element) const;
-    void findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const;
-
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
+    bool outputPath(const QPainterPath &path, Element *element) const;
     bool outputBase(const QPsdAbstractLayerItem *item, Element *element, ImportData *imports, QRect rectBounds = {}) const;
-    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
+
+    // Core Output Methods
+    bool convertTo(Element *element, ImportData *imports, const QPsdAbstractLayerItem::ExportHint &hint) const;
     bool outputText(const QPsdTextLayerItem *text, Element *element, ImportData *imports) const;
     bool outputShape(const QPsdShapeLayerItem *shape, Element *element, ImportData *imports, const QString &base = u"Rectangle"_s) const;
     bool outputImage(const QPsdImageLayerItem *image, Element *element, ImportData *imports) const;
+    bool outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const;
 
+    // High-Level Methods
+    bool traverseTree(const QPsdAbstractLayerItem *, Element *, ImportData *, ExportData *, QPsdAbstractLayerItem::ExportHint::Type) const;
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
 
@@ -282,7 +285,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QPsdAbstractLayerItem *item, El
         Element element;
         element.id = id;
         outputBase(item, &element, imports);
-        converTo(&element, imports, hint);
+        convertTo(&element, imports, hint);
         if (element.type == "Button"_L1) {
             if (mergeMap.contains(item)) {
                 for (const auto *i : mergeMap.values(item)) {
@@ -660,6 +663,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QPsdShapeLayerItem *shape, Eleme
     return true;
 };
 
+
 bool QPsdExporterSlintPlugin::outputImage(const QPsdImageLayerItem *image, Element *element, ImportData *imports) const
 {
     QPsdImageStore imageStore(dir, "images"_L1);
@@ -694,7 +698,7 @@ bool QPsdExporterSlintPlugin::outputImage(const QPsdImageLayerItem *image, Eleme
     return true;
 };
 
-bool QPsdExporterSlintPlugin::converTo(Element *element, ImportData *imports, const QPsdAbstractLayerItem::ExportHint &hint) const
+bool QPsdExporterSlintPlugin::convertTo(Element *element, ImportData *imports, const QPsdAbstractLayerItem::ExportHint &hint) const
 {
     switch (hint.baseElement) {
     case QPsdAbstractLayerItem::ExportHint::NativeComponent::Container:
