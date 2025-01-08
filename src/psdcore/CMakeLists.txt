@@ -6,6 +6,8 @@
 #####################################################################
 qt_internal_add_module(PsdCore
     PLUGIN_TYPES psdadditionallayerinformation psddescriptor psdeffectslayer
+    CONFIG_MODULE_NAME PsdCore
+    MODULE_INCLUDE_NAME QtPsdCore
     SOURCES
         qpsdabstractimage.cpp qpsdabstractimage.h
         qpsdadditionallayerinformation.cpp qpsdadditionallayerinformation.h

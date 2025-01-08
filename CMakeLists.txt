@@ -17,4 +17,11 @@ find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS BuildInternals Co
 find_package(Qt6 ${PROJECT_VERSION} CONFIG OPTIONAL_COMPONENTS Widgets)
 qt_internal_project_setup()
 
+if(WIN32)
+    set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+    if(MSVC)
+        set(CMAKE_CONFIGURATION_TYPES "Debug;Release;MinSizeRel;RelWithDebInfo" CACHE STRING "" FORCE)
+    endif()
+endif()
+
 qt_build_repo()
