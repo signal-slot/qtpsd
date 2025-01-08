@@ -325,7 +325,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             if (i < d->groupIDs.size()) {
                 const auto groupID = d->groupIDs.at(i);
                 if (groupID > 0) {
-                    d->groupsMap.insert(groupID, modelIndex);
+                    // Store both the group ID and layer ID mappings for bidirectional relationships
+                    d->groupsMap.insert(groupID, QPersistentModelIndex(modelIndex));
                 }
             }
 
@@ -342,27 +343,6 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         } else if (folderType != FolderType::NotFolder) {
             rowStack.push_back(row);
             row = -1;
-        }
-
-        // Store group relationships
-        const auto lsct = additionalLayerInformation.value("lsct");
-        if (lsct.isValid()) {
-            bool ok;
-            const auto groupType = lsct.toUInt(&ok);
-            if (ok && groupType >= 2) { // Layer is part of a group
-                d->groupsMap.insert(lyid, QPersistentModelIndex(modelIndex));
-            } else {
-                // Try as list if not a single uint
-                QList<QVariant> lsctData = lsct.toList();
-                if (!lsctData.isEmpty()) {
-                    const auto listGroupType = lsctData.first().toUInt(&ok);
-                    if (ok && listGroupType >= 2) {
-                        // Get the group ID from lsct data (second value if available, otherwise use lyid)
-                        quint32 groupID = lsctData.size() > 1 ? lsctData.at(1).toUInt() : lyid;
-                        d->groupsMap.insert(groupID, QPersistentModelIndex(modelIndex));
-                    }
-                }
-            }
         }
         }
 
@@ -393,9 +373,17 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto groupIDs = d->groupsMap.uniqueKeys();
     for (const auto &groupID : groupIDs) {
         const auto groupMembers = d->groupsMap.values(groupID);
-        // Add all members to the group's relationships
-        for (const auto &otherMember : groupMembers) {
-            newGroupsMap.insert(groupID, otherMember);
+        // For each valid member in the group, add all other valid members to its relationships
+        for (const auto &member : groupMembers) {
+            if (member.isValid()) {
+                for (const auto &otherMember : groupMembers) {
+                    if (otherMember.isValid()) {
+                        newGroupsMap.insert(groupID, otherMember);
+                    }
+                }
+            }
+        }
+
         }
     }
 
