@@ -1,3 +1,6 @@
 [submodule "tests/auto/psdcore/ag-psd/ag-psd"]
 	path = tests/auto/psdcore/ag-psd/ag-psd
 	url = https://github.com/Agamnentzar/ag-psd.git
+[submodule "tests/auto/psdcore/ag-psd"]
+	path = tests/auto/psdcore/ag-psd
+	url = https://github.com/Agamnentzar/ag-psd.git

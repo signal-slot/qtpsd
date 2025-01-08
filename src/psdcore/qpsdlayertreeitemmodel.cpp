@@ -336,12 +336,34 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 d->clippingMasks.prepend(QModelIndex());
             }
         }
-        
+        // Handle folder structure
         if (isCloseFolder && !rowStack.isEmpty()) {
             row = rowStack.takeLast();
         } else if (folderType != FolderType::NotFolder) {
             rowStack.push_back(row);
             row = -1;
+        }
+
+        // Store group relationships
+        const auto lsct = additionalLayerInformation.value("lsct");
+        if (lsct.isValid()) {
+            bool ok;
+            const auto groupType = lsct.toUInt(&ok);
+            if (ok && groupType >= 2) { // Layer is part of a group
+                d->groupsMap.insert(lyid, QPersistentModelIndex(modelIndex));
+            } else {
+                // Try as list if not a single uint
+                QList<QVariant> lsctData = lsct.toList();
+                if (!lsctData.isEmpty()) {
+                    const auto listGroupType = lsctData.first().toUInt(&ok);
+                    if (ok && listGroupType >= 2) {
+                        // Get the group ID from lsct data (second value if available, otherwise use lyid)
+                        quint32 groupID = lsctData.size() > 1 ? lsctData.at(1).toUInt() : lyid;
+                        d->groupsMap.insert(groupID, QPersistentModelIndex(modelIndex));
+                    }
+                }
+            }
+        }
         }
 
         // Layer ID
@@ -366,6 +388,18 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         }
     });
 
+    // Process group relationships
+    QMultiMap<quint32, QPersistentModelIndex> newGroupsMap;
+    const auto groupIDs = d->groupsMap.uniqueKeys();
+    for (const auto &groupID : groupIDs) {
+        const auto groupMembers = d->groupsMap.values(groupID);
+        // Add all members to the group's relationships
+        for (const auto &otherMember : groupMembers) {
+            newGroupsMap.insert(groupID, otherMember);
+        }
+    }
+
+    // Ensure all layers have clipping mask indices
     while (d->clippingMasks.size() < d->treeNodeList.size()) {
         d->clippingMasks.prepend(QModelIndex());
     }
