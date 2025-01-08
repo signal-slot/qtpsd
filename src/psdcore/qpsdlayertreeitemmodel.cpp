@@ -356,7 +356,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             }
         } else {
             const auto lsct = additionalLayerInformation.value("lsct").template value<QPsdSectionDividerSetting>();
-            switch (lsct.type()) {
+            const auto settingType = lsct.value<QPsdSectionDividerSetting>();
+            switch (settingType.type()) {
             case QPsdSectionDividerSetting::OpenFolder:
                 folderType = FolderType::OpenFolder;
                 break;
