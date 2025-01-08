@@ -14,25 +14,27 @@ jobs:
       fail-fast: false
       matrix:
 #        os: [ubuntu-latest, windows-latest, macos-latest]
-        os: [ubuntu-latest, macos-latest]
+        os: [windows-latest]
         qt: ['6.8.0']
         include:
-          - os: ubuntu-latest
-            host: linux
-            arch: linux_gcc_64
-            generator: 'Ninja'
-            archives: 'qtbase icu'
-#          - os: windows-latest
-#            host: windows
-#            arch: win64_msvc2022_64
-#            generator: 'Visual Studio 17 2022'
+#          - os: ubuntu-latest
+#            host: linux
+#            arch: linux_gcc_64
+#            generator: 'Ninja'
+#            archives: 'qtbase icu'
+#            no-error:  ''
+          - os: windows-latest
+            host: windows
+            arch: win64_msvc2022_64
+            generator: 'Visual Studio 17 2022'
+            archives: 'qtbase'
+            no-error: ''
+#          - os: macos-latest
+#            host: mac
+#            arch: clang_64
 #            generator: 'Ninja'
 #            archives: 'qtbase'
-          - os: macos-latest
-            host: mac
-            arch: clang_64
-            generator: 'Ninja'
-            archives: 'qtbase'
+#            no-error:  '-DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"'
 
     steps:
       - name: Checkout
@@ -51,11 +53,11 @@ jobs:
 
       - name: Configure
         run: |
-          qt-cmake -B build -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"
+          qt-cmake -B build -G "${{ matrix.generator }}" ${{ matrix.no-error }}
 
       - name: Build
         run: |
-          cmake --build build --parallel
+          cmake --build build --config Release --parallel
 
       - name: Install
         run: |
