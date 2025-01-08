@@ -355,19 +355,22 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 break;
             }
         } else {
-            const auto lsct = additionalLayerInformation.value("lsct").template value<QPsdSectionDividerSetting>();
-            switch (lsct.type()) {
-            case QPsdSectionDividerSetting::OpenFolder:
-                folderType = FolderType::OpenFolder;
-                break;
-            case QPsdSectionDividerSetting::ClosedFolder:
-                folderType = FolderType::ClosedFolder;
-                break;
-            case QPsdSectionDividerSetting::BoundingSectionDivider:
-                isCloseFolder = true;
-                break;
-            default:
-                break;
+            const auto lsct = additionalLayerInformation.value("lsct");
+            if (lsct.isValid()) {
+                const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
+                switch (dividerSetting.type()) {
+                case QPsdSectionDividerSetting::OpenFolder:
+                    folderType = FolderType::OpenFolder;
+                    break;
+                case QPsdSectionDividerSetting::ClosedFolder:
+                    folderType = FolderType::ClosedFolder;
+                    break;
+                case QPsdSectionDividerSetting::BoundingSectionDivider:
+                    isCloseFolder = true;
+                    break;
+                default:
+                    break;
+                }
             }
         }
         
@@ -468,17 +471,12 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 
             // Handle section divider information
             if (lsct.isValid()) {
-                bool ok;
-                auto groupType = lsct.toUInt(&ok);
-                if (!ok) {
-                    // Try as list
-                    QList<QVariant> lsctData = lsct.toList();
-                    if (!lsctData.isEmpty()) {
-                        groupType = lsctData.first().toUInt(&ok);
-                        if (ok && groupType >= 2 && lsctData.size() > 1) {
-                            // Get the group ID from lsct data
-                            quint32 groupID = lsctData.at(1).toUInt();
-                            qDebug() << "Layer" << i << "is part of group" << groupID << "from lsct list";
+                auto dividerType = lsct.type();
+                if (dividerType >= QPsdSectionDividerSetting::NonBase) {
+                    // Get the group ID if available
+                    quint32 groupID = lsct.groupId();
+                    if (groupID > 0) {
+                            qDebug() << "Layer" << i << "is part of group" << groupID << "from section divider";
                             
                             // Store both the layer's own ID and group ID relationships
                             d->groupsMap.insert(groupID, persistentIndex);
@@ -500,9 +498,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                             auto updatedMembers = d->groupsMap.values(groupID);
                             qDebug() << "Group" << groupID << "now has" << updatedMembers.size() << "members";
                         }
-                    }
-                } else if (groupType >= 2) { // Layer is part of a group
-                    qDebug() << "Layer" << i << "is a group with type" << groupType;
+                    } else { // Layer is part of a group but no explicit group ID
+                        qDebug() << "Layer" << i << "is a group with type" << dividerType;
                     
                     // Store both the layer's own ID and group ID relationships
                     d->groupsMap.insert(layerID, persistentIndex);
