@@ -53,7 +53,7 @@ jobs:
 
       - name: Configure
         run: |
-          qt-cmake -B build -G "${{ matrix.generator }}" -DCMAKE_GENERATOR_PLATFORM=x64 ${{ matrix.no-error }}
+          qt-cmake -B build ${{ matrix.no-error }}
 
       - name: Build
         run: |
