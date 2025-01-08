@@ -3,6 +3,7 @@
 
 #include "qpsdtextlayeritem.h"
 
+#include <QtCore/QCborMap>
 #include <QtGui/QFontInfo>
 #include <QtGui/QFontDatabase>
 
@@ -24,12 +25,12 @@ QFont findProperFont(const QString &name) {
         cache.insert(name, font);
         return font;
     }
-    QString familySpecified = font.family().section("-", 0, 0);
-    QString styleSpecified = font.family().section("-", 1, 1);
+    QString familySpecified = font.family().section("-"_L1, 0, 0);
+    QString styleSpecified = font.family().section("-"_L1, 1, 1);
 
     static const QHash<QString, QString> substitute = {
-                                                       { "MyriadPro", "Myriad Pro" },
-                                                       { "SourceHanSans", "源ノ角ゴシック JP" },
+                                                       { "MyriadPro"_L1, "Myriad Pro"_L1 },
+                                                       { "SourceHanSans"_L1, u"源ノ角ゴシック JP"_s },
                                                        };
     if (substitute.contains(familySpecified)) {
         familySpecified = substitute.value(familySpecified);

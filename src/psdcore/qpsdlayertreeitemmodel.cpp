@@ -161,6 +161,7 @@ int QPsdLayerTreeItemModel::rowCount(const QModelIndex &parent) const
 
 int QPsdLayerTreeItemModel::columnCount(const QModelIndex &parent) const
 {
+    Q_UNUSED(parent);
     return 2;
 }
 
@@ -270,10 +271,10 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     d->layerRecords = layers.records();
     const auto channelImageData = layers.channelImageData();
     
-    quint32 parentNodeIndex = -1;
+    qint32 parentNodeIndex = -1;
     QList<int> rowStack;
     int row = -1;
-    int i = d->layerRecords.size();
+    qint32 i = d->layerRecords.size();
     std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [&](auto &record) {
         i--;
         auto imageData = channelImageData.at(i);

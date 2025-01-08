@@ -32,7 +32,7 @@ public:
 
         // '<<' の確認
         if (!matchString("<<"))
-            return error(u"EngineData は '<<' で始まる必要があります。"_s);
+            return error("EngineData must start with '<<'"_L1);
 
         // 辞書のパース
         ParseError dictError = parseDictionary(map);
@@ -112,14 +112,14 @@ private:
         while (m_pos < m_length) {
             skipWhitespace();
 
-            QChar ch = peekNextChar();
-            if (ch.isNull())
-                return error(u"辞書のパース中に予期せぬデータの終端に到達しました。"_s);
+            char ch = peekNextChar();
+            if (QChar::fromLatin1(ch).isNull())
+                return error("Unexpected end of data while parsing dictionary"_L1);
 
-            if (ch == '>') {
+            if (ch == '>'_L1) {
                 // '>>' の確認
                 if (!matchString(">>"))
-                    return error(u"辞書の終了 '>>' が正しくありません。"_s);
+                    return error("Invalid dictionary end '>>'"_L1);
                 return success(); // 辞書の終了
             }
 
@@ -151,7 +151,7 @@ private:
     ParseError parsePropertyName(QString* key) {
         char ch = getNextChar();
         if (ch != '/')
-            return error(u"プロパティ名は '/' で始まる必要があります。"_s);
+            return error("Property name must start with '/'"_L1);
 
         QByteArray keyStr;
         while (m_pos < m_length) {
@@ -162,7 +162,7 @@ private:
         }
 
         if (keyStr.isEmpty())
-            return error(u"プロパティ名が空です。"_s);
+            return error("Property name is empty"_L1);
 
         *key = QString::fromUtf8(keyStr);
         return success(); // 成功
@@ -178,12 +178,12 @@ private:
 
         char ch = peekNextChar();
         if (QChar::fromLatin1(ch).isNull())
-            return error(u"値のパース中に予期せぬデータの終端に到達しました。"_s);
+            return error("Unexpected end of data while parsing value"_L1);
 
-        if (ch == '<') { // 辞書
+        if (ch == '<'_L1) { // 辞書
             // '<<' の確認
             if (!matchString("<<"))
-                return error(u"辞書の開始 '<<' が正しくありません。"_s);
+                return error("Invalid dictionary start '<<'"_L1);
 
             QCborMap subMap;
             ParseError dictError = parseDictionary(&subMap);
@@ -192,7 +192,7 @@ private:
 
             *value = QCborValue(subMap);
             return success(); // 成功
-        } else if (ch == '[') { // 配列
+        } else if (ch == '['_L1) { // 配列
             // '[' の消費
             getNextChar(); // '['
 
@@ -204,7 +204,7 @@ private:
                 if (QChar::fromLatin1(ch).isNull())
                     return error(u"配列のパース中に予期せぬデータの終端に到達しました。"_s);
 
-                if (ch == ']') { // 配列の終了
+                if (ch == ']'_L1) { // 配列の終了
                     getNextChar(); // ']'
                     break;
                 }
@@ -220,7 +220,7 @@ private:
 
             *value = QCborValue(array);
             return success(); // 成功
-        } else if (ch == '(') { // 文字列
+        } else if (ch == '('_L1) { // 文字列
             QString str;
             ParseError strError = parseString(&str);
             if (strError)
@@ -228,7 +228,7 @@ private:
 
             *value = QCborValue(str);
             return success(); // 成功
-        } else if (QChar::fromLatin1(ch).toLower() == 't' || QChar::fromLatin1(ch).toLower() == 'f') { // ブール値
+        } else if (QChar::fromLatin1(ch).toLower() == 't'_L1 || QChar::fromLatin1(ch).toLower() == 'f'_L1) { // ブール値
             QByteArray boolStr;
             ParseError boolError = parseBoolean(&boolStr);
             if (boolError)
@@ -241,7 +241,7 @@ private:
                 *value = QCborValue(false);
                 return success(); // 成功
             }
-            return error("無効なブール値です。");
+            return error(u"無効なブール値です。"_s);
         } else { // 数値
             QByteArray numStr;
             ParseError numError = parseNumber(&numStr);
@@ -251,7 +251,7 @@ private:
             bool ok = false;
             double num = numStr.toDouble(&ok);
             if (!ok)
-                return error(u"無効な数値形式: '%1'。"_s.arg(numStr));
+                return error("Invalid number format: '%1'"_L1.arg(numStr));
 
             if (numStr.contains('.')) {
                 *value = QCborValue(num);
@@ -265,6 +265,7 @@ private:
 
             return success(); // 成功
         }
+        return error("Invalid value type"_L1); // Add missing return statement
     }
 
     /**
@@ -275,7 +276,7 @@ private:
     ParseError parseString(QString* str) {
         char ch = getNextChar();
         if (ch != '(')
-            return error(u"文字列の開始 '(' が見つかりませんでした。"_s);
+            return error("String must start with '('"_L1);
 
         // 特殊なプレフィックス (˛ˇ) の処理
         const auto prefix4 = m_data.mid(m_pos, 4);
@@ -324,19 +325,19 @@ private:
     ParseError parseBoolean(QByteArray* boolStr) {
         QString boolQString;
         while (m_pos < m_length && QChar::fromLatin1(m_data.at(m_pos)).isLetter()) {
-            boolQString += m_data.at(m_pos);
+            boolQString += QLatin1Char(m_data.at(m_pos));
             ++m_pos;
         }
 
         QString boolLower = boolQString.toLower();
-        if (boolLower == "true") {
-            *boolStr = "true";
+        if (boolLower == "true"_L1) {
+            *boolStr = "true"_ba;
             return success(); // 成功
-        } else if (boolLower == "false") {
-            *boolStr = "false";
+        } else if (boolLower == "false"_L1) {
+            *boolStr = "false"_ba;
             return success(); // 成功
         }
-        return error("無効なブール値です。");
+        return error(u"無効なブール値です。"_s);
     }
 
     /**
@@ -351,14 +352,14 @@ private:
 
         while (m_pos < m_length) {
             char ch = peekNextChar();
-            if (QChar::fromLatin1(ch).isDigit() || ch == '.')
+            if (QChar::fromLatin1(ch).isDigit() || ch == '.'_L1)
                 numberStr += getNextChar();
             else
                 break;
         }
 
         if (numberStr.isEmpty() || numberStr == "-")
-            return error(u"数値が期待されましたが、見つかりませんでした。"_s);
+            return error("Number expected but not found"_L1);
 
         *numStr = numberStr;
         return success(); // 成功

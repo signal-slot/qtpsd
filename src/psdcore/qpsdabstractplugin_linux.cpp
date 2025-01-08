@@ -15,8 +15,8 @@ QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
 
         std::function<QDir(QDir)> findPluginsDir;
         findPluginsDir = [&](QDir dir) -> QDir{
-            if (dir.exists("plugins")) {
-                dir.cd("plugins");
+            if (dir.exists("plugins"_L1)) {
+                dir.cd("plugins"_L1);
                 return dir;
             }
 
