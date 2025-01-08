@@ -32,7 +32,15 @@ QPsdImageResources::QPsdImageResources(QIODevice *source)
 
     // Image resources
     while (source->isOpen() && es.bytesAvailable() > 8) {
-        d->imageResourceBlocks.append(QPsdImageResourceBlock(source));
+        qint64 initialAvailable = es.bytesAvailable();
+        QPsdImageResourceBlock block(source);
+        d->imageResourceBlocks.append(block);
+        
+        // Break if no progress was made to avoid infinite loop
+        if (es.bytesAvailable() >= initialAvailable) {
+            qWarning() << "No progress in reading image resource block. Breaking to avoid infinite loop.";
+            break;
+        }
     }
 }
 
