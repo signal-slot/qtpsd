@@ -53,11 +53,11 @@ jobs:
 
       - name: Configure
         run: |
-          qt-cmake -B build ${{ matrix.no-error }}
+          qt-cmake --preset=qt-msvc ${{ matrix.no-error }}
 
       - name: Build
         run: |
-          cmake --build build --config Release --parallel
+          cmake --build --preset qt-msvc
 
       - name: Install
         run: |

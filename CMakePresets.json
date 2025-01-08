@@ -1,0 +1,38 @@
+{
+    "version": 3,
+    "configurePresets": [
+        {
+            "name": "qt-default",
+            "displayName": "Default Qt Config",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build",
+            "cacheVariables": {
+                "CMAKE_INSTALL_PREFIX": "${sourceDir}/qtbase/install",
+                "CMAKE_BUILD_TYPE": "Release"
+            }
+        },
+        {
+            "name": "qt-msvc",
+            "inherits": "qt-default",
+            "generator": "Visual Studio 17 2022",
+            "architecture": "x64",
+            "toolset": "host=x64",
+            "condition": {
+                "type": "equals",
+                "lhs": "${hostSystemName}",
+                "rhs": "Windows"
+            }
+        }
+    ],
+    "buildPresets": [
+        {
+            "name": "qt-default",
+            "configurePreset": "qt-default"
+        },
+        {
+            "name": "qt-msvc",
+            "configurePreset": "qt-msvc",
+            "configuration": "Release"
+        }
+    ]
+}
