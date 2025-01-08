@@ -385,10 +385,21 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 isCloseFolder,
                 modelIndex
             };
-            d->treeNodeList.prepend(node);
+            
+            // Store the node first so we can reference it
+            const int nodeIndex = d->treeNodeList.size();
+            d->treeNodeList.append(node);
             
             // Now we can use the node's layerId
             QPersistentModelIndex persistentIndex(modelIndex);
+            
+            // Ensure we have a valid layer ID
+            if (layerId == 0 && nodeIndex < d->groupIDs.size()) {
+                // If no explicit layer ID, use the group ID
+                node.layerId = d->groupIDs.at(nodeIndex);
+                d->treeNodeList[nodeIndex] = node;
+            }
+            const auto layerID = node.layerId;
 
             qDebug() << "\nProcessing layer" << i << "with ID" << layerId;
 
@@ -415,9 +426,21 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             }
 
             // Find the parent folder for this layer
-            if (parentNodeIndex >= 0) {
+            if (parentNodeIndex >= 0 && parentNodeIndex < d->treeNodeList.size()) {
                 qDebug() << "Layer" << i << "has parent" << parentNodeIndex;
-                // Find all siblings under this parent
+                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
+                
+                // First establish relationship with parent
+                if (parentNode.folderType != FolderType::NotFolder) {
+                    QPersistentModelIndex parentIndex(parentNode.modelIndex);
+                    if (parentIndex.isValid()) {
+                        d->groupsMap.insert(layerID, parentIndex);
+                        d->groupsMap.insert(parentNode.layerId, persistentIndex);
+                        qDebug() << "Added parent-child relationship between" << i << "and" << parentNodeIndex;
+                    }
+                }
+                
+                // Then find all siblings under this parent
                 for (const auto &otherNode : d->treeNodeList) {
                     if (otherNode.parentNodeIndex == parentNodeIndex && !otherNode.isCloseFolder) {
                         QPersistentModelIndex siblingIndex(otherNode.modelIndex);
@@ -581,7 +604,6 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 } else {
                     qWarning() << "No valid base layer found for clipped layer" << i;
                 }
-                d->clippingMasks.prepend(QModelIndex());
             }
         }
         // Update parent node index for folder structure
