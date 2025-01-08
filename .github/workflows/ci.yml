@@ -13,26 +13,23 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-#        os: [ubuntu-latest, windows-latest, macos-latest]
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         qt: ['6.8.0']
         include:
           - os: ubuntu-latest
             host: linux
             arch: linux_gcc_64
             generator: 'Ninja'
-            archives: 'qtbase icu'
-#          - os: windows-latest
-#            host: windows
-#            arch: win64_msvc2022_64
-#            generator: 'Visual Studio 17 2022'
-#            generator: 'Ninja'
-#            archives: 'qtbase'
+            icu: 'icu'
+          - os: windows-latest
+            host: windows
+            arch: win64_msvc2022_64
+            generator: 'Visual Studio 17 2022'
           - os: macos-latest
             host: mac
             arch: clang_64
             generator: 'Ninja'
-            archives: 'qtbase'
+            no-error: '-DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"'
 
     steps:
       - name: Checkout
@@ -43,19 +40,27 @@ jobs:
         with:
           version: ${{ matrix.qt }}
           arch: ${{ matrix.arch }}
-          archives: ${{ matrix.archives }}
+          archives: 'qtbase ${{ matrix.icu }}'
           tools: 'tools_cmake tools_ninja'
           cache: true
           setup-python: 'true'
           install-deps: 'true'
 
-      - name: Configure
+      - name: Configure (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          qt-cmake -B build -G "${{ matrix.generator }}" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"
+          cmake -S . -B build -G "${{ matrix.generator }}" -A x64 -T host=x64 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ${{ matrix.no-error }}
+
+      - name: Configure (Unix)
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          qt-cmake -B build -G "${{ matrix.generator }}" ${{ matrix.no-error }}
 
       - name: Build
         run: |
-          cmake --build build --parallel
+          cmake --build build --config RelWithDebInfo --parallel
 
       - name: Install
         run: |
