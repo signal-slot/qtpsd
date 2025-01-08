@@ -13,28 +13,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-#        os: [ubuntu-latest, windows-latest, macos-latest]
-        os: [windows-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         qt: ['6.8.0']
         include:
-#          - os: ubuntu-latest
-#            host: linux
-#            arch: linux_gcc_64
-#            generator: 'Ninja'
-#            archives: 'qtbase icu'
-#            no-error:  ''
+          - os: ubuntu-latest
+            host: linux
+            arch: linux_gcc_64
+            generator: 'Ninja'
+            archives: 'qtbase icu'
+            no-error:  ''
           - os: windows-latest
             host: windows
             arch: win64_msvc2022_64
             generator: 'Visual Studio 17 2022'
             archives: 'qtbase'
             no-error: ''
-#          - os: macos-latest
-#            host: mac
-#            arch: clang_64
-#            generator: 'Ninja'
-#            archives: 'qtbase'
-#            no-error:  '-DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"'
+          - os: macos-latest
+            host: mac
+            arch: clang_64
+            generator: 'Ninja'
+            archives: 'qtbase'
+            no-error:  '-DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"'
 
     steps:
       - name: Checkout
