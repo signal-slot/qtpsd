@@ -53,11 +53,11 @@ jobs:
 
       - name: Configure
         run: |
-          qt-cmake --preset=qt-msvc ${{ matrix.no-error }}
+          qt-cmake -B build -G "Visual Studio 17 2022" -A x64 ${{ matrix.no-error }}
 
       - name: Build
         run: |
-          cmake --build --preset qt-msvc
+          cmake --build build --config Release --parallel
 
       - name: Install
         run: |
