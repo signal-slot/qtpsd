@@ -328,7 +328,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     QList<int> rowStack;
     int row = -1;
     qint32 i = d->layerRecords.size();
-    std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [&](auto &record) {
+    std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [this, d, &parentNodeIndex, &rowStack, &row, &i, &channelImageData](auto &record) {
         i--;
         auto imageData = channelImageData.at(i);
         imageData.setHeader(d->fileHeader);
@@ -367,7 +367,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                         if (ok) {
                             qDebug() << "Layer" << i << "section divider type:" << type;
                             // Map the type to QPsdSectionDividerSetting::Type
-                            switch (type) {
+                            switch (static_cast<QPsdSectionDividerSetting::Type>(type)) {
                             case QPsdSectionDividerSetting::OpenFolder:
                                 folderType = FolderType::OpenFolder;
                                 break;
@@ -707,8 +707,12 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         }
 
         if (isCloseFolder) {
-            const QPsdLayerTreeItemModel::Private::Node node = d->treeNodeList.at(parentNodeIndex - i);
-            parentNodeIndex = node.parentNodeIndex;
+            if (parentNodeIndex >= 0 && parentNodeIndex < d->treeNodeList.size()) {
+                const auto &parentNode = d->treeNodeList.at(parentNodeIndex);
+                if (parentNode.isCloseFolder) {
+                    parentNodeIndex = parentNode.parentNodeIndex;
+                }
+            }
         }
     });
 
