@@ -325,10 +325,15 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto channelImageData = layers.channelImageData();
     
     qint32 parentNodeIndex = -1;
-    QList<int> rowStack;
     int row = -1;
     qint32 i = d->layerRecords.size();
-    std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [this, d, &parentNodeIndex, &rowStack, &row, &i, &channelImageData](auto &record) {
+    Private::Node currentNode;
+    std::for_each(d->layerRecords.rbegin(), d->layerRecords.rend(), [this, d, &parentNodeIndex, &row, &i, &channelImageData, &currentNode](auto &record) {
+        currentNode.recordIndex = i;
+        currentNode.layerId = record.layerId();
+        currentNode.parentNodeIndex = parentNodeIndex;
+        currentNode.folderType = FolderType::NotFolder;
+        currentNode.isCloseFolder = false;
         i--;
         auto imageData = channelImageData.at(i);
         imageData.setHeader(d->fileHeader);
@@ -419,18 +424,16 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             modelIndex = createIndex(row, 0, i);
 
             // Create and add node to tree first
-            QPsdLayerTreeItemModel::Private::Node node {
-                i,
-                layerId,
-                parentNodeIndex,
-                folderType,
-                isCloseFolder,
-                modelIndex
-            };
+            currentNode.recordIndex = i;
+            currentNode.layerId = layerId;
+            currentNode.parentNodeIndex = parentNodeIndex;
+            currentNode.folderType = folderType;
+            currentNode.isCloseFolder = isCloseFolder;
+            currentNode.modelIndex = modelIndex;
             
             // Store the node first so we can reference it
             const int nodeIndex = d->treeNodeList.size();
-            d->treeNodeList.append(node);
+            d->treeNodeList.append(currentNode);
             
             // Now we can use the node's layerId
             QPersistentModelIndex persistentIndex(modelIndex);
@@ -438,12 +441,12 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             // Ensure we have a valid layer ID
             if (layerId == 0 && nodeIndex < d->groupIDs.size()) {
                 // If no explicit layer ID, use the group ID
-                node.layerId = d->groupIDs.at(nodeIndex);
-                d->treeNodeList[nodeIndex] = node;
+                currentNode.layerId = d->groupIDs.at(nodeIndex);
+                d->treeNodeList[nodeIndex] = currentNode;
             }
-            const auto layerID = node.layerId;
+            const auto layerID = currentNode.layerId;
 
-            qDebug() << "\nProcessing layer" << i << "with ID" << layerId;
+            qDebug() << "\nProcessing layer" << i << "with ID" << layerID;
 
             // Get section divider information first
             const auto additionalInfo = record.additionalLayerInformation();
@@ -483,14 +486,17 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 }
                 
                 // Then find all siblings under this parent
-                for (const auto &otherNode : d->treeNodeList) {
-                    if (otherNode.parentNodeIndex == parentNodeIndex && !otherNode.isCloseFolder) {
-                        QPersistentModelIndex siblingIndex(otherNode.modelIndex);
-                        if (siblingIndex.isValid() && siblingIndex != persistentIndex) {
-                            // Add bidirectional relationships between siblings
-                            d->groupsMap.insert(layerId, siblingIndex);
-                            d->groupsMap.insert(otherNode.layerId, persistentIndex);
-                            qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
+                // Only establish sibling relationships if this is a group
+                if (folderType != FolderType::NotFolder) {
+                    for (const auto &otherNode : d->treeNodeList) {
+                        if (otherNode.parentNodeIndex == parentNodeIndex && !otherNode.isCloseFolder) {
+                            QPersistentModelIndex siblingIndex(otherNode.modelIndex);
+                            if (siblingIndex.isValid() && siblingIndex != persistentIndex) {
+                                // Add bidirectional relationships between siblings in the same group
+                                d->groupsMap.insert(layerID, siblingIndex);
+                                d->groupsMap.insert(otherNode.layerId, persistentIndex);
+                                qDebug() << "Added sibling relationship between" << i << "and" << otherNode.recordIndex;
+                            }
                         }
                     }
                 }
@@ -526,8 +532,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                         }
                         qDebug() << "Layer" << i << "section divider list:" << list;
                     }
-                } else if (lsct.canConvert<QPsdSectionDividerSetting>()) {
-                    const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
+                } else if (lsct.template canConvert<QPsdSectionDividerSetting>()) {
+                    const auto dividerSetting = lsct.template value<QPsdSectionDividerSetting>();
                     // Try to get group ID from the setting if available
                     if (dividerSetting.type() > QPsdSectionDividerSetting::AnyOtherTypeOfLayer) {
                         groupID = dividerSetting.subType() == QPsdSectionDividerSetting::SceneGroup ? 1 : 0;
@@ -570,8 +576,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                                     qDebug() << "Failed to convert divider type to int:" << list[0];
                                 }
                             }
-                        } else if (lsct.canConvert<QPsdSectionDividerSetting>()) {
-                            const auto dividerSetting = lsct.value<QPsdSectionDividerSetting>();
+                        } else if (lsct.template canConvert<QPsdSectionDividerSetting>()) {
+                            const auto dividerSetting = lsct.template value<QPsdSectionDividerSetting>();
                             dividerType = static_cast<int>(dividerSetting.type());
                         }
 
@@ -655,17 +661,17 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 d->clippingMaskMap.insert(currentIndex, currentIndex);
                 
                 // Also store in group map for relationship tracking
-                d->groupsMap.insert(node.layerId, currentIndex);
+                d->groupsMap.insert(currentNode.layerId, currentIndex);
             } else if (record.clipping() == QPsdLayerRecord::Clipping::NonBase) {
                 qDebug() << "\nLayer" << i << "is a clipped layer";
                 
                 // Find the base layer by looking at previous layers in the same group
                 QPersistentModelIndex baseIndex;
-                const auto parentId = node.parentNodeIndex;
+                const auto parentId = currentNode.parentNodeIndex;
                 
                 // Look for base layers in reverse order (closest first)
                 // Start from current layer and work backwards
-                int searchStart = i;
+                int searchStart = i - 1;  // Start from previous layer
                 while (searchStart >= 0) {
                     // Ensure we're within bounds of our data structures
                     if (searchStart >= d->treeNodeList.size() || searchStart >= d->layerRecords.size()) {
@@ -679,6 +685,9 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                         if (baseRecord.clipping() == QPsdLayerRecord::Clipping::Base) {
                             // Found a valid base layer
                             baseIndex = QPersistentModelIndex(baseNode.modelIndex);
+                            // Set up clipping mask relationship
+                            d->clippingMaskMap.insert(currentIndex, baseIndex);
+                            setData(currentIndex, QVariant::fromValue(baseIndex), QPsdLayerTreeItemModel::Roles::ClippingMaskIndexRole);
                             qDebug() << "Found base layer" << baseNode.recordIndex << "for clipped layer" << i;
                             break;
                         }
@@ -693,7 +702,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                     
                     // Also store the relationship in the group map
                     const auto &baseNode = d->treeNodeList.at(baseIndex.internalId());
-                    d->groupsMap.insert(node.layerId, baseIndex);
+                    d->groupsMap.insert(currentNode.layerId, baseIndex);
                     d->groupsMap.insert(baseNode.layerId, currentIndex);
                     qDebug() << "Added bidirectional group relationship for clipping mask between" << i << "and" << baseIndex.internalId();
                 } else {
