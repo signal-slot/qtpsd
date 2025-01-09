@@ -12,11 +12,13 @@ public:
     QRect rect;
     quint8 defaultColor;
     quint8 flags;
+    QString errorString;  // Store error messages for invalid reads
 };
 
 QPsdLayerMaskAdjustmentLayerData::Private::Private()
     : defaultColor(0)
     , flags(0)
+    , errorString()
 {}
 
 QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData()
@@ -37,11 +39,22 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     // that could occur if bytes aren't fully consumed.
     //
     // Size of the data: Check the size and flags to determine what is or is not present. If zero, the following fields are not present
-    auto length = readU32(source);
+    quint64 length = readU32(source);  // Use 64-bit to prevent overflow during bounds checks
     if (length == 0)
         return;
-    // We don't assert length == 0 here since we may have partial reads
-    // that continue processing after the initial block
+
+    // Verify length is not unreasonably large (prevent integer overflow in calculations)
+    if (length > 0x7FFFFFFF) {  // Max reasonable size for a layer mask section
+        setErrorString("Layer mask data length is unreasonably large");
+        return;
+    }
+
+    // Verify minimum required length for basic structure (rectangle + defaultColor + flags = 10 bytes)
+    if (length < 10) {
+        setErrorString("Insufficient data for layer mask basic structure");
+        return;
+    }
+
     auto cleanup = qScopeGuard([&] {
         if (length != 0) {
             qWarning() << "Layer mask data had" << length << "bytes remaining";
@@ -49,22 +62,38 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     });
     EnsureSeek es(source, length);
 
-    // Rectangle enclosing layer mask: Top, left, bottom, right
+    // Rectangle enclosing layer mask: Top, left, bottom, right (8 bytes)
+    if (length < 8) {
+        setErrorString("Insufficient data for layer mask rectangle");
+        return;
+    }
     d->rect = readRectangle(source, &length);
 
-    // Default color. 0 or 255
+    // Default color. 0 or 255 (1 byte)
+    if (length < 1) {
+        setErrorString("Insufficient data for layer mask default color");
+        return;
+    }
     d->defaultColor = readU8(source, &length);
 
-    // Flags.
+    // Flags. (1 byte)
     // bit 0 = position relative to layer
     // bit 1 = layer mask disabled
     // bit 2 = invert layer mask when blending (Obsolete)
     // bit 3 = indicates that the user mask actually came from rendering other data
     // bit 4 = indicates that the user and/or vector masks have parameters applied to them
+    if (length < 1) {
+        setErrorString("Insufficient data for layer mask flags");
+        return;
+    }
     d->flags = readU8(source, &length);
 
     // Mask Parameters. Only present if bit 4 of Flags set above.
     if (d->flags & 0x10) {
+        if (length < 1) {
+            setErrorString("Insufficient data for mask parameters");
+            return;
+        }
         auto maskParameters = readU8(source, &length);
         Q_UNUSED(maskParameters); // TODO
         qDebug() << "maskParameters" << maskParameters;
@@ -73,18 +102,36 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     // Padding. Only present if size = 20. Otherwise the following is present
     // Note: We don't return early here to ensure all bytes are properly consumed
     if (length == 2) {
+        if (length < 2) {
+            setErrorString("Insufficient data for padding bytes");
+            return;
+        }
         skip(source, 2, &length);
+        // After skipping padding, length should be 0
+        if (length != 0) {
+            qWarning() << "Unexpected bytes remaining after padding:" << length;
+        }
+        return;  // No more data to process after padding
     }
 
-    // Real Flags. Same as Flags information above.
-    auto realFlags = readU8(source, &length);
-    Q_UNUSED(realFlags); // TODO
-    // Real user mask background. 0 or 255.
-    auto realUserMaskBackground = readU8(source, &length);
-    Q_UNUSED(realUserMaskBackground); // TODO
-    // Rectangle enclosing layer mask: Top, left, bottom, right.
-    auto rect = readRectangle(source, &length);
-    Q_UNUSED(rect); // TODO
+    // Only continue parsing if we have enough data for the extended structure
+    // Note: We only get here if length != 2 and we have more data to process
+    if (length >= 10) {  // realFlags(1) + realBackground(1) + rectangle(8)
+        // Real Flags. Same as Flags information above.
+        auto realFlags = readU8(source, &length);
+        Q_UNUSED(realFlags); // TODO
+
+        // Real user mask background. 0 or 255.
+        auto realUserMaskBackground = readU8(source, &length);
+        Q_UNUSED(realUserMaskBackground); // TODO
+
+        // Rectangle enclosing layer mask: Top, left, bottom, right.
+        auto rect = readRectangle(source, &length);
+        Q_UNUSED(rect); // TODO
+    } else if (length > 0) {
+        // We have some bytes left but not enough for the full extended structure
+        qWarning() << "Incomplete extended layer mask data structure:" << length << "bytes remaining";
+    }
 }
 
 QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(const QPsdLayerMaskAdjustmentLayerData &other)
