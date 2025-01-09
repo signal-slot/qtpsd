@@ -39,7 +39,7 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     // that could occur if bytes aren't fully consumed.
     //
     // Size of the data: Check the size and flags to determine what is or is not present. If zero, the following fields are not present
-    quint64 length = readU32(source);  // Use 64-bit to prevent overflow during bounds checks
+    quint32 length = readU32(source);
     if (length == 0)
         return;
 
@@ -63,17 +63,9 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     EnsureSeek es(source, length);
 
     // Rectangle enclosing layer mask: Top, left, bottom, right (8 bytes)
-    if (length < 8) {
-        setErrorString("Insufficient data for layer mask rectangle");
-        return;
-    }
     d->rect = readRectangle(source, &length);
 
     // Default color. 0 or 255 (1 byte)
-    if (length < 1) {
-        setErrorString("Insufficient data for layer mask default color");
-        return;
-    }
     d->defaultColor = readU8(source, &length);
 
     // Flags. (1 byte)
@@ -82,18 +74,10 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     // bit 2 = invert layer mask when blending (Obsolete)
     // bit 3 = indicates that the user mask actually came from rendering other data
     // bit 4 = indicates that the user and/or vector masks have parameters applied to them
-    if (length < 1) {
-        setErrorString("Insufficient data for layer mask flags");
-        return;
-    }
     d->flags = readU8(source, &length);
 
     // Mask Parameters. Only present if bit 4 of Flags set above.
     if (d->flags & 0x10) {
-        if (length < 1) {
-            setErrorString("Insufficient data for mask parameters");
-            return;
-        }
         auto maskParameters = readU8(source, &length);
         Q_UNUSED(maskParameters); // TODO
         qDebug() << "maskParameters" << maskParameters;
@@ -102,10 +86,6 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     // Padding. Only present if size = 20. Otherwise the following is present
     // Note: We don't return early here to ensure all bytes are properly consumed
     if (length == 2) {
-        if (length < 2) {
-            setErrorString("Insufficient data for padding bytes");
-            return;
-        }
         skip(source, 2, &length);
         // After skipping padding, length should be 0
         if (length != 0) {
