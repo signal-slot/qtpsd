@@ -28,6 +28,7 @@ public:
         return tr("&Flutter");
     }
     ExportType exportType() const override { return QPsdExporterPlugin::Directory; }
+    bool exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const override;
 
     struct Element {
         QString type;
@@ -106,10 +107,56 @@ private:
 
     // Top-level Methods (entry points)
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
-    bool exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const override;
 };
 
 Q_DECLARE_METATYPE(QPsdExporterFlutterPlugin::Element)
+
+bool QPsdExporterFlutterPlugin::exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const
+{
+    dir = { to };
+    imageStore = { dir, "assets/images"_L1 };
+
+    const QSize originalSize = tree->rect().size();
+    const QSize targetSize = hint.value("resolution", originalSize).toSize();
+    horizontalScale = targetSize.width() / qreal(originalSize.width());
+    verticalScale = targetSize.height() / qreal(originalSize.height());
+    unitScale = std::min(horizontalScale, verticalScale);
+    fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
+    makeCompact = hint.value("makeCompact", false).toBool();
+    imageScaling = hint.value("imageScaling", false).toBool();
+    
+    auto children = tree->children();
+    for (const auto *child : children) {
+        generateRectMap(child, QPoint(0, 0));
+        if (!generateMergeData(child))
+            return false;
+    }
+
+    ImportData imports;
+    imports.insert("package:flutter/material.dart");
+    ExportData exports;
+
+    Element sizedBox;
+    sizedBox.type = "SizedBox";
+    outputRectProp(tree->rect(), &sizedBox);
+
+    Element container;
+    container.type = "Stack";
+
+    std::reverse(children.begin(), children.end());
+    for (const auto *child : children) {
+        if (!traverseTree(child, &container, &imports, &exports, QPsdAbstractLayerItem::ExportHint::None))
+            return false;
+    }
+
+    sizedBox.properties.insert("child", QVariant::fromValue(container));
+
+    Element window;
+    window.type = "MainWindow";
+    window.properties.insert("child", QVariant::fromValue(sizedBox));
+
+    return saveTo("MainWindow", &window, imports, exports);
+}
 
 QByteArray QPsdExporterFlutterPlugin::indentString(int level)
 {
@@ -149,140 +196,6 @@ QString QPsdExporterFlutterPlugin::imagePath(const QString &name)
 QString QPsdExporterFlutterPlugin::colorValue(const QColor &color)
 {
     return u"Color.fromARGB(%1, %2, %3, %4)"_s.arg(color.alpha()).arg(color.red()).arg(color.green()).arg(color.blue());
-}
-
-bool QPsdExporterFlutterPlugin::traverseElement(QTextStream &out, const Element *element, int level, bool skipFirstIndent) const
-{
-    if (!skipFirstIndent) {
-        out << indentString(level);
-    }
-
-    out << element->type << "(\n";
-    level++;
-
-    if (element->noNamedParam.isValid() && element->noNamedParam.typeId() != QMetaType::Void) {
-        out << indentString(level) << valueAsText(element->noNamedParam) << ", \n";
-    }
-
-    auto keys = element->properties.keys();
-    QList<QString> elementKeys;
-    std::sort(keys.begin(), keys.end(), std::less<QString>());
-    for (const auto &key : keys) {
-        const auto value = element->properties.value(key);
-
-        if (value.typeId() == qMetaTypeId<Element>()) {
-            elementKeys.append(key);
-        } else if (value.typeId() == QMetaType::QVariantList) {
-            out << indentString(level) << key << ": " << "[\n";
-            for (const auto &item : value.value<QVariantList>()) {
-                out << indentString(level + 1) << valueAsText(item) << ",\n";
-            }
-            out << indentString(level) << "],\n";
-        } else {
-            out << indentString(level) << key << ": " << valueAsText(value) << ",\n";
-        }
-    }
-
-    QVariant childValue;
-    for (const auto &key : elementKeys) {
-        const auto value = element->properties.value(key);
-
-        if (value.typeId() == qMetaTypeId<Element>()) {
-            if (key == "child") {
-                childValue = value;
-            } else {
-                Element elem = value.value<Element>();
-                out << indentString(level) << key << ": ";
-
-                traverseElement(out, &elem, level, true);
-                out << ",\n";
-            }
-        }
-    }
-
-    if (childValue.isValid()) {
-        Element elem = childValue.value<Element>();
-        out << indentString(level) << "child: ";
-
-        traverseElement(out, &elem, level, true);
-        out << ",\n";
-    }
-    
-    if (!element->children.isEmpty()) {
-        out << indentString(level) << "children: [\n";
-
-        for (auto &child : element->children) {
-                traverseElement(out, &child, level + 1, false);
-            out << ",\n";
-        }
-
-        out << indentString(level) << "],\n";
-    }
-
-    level--;
-    out << indentString(level) << ")";
-    return true;
-}
-
-bool QPsdExporterFlutterPlugin::saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const
-{
-    QFile file(dir.absoluteFilePath(toSnakeCase(baseName) + ".dart"));
-    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
-        return false;
-    QTextStream out(&file);
-
-    auto importValues = imports.values();
-    std::sort(importValues.begin(), importValues.end(), std::less<QString>());
-    for (const auto &import : importValues) {
-        out << "import '" << import << "';\n";
-    }
-
-    auto exportKeys = exports.keys();
-    std::sort(exportKeys.begin(), exportKeys.end(), std::less<QString>());
-    out << "\n";
-    out << "class " << element->type << " extends StatelessWidget {\n";
-    out << indentString(1);
-    if (exportKeys.size() == 0) {
-        out << "const ";
-    }
-    out << element->type << "({super.key";
-
-    QString properties;
-    QTextStream propStream(&properties);
-    for (const auto &key : exportKeys) {
-        const PropertyInfo &prop = exports.value(key);
-        const auto defValue = prop.defaultValue();
-        if (defValue.isEmpty()) {
-            out << ", required this." << key;
-        } else {
-            out << ", this." << key << " = " << defValue;
-        }
-        propStream << indentString(1) << prop.type << " " << key << ";\n";
-    }
-
-    out << "});\n";
-    out << "\n";
-
-    if (exportKeys.size() > 0) {
-        out << properties;
-        out << "\n";
-    }
-
-    out << indentString(1) << "@override\n";
-    out << indentString(1) << "Widget build(BuildContext context) {\n";
-    out << indentString(2) << "return ";
-
-    auto child = element->properties.value("child");
-    auto typeId = qMetaTypeId<Element>();
-    if (child.typeId() == typeId) {
-        Element elem = child.value<Element>();
-        traverseElement(out, &elem, 2, true);
-    }
-    out << ";\n";
-    out << indentString(1) << "}\n";
-    out << "}\n";
-
-    return true;
 }
 
 bool QPsdExporterFlutterPlugin::outputRectProp(const QRectF &rect, Element *element, bool skipEmpty, bool outputPos) const
@@ -404,6 +317,127 @@ bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QPsdTextLayerIt
     return true;
 }
 
+bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run run, const QString &text, Element *element) const
+{
+    element->type = "Text";
+    element->noNamedParam = u"\"%1\""_s.arg(text.trimmed());
+
+    Element textStyleElement;
+    textStyleElement.type = "TextStyle";
+    textStyleElement.properties.insert("fontFamily",  u"\"%1\""_s.arg(run.font.family()));
+    textStyleElement.properties.insert("fontSize", run.font.pointSizeF() * fontScaleFactor / 1.5);
+    textStyleElement.properties.insert("height", 1.0);
+    int weight = run.font.bold() ? 800 : 600;
+    textStyleElement.properties.insert("fontVariations", u"[FontVariation.weight(%1)]"_s.arg(weight));
+    //TODO italic
+    textStyleElement.properties.insert("color", colorValue(run.color));
+
+    //TODO alignment horizontal / vertical
+
+    element->properties.insert("style", QVariant::fromValue(textStyleElement));
+    return true;
+}
+
+bool QPsdExporterFlutterPlugin::outputGradient(const QGradient *gradient, const QRectF &rect, Element *element) const
+{
+    switch (gradient->type()) {
+    case QGradient::LinearGradient: {
+        element->type = "LinearGradient";
+
+        const QLinearGradient *linear = reinterpret_cast<const QLinearGradient*>(gradient);
+
+        element->properties.insert("begin", u"Alignment(%1, %2)"_s.arg((linear->start().x() * 2 - rect.width()) / rect.width()).arg((linear->start().y() * 2 - rect.height()) / rect.height()));
+        element->properties.insert("end", u"Alignment(%1, %2)"_s.arg((linear->finalStop().x() * 2 - rect.width()) / rect.width()).arg((linear->finalStop().y() * 2 - rect.height()) / rect.height()));
+
+        break;
+    }
+    default:
+        qFatal() << "Unsupported gradient type"_L1 << gradient->type();
+    }
+
+    QVariantList stops;
+    QVariantList colors;
+    for (const auto &stop : gradient->stops()) {
+        stops.append(stop.first);
+        colors.append(colorValue(stop.second));
+    }
+    element->properties.insert("stops", stops);
+    element->properties.insert("colors", colors);
+
+    return true;
+}
+
+void QPsdExporterFlutterPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
+{
+    switch (item->type()) {
+    case QPsdAbstractLayerItem::Folder: {
+        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
+        for (const auto *child : folder->children()) {
+            findChildren(child, rect);
+        }
+        break; }
+    default:
+        *rect |= item->rect();
+        break;
+    }
+}
+
+void QPsdExporterFlutterPlugin::generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const
+{
+    switch (item->type()) {
+    case QPsdAbstractLayerItem::Folder: {
+        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
+        QRect contentRect;
+        if (!item->parent()->parent()) {
+            contentRect = item->parent()->rect();
+        // if (item->parent() == tree) {
+        //     contentRect = tree->rect();
+        } else {
+            for (const auto *child : folder->children()) {
+                findChildren(child, &contentRect);
+            }
+        }
+        rectMap.insert(item, contentRect.translated(-topLeft));
+        for (const auto *child : folder->children()) {
+            generateRectMap(child, contentRect.topLeft());
+        }
+        break; }
+    default:
+        rectMap.insert(item, item->rect().translated(-topLeft));
+        break;
+    }
+}
+
+bool QPsdExporterFlutterPlugin::generateMergeData(const QPsdAbstractLayerItem *item) const
+{
+    switch (item->type()) {
+    case QPsdAbstractLayerItem::Folder: {
+        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
+        auto children = folder->children();
+        std::reverse(children.begin(), children.end());
+        for (const auto *child : children) {
+            if (!generateMergeData(child))
+                return false;
+        }
+        break; }
+    default: {
+        const auto hint = item->exportHint();
+        if (hint.type != QPsdAbstractLayerItem::ExportHint::Merge)
+            return true;
+        const auto group = item->group();
+        for (const auto *i : group) {
+            if (i == item)
+                continue;
+            if (i->name() == hint.componentName) {
+                mergeMap.insert(i, item);
+            }
+        }
+        break; }
+    }
+
+    return true;
+}
+
 bool QPsdExporterFlutterPlugin::outputFolder(const QPsdFolderLayerItem *folder, Element *element, ImportData *imports, ExportData *exports) const
 {
     element->type = "Container";
@@ -424,27 +458,6 @@ bool QPsdExporterFlutterPlugin::outputFolder(const QPsdFolderLayerItem *folder, 
     }
     element->properties.insert("child", QVariant::fromValue(stackElement));
 
-    return true;
-}
-
-bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run run, const QString &text, Element *element) const
-{
-    element->type = "Text";
-    element->noNamedParam = u"\"%1\""_s.arg(text.trimmed());
-
-    Element textStyleElement;
-    textStyleElement.type = "TextStyle";
-    textStyleElement.properties.insert("fontFamily",  u"\"%1\""_s.arg(run.font.family()));
-    textStyleElement.properties.insert("fontSize", run.font.pointSizeF() * fontScaleFactor / 1.5);
-    textStyleElement.properties.insert("height", 1.0);
-    int weight = run.font.bold() ? 800 : 600;
-    textStyleElement.properties.insert("fontVariations", u"[FontVariation.weight(%1)]"_s.arg(weight));
-    //TODO italic
-    textStyleElement.properties.insert("color", colorValue(run.color));
-
-    //TODO alignment horizontal / vertical
-
-    element->properties.insert("style", QVariant::fromValue(textStyleElement));
     return true;
 }
 
@@ -484,35 +497,6 @@ bool QPsdExporterFlutterPlugin::outputText(const QPsdTextLayerItem *text, Elemen
         columnElem.children.append(rowElem);
     }
     *element = columnElem;
-
-    return true;
-}
-
-bool QPsdExporterFlutterPlugin::outputGradient(const QGradient *gradient, const QRectF &rect, Element *element) const
-{
-    switch (gradient->type()) {
-    case QGradient::LinearGradient: {
-        element->type = "LinearGradient";
-
-        const QLinearGradient *linear = reinterpret_cast<const QLinearGradient*>(gradient);
-
-        element->properties.insert("begin", u"Alignment(%1, %2)"_s.arg((linear->start().x() * 2 - rect.width()) / rect.width()).arg((linear->start().y() * 2 - rect.height()) / rect.height()));
-        element->properties.insert("end", u"Alignment(%1, %2)"_s.arg((linear->finalStop().x() * 2 - rect.width()) / rect.width()).arg((linear->finalStop().y() * 2 - rect.height()) / rect.height()));
-
-        break;
-    }
-    default:
-        qFatal() << "Unsupported gradient type"_L1 << gradient->type();
-    }
-
-    QVariantList stops;
-    QVariantList colors;
-    for (const auto &stop : gradient->stops()) {
-        stops.append(stop.first);
-        colors.append(colorValue(stop.second));
-    }
-    element->properties.insert("stops", stops);
-    element->properties.insert("colors", colors);
 
     return true;
 }
@@ -633,74 +617,76 @@ bool QPsdExporterFlutterPlugin::outputImage(const QPsdImageLayerItem *image, Ele
     return true;
 }
 
-void QPsdExporterFlutterPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
+bool QPsdExporterFlutterPlugin::traverseElement(QTextStream &out, const Element *element, int level, bool skipFirstIndent) const
 {
-    switch (item->type()) {
-    case QPsdAbstractLayerItem::Folder: {
-        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
-        for (const auto *child : folder->children()) {
-            findChildren(child, rect);
-        }
-        break; }
-    default:
-        *rect |= item->rect();
-        break;
+    if (!skipFirstIndent) {
+        out << indentString(level);
     }
-}
 
-void QPsdExporterFlutterPlugin::generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const
-{
-    switch (item->type()) {
-    case QPsdAbstractLayerItem::Folder: {
-        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
-        QRect contentRect;
-        if (!item->parent()->parent()) {
-            contentRect = item->parent()->rect();
-        // if (item->parent() == tree) {
-        //     contentRect = tree->rect();
+    out << element->type << "(\n";
+    level++;
+
+    if (element->noNamedParam.isValid() && element->noNamedParam.typeId() != QMetaType::Void) {
+        out << indentString(level) << valueAsText(element->noNamedParam) << ", \n";
+    }
+
+    auto keys = element->properties.keys();
+    QList<QString> elementKeys;
+    std::sort(keys.begin(), keys.end(), std::less<QString>());
+    for (const auto &key : keys) {
+        const auto value = element->properties.value(key);
+
+        if (value.typeId() == qMetaTypeId<Element>()) {
+            elementKeys.append(key);
+        } else if (value.typeId() == QMetaType::QVariantList) {
+            out << indentString(level) << key << ": " << "[\n";
+            for (const auto &item : value.value<QVariantList>()) {
+                out << indentString(level + 1) << valueAsText(item) << ",\n";
+            }
+            out << indentString(level) << "],\n";
         } else {
-            for (const auto *child : folder->children()) {
-                findChildren(child, &contentRect);
-            }
+            out << indentString(level) << key << ": " << valueAsText(value) << ",\n";
         }
-        rectMap.insert(item, contentRect.translated(-topLeft));
-        for (const auto *child : folder->children()) {
-            generateRectMap(child, contentRect.topLeft());
-        }
-        break; }
-    default:
-        rectMap.insert(item, item->rect().translated(-topLeft));
-        break;
-    }
-}
-
-bool QPsdExporterFlutterPlugin::generateMergeData(const QPsdAbstractLayerItem *item) const
-{
-    switch (item->type()) {
-    case QPsdAbstractLayerItem::Folder: {
-        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
-        auto children = folder->children();
-        std::reverse(children.begin(), children.end());
-        for (const auto *child : children) {
-            if (!generateMergeData(child))
-                return false;
-        }
-        break; }
-    default: {
-        const auto hint = item->exportHint();
-        if (hint.type != QPsdAbstractLayerItem::ExportHint::Merge)
-            return true;
-        const auto group = item->group();
-        for (const auto *i : group) {
-            if (i == item)
-                continue;
-            if (i->name() == hint.componentName) {
-                mergeMap.insert(i, item);
-            }
-        }
-        break; }
     }
 
+    QVariant childValue;
+    for (const auto &key : elementKeys) {
+        const auto value = element->properties.value(key);
+
+        if (value.typeId() == qMetaTypeId<Element>()) {
+            if (key == "child") {
+                childValue = value;
+            } else {
+                Element elem = value.value<Element>();
+                out << indentString(level) << key << ": ";
+
+                traverseElement(out, &elem, level, true);
+                out << ",\n";
+            }
+        }
+    }
+
+    if (childValue.isValid()) {
+        Element elem = childValue.value<Element>();
+        out << indentString(level) << "child: ";
+
+        traverseElement(out, &elem, level, true);
+        out << ",\n";
+    }
+    
+    if (!element->children.isEmpty()) {
+        out << indentString(level) << "children: [\n";
+
+        for (auto &child : element->children) {
+                traverseElement(out, &child, level + 1, false);
+            out << ",\n";
+        }
+
+        out << indentString(level) << "],\n";
+    }
+
+    level--;
+    out << indentString(level) << ")";
     return true;
 }
 
@@ -962,51 +948,65 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QPsdAbstractLayerItem *item, 
     return true;
 }
 
-bool QPsdExporterFlutterPlugin::exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const
+bool QPsdExporterFlutterPlugin::saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const
 {
-    dir = { to };
-    imageStore = { dir, "assets/images"_L1 };
+    QFile file(dir.absoluteFilePath(toSnakeCase(baseName) + ".dart"));
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
+        return false;
+    QTextStream out(&file);
 
-    const QSize originalSize = tree->rect().size();
-    const QSize targetSize = hint.value("resolution", originalSize).toSize();
-    horizontalScale = targetSize.width() / qreal(originalSize.width());
-    verticalScale = targetSize.height() / qreal(originalSize.height());
-    unitScale = std::min(horizontalScale, verticalScale);
-    fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
-    makeCompact = hint.value("makeCompact", false).toBool();
-    imageScaling = hint.value("imageScaling", false).toBool();
-    
-    auto children = tree->children();
-    for (const auto *child : children) {
-        generateRectMap(child, QPoint(0, 0));
-        if (!generateMergeData(child))
-            return false;
+    auto importValues = imports.values();
+    std::sort(importValues.begin(), importValues.end(), std::less<QString>());
+    for (const auto &import : importValues) {
+        out << "import '" << import << "';\n";
     }
 
-    ImportData imports;
-    imports.insert("package:flutter/material.dart");
-    ExportData exports;
+    auto exportKeys = exports.keys();
+    std::sort(exportKeys.begin(), exportKeys.end(), std::less<QString>());
+    out << "\n";
+    out << "class " << element->type << " extends StatelessWidget {\n";
+    out << indentString(1);
+    if (exportKeys.size() == 0) {
+        out << "const ";
+    }
+    out << element->type << "({super.key";
 
-    Element sizedBox;
-    sizedBox.type = "SizedBox";
-    outputRectProp(tree->rect(), &sizedBox);
-
-    Element container;
-    container.type = "Stack";
-
-    std::reverse(children.begin(), children.end());
-    for (const auto *child : children) {
-        if (!traverseTree(child, &container, &imports, &exports, QPsdAbstractLayerItem::ExportHint::None))
-            return false;
+    QString properties;
+    QTextStream propStream(&properties);
+    for (const auto &key : exportKeys) {
+        const PropertyInfo &prop = exports.value(key);
+        const auto defValue = prop.defaultValue();
+        if (defValue.isEmpty()) {
+            out << ", required this." << key;
+        } else {
+            out << ", this." << key << " = " << defValue;
+        }
+        propStream << indentString(1) << prop.type << " " << key << ";\n";
     }
 
-    sizedBox.properties.insert("child", QVariant::fromValue(container));
+    out << "});\n";
+    out << "\n";
 
-    Element window;
-    window.type = "MainWindow";
-    window.properties.insert("child", QVariant::fromValue(sizedBox));
+    if (exportKeys.size() > 0) {
+        out << properties;
+        out << "\n";
+    }
 
-    return saveTo("MainWindow", &window, imports, exports);
+    out << indentString(1) << "@override\n";
+    out << indentString(1) << "Widget build(BuildContext context) {\n";
+    out << indentString(2) << "return ";
+
+    auto child = element->properties.value("child");
+    auto typeId = qMetaTypeId<Element>();
+    if (child.typeId() == typeId) {
+        Element elem = child.value<Element>();
+        traverseElement(out, &elem, 2, true);
+    }
+    out << ";\n";
+    out << indentString(1) << "}\n";
+    out << "}\n";
+
+    return true;
 }
 
 QT_END_NAMESPACE

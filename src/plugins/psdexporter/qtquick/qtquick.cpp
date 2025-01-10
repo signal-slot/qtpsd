@@ -29,6 +29,7 @@ public:
         return tr("&Qt Quick");
     }
     ExportType exportType() const override { return QPsdExporterPlugin::Directory; }
+    bool exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const override;
 
     bool isNoGpu() const { return m_noGpu; }
 public slots:
@@ -88,7 +89,6 @@ private:
 
     // Top-level Methods (entry points)
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
-    bool exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const override;
 };
 
 bool QPsdExporterQtQuickPlugin::exportTo(const QPsdFolderLayerItem *tree, const QString &to, const QVariantMap &hint) const
@@ -128,6 +128,74 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdFolderLayerItem *tree, const 
     }
 
     return saveTo("MainWindow.ui", &window, imports, exports);
+}
+
+bool QPsdExporterQtQuickPlugin::outputRect(const QRectF &rect, Element *element, bool skipEmpty) const
+{
+    element->properties.insert("x", rect.x() * horizontalScale);
+    element->properties.insert("y", rect.y() * verticalScale);
+    if (rect.isEmpty() && skipEmpty)
+        return true;
+    element->properties.insert("width", rect.width() * horizontalScale);
+    element->properties.insert("height", rect.height() * verticalScale);
+    return true;
+}
+
+bool QPsdExporterQtQuickPlugin::outputPath(const QPainterPath &path, Element *element) const
+{
+    switch (path.fillRule()) {
+    case Qt::OddEvenFill:
+        element->properties.insert("fillRule", "ShapePath.OddEvenFill");
+        break;
+    case Qt::WindingFill:
+        element->properties.insert("fillRule", "ShapePath.WindingFill");
+        break;
+    }
+
+    Element pathCubic;
+    pathCubic.type = "PathCubic";
+    int control = 1;
+    for (int i = 0; i < path.elementCount(); i++) {
+        const auto point = path.elementAt(i);
+        const auto x = point.x * horizontalScale;
+        const auto y = point.y * verticalScale;
+        switch (point.type) {
+        case QPainterPath::MoveToElement: {
+            Element pathMove;
+            pathMove.type = "PathMove";
+            pathMove.properties.insert("x", x);
+            pathMove.properties.insert("y", y);
+            element->children.append(pathMove);
+            break; }
+        case QPainterPath::LineToElement: {
+            Element pathLine;
+            pathLine.type = "PathLine";
+            pathLine.properties.insert("x", x);
+            pathLine.properties.insert("y", y);
+            element->children.append(pathLine);
+            break; }
+        case QPainterPath::CurveToElement: {
+            pathCubic.properties.insert("control1X", x);
+            pathCubic.properties.insert("control1Y", y);
+            control = 1;
+            break; }
+        case QPainterPath::CurveToDataElement:
+            switch (control) {
+            case 1:
+                pathCubic.properties.insert("control2X", x);
+                pathCubic.properties.insert("control2Y", y);
+                control--;
+                break;
+            case 0:
+                pathCubic.properties.insert("x", x);
+                pathCubic.properties.insert("y", y);
+                element->children.append(pathCubic);
+                break;
+            }
+            break;
+        }
+    }
+    return true;
 }
 
 bool QPsdExporterQtQuickPlugin::outputBase(const QPsdAbstractLayerItem *item, Element *element, ImportData *imports, QRect rectBounds) const
@@ -249,71 +317,74 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QPsdAbstractLayerItem *item, El
     return true;
 }
 
-bool QPsdExporterQtQuickPlugin::outputRect(const QRectF &rect, Element *element, bool skipEmpty) const
+void QPsdExporterQtQuickPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
 {
-    element->properties.insert("x", rect.x() * horizontalScale);
-    element->properties.insert("y", rect.y() * verticalScale);
-    if (rect.isEmpty() && skipEmpty)
-        return true;
-    element->properties.insert("width", rect.width() * horizontalScale);
-    element->properties.insert("height", rect.height() * verticalScale);
-    return true;
+    switch (item->type()) {
+    case QPsdAbstractLayerItem::Folder: {
+        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
+        for (const auto *child : folder->children()) {
+            findChildren(child, rect);
+        }
+        break; }
+    default:
+        *rect |= item->rect();
+        break;
+    }
 }
 
-bool QPsdExporterQtQuickPlugin::outputPath(const QPainterPath &path, Element *element) const
+void QPsdExporterQtQuickPlugin::generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const
 {
-    switch (path.fillRule()) {
-    case Qt::OddEvenFill:
-        element->properties.insert("fillRule", "ShapePath.OddEvenFill");
+    switch (item->type()) {
+    case QPsdAbstractLayerItem::Folder: {
+        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
+        QRect contentRect;
+        if (!item->parent()->parent()) {
+            contentRect = item->parent()->rect();
+            // if (item->parent() == tree) {
+            //     contentRect = tree->rect();
+        } else {
+            for (const auto *child : folder->children()) {
+                findChildren(child, &contentRect);
+            }
+        }
+        rectMap.insert(item, contentRect.translated(-topLeft));
+        for (const auto *child : folder->children()) {
+            generateRectMap(child, contentRect.topLeft());
+        }
+        break; }
+    default:
+        rectMap.insert(item, item->rect().translated(-topLeft));
         break;
-    case Qt::WindingFill:
-        element->properties.insert("fillRule", "ShapePath.WindingFill");
-        break;
+    }
+}
+
+bool QPsdExporterQtQuickPlugin::generateMergeData(const QPsdAbstractLayerItem *item) const
+{
+    switch (item->type()) {
+    case QPsdAbstractLayerItem::Folder: {
+        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
+        auto children = folder->children();
+        std::reverse(children.begin(), children.end());
+        for (const auto *child : children) {
+            if (!generateMergeData(child))
+                return false;
+        }
+        break; }
+    default: {
+        const auto hint = item->exportHint();
+        if (hint.type != QPsdAbstractLayerItem::ExportHint::Merge)
+            return true;
+        const auto group = item->group();
+        for (const auto *i : group) {
+            if (i == item)
+                continue;
+            if (i->name() == hint.componentName) {
+                mergeMap.insert(i, item);
+            }
+        }
+        break; }
     }
 
-    Element pathCubic;
-    pathCubic.type = "PathCubic";
-    int control = 1;
-    for (int i = 0; i < path.elementCount(); i++) {
-        const auto point = path.elementAt(i);
-        const auto x = point.x * horizontalScale;
-        const auto y = point.y * verticalScale;
-        switch (point.type) {
-        case QPainterPath::MoveToElement: {
-            Element pathMove;
-            pathMove.type = "PathMove";
-            pathMove.properties.insert("x", x);
-            pathMove.properties.insert("y", y);
-            element->children.append(pathMove);
-            break; }
-        case QPainterPath::LineToElement: {
-            Element pathLine;
-            pathLine.type = "PathLine";
-            pathLine.properties.insert("x", x);
-            pathLine.properties.insert("y", y);
-            element->children.append(pathLine);
-            break; }
-        case QPainterPath::CurveToElement: {
-            pathCubic.properties.insert("control1X", x);
-            pathCubic.properties.insert("control1Y", y);
-            control = 1;
-            break; }
-        case QPainterPath::CurveToDataElement:
-            switch (control) {
-            case 1:
-                pathCubic.properties.insert("control2X", x);
-                pathCubic.properties.insert("control2Y", y);
-                control--;
-                break;
-            case 0:
-                pathCubic.properties.insert("x", x);
-                pathCubic.properties.insert("y", y);
-                element->children.append(pathCubic);
-                break;
-            }
-            break;
-        }
-    }
     return true;
 }
 
@@ -653,77 +724,6 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QPsdImageLayerItem *image, Ele
         return false;
     element->properties.insert("source", u"\"images/%1\""_s.arg(name));
     element->properties.insert("fillMode", "Image.PreserveAspectFit");
-    return true;
-}
-
-void QPsdExporterQtQuickPlugin::findChildren(const QPsdAbstractLayerItem *item, QRect *rect) const
-{
-    switch (item->type()) {
-    case QPsdAbstractLayerItem::Folder: {
-        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
-        for (const auto *child : folder->children()) {
-            findChildren(child, rect);
-        }
-        break; }
-    default:
-        *rect |= item->rect();
-        break;
-    }
-}
-
-void QPsdExporterQtQuickPlugin::generateRectMap(const QPsdAbstractLayerItem *item, const QPoint &topLeft) const
-{
-    switch (item->type()) {
-    case QPsdAbstractLayerItem::Folder: {
-        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
-        QRect contentRect;
-        if (!item->parent()->parent()) {
-            contentRect = item->parent()->rect();
-            // if (item->parent() == tree) {
-            //     contentRect = tree->rect();
-        } else {
-            for (const auto *child : folder->children()) {
-                findChildren(child, &contentRect);
-            }
-        }
-        rectMap.insert(item, contentRect.translated(-topLeft));
-        for (const auto *child : folder->children()) {
-            generateRectMap(child, contentRect.topLeft());
-        }
-        break; }
-    default:
-        rectMap.insert(item, item->rect().translated(-topLeft));
-        break;
-    }
-}
-
-bool QPsdExporterQtQuickPlugin::generateMergeData(const QPsdAbstractLayerItem *item) const
-{
-    switch (item->type()) {
-    case QPsdAbstractLayerItem::Folder: {
-        const auto folder = reinterpret_cast<const QPsdFolderLayerItem *>(item);
-        auto children = folder->children();
-        std::reverse(children.begin(), children.end());
-        for (const auto *child : children) {
-            if (!generateMergeData(child))
-                return false;
-        }
-        break; }
-    default: {
-        const auto hint = item->exportHint();
-        if (hint.type != QPsdAbstractLayerItem::ExportHint::Merge)
-            return true;
-        const auto group = item->group();
-        for (const auto *i : group) {
-            if (i == item)
-                continue;
-            if (i->name() == hint.componentName) {
-                mergeMap.insert(i, item);
-            }
-        }
-        break; }
-    }
-
     return true;
 }
 
