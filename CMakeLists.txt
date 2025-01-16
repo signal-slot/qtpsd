@@ -7,7 +7,7 @@ include(.cmake.conf)
 project(QtPsd
     VERSION "${QT_REPO_MODULE_VERSION}"
     DESCRIPTION "Qt Psd Libraries"
-    HOMEPAGE_URL "https://signal-slot.io/"
+    HOMEPAGE_URL "https://signal-slot.co.jp/"
     LANGUAGES CXX C
 )
 
