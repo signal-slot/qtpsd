@@ -190,4 +190,74 @@ QSize QPsdGuiLayerTreeItemModel::size() const
     return parentModel->size();
 }
 
+qint32 QPsdGuiLayerTreeItemModel::layerId(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->layerId(mapToSource(index));
+}
+
+QString QPsdGuiLayerTreeItemModel::layerName(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->layerName(mapToSource(index));
+}
+
+const QPsdLayerRecord *QPsdGuiLayerTreeItemModel::layerRecord(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->layerRecord(mapToSource(index));
+}
+
+enum QPsdAbstractLayerTreeItemModel::FolderType QPsdGuiLayerTreeItemModel::folderType(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->folderType(mapToSource(index));
+}
+
+QList<QPersistentModelIndex> QPsdGuiLayerTreeItemModel::groupIndexes(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->groupIndexes(mapToSource(index));
+}
+
+QPersistentModelIndex QPsdGuiLayerTreeItemModel::clippingMaskIndex(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->clippingMaskIndex(mapToSource(index));
+}
+
+const QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::layerItem(const QModelIndex &index) const
+{
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return d->layerItemObject(parentModel->layerRecord(index), parentModel->folderType(index));
+}
+
 QT_END_NAMESPACE

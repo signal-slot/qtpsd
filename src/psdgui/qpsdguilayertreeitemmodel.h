@@ -12,7 +12,12 @@
 
 QT_BEGIN_NAMESPACE
 
-class Q_PSDGUI_EXPORT QPsdGuiLayerTreeItemModel : public QIdentityProxyModel, public QPsdAbstractLayerTreeItemModel
+class Q_PSDGUI_EXPORT QPsdGuiAbstractLayerTreeItemModel : public QPsdAbstractLayerTreeItemModel {
+public:
+    virtual const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const = 0;
+};
+
+class Q_PSDGUI_EXPORT QPsdGuiLayerTreeItemModel : public QIdentityProxyModel, public QPsdGuiAbstractLayerTreeItemModel
 {
     Q_OBJECT
 public:
@@ -39,6 +44,14 @@ public:
 
     void fromParser(const QPsdParser &parser) override;
     QSize size() const override;
+
+    qint32 layerId(const QModelIndex &index) const override;
+    QString layerName(const QModelIndex &index) const override;
+    const QPsdLayerRecord *layerRecord(const QModelIndex &index) const override;
+    enum FolderType folderType(const QModelIndex &index) const override;
+    QList<QPersistentModelIndex> groupIndexes(const QModelIndex &index) const override;
+    QPersistentModelIndex clippingMaskIndex(const QModelIndex &index) const override;
+    const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const override;
 
 private:
     class Private;

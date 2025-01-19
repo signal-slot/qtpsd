@@ -13,8 +13,20 @@ QT_BEGIN_NAMESPACE
 
 class Q_PSDCORE_EXPORT QPsdAbstractLayerTreeItemModel {
 public:
+    enum FolderType {
+        NotFolder = 0,
+        OpenFolder,
+        ClosedFolder,
+    };
+
     virtual void fromParser(const QPsdParser &parser) = 0;
     virtual QSize size() const = 0;
+    virtual int layerId(const QModelIndex &index) const = 0;
+    virtual QString layerName(const QModelIndex &index) const = 0;
+    virtual const QPsdLayerRecord *layerRecord(const QModelIndex &index) const = 0;
+    virtual enum FolderType folderType(const QModelIndex &index) const = 0;
+    virtual QList<QPersistentModelIndex> groupIndexes(const QModelIndex &index) const = 0;
+    virtual QPersistentModelIndex clippingMaskIndex(const QModelIndex &index) const = 0;
 };
 
 class Q_PSDCORE_EXPORT QPsdLayerTreeItemModel : public QAbstractItemModel, public QPsdAbstractLayerTreeItemModel
@@ -35,11 +47,6 @@ public:
         Name,
         FolderType,
     };
-    enum FolderType {
-        NotFolder = 0,
-        OpenFolder,
-        ClosedFolder,
-    };
 
     explicit QPsdLayerTreeItemModel(QObject *parent = nullptr);
     virtual ~QPsdLayerTreeItemModel();
@@ -57,6 +64,13 @@ public:
 
     void fromParser(const QPsdParser &parser) override;
     QSize size() const override;
+
+    qint32 layerId(const QModelIndex &index) const override;
+    QString layerName(const QModelIndex &index) const override;
+    const QPsdLayerRecord *layerRecord(const QModelIndex &index) const override;
+    enum FolderType folderType(const QModelIndex &index) const override;
+    QList<QPersistentModelIndex> groupIndexes(const QModelIndex &index) const override;
+    QPersistentModelIndex clippingMaskIndex(const QModelIndex &index) const override;
 
 signals:
     void parserReady(const QPsdParser &parser);
