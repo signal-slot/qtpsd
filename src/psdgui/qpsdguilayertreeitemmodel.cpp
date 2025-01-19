@@ -123,24 +123,24 @@ QVariant QPsdGuiLayerTreeItemModel::data(const QModelIndex &index, int role) con
 {
     switch (role) {
     case Roles::GroupIndexesRole: {
-        QList<QVariant> indexes = sourceModel()->data(index, role).toList();
+        QList<QVariant> indexes = sourceModel()->data(mapToSource(index), role).toList();
         QList<QVariant> result;
         for (const auto &i : indexes) {
-            QModelIndex index = i.value<QPersistentModelIndex>();
-            result.append(QVariant::fromValue(QPersistentModelIndex(mapFromSource(index))));
+            QModelIndex sourceIndex = i.value<QPersistentModelIndex>();
+            result.append(QVariant::fromValue(QPersistentModelIndex(mapFromSource(sourceIndex))));
         }
         return QVariant(result); }
     case Roles::ClippingMaskIndexRole: {
-        QPersistentModelIndex maskIndex = sourceModel()->data(index, role).value<QPersistentModelIndex>();
+        QPersistentModelIndex maskIndex = sourceModel()->data(mapToSource(index), role).value<QPersistentModelIndex>();
         return QVariant::fromValue(mapFromSource(maskIndex)); }
     case Roles::LayerItemObjectRole:
         return QVariant::fromValue(
             d->layerItemObject(
-                sourceModel()->data(index, QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole).value<const QPsdLayerRecord *>(),
-                sourceModel()->data(index, QPsdLayerTreeItemModel::Roles::FolderTypeRole).value<enum QPsdLayerTreeItemModel::FolderType>()
+                sourceModel()->data(mapToSource(index), QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole).value<const QPsdLayerRecord *>(),
+                sourceModel()->data(mapToSource(index), QPsdLayerTreeItemModel::Roles::FolderTypeRole).value<enum QPsdLayerTreeItemModel::FolderType>()
                 ));
     default:
-        return sourceModel()->data(index, role);
+        return sourceModel()->data(mapToSource(index), role);
     }
 }
 

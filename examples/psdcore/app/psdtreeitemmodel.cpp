@@ -244,7 +244,7 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     case Roles::ExportIdRole:
         return exportHint.id;
      case Roles::GroupIndexesRole: {
-        QList<QVariant> indexes = sourceModel()->data(index, role).toList();
+        QList<QVariant> indexes = sourceModel()->data(mapToSource(index), role).toList();
         QList<QVariant> result;
         for (const auto &i : indexes) {
             QModelIndex index = i.value<QPersistentModelIndex>();
@@ -252,12 +252,12 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         }
         return QVariant(result); }
     case Roles::ClippingMaskIndexRole: {
-        QPersistentModelIndex maskIndex = sourceModel()->data(index, role).value<QPersistentModelIndex>();
+        QPersistentModelIndex maskIndex = sourceModel()->data(mapToSource(index), role).value<QPersistentModelIndex>();
         return QVariant::fromValue(mapFromSource(maskIndex)); }
     case Roles::LayerItemObjectRole:
         return QVariant::fromValue(node);
     default:
-        return sourceModel()->data(index, role);
+        return sourceModel()->data(mapToSource(index), role);
     }
 
     return {};
