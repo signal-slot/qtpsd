@@ -11,7 +11,13 @@
 
 QT_BEGIN_NAMESPACE
 
-class Q_PSDCORE_EXPORT QPsdLayerTreeItemModel : public QAbstractItemModel
+class Q_PSDCORE_EXPORT QPsdAbstractLayerTreeItemModel {
+public:
+    virtual void fromParser(const QPsdParser &parser) = 0;
+    virtual QSize size() const = 0;
+};
+
+class Q_PSDCORE_EXPORT QPsdLayerTreeItemModel : public QAbstractItemModel, public QPsdAbstractLayerTreeItemModel
 {
     Q_OBJECT
 
@@ -49,8 +55,11 @@ public:
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
-    void fromParser(const QPsdParser &parser);
-    QSize size() const;
+    void fromParser(const QPsdParser &parser) override;
+    QSize size() const override;
+
+signals:
+    void parserReady(const QPsdParser &parser);
 
 private:
     class Private;

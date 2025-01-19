@@ -12,7 +12,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class Q_PSDGUI_EXPORT QPsdGuiLayerTreeItemModel : public QIdentityProxyModel
+class Q_PSDGUI_EXPORT QPsdGuiLayerTreeItemModel : public QIdentityProxyModel, public QPsdAbstractLayerTreeItemModel
 {
     Q_OBJECT
 public:
@@ -37,8 +37,8 @@ public:
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
-    void fromParser(const QPsdParser &parser);
-    QSize size() const;
+    void fromParser(const QPsdParser &parser) override;
+    QSize size() const override;
 
 private:
     class Private;

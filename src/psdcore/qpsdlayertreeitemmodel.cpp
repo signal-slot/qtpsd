@@ -31,6 +31,7 @@ public:
     const ::QPsdLayerTreeItemModel *q;
 
     QPsdFileHeader fileHeader;
+    QPsdLayerAndMaskInformation layerAndMaskInformation;
     QList<QPsdLayerRecord> layerRecords;
     QList<Node> treeNodeList;
     QList<int> groupIDs;
@@ -142,7 +143,7 @@ int QPsdLayerTreeItemModel::rowCount(const QModelIndex &parent) const
         return 0;
     }
 
-    qint32 parentNodeIndex = parent.isValid() ? parent.internalId() : -1;    
+    qint32 parentNodeIndex = parent.isValid() ? parent.internalId() : -1;
     int count = 0;
     for (auto it = d->treeNodeList.crbegin(); it != d->treeNodeList.crend(); ++it) {
         const auto node = *it;
@@ -266,8 +267,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             break;
         }
     }
-    const auto layerAndMaskInformation = parser.layerAndMaskInformation();
-    const auto layers = layerAndMaskInformation.layerInfo();
+    d->layerAndMaskInformation = parser.layerAndMaskInformation();
+    const auto layers = d->layerAndMaskInformation.layerInfo();
     d->layerRecords = layers.records();
     const auto channelImageData = layers.channelImageData();
     
@@ -369,6 +370,8 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     while (d->clippingMasks.size() < d->treeNodeList.size()) {
         d->clippingMasks.prepend(QModelIndex());
     }
+
+    emit parserReady(parser);
 
     endResetModel();
 }

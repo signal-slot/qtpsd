@@ -17,12 +17,14 @@ public:
     ~Private();
 
     QPsdAbstractLayerItem *layerItemObject(const QPsdLayerRecord *layerRecord, enum QPsdLayerTreeItemModel::FolderType folderType);
+    void sourceModelChanged(QAbstractItemModel *model);
+    void parserReady(const QPsdParser &parser);
 
     const QPsdGuiLayerTreeItemModel *q;
-    QPsdLayerTreeItemModel parentModel;
     QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
 
     QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
+    QMetaObject::Connection sourceModelConnection;
 };
 
 QPsdGuiLayerTreeItemModel::Private::Private(const QPsdGuiLayerTreeItemModel *model) : q(model)
@@ -95,10 +97,34 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
     return mapLayerItemObjects.value(layerRecord);
 }
 
+void QPsdGuiLayerTreeItemModel::Private::sourceModelChanged(QAbstractItemModel *sourceModel)
+{
+    QObject::disconnect(sourceModelConnection);
+
+    mapLayerItemObjects.clear();
+    linkedFiles.clear();
+
+    QPsdLayerTreeItemModel *model = dynamic_cast<QPsdLayerTreeItemModel *>(sourceModel);
+    if (model) {
+        sourceModelConnection = QObject::connect(model, &QPsdLayerTreeItemModel::parserReady, q, [=](const QPsdParser &parser) { parserReady(parser); });
+    }
+}
+
+void QPsdGuiLayerTreeItemModel::Private::parserReady(const QPsdParser &parser)
+{
+    const auto layerAndMaskInformation = parser.layerAndMaskInformation();
+    const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
+
+    if (additionalLayerInformation.contains("lnk2")) {
+        const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
+        linkedFiles = lnk2.files();
+    }
+}
+
 QPsdGuiLayerTreeItemModel::QPsdGuiLayerTreeItemModel(QObject *parent)
     : QIdentityProxyModel{parent}, d{new Private(this)}
 {
-    setSourceModel(&d->parentModel);
+    QObject::connect(this, &QAbstractProxyModel::sourceModelChanged, this, [=](){ d->sourceModelChanged(sourceModel()); });
 }
 
 QPsdGuiLayerTreeItemModel::~QPsdGuiLayerTreeItemModel()
@@ -146,20 +172,22 @@ QVariant QPsdGuiLayerTreeItemModel::data(const QModelIndex &index, int role) con
 
 void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
-    d->parentModel.fromParser(parser);
-
-    const auto layerAndMaskInformation = parser.layerAndMaskInformation();
-    const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
-
-    if (additionalLayerInformation.contains("lnk2")) {
-        const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
-        d->linkedFiles = lnk2.files();
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return;
     }
+
+    parentModel->fromParser(parser);
 }
 
 QSize QPsdGuiLayerTreeItemModel::size() const
 {
-    return d->parentModel.size();
+    QPsdAbstractLayerTreeItemModel *parentModel = dynamic_cast<QPsdAbstractLayerTreeItemModel *>(sourceModel());
+    if (parentModel == nullptr) {
+        return {};
+    }
+
+    return parentModel->size();
 }
 
 QT_END_NAMESPACE

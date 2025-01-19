@@ -34,7 +34,8 @@ public:
     QFileInfo fileInfo;
     QString errorMessage;
 
-    QPsdGuiLayerTreeItemModel parentModel;
+    QPsdLayerTreeItemModel layerTreeModel;
+    QPsdGuiLayerTreeItemModel guiLayerTreeModel;
     QPsdFolderLayerItem *root = nullptr;
 
     QMap<QString, QPsdAbstractLayerItem::ExportHint> layerHints;
@@ -84,7 +85,7 @@ QJsonDocument PsdTreeItemModel::Private::loadHint(const QString &hintFileName)
 
 QPsdAbstractLayerItem *PsdTreeItemModel::Private::node(const QModelIndex &index) const
 {
-    return parentModel.data(q->mapToSource(index), QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole).value<QPsdAbstractLayerItem*>();
+    return guiLayerTreeModel.data(q->mapToSource(index), QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole).value<QPsdAbstractLayerItem*>();
 }
 
 bool PsdTreeItemModel::Private::isValidIndex(const QModelIndex &index) const
@@ -321,7 +322,7 @@ QString PsdTreeItemModel::errorMessage() const
 
 QSize PsdTreeItemModel::size() const
 {
-    return d->parentModel.size();
+    return d->guiLayerTreeModel.size();
 }
 
 const QPsdFolderLayerItem *PsdTreeItemModel::layerTree() const
@@ -352,8 +353,9 @@ void PsdTreeItemModel::load(const QString &fileName)
     QPsdParser parser;
     parser.load(fileName);
 
-    d->parentModel.fromParser(parser);
-    setSourceModel(&d->parentModel);
+    d->guiLayerTreeModel.setSourceModel(&d->layerTreeModel);
+    d->guiLayerTreeModel.fromParser(parser);
+    setSourceModel(&d->guiLayerTreeModel);
 
     const auto header = parser.fileHeader();
     if (!header.errorString().isEmpty()) {
