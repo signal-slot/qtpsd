@@ -18,12 +18,12 @@ class PsdTreeItemModel : public QIdentityProxyModel
 
 public:
     enum Roles {
-        LayerIdRole = QPsdGuiLayerTreeItemModel::Roles::LayerIdRole,
-        NameRole = QPsdGuiLayerTreeItemModel::Roles::NameRole,
-        LayerRecordObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerRecordObjectRole,
-        FolderTypeRole = QPsdGuiLayerTreeItemModel::Roles::FolderTypeRole,
-        GroupIndexesRole = QPsdGuiLayerTreeItemModel::Roles::GroupIndexesRole,
-        ClippingMaskIndexRole = QPsdGuiLayerTreeItemModel::Roles::ClippingMaskIndexRole,
+        LayerIdRole = QPsdLayerTreeItemModel::Roles::LayerIdRole,
+        NameRole = QPsdLayerTreeItemModel::Roles::NameRole,
+        LayerRecordObjectRole = QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole,
+        FolderTypeRole = QPsdLayerTreeItemModel::Roles::FolderTypeRole,
+        GroupIndexesRole = QPsdLayerTreeItemModel::Roles::GroupIndexesRole,
+        ClippingMaskIndexRole = QPsdLayerTreeItemModel::Roles::ClippingMaskIndexRole,
         LayerItemObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole,
         VisibleRole,
         ExportIdRole,

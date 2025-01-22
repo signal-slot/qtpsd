@@ -15,17 +15,7 @@ class Q_PSDGUI_EXPORT QPsdGuiLayerTreeItemModel : public QPsdLayerTreeItemModel
     Q_OBJECT
 public:
     enum Roles {
-        LayerIdRole = QPsdLayerTreeItemModel::Roles::LayerIdRole,
-        NameRole = QPsdLayerTreeItemModel::Roles::NameRole,
-        LayerRecordObjectRole = QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole,
-        FolderTypeRole = QPsdLayerTreeItemModel::Roles::FolderTypeRole,
-        GroupIndexesRole = QPsdLayerTreeItemModel::Roles::GroupIndexesRole,
-        ClippingMaskIndexRole = QPsdLayerTreeItemModel::Roles::ClippingMaskIndexRole,
-        LayerItemObjectRole,
-    };
-    enum Column {
-        LayerId = QPsdLayerTreeItemModel::LayerId,
-        Name = QPsdLayerTreeItemModel::Name,
+        LayerItemObjectRole = QPsdLayerTreeItemModel::Roles::ClippingMaskIndexRole + 1
     };
 
     explicit QPsdGuiLayerTreeItemModel(QObject *parent = nullptr);
