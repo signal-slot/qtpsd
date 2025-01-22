@@ -19,9 +19,8 @@ public:
     QPsdAbstractLayerItem *layerItemObject(const QPsdLayerRecord *layerRecord, enum QPsdLayerTreeItemModel::FolderType folderType);
 
     const QPsdGuiLayerTreeItemModel *q;
-    QPsdLayerTreeItemModel parentModel;
+    
     QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
-
     QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
 };
 
@@ -96,9 +95,8 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
 }
 
 QPsdGuiLayerTreeItemModel::QPsdGuiLayerTreeItemModel(QObject *parent)
-    : QIdentityProxyModel{parent}, d{new Private(this)}
+    : QPsdLayerTreeItemModel{parent}, d{new Private(this)}
 {
-    setSourceModel(&d->parentModel);
 }
 
 QPsdGuiLayerTreeItemModel::~QPsdGuiLayerTreeItemModel()
@@ -107,13 +105,7 @@ QPsdGuiLayerTreeItemModel::~QPsdGuiLayerTreeItemModel()
 
 QHash<int, QByteArray> QPsdGuiLayerTreeItemModel::roleNames() const
 {
-    auto roles = QAbstractItemModel::roleNames();
-    roles.insert(Roles::LayerIdRole, QByteArrayLiteral("LayerId"));
-    roles.insert(Roles::NameRole, QByteArrayLiteral("Name"));
-    roles.insert(Roles::LayerRecordObjectRole, QByteArrayLiteral("LayerRecordObject"));
-    roles.insert(Roles::FolderTypeRole, QByteArrayLiteral("FolderType"));
-    roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
-    roles.insert(Roles::ClippingMaskIndexRole, QByteArrayLiteral("ClippingMaskIndex"));
+    auto roles = QPsdLayerTreeItemModel::roleNames();
     roles.insert(Roles::LayerItemObjectRole, QByteArrayLiteral("LayerItemObject"));
 
     return roles;
@@ -122,31 +114,20 @@ QHash<int, QByteArray> QPsdGuiLayerTreeItemModel::roleNames() const
 QVariant QPsdGuiLayerTreeItemModel::data(const QModelIndex &index, int role) const
 {
     switch (role) {
-    case Roles::GroupIndexesRole: {
-        QList<QVariant> indexes = sourceModel()->data(index, role).toList();
-        QList<QVariant> result;
-        for (const auto &i : indexes) {
-            QModelIndex index = i.value<QPersistentModelIndex>();
-            result.append(QVariant::fromValue(QPersistentModelIndex(mapFromSource(index))));
-        }
-        return QVariant(result); }
-    case Roles::ClippingMaskIndexRole: {
-        QPersistentModelIndex maskIndex = sourceModel()->data(index, role).value<QPersistentModelIndex>();
-        return QVariant::fromValue(mapFromSource(maskIndex)); }
     case Roles::LayerItemObjectRole:
         return QVariant::fromValue(
             d->layerItemObject(
-                sourceModel()->data(index, QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole).value<const QPsdLayerRecord *>(),
-                sourceModel()->data(index, QPsdLayerTreeItemModel::Roles::FolderTypeRole).value<enum QPsdLayerTreeItemModel::FolderType>()
+                QPsdLayerTreeItemModel::data(index, QPsdLayerTreeItemModel::Roles::LayerRecordObjectRole).value<const QPsdLayerRecord *>(),
+                QPsdLayerTreeItemModel::data(index, QPsdLayerTreeItemModel::Roles::FolderTypeRole).value<enum QPsdLayerTreeItemModel::FolderType>()
                 ));
     default:
-        return sourceModel()->data(index, role);
+        return QPsdLayerTreeItemModel::data(index, role);
     }
 }
 
 void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
-    d->parentModel.fromParser(parser);
+    QPsdLayerTreeItemModel::fromParser(parser);
 
     const auto layerAndMaskInformation = parser.layerAndMaskInformation();
     const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
@@ -155,11 +136,6 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
         const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
         d->linkedFiles = lnk2.files();
     }
-}
-
-QSize QPsdGuiLayerTreeItemModel::size() const
-{
-    return d->parentModel.size();
 }
 
 QT_END_NAMESPACE
