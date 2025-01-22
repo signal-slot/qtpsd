@@ -10,7 +10,7 @@ if(NOT DEFINED INSTALL_EXAMPLESDIR)
     set(INSTALL_EXAMPLESDIR "examples")
 endif()
 
-set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/psdwidget/app")
+set(INSTALL_EXAMPLEDIR "${INSTALL_EXAMPLESDIR}/qtpsd/app")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets PsdCore PsdGui)
 
