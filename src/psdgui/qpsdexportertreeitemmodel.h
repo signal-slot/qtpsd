@@ -53,7 +53,7 @@ public:
     void fromParser(const QPsdParser &parser) override;
     QSize size() const override;
     QVariantMap exportHint(const QString& exporterKey) const override;
-    void setExportHint(const QString& exporterKey, const QVariantMap exportHint);
+    void setExportHint(const QString& exporterKey, const QVariantMap exportHint) override;
 
     qint32 layerId(const QModelIndex &index) const override;
     QString layerName(const QModelIndex &index) const override;
