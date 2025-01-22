@@ -45,15 +45,10 @@ int main(int argc, char *argv[])
 
     QCommandLineParser cmdlineParser;
     cmdlineParser.setApplicationDescription("show PSD information");
-    const QCommandLineOption versionOption = cmdlineParser.addVersionOption();
+    cmdlineParser.addVersionOption();
     cmdlineParser.addPositionalArgument("psdfile", "psd filename");
 
     cmdlineParser.process(app);
-
-    if (cmdlineParser.isSet(versionOption)) {
-        cmdlineParser.showVersion();
-        Q_UNREACHABLE_RETURN(0);
-    }
 
     const QStringList positionalArguments = cmdlineParser.positionalArguments();
     if (positionalArguments.size() != 1) {
