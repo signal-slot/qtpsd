@@ -23,8 +23,15 @@ public:
     QFileInfo hintFileInfo(const QString &psdFileName) const;
     QJsonDocument loadHint(const QString &hintFileName);
 
-    QPsdAbstractLayerItem *node(const QModelIndex &index) const;
     bool isValidIndex(const QModelIndex &index) const;
+
+    const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const;
+    const QPsdAbstractLayerItem::ExportHint layerHint(const QModelIndex &index) const;
+    void setLayerHint(const QModelIndex &index, QPsdAbstractLayerItem::ExportHint exportHint);
+
+    QVariantMap exportHint(const QString& exporterKey) const;
+    void setExportHint(const QString& exporterKey, const QVariantMap &exportHint);
+    QMap<QString, QVariantMap> exportHints() const;
 
     bool isVisible(const QModelIndex &index);
     void setVisible(const QModelIndex &index, bool visible);
@@ -36,10 +43,8 @@ public:
 
     QPsdLayerTreeItemModel layerTreeModel;
     QPsdGuiLayerTreeItemModel guiLayerTreeModel;
+    QPsdExporterTreeItemModel exporterTreeModel;
     QPsdFolderLayerItem *root = nullptr;
-
-    QMap<QString, QPsdAbstractLayerItem::ExportHint> layerHints;
-    QMap<QString, QVariantMap> exportHints;
 
     QMap<QString, bool> visibleMap;
 };
@@ -83,9 +88,34 @@ QJsonDocument PsdTreeItemModel::Private::loadHint(const QString &hintFileName)
     return {};
 }
 
-QPsdAbstractLayerItem *PsdTreeItemModel::Private::node(const QModelIndex &index) const
+const QPsdAbstractLayerItem *PsdTreeItemModel::Private::layerItem(const QModelIndex &index) const
 {
-    return guiLayerTreeModel.data(q->mapToSource(index), QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole).value<QPsdAbstractLayerItem*>();
+    return exporterTreeModel.layerItem(index);
+}
+
+const QPsdAbstractLayerItem::ExportHint PsdTreeItemModel::Private::layerHint(const QModelIndex &index) const
+{
+    return exporterTreeModel.layerHint(index);
+}
+
+void PsdTreeItemModel::Private::setLayerHint(const QModelIndex &index, QPsdAbstractLayerItem::ExportHint exportHint)
+{
+    exporterTreeModel.setLayerHint(index, exportHint);
+}
+
+QVariantMap PsdTreeItemModel::Private::exportHint(const QString& exporterKey) const
+{
+    return exporterTreeModel.exportHint(exporterKey);
+}
+
+void PsdTreeItemModel::Private::setExportHint(const QString& exporterKey, const QVariantMap &exportHint)
+{
+    return exporterTreeModel.setExportHint(exporterKey, exportHint);
+}
+
+QMap<QString, QVariantMap> PsdTreeItemModel::Private::exportHints() const
+{
+    return exporterTreeModel.exportHints();
 }
 
 bool PsdTreeItemModel::Private::isValidIndex(const QModelIndex &index) const
@@ -99,14 +129,14 @@ bool PsdTreeItemModel::Private::isVisible(const QModelIndex &index)
         return false;
     }
 
-    const auto *node = this->node(index);
-    if (node == nullptr) {
+    const auto *item = layerItem(index);
+    if (item == nullptr) {
         return false;
     }
-    QString idstr = QString::number(node->id());
+    QString idstr = QString::number(item->id());
 
     if (!visibleMap.contains(idstr)) {
-        visibleMap.insert(idstr, node->isVisible());
+        visibleMap.insert(idstr, item->isVisible());
     }
 
     return visibleMap.value(idstr);
@@ -118,11 +148,11 @@ void PsdTreeItemModel::Private::setVisible(const QModelIndex &index, bool visibl
         return;
     }
 
-    const auto *node = this->node(index);
-    if (node == nullptr) {
+    const auto *item = layerItem(index);
+    if (item == nullptr) {
         return;
     }
-    QString idstr = QString::number(node->id());
+    QString idstr = QString::number(item->id());
 
     visibleMap.insert(idstr, visible);
 }
@@ -168,6 +198,7 @@ QHash<int, QByteArray> PsdTreeItemModel::roleNames() const
     roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
     roles.insert(Roles::ClippingMaskIndexRole, QByteArrayLiteral("ClippingMaskIndex"));
     roles.insert(Roles::LayerItemObjectRole, QByteArrayLiteral("LayerItemObject"));
+    roles.insert(Roles::LayerHintRole, QByteArrayLiteral("LayerHint"));
     roles.insert(Roles::VisibleRole, QByteArrayLiteral("Visible"));
     roles.insert(Roles::ExportIdRole, QByteArrayLiteral("ExportId"));
 
@@ -185,13 +216,13 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     if (!d->isValidIndex(index))
         return QVariant();
 
-    const QPsdAbstractLayerItem *node = d->node(index);
-    const QPsdAbstractLayerItem::ExportHint exportHint = node->exportHint();
+    const QPsdAbstractLayerItem *item = d->layerItem(index);
+    const QPsdAbstractLayerItem::ExportHint exportHint = d->layerHint(index);
     switch (role) {
     case Qt::DisplayRole:
         switch (index.column()) {
         case Column::Name:
-            return node->name();
+            return item->name();
         case Column::Export:
             return exportHint.id;
         default:
@@ -223,7 +254,7 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         }
         break;
     case Qt::BackgroundRole: {
-        QColor color = node->color();
+        QColor color = item->color();
         int h, s, l, a;
         color.getHsl(&h, &s, &l, &a);
         color.setHsl(h, 128, 128, 128 * a / 255);
@@ -231,15 +262,15 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     case Qt::DecorationRole:
         switch (index.column()) {
         case Column::Name:
-            return QIcon(QPixmap::fromImage(node->image()));
+            return QIcon(QPixmap::fromImage(item->image()));
         default:
             break;
         }
         break;
     case Roles::NameRole:
-        return node->name();
+        return item->name();
     case Roles::LayerIdRole:
-        return node->id();
+        return item->id();
     case Roles::VisibleRole:
         return d->isVisible(index);
     case Roles::ExportIdRole:
@@ -256,7 +287,7 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         QPersistentModelIndex maskIndex = sourceModel()->data(mapToSource(index), role).value<QPersistentModelIndex>();
         return QVariant::fromValue(mapFromSource(maskIndex)); }
     case Roles::LayerItemObjectRole:
-        return QVariant::fromValue(node);
+        return QVariant::fromValue(item);
     default:
         return sourceModel()->data(mapToSource(index), role);
     }
@@ -276,10 +307,10 @@ bool PsdTreeItemModel::setData(const QModelIndex &index, const QVariant &value, 
         }
         break;
     case Column::Export: {
-        const QPsdAbstractLayerItem *node = d->node(index);
-        QPsdAbstractLayerItem::ExportHint exportHint = node->exportHint();
+        const QPsdAbstractLayerItem *item = d->layerItem(index);
+        QPsdAbstractLayerItem::ExportHint exportHint = d->layerHint(index);
         exportHint.id = value.toString();
-        node->setExportHint(exportHint);
+        d->setLayerHint(index, exportHint);
 
         emit dataChanged(index, index);
         return true; }
@@ -332,12 +363,12 @@ const QPsdFolderLayerItem *PsdTreeItemModel::layerTree() const
 
 QVariantMap PsdTreeItemModel::exportHint(const QString& exporterKey) const
 {
-    return d->exportHints.value(exporterKey);
+    return d->exportHint(exporterKey);
 }
 
 void PsdTreeItemModel::updateExportHint(const QString &exporterKey, const QVariantMap &hint)
 {
-    d->exportHints.insert(exporterKey, hint);
+    d->setExportHint(exporterKey, hint);
 }
 
 void PsdTreeItemModel::load(const QString &fileName)
@@ -353,8 +384,38 @@ void PsdTreeItemModel::load(const QString &fileName)
     QPsdParser parser;
     parser.load(fileName);
 
+    QMap<QString, QPsdAbstractLayerItem::ExportHint> layerHints;
+    QMap<QString, QVariantMap> exportHints;
+
+    QFileInfo hintFileInfo = d->hintFileInfo(fileName);
+    if (hintFileInfo.exists()) {
+        QJsonDocument hintDoc = d->loadHint(hintFileInfo.absoluteFilePath());
+        QJsonObject root = hintDoc.object();
+        QJsonObject layerHintsJson = root.value(HINTFILE_LAYER_HINTS_KEY).toObject();
+        for (const auto &idstr: layerHintsJson.keys()) {
+            QVariantMap settings = layerHintsJson.value(idstr).toObject().toVariantMap();
+            QStringList properties = settings.value("properties").toStringList();
+            QPsdAbstractLayerItem::ExportHint exportHint {
+                settings.value("id").toString(),
+                static_cast<QPsdAbstractLayerItem::ExportHint::Type>(settings.value("type").toInt()),
+                settings.value("name").toString(),
+                static_cast<QPsdAbstractLayerItem::ExportHint::NativeComponent>(settings.value("native").toInt()),
+                settings.value("visible").toBool(),
+                QSet<QString>(properties.begin(), properties.end()),
+            };
+            layerHints.insert(idstr, exportHint);
+        }
+
+        QJsonObject exportHintsJson = root.value(HINTFILE_EXPORT_HINTS_KEY).toObject();
+        for (const auto &exporterKey : exportHintsJson.keys()) {
+            QVariantMap map = exportHintsJson.value(exporterKey).toObject().toVariantMap();
+            exportHints.insert(exporterKey, map);
+        }
+    }
+
     d->guiLayerTreeModel.setSourceModel(&d->layerTreeModel);
-    d->guiLayerTreeModel.fromParser(parser);
+    d->exporterTreeModel.setSourceModel(&d->guiLayerTreeModel);
+    d->exporterTreeModel.fromParser(parser, layerHints, exportHints);
     setSourceModel(&d->guiLayerTreeModel);
 
     const auto header = parser.fileHeader();
@@ -363,42 +424,16 @@ void PsdTreeItemModel::load(const QString &fileName)
         return;
     }
 
-    QFileInfo hintFileInfo = d->hintFileInfo(fileName);
-    if (hintFileInfo.exists()) {
-        QJsonDocument hintDoc = d->loadHint(hintFileInfo.absoluteFilePath());
-        QJsonObject root = hintDoc.object();
-        QJsonObject layerHints = root.value(HINTFILE_LAYER_HINTS_KEY).toObject();
-        for (const auto &idstr: layerHints.keys()) {
-            QVariantMap settings = layerHints.value(idstr).toObject().toVariantMap();
-            QStringList properties = settings.value("properties").toStringList();
-            QPsdFolderLayerItem::ExportHint exportHint {
-                settings.value("id").toString(),
-                static_cast<QPsdAbstractLayerItem::ExportHint::Type>(settings.value("type").toInt()),
-                settings.value("name").toString(),
-                static_cast<QPsdAbstractLayerItem::ExportHint::NativeComponent>(settings.value("native").toInt()),
-                settings.value("visible").toBool(),
-                QSet<QString>(properties.begin(), properties.end()),
-            };
-            d->layerHints.insert(idstr, exportHint);
-        }
-
-        QJsonObject exportHints = root.value(HINTFILE_EXPORT_HINTS_KEY).toObject();
-        for (const auto &exporterKey : exportHints.keys()) {
-            QVariantMap map = exportHints.value(exporterKey).toObject().toVariantMap();
-            d->exportHints.insert(exporterKey, map);
-        }
-    }
     d->root = QPsdLayerTree::fromParser(parser);
 
     std::function<void(const QModelIndex &parent)> traverseTree;
     traverseTree = [&](const QModelIndex &parent) {
         for (int row = 0; row < rowCount(parent); row++) {
             const QModelIndex childIndex = index(row, 0, parent);
-            const QPsdAbstractLayerItem *item = data(childIndex, Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
-            const QString idstr = QString::number(item->id());
-            QPsdAbstractLayerItem::ExportHint exportHint = d->layerHints.value(idstr);
+            const QPsdAbstractLayerItem *item = d->layerItem(childIndex);
+            QPsdAbstractLayerItem::ExportHint exportHint = d->layerHint(childIndex);
             exportHint.visible = item->isVisible();
-            d->layerHints.insert(idstr, exportHint);
+            d->setLayerHint(childIndex, exportHint);
             item->setExportHint(exportHint);
 
             if (hasChildren(childIndex)) {
@@ -414,7 +449,7 @@ void PsdTreeItemModel::save()
     QFileInfo hintFileInfo = d->hintFileInfo(fileName());
 
     QJsonDocument doc;
-    QJsonObject layerHints;
+    QJsonObject layerHintsJson;
     std::function<void(const QModelIndex &)> traverse = [&](const QModelIndex &index) {
         if (index.isValid()) {
             const auto layer = data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
@@ -437,7 +472,7 @@ void PsdTreeItemModel::save()
                 object.insert("visible", exportHint.visible);
                 if (!propList.isEmpty())
                     object.insert("properties", QJsonArray::fromStringList(propList));
-                layerHints.insert(idstr, object);
+                layerHintsJson.insert(idstr, object);
             }
         }
         for (int i = 0; i < rowCount(index); i++) {
@@ -446,15 +481,16 @@ void PsdTreeItemModel::save()
     };
     traverse({});
 
-    QJsonObject exportHints;
-    for (const auto &exporterKey : d->exportHints.keys()) {
-        exportHints.insert(exporterKey, QJsonObject::fromVariantMap(d->exportHints.value(exporterKey)));
+    QJsonObject exportHintsJson;
+    const auto exportHints = d->exportHints();
+    for (const auto &exporterKey : exportHints.keys()) {
+        exportHintsJson.insert(exporterKey, QJsonObject::fromVariantMap(exportHints.value(exporterKey)));
     }
 
     QJsonObject root;
     root.insert(HINTFILE_MAGIC_KEY, HINTFILE_MAGIC_VERSION);
-    root.insert(HINTFILE_LAYER_HINTS_KEY, layerHints);
-    root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHints);
+    root.insert(HINTFILE_LAYER_HINTS_KEY, layerHintsJson);
+    root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHintsJson);
 
     doc.setObject(root);
 

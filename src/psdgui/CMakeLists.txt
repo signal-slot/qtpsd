@@ -19,6 +19,7 @@ qt_internal_add_module(PsdGui
         qpsdpatternfill.h qpsdpatternfill.cpp
         qpsdimagestore.h qpsdimagestore.cpp
         qpsdguilayertreeitemmodel.h qpsdguilayertreeitemmodel.cpp
+        qpsdexportertreeitemmodel.h qpsdexportertreeitemmodel.cpp
     INCLUDE_DIRECTORIES
         ${CMAKE_CURRENT_SOURCE_DIR}
     PUBLIC_LIBRARIES

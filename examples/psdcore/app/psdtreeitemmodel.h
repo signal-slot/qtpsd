@@ -6,6 +6,7 @@
 
 #include <QtPsdGui/QPsdLayerTree>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
+#include <QtPsdGui/QPsdExporterTreeItemModel>
 
 #include <QIdentityProxyModel>
 #include <QFileInfo>
@@ -18,13 +19,14 @@ class PsdTreeItemModel : public QIdentityProxyModel
 
 public:
     enum Roles {
-        LayerIdRole = QPsdGuiLayerTreeItemModel::Roles::LayerIdRole,
-        NameRole = QPsdGuiLayerTreeItemModel::Roles::NameRole,
-        LayerRecordObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerRecordObjectRole,
-        FolderTypeRole = QPsdGuiLayerTreeItemModel::Roles::FolderTypeRole,
-        GroupIndexesRole = QPsdGuiLayerTreeItemModel::Roles::GroupIndexesRole,
-        ClippingMaskIndexRole = QPsdGuiLayerTreeItemModel::Roles::ClippingMaskIndexRole,
-        LayerItemObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole,
+        LayerIdRole = QPsdExporterTreeItemModel::Roles::LayerIdRole,
+        NameRole = QPsdExporterTreeItemModel::Roles::NameRole,
+        LayerRecordObjectRole = QPsdExporterTreeItemModel::Roles::LayerRecordObjectRole,
+        FolderTypeRole = QPsdExporterTreeItemModel::Roles::FolderTypeRole,
+        GroupIndexesRole = QPsdExporterTreeItemModel::Roles::GroupIndexesRole,
+        ClippingMaskIndexRole = QPsdExporterTreeItemModel::Roles::ClippingMaskIndexRole,
+        LayerItemObjectRole = QPsdExporterTreeItemModel::Roles::LayerItemObjectRole,
+        LayerHintRole = QPsdExporterTreeItemModel::Roles::LayerHintRole,
         VisibleRole,
         ExportIdRole,
     };

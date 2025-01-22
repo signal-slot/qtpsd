@@ -16,15 +16,16 @@ public:
     Private(const QPsdGuiLayerTreeItemModel *model);
     ~Private();
 
-    QPsdAbstractLayerItem *layerItemObject(const QPsdLayerRecord *layerRecord, enum QPsdLayerTreeItemModel::FolderType folderType);
     void sourceModelChanged(QAbstractItemModel *model);
     void parserReady(const QPsdParser &parser);
 
-    const QPsdGuiLayerTreeItemModel *q;
-    QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
+    QPsdAbstractLayerItem *layerItemObject(const QPsdLayerRecord *layerRecord, enum QPsdLayerTreeItemModel::FolderType folderType);
 
-    QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
+    const QPsdGuiLayerTreeItemModel *q;
     QMetaObject::Connection sourceModelConnection;
+
+    QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
+    QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
 };
 
 QPsdGuiLayerTreeItemModel::Private::Private(const QPsdGuiLayerTreeItemModel *model) : q(model)
@@ -35,6 +36,30 @@ QPsdGuiLayerTreeItemModel::Private::~Private()
 {
     for (auto it = mapLayerItemObjects.begin(); it != mapLayerItemObjects.end(); ++it) {
         delete it.value();
+    }
+}
+
+void QPsdGuiLayerTreeItemModel::Private::sourceModelChanged(QAbstractItemModel *sourceModel)
+{
+    QObject::disconnect(sourceModelConnection);
+
+    mapLayerItemObjects.clear();
+    linkedFiles.clear();
+
+    QPsdLayerTreeItemModel *model = dynamic_cast<QPsdLayerTreeItemModel *>(sourceModel);
+    if (model) {
+        sourceModelConnection = QObject::connect(model, &QPsdLayerTreeItemModel::parserReady, q, [=](const QPsdParser &parser) { parserReady(parser); });
+    }
+}
+
+void QPsdGuiLayerTreeItemModel::Private::parserReady(const QPsdParser &parser)
+{
+    const auto layerAndMaskInformation = parser.layerAndMaskInformation();
+    const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
+
+    if (additionalLayerInformation.contains("lnk2")) {
+        const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
+        linkedFiles = lnk2.files();
     }
 }
 
@@ -95,30 +120,6 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
     }
 
     return mapLayerItemObjects.value(layerRecord);
-}
-
-void QPsdGuiLayerTreeItemModel::Private::sourceModelChanged(QAbstractItemModel *sourceModel)
-{
-    QObject::disconnect(sourceModelConnection);
-
-    mapLayerItemObjects.clear();
-    linkedFiles.clear();
-
-    QPsdLayerTreeItemModel *model = dynamic_cast<QPsdLayerTreeItemModel *>(sourceModel);
-    if (model) {
-        sourceModelConnection = QObject::connect(model, &QPsdLayerTreeItemModel::parserReady, q, [=](const QPsdParser &parser) { parserReady(parser); });
-    }
-}
-
-void QPsdGuiLayerTreeItemModel::Private::parserReady(const QPsdParser &parser)
-{
-    const auto layerAndMaskInformation = parser.layerAndMaskInformation();
-    const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
-
-    if (additionalLayerInformation.contains("lnk2")) {
-        const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
-        linkedFiles = lnk2.files();
-    }
 }
 
 QPsdGuiLayerTreeItemModel::QPsdGuiLayerTreeItemModel(QObject *parent)
