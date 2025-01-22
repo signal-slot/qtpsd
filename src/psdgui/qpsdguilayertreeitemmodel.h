@@ -15,7 +15,7 @@ class Q_PSDGUI_EXPORT QPsdGuiLayerTreeItemModel : public QPsdLayerTreeItemModel
     Q_OBJECT
 public:
     enum Roles {
-        LayerItemObjectRole = QPsdLayerTreeItemModel::Roles::ClippingMaskIndexRole + 1
+        LayerItemObjectRole = ClippingMaskIndexRole + 1
     };
 
     explicit QPsdGuiLayerTreeItemModel(QObject *parent = nullptr);
