@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
     }
 
     QPsdParser parser;
-    const QString &filename = positionalArguments.at(0);
+    const QString filename = positionalArguments.at(0);
     parser.load(filename);
 
     const auto fileHeader = parser.fileHeader();
