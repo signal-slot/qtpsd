@@ -24,7 +24,7 @@ jobs:
           - os: windows-latest
             host: windows
             arch: win64_msvc2022_64
-            generator: 'Visual Studio 17 2022'
+            generator: 'Ninja'
           - os: macos-latest
             host: mac
             arch: clang_64
@@ -48,11 +48,14 @@ jobs:
           setup-python: 'true'
           install-deps: 'true'
 
+      - name: setup MSVC
+        uses: ilammy/msvc-dev-cmd@v1
+
       - name: Configure (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          cmake -S . -B build -G "${{ matrix.generator }}" -A x64 -T host=x64 -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
+          cmake -S . -B build -G "${{ matrix.generator }}" -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
 
       - name: Configure (Unix)
         if: runner.os != 'Windows'
@@ -63,7 +66,7 @@ jobs:
       - name: Build
         run: |
           cmake --build build --config RelWithDebInfo --parallel
-
+  
       - name: Install
         run: |
           cmake --install build
