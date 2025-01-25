@@ -20,7 +20,11 @@ public:
         qint32 parentNodeIndex;
         enum FolderType folderType;
         bool isCloseFolder;
-        QPersistentModelIndex modelIndex;
+    };
+
+    struct IndexInfo {
+        int row = -1;
+        qint32 nodeIndex = -1;
     };
 
     Private(const ::QPsdLayerTreeItemModel *model);
@@ -34,8 +38,8 @@ public:
     QList<QPsdLayerRecord> layerRecords;
     QList<Node> treeNodeList;
     QList<int> groupIDs;
-    QMultiMap<int, QPersistentModelIndex> groupsMap;
-    QList<QPersistentModelIndex> clippingMasks;
+    QMultiMap<int, IndexInfo> groupsMap;
+    QList<IndexInfo> clippingMasks;
 };
 
 QPsdLayerTreeItemModel::Private::Private(const ::QPsdLayerTreeItemModel *model) : q(model)
@@ -300,22 +304,22 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         }
         
         row++;
-        QModelIndex modelIndex;
+        Private::IndexInfo indexInfo;
         if (!isCloseFolder) {
-            modelIndex = createIndex(row, 0, i);
+            indexInfo = { row, i };
             
             if (i < d->groupIDs.size()) {
                 const auto groupID = d->groupIDs.at(i);
                 if (groupID > 0) {
-                    d->groupsMap.insert(groupID, modelIndex);
+                    d->groupsMap.insert(groupID, indexInfo);
                 }
             }
 
             if (record.clipping() == QPsdLayerRecord::Clipping::Base) {
                 while (d->clippingMasks.size() < d->treeNodeList.size()) {
-                    d->clippingMasks.prepend(modelIndex);
+                    d->clippingMasks.prepend(indexInfo);
                 }
-                d->clippingMasks.prepend(QModelIndex());
+                d->clippingMasks.prepend({});
             }
         }
         
@@ -335,7 +339,6 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             parentNodeIndex,
             folderType,
             isCloseFolder,
-            modelIndex,
         });
         
         if (folderType != FolderType::NotFolder) {
@@ -349,7 +352,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
     });
 
     while (d->clippingMasks.size() < d->treeNodeList.size()) {
-        d->clippingMasks.prepend(QModelIndex());
+        d->clippingMasks.prepend({});
     }
 
     endResetModel();
@@ -400,15 +403,19 @@ QPsdLayerTreeItemModel::FolderType QPsdLayerTreeItemModel::folderType(const QMod
 QList<QPersistentModelIndex> QPsdLayerTreeItemModel::groupIndexes(const QModelIndex &index) const
 {
     int nodeIndex = index.internalId();
-    const auto list = d->groupsMap.values(d->groupIDs.at(nodeIndex));
-
-    return QList<QPersistentModelIndex>(list);
+    const auto &list = d->groupsMap.values(d->groupIDs.at(nodeIndex));
+    QList<QPersistentModelIndex> groupIndexes;
+    for (const auto &info : list) {
+        groupIndexes.append(createIndex(info.row, 0, info.nodeIndex));
+    }
+    return groupIndexes;
 }
 
 QPersistentModelIndex QPsdLayerTreeItemModel::clippingMaskIndex(const QModelIndex &index) const
 {
     int nodeIndex = index.internalId();
-    return d->clippingMasks.at(nodeIndex);
+    const auto &info = d->clippingMasks.at(nodeIndex);
+    return createIndex(info.row, 0, info.nodeIndex);
 }
 
 QT_END_NAMESPACE
