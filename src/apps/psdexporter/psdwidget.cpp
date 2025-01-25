@@ -40,16 +40,18 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     treeView->setModel(&model);
 
     connect(&model, &PsdTreeItemModel::dataChanged, q, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QList<int> &roles) {
-        const auto *model = topLeft.model();
-        for (int r = topLeft.row(); r <= bottomRight.row(); r++) {
-            for (int c = topLeft.column(); c <= bottomRight.column(); c++) {
-                QModelIndex index = topLeft.sibling(r, c);
-                if (roles.empty() || roles.contains(Qt::CheckStateRole)) {
-                    if (c == PsdTreeItemModel::Column::Visible) {
-                        psdView->setItemVisible(model->data(index, PsdTreeItemModel::LayerIdRole).toInt(), model->data(index, PsdTreeItemModel::Roles::VisibleRole).toBool());
-                    } else {
-                        q->setWindowModified(true);
-                        q->setWindowTitle(windowTitle);
+        const auto *model = dynamic_cast<const PsdTreeItemModel *>(topLeft.model());
+        if (model) {
+            for (int r = topLeft.row(); r <= bottomRight.row(); r++) {
+                for (int c = topLeft.column(); c <= bottomRight.column(); c++) {
+                    QModelIndex index = topLeft.sibling(r, c);
+                    if (roles.empty() || roles.contains(Qt::CheckStateRole)) {
+                        if (c == PsdTreeItemModel::Column::Visible) {
+                            psdView->setItemVisible(model->layerId(index), model->isVisible(index));
+                        } else {
+                            q->setWindowModified(true);
+                            q->setWindowTitle(windowTitle);
+                        }
                     }
                 }
             }
@@ -57,13 +59,19 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     });
 
     connect(treeView, &QTreeView::expanded, q, [this](const QModelIndex &index) {
-        const auto lyid = index.model()->data(index, PsdTreeItemModel::LayerIdRole).toInt();
-        settings.setValue(u"%1-x"_s.arg(lyid), true);
+        const auto *model = dynamic_cast<const PsdTreeItemModel *>(index.model());
+        if (model) {
+            const auto lyid = model->layerId(index);
+            settings.setValue(u"%1-x"_s.arg(lyid), true);
+        }
     });
 
     connect(treeView, &QTreeView::collapsed, q, [this](const QModelIndex &index) {
-        const auto lyid = index.model()->data(index, PsdTreeItemModel::LayerIdRole).toInt();
-        settings.setValue(u"%1-x"_s.arg(lyid), false);
+        const auto *model = dynamic_cast<const PsdTreeItemModel *>(index.model());
+        if (model) {
+            const auto lyid = model->layerId(index);
+            settings.setValue(u"%1-x"_s.arg(lyid), false);
+        }
     });
 
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, q, [this]() {
@@ -258,15 +266,15 @@ void PsdWidget::Private::updateAttributes()
     QHash<QString, UniqueOrNot<Qt::CheckState>> itemProperties;
 
     for (const auto &row : rows) {
-        const auto item = model.data(row, PsdTreeItemModel::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
-        const auto groupVariantList = model.data(row, PsdTreeItemModel::GroupIndexesRole).toList();
+        const auto *item = model.layerItem(row);
+        const auto groupVariantList = model.groupIndexes(row);
         const auto hint = item->exportHint();
         itemTypes.add(hint.type);
         itemWithTouch.add(hint.baseElement == QPsdAbstractLayerItem::ExportHint::TouchArea ? Qt::Checked : Qt::Unchecked);
         qDebug() << hint.baseElement << itemWithTouch.isUnique() << itemWithTouch.value();
         QList<QPersistentModelIndex> groupIndexList;
         for (auto &v : groupVariantList) {
-            groupIndexList.append(v.toModelIndex());
+            groupIndexList.append(v);
         }
         itemMergeGroup.add(groupIndexList);
         excludeFromMergeGroup.insert(row);
@@ -306,7 +314,7 @@ void PsdWidget::Private::updateAttributes()
             if (excludeFromMergeGroup.contains(item)) {
                 continue;
             }
-            QString name = model.data(item, PsdTreeItemModel::NameRole).toString();
+            QString name = model.layerName(item);
             merge->addItem(name);
         }
         merge->setCurrentIndex(-1);
@@ -384,7 +392,7 @@ void PsdWidget::Private::applyAttributes()
     }
 
     for (const auto &row : rows) {
-        const auto item = model.data(row, PsdTreeItemModel::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
+        const auto *item = model.layerItem(row);
         auto hint = item->exportHint();
         if (type > -1)
             hint.type = static_cast<QPsdAbstractLayerItem::ExportHint::Type>(type);
@@ -451,7 +459,7 @@ void PsdWidget::load(const QString &fileName)
     std::function<void(const QModelIndex &index)> traverseTreeView;
     traverseTreeView = [&](const QModelIndex &index) {
         if (d->model.hasChildren(index)) {
-            const auto lyid = d->model.data(index, PsdTreeItemModel::LayerIdRole).toInt();
+            const auto lyid = d->model.layerId(index);
             d->treeView->setExpanded(index, d->settings.value(u"%1-x"_s.arg(lyid), false).toBool());
 
             for (int row = 0; row < d->model.rowCount(index); row++) {

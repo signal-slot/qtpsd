@@ -86,18 +86,17 @@ void PsdView::reset()
     resize(d->model->size());
     std::function<void(const QModelIndex, QWidget *)> traverseTree = [&](const QModelIndex index, QWidget *parent) {
         if (index.isValid()) {
-            const QPsdAbstractLayerItem *layer = d->model->data(index, PsdTreeItemModel::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
-            const QModelIndex maskIndex = d->model->data(index, PsdTreeItemModel::ClippingMaskIndexRole).toModelIndex();
+            const QPsdAbstractLayerItem *layer = d->model->layerItem(index);
+            const QModelIndex maskIndex = d->model->clippingMaskIndex(index);
             const QPsdAbstractLayerItem *mask = nullptr;
             if (maskIndex.isValid()) {
-                mask = d->model->data(maskIndex, PsdTreeItemModel::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+                mask = d->model->layerItem(maskIndex);
             }
-            const QVariantList groupVariantList = d->model->data(index, PsdTreeItemModel::GroupIndexesRole).toList();
+            const QList<QPersistentModelIndex> groupIndexesList = d->model->groupIndexes(index);
             QMap<quint32, QString> groupMap;
-            for (auto &v : groupVariantList) {
-                QModelIndex modelIndex = v.toModelIndex();
-                quint32 id = d->model->data(modelIndex, PsdTreeItemModel::LayerIdRole).toUInt();
-                QString name = d->model->data(modelIndex, PsdTreeItemModel::NameRole).toString();
+            for (auto &groupIndex : groupIndexesList) {
+                quint32 id = d->model->layerId(groupIndex);
+                QString name = d->model->layerName(groupIndex);
                 groupMap.insert(id, name);
             }
 
