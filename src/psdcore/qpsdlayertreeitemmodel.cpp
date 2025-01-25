@@ -173,9 +173,9 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
     switch (role) {
     case Qt::DisplayRole:
         switch (index.column()) {
-        case Column::LayerId:
+        case Column::LayerIdColumn:
             return QString::number(layerId(index));
-        case Column::Name:
+        case Column::NameColumn:
             return layerName(index);
         default:
             break;
@@ -183,7 +183,7 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
         break;
     case Qt::CheckStateRole:
         switch (index.column()) {
-        case Column::FolderType:
+        case Column::FolderTypeColumn:
             switch (folderType(index)) {
             case FolderType::OpenFolder:
                 return Qt::Checked;
@@ -338,7 +338,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
             modelIndex,
         });
         
-        if (folderType != NotFolder) {
+        if (folderType != FolderType::NotFolder) {
             parentNodeIndex = i;
         }
 
@@ -389,7 +389,7 @@ const QPsdLayerRecord *QPsdLayerTreeItemModel::layerRecord(const QModelIndex &in
     return &(d->layerRecords.at(nodeIndex));
 }
 
-enum QPsdLayerTreeItemModel::FolderType QPsdLayerTreeItemModel::folderType(const QModelIndex &index) const
+QPsdLayerTreeItemModel::FolderType QPsdLayerTreeItemModel::folderType(const QModelIndex &index) const
 {
     int nodeIndex = index.internalId();
     const auto node = d->treeNodeList.at(nodeIndex);
