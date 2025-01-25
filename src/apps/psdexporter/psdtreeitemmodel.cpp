@@ -281,7 +281,10 @@ bool PsdTreeItemModel::isVisible(const QModelIndex &index) const
 
 QString PsdTreeItemModel::exportId(const QModelIndex &index) const
 {
+    const QPsdAbstractLayerItem *item = layerItem(index);
+    QPsdAbstractLayerItem::ExportHint exportHint = item->exportHint();
 
+    return exportHint.id;
 }
 
 QFileInfo PsdTreeItemModel::fileInfo() const
