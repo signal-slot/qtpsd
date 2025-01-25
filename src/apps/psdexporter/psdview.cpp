@@ -86,11 +86,11 @@ void PsdView::reset()
     resize(d->model->size());
     std::function<void(const QModelIndex, QWidget *)> traverseTree = [&](const QModelIndex index, QWidget *parent) {
         if (index.isValid()) {
-            const QPsdAbstractLayerItem *layer = d->model->data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();            
+            const QPsdAbstractLayerItem *layer = d->model->data(index, PsdTreeItemModel::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
             const QModelIndex maskIndex = d->model->data(index, PsdTreeItemModel::ClippingMaskIndexRole).toModelIndex();
             const QPsdAbstractLayerItem *mask = nullptr;
             if (maskIndex.isValid()) {
-                mask = d->model->data(maskIndex, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
+                mask = d->model->data(maskIndex, PsdTreeItemModel::LayerItemObjectRole).value<const QPsdAbstractLayerItem*>();
             }
             const QVariantList groupVariantList = d->model->data(index, PsdTreeItemModel::GroupIndexesRole).toList();
             QMap<quint32, QString> groupMap;

@@ -4,13 +4,11 @@
 #ifndef PSDTREEITEMMODEL_H
 #define PSDTREEITEMMODEL_H
 
-#include <QtPsdGui/QPsdLayerTree>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 
-#include <QIdentityProxyModel>
 #include <QFileInfo>
 
-class PsdTreeItemModel : public QIdentityProxyModel
+class PsdTreeItemModel : public QPsdGuiLayerTreeItemModel
 {
     Q_OBJECT
 
@@ -18,14 +16,7 @@ class PsdTreeItemModel : public QIdentityProxyModel
 
 public:
     enum Roles {
-        LayerIdRole = QPsdGuiLayerTreeItemModel::LayerIdRole,
-        NameRole = QPsdGuiLayerTreeItemModel::NameRole,
-        LayerRecordObjectRole = QPsdGuiLayerTreeItemModel::LayerRecordObjectRole,
-        FolderTypeRole = QPsdGuiLayerTreeItemModel::FolderTypeRole,
-        GroupIndexesRole = QPsdGuiLayerTreeItemModel::GroupIndexesRole,
-        ClippingMaskIndexRole = QPsdGuiLayerTreeItemModel::ClippingMaskIndexRole,
-        LayerItemObjectRole = QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole,
-        VisibleRole,
+        VisibleRole = QPsdGuiLayerTreeItemModel::LayerItemObjectRole + 1,
         ExportIdRole,
     };
     enum Column {
@@ -50,10 +41,12 @@ public:
     bool setData(const QModelIndex &index, const QVariant &value, int role = Qt::EditRole) override;
     Qt::ItemFlags flags(const QModelIndex &index) const override;
 
+    bool isVisible(const QModelIndex &index) const;
+    QString exportId(const QModelIndex &index) const;
+
     QFileInfo fileInfo() const;
     QString fileName() const;
     QString errorMessage() const;
-    QSize size() const;
 
     const QPsdFolderLayerItem *layerTree() const;
     QVariantMap exportHint(const QString& exporterKey) const;

@@ -6,6 +6,7 @@
 #include <QtPsdCore/QPsdParser>
 #include <QtPsdGui/QPsdFolderLayerItem>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
+#include <QtPsdGui/QPsdLayerTree>
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
@@ -23,7 +24,6 @@ public:
     QFileInfo hintFileInfo(const QString &psdFileName) const;
     QJsonDocument loadHint(const QString &hintFileName);
 
-    QPsdAbstractLayerItem *node(const QModelIndex &index) const;
     bool isValidIndex(const QModelIndex &index) const;
 
     bool isVisible(const QModelIndex &index);
@@ -34,7 +34,6 @@ public:
     QFileInfo fileInfo;
     QString errorMessage;
 
-    QPsdGuiLayerTreeItemModel parentModel;
     QPsdFolderLayerItem *root = nullptr;
 
     QMap<QString, QPsdAbstractLayerItem::ExportHint> layerHints;
@@ -82,11 +81,6 @@ QJsonDocument PsdTreeItemModel::Private::loadHint(const QString &hintFileName)
     return {};
 }
 
-QPsdAbstractLayerItem *PsdTreeItemModel::Private::node(const QModelIndex &index) const
-{
-    return parentModel.data(q->mapToSource(index), QPsdGuiLayerTreeItemModel::Roles::LayerItemObjectRole).value<QPsdAbstractLayerItem*>();
-}
-
 bool PsdTreeItemModel::Private::isValidIndex(const QModelIndex &index) const
 {
     return index.isValid() && index.model() == q;
@@ -98,14 +92,14 @@ bool PsdTreeItemModel::Private::isVisible(const QModelIndex &index)
         return false;
     }
 
-    const auto *node = this->node(index);
-    if (node == nullptr) {
+    const auto *item = q->layerItem(index);
+    if (item == nullptr) {
         return false;
     }
-    QString idstr = QString::number(node->id());
+    QString idstr = QString::number(item->id());
 
     if (!visibleMap.contains(idstr)) {
-        visibleMap.insert(idstr, node->isVisible());
+        visibleMap.insert(idstr, item->isVisible());
     }
 
     return visibleMap.value(idstr);
@@ -117,17 +111,17 @@ void PsdTreeItemModel::Private::setVisible(const QModelIndex &index, bool visibl
         return;
     }
 
-    const auto *node = this->node(index);
-    if (node == nullptr) {
+    const auto *item = q->layerItem(index);
+    if (item == nullptr) {
         return;
     }
-    QString idstr = QString::number(node->id());
+    QString idstr = QString::number(item->id());
 
     visibleMap.insert(idstr, visible);
 }
 
 PsdTreeItemModel::PsdTreeItemModel(QObject *parent)
-    : QIdentityProxyModel(parent), d(new Private(this))
+    : QPsdGuiLayerTreeItemModel(parent), d(new Private(this))
 {
 }
 
@@ -159,14 +153,7 @@ QVariant PsdTreeItemModel::headerData(int section, Qt::Orientation orientation, 
 
 QHash<int, QByteArray> PsdTreeItemModel::roleNames() const
 {
-    auto roles = QAbstractItemModel::roleNames();
-    roles.insert(Roles::LayerIdRole, QByteArrayLiteral("LayerId"));
-    roles.insert(Roles::NameRole, QByteArrayLiteral("Name"));
-    roles.insert(Roles::LayerRecordObjectRole, QByteArrayLiteral("LayerRecordObject"));
-    roles.insert(Roles::FolderTypeRole, QByteArrayLiteral("FolderType"));
-    roles.insert(Roles::GroupIndexesRole, QByteArrayLiteral("GroupIndexes"));
-    roles.insert(Roles::ClippingMaskIndexRole, QByteArrayLiteral("ClippingMaskIndex"));
-    roles.insert(Roles::LayerItemObjectRole, QByteArrayLiteral("LayerItemObject"));
+    auto roles = QPsdGuiLayerTreeItemModel::roleNames();
     roles.insert(Roles::VisibleRole, QByteArrayLiteral("Visible"));
     roles.insert(Roles::ExportIdRole, QByteArrayLiteral("ExportId"));
 
@@ -184,13 +171,13 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     if (!d->isValidIndex(index))
         return QVariant();
 
-    const QPsdAbstractLayerItem *node = d->node(index);
-    const QPsdAbstractLayerItem::ExportHint exportHint = node->exportHint();
+    const QPsdAbstractLayerItem *item = layerItem(index);
+    const QPsdAbstractLayerItem::ExportHint exportHint = item->exportHint();
     switch (role) {
     case Qt::DisplayRole:
         switch (index.column()) {
         case Column::Name:
-            return node->name();
+            return item->name();
         case Column::Export:
             return exportHint.id;
         default:
@@ -222,7 +209,7 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         }
         break;
     case Qt::BackgroundRole: {
-        QColor color = node->color();
+        QColor color = item->color();
         int h, s, l, a;
         color.getHsl(&h, &s, &l, &a);
         color.setHsl(h, 128, 128, 128 * a / 255);
@@ -230,34 +217,17 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     case Qt::DecorationRole:
         switch (index.column()) {
         case Column::Name:
-            return QIcon(QPixmap::fromImage(node->image()));
+            return QIcon(QPixmap::fromImage(item->image()));
         default:
             break;
         }
         break;
-    case Roles::NameRole:
-        return node->name();
-    case Roles::LayerIdRole:
-        return node->id();
     case Roles::VisibleRole:
-        return d->isVisible(index);
+        return isVisible(index);
     case Roles::ExportIdRole:
         return exportHint.id;
-     case Roles::GroupIndexesRole: {
-        QList<QVariant> indexes = sourceModel()->data(index, role).toList();
-        QList<QVariant> result;
-        for (const auto &i : indexes) {
-            QModelIndex index = i.value<QPersistentModelIndex>();
-            result.append(QVariant::fromValue(QPersistentModelIndex(mapFromSource(index))));
-        }
-        return QVariant(result); }
-    case Roles::ClippingMaskIndexRole: {
-        QPersistentModelIndex maskIndex = sourceModel()->data(index, role).value<QPersistentModelIndex>();
-        return QVariant::fromValue(mapFromSource(maskIndex)); }
-    case Roles::LayerItemObjectRole:
-        return QVariant::fromValue(node);
     default:
-        return sourceModel()->data(index, role);
+        return QPsdGuiLayerTreeItemModel::data(index, role);
     }
 
     return {};
@@ -275,10 +245,10 @@ bool PsdTreeItemModel::setData(const QModelIndex &index, const QVariant &value, 
         }
         break;
     case Column::Export: {
-        const QPsdAbstractLayerItem *node = d->node(index);
-        QPsdAbstractLayerItem::ExportHint exportHint = node->exportHint();
+        const QPsdAbstractLayerItem *item = layerItem(index);
+        QPsdAbstractLayerItem::ExportHint exportHint = item->exportHint();
         exportHint.id = value.toString();
-        node->setExportHint(exportHint);
+        item->setExportHint(exportHint);
 
         emit dataChanged(index, index);
         return true; }
@@ -304,6 +274,16 @@ Qt::ItemFlags PsdTreeItemModel::flags(const QModelIndex &index) const
     return flags;
 }
 
+bool PsdTreeItemModel::isVisible(const QModelIndex &index) const
+{
+    return d->isVisible(index);
+}
+
+QString PsdTreeItemModel::exportId(const QModelIndex &index) const
+{
+
+}
+
 QFileInfo PsdTreeItemModel::fileInfo() const
 {
     return d->fileInfo;
@@ -317,11 +297,6 @@ QString PsdTreeItemModel::fileName() const
 QString PsdTreeItemModel::errorMessage() const
 {
     return d->errorMessage;
-}
-
-QSize PsdTreeItemModel::size() const
-{
-    return d->parentModel.size();
 }
 
 const QPsdFolderLayerItem *PsdTreeItemModel::layerTree() const
@@ -352,8 +327,7 @@ void PsdTreeItemModel::load(const QString &fileName)
     QPsdParser parser;
     parser.load(fileName);
 
-    d->parentModel.fromParser(parser);
-    setSourceModel(&d->parentModel);
+    fromParser(parser);
 
     const auto header = parser.fileHeader();
     if (!header.errorString().isEmpty()) {
@@ -392,7 +366,7 @@ void PsdTreeItemModel::load(const QString &fileName)
     traverseTree = [&](const QModelIndex &parent) {
         for (int row = 0; row < rowCount(parent); row++) {
             const QModelIndex childIndex = index(row, 0, parent);
-            const QPsdAbstractLayerItem *item = data(childIndex, Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
+            const QPsdAbstractLayerItem *item = layerItem(childIndex);
             const QString idstr = QString::number(item->id());
             QPsdAbstractLayerItem::ExportHint exportHint = d->layerHints.value(idstr);
             exportHint.visible = item->isVisible();
@@ -415,7 +389,7 @@ void PsdTreeItemModel::save()
     QJsonObject layerHints;
     std::function<void(const QModelIndex &)> traverse = [&](const QModelIndex &index) {
         if (index.isValid()) {
-            const auto layer = data(index, PsdTreeItemModel::Roles::LayerItemObjectRole).value<const QPsdAbstractLayerItem *>();
+            const auto layer = layerItem(index);
             const auto lyid = layer->id();
             const auto idstr = QString::number(lyid);
 
