@@ -52,6 +52,13 @@ public:
     virtual void fromParser(const QPsdParser &parser);
     QSize size() const;
 
+    qint32 layerId(const QModelIndex &index) const;
+    QString layerName(const QModelIndex &index) const;
+    const QPsdLayerRecord *layerRecord(const QModelIndex &index) const;
+    enum FolderType folderType(const QModelIndex &index) const;
+    QList<QPersistentModelIndex> groupIndexes(const QModelIndex &index) const;
+    QPersistentModelIndex clippingMaskIndex(const QModelIndex &index) const;
+
 private:
     class Private;
     QScopedPointer<Private> d;

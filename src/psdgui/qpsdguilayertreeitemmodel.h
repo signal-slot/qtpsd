@@ -27,6 +27,8 @@ public:
 
     void fromParser(const QPsdParser &parser) override;
 
+    const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const;
+
 private:
     class Private;
     QScopedPointer<Private> d;

@@ -138,4 +138,9 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
     }
 }
 
+const QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::layerItem(const QModelIndex &index) const
+{
+    return d->layerItemObject(layerRecord(index), folderType(index));
+}
+
 QT_END_NAMESPACE

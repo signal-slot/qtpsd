@@ -170,31 +170,13 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
     if (!index.isValid())
         return {};
 
-    auto layerRecordObject = [&](int nodeIndex) {
-        return &(d->layerRecords.at(nodeIndex));
-    };
-
-    auto layerName = [&](int nodeIndex) {
-        const auto *layerRecord = layerRecordObject(nodeIndex);
-        const auto additionalLayerInformation = layerRecord->additionalLayerInformation();
-
-        // Layer name
-        if (additionalLayerInformation.contains("luni")) {
-            return additionalLayerInformation.value("luni").toString();
-        } else {
-            return QString::fromUtf8(layerRecord->name());
-        }
-    };
-
-    int nodeIndex = index.internalId();
-    const auto node = d->treeNodeList.at(nodeIndex);
     switch (role) {
     case Qt::DisplayRole:
         switch (index.column()) {
         case Column::LayerId:
-            return QString::number(node.layerId);
+            return QString::number(layerId(index));
         case Column::Name:
-            return layerName(nodeIndex);
+            return layerName(index);
         default:
             break;
         }
@@ -202,7 +184,7 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
     case Qt::CheckStateRole:
         switch (index.column()) {
         case Column::FolderType:
-            switch (node.folderType) {
+            switch (folderType(index)) {
             case FolderType::OpenFolder:
                 return Qt::Checked;
             case FolderType::ClosedFolder:
@@ -216,22 +198,22 @@ QVariant QPsdLayerTreeItemModel::data(const QModelIndex &index, int role) const
         }
         break;
     case Roles::LayerIdRole:
-        return QString::number(node.layerId);
+        return QString::number(layerId(index));
     case Roles::NameRole:
-        return layerName(nodeIndex);
+        return layerName(index);
     case Roles::LayerRecordObjectRole:
-        return QVariant::fromValue(layerRecordObject(nodeIndex));
+        return QVariant::fromValue(layerRecord(index));
     case Roles::FolderTypeRole:
-        return QVariant::fromValue(node.folderType);
+        return QVariant::fromValue(folderType(index));
     case Roles::GroupIndexesRole: {
-        const auto list = d->groupsMap.values(d->groupIDs.at(nodeIndex));
+        const auto list = groupIndexes(index);
         QList<QVariant> result;
         for (const auto &index : list) {
             result.append(QVariant::fromValue(index));
         }
         return QVariant(result); }
     case Roles::ClippingMaskIndexRole:
-        return QVariant::fromValue(d->clippingMasks.at(nodeIndex));
+        return QVariant::fromValue(clippingMaskIndex(index));
     default:
         break;
     }
@@ -376,6 +358,57 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 QSize QPsdLayerTreeItemModel::size() const
 {
     return d->fileHeader.size();
+}
+
+qint32 QPsdLayerTreeItemModel::layerId(const QModelIndex &index) const
+{
+    int nodeIndex = index.internalId();
+    const auto node = d->treeNodeList.at(nodeIndex);
+
+    return node.layerId;
+}
+
+QString QPsdLayerTreeItemModel::layerName(const QModelIndex &index) const
+{
+    const auto *layerRecord = this->layerRecord(index);
+    const auto additionalLayerInformation = layerRecord->additionalLayerInformation();
+
+    // Layer name
+    if (additionalLayerInformation.contains("luni")) {
+        return additionalLayerInformation.value("luni").toString();
+    } else {
+        return QString::fromUtf8(layerRecord->name());
+    }
+}
+
+const QPsdLayerRecord *QPsdLayerTreeItemModel::layerRecord(const QModelIndex &index) const
+{
+    int nodeIndex = index.internalId();
+    const auto node = d->treeNodeList.at(nodeIndex);
+
+    return &(d->layerRecords.at(nodeIndex));
+}
+
+enum QPsdLayerTreeItemModel::FolderType QPsdLayerTreeItemModel::folderType(const QModelIndex &index) const
+{
+    int nodeIndex = index.internalId();
+    const auto node = d->treeNodeList.at(nodeIndex);
+
+    return node.folderType;
+}
+
+QList<QPersistentModelIndex> QPsdLayerTreeItemModel::groupIndexes(const QModelIndex &index) const
+{
+    int nodeIndex = index.internalId();
+    const auto list = d->groupsMap.values(d->groupIDs.at(nodeIndex));
+
+    return QList<QPersistentModelIndex>(list);
+}
+
+QPersistentModelIndex QPsdLayerTreeItemModel::clippingMaskIndex(const QModelIndex &index) const
+{
+    int nodeIndex = index.internalId();
+    return d->clippingMasks.at(nodeIndex);
 }
 
 QT_END_NAMESPACE
