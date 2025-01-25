@@ -49,7 +49,7 @@ public:
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
-    void fromParser(const QPsdParser &parser);
+    virtual void fromParser(const QPsdParser &parser);
     QSize size() const;
 
 private:

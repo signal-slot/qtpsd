@@ -25,7 +25,7 @@ public:
 
     QVariant data(const QModelIndex &index, int role = Qt::DisplayRole) const override;
 
-    void fromParser(const QPsdParser &parser);
+    void fromParser(const QPsdParser &parser) override;
 
 private:
     class Private;
