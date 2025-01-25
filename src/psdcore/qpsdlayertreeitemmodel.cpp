@@ -387,7 +387,6 @@ QString QPsdLayerTreeItemModel::layerName(const QModelIndex &index) const
 const QPsdLayerRecord *QPsdLayerTreeItemModel::layerRecord(const QModelIndex &index) const
 {
     int nodeIndex = index.internalId();
-    const auto node = d->treeNodeList.at(nodeIndex);
 
     return &(d->layerRecords.at(nodeIndex));
 }
