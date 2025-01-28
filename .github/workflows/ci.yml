@@ -19,16 +19,13 @@ jobs:
           - os: ubuntu-latest
             host: linux
             arch: linux_gcc_64
-            generator: 'Ninja'
             icu: 'icu'
           - os: windows-latest
             host: windows
             arch: win64_msvc2022_64
-            generator: 'Ninja'
           - os: macos-latest
             host: mac
             arch: clang_64
-            generator: 'Ninja'
             no-error: '-DCMAKE_CXX_FLAGS="-Wno-error=switch -Wno-error=unused-parameter -Wno-error=missing-field-initializers"'
 
     steps:
@@ -49,19 +46,12 @@ jobs:
           install-deps: 'true'
 
       - name: setup MSVC
+        if: runner.os == 'Windows'
         uses: ilammy/msvc-dev-cmd@v1
 
-      - name: Configure (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
+      - name: Configure
         run: |
-          cmake -S . -B build -G "${{ matrix.generator }}" -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
-
-      - name: Configure (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          qt-cmake -B build -G "${{ matrix.generator }}" ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
+          cmake -S . -B build -G "Ninja" -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
 
       - name: Build
         run: |
