@@ -88,7 +88,12 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto additionalLayerInformation = record.additionalLayerInformation();
     const auto tysh = additionalLayerInformation.value("TySh").value<QPsdTypeToolObjectSetting>();
     const auto textData = tysh.textData();
-    const auto transform = tysh.transform();
+    const auto transformParam = tysh.transform();
+    const QTransform transform = QTransform(
+        transformParam[0], transformParam[1],
+        transformParam[2], transformParam[3],
+        transformParam[4], transformParam[5]
+    );
 
     const auto engineDataData = textData.data().value("EngineData").toByteArray();
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData);

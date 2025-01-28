@@ -9,7 +9,7 @@ QT_BEGIN_NAMESPACE
 class QPsdTypeToolObjectSetting::Private : public QSharedData
 {
 public:
-    QTransform transform;
+    QList<qreal> transform;
     QPsdDescriptor textData;
     QPsdDescriptor warpData;
     QRect rect;
@@ -35,8 +35,8 @@ QPsdTypeToolObjectSetting::QPsdTypeToolObjectSetting(QIODevice *source, quint32 
     auto yy = readDouble(source, length);
     auto tx = readDouble(source, length);
     auto ty = readDouble(source, length);
-    d->transform = QTransform(xx, xy, yx, yy, tx, ty);
-
+    d->transform = { xx, xy, yx, yy, tx, ty };
+ 
     // Text version ( = 50 for Photoshop 6.0)
     auto textVersion = readU16(source, length);
     Q_ASSERT(textVersion == 50);
@@ -95,7 +95,7 @@ QPsdTypeToolObjectSetting &QPsdTypeToolObjectSetting::operator=(const QPsdTypeTo
 
 QPsdTypeToolObjectSetting::~QPsdTypeToolObjectSetting() = default;
 
-QTransform QPsdTypeToolObjectSetting::transform() const
+QList<qreal> QPsdTypeToolObjectSetting::transform() const
 {
     return d->transform;
 }

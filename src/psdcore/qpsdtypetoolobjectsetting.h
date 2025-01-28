@@ -7,8 +7,6 @@
 #include <QtPsdCore/qpsdsection.h>
 #include <QtPsdCore/qpsddescriptor.h>
 
-#include <QtGui/QTransform>
-
 QT_BEGIN_NAMESPACE
 
 class Q_PSDCORE_EXPORT QPsdTypeToolObjectSetting : public QPsdSection
@@ -20,7 +18,7 @@ public:
     QPsdTypeToolObjectSetting &operator=(const QPsdTypeToolObjectSetting &other);
     ~QPsdTypeToolObjectSetting() override;
 
-    QTransform transform() const;
+    QList<qreal> transform() const;
     QPsdDescriptor textData() const;
     QPsdDescriptor warpData() const;
     QRect rect() const;
