@@ -9,7 +9,7 @@
 class PsdAbstractItem::Private
 {
 public:
-    Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, PsdAbstractItem *parent);
+    Private(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, PsdAbstractItem *parent);
 
 private:
     PsdAbstractItem *q;
@@ -17,19 +17,20 @@ public:
     const QPsdAbstractLayerItem *layer = nullptr;
     const QPsdAbstractLayerItem *maskItem = nullptr;
     const QMap<quint32, QString> group;
+    const QModelIndex index;
 };
 
-PsdAbstractItem::Private::Private(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, PsdAbstractItem *parent)
+PsdAbstractItem::Private::Private(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, PsdAbstractItem *parent)
     : q(parent)
-    , layer(layer), maskItem(maskItem), group(group)
+    , layer(layer), maskItem(maskItem), group(group), index(index)
 {
     q->setVisible(layer->isVisible());
     q->setGeometry(layer->rect());
 }
 
-PsdAbstractItem::PsdAbstractItem(const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
+PsdAbstractItem::PsdAbstractItem(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
     : QWidget(parent)
-    , d(new Private(layer, maskItem, group, this))
+    , d(new Private(index, layer, maskItem, group, this))
 {}
 
 PsdAbstractItem::~PsdAbstractItem() = default;
@@ -78,4 +79,9 @@ const QPsdAbstractLayerItem *PsdAbstractItem::abstractLayer() const
 QMap<quint32, QString> PsdAbstractItem::groupMap() const
 {
     return d->group;
+}
+
+QModelIndex PsdAbstractItem::modelIndex() const
+{
+    return d->index;
 }

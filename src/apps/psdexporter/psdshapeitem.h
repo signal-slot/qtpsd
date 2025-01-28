@@ -11,7 +11,7 @@ class PsdShapeItem : public PsdAbstractItem
 {
     Q_OBJECT
 public:
-    PsdShapeItem(const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent = nullptr);
+    PsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent = nullptr);
 
 protected:
     void paintEvent(QPaintEvent *event) override;

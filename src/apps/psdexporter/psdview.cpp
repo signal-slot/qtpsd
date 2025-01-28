@@ -103,16 +103,16 @@ void PsdView::reset()
             PsdAbstractItem *item = nullptr;
             switch (layer->type()) {
             case QPsdAbstractLayerItem::Text: {
-                item = new PsdTextItem(reinterpret_cast<const QPsdTextLayerItem *>(layer), mask, groupMap, parent);
+                item = new PsdTextItem(index, reinterpret_cast<const QPsdTextLayerItem *>(layer), mask, groupMap, parent);
                 break; }
             case QPsdAbstractLayerItem::Shape: {
-                item = new PsdShapeItem(reinterpret_cast<const QPsdShapeLayerItem *>(layer), mask, groupMap, parent);
+                item = new PsdShapeItem(index, reinterpret_cast<const QPsdShapeLayerItem *>(layer), mask, groupMap, parent);
                 break; }
             case QPsdAbstractLayerItem::Image: {
-                item = new PsdImageItem(reinterpret_cast<const QPsdImageLayerItem *>(layer), mask, groupMap, parent);
+                item = new PsdImageItem(index, reinterpret_cast<const QPsdImageLayerItem *>(layer), mask, groupMap, parent);
                 break; }
             case QPsdAbstractLayerItem::Folder: {
-                item = new PsdFolderItem(reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, groupMap, parent);
+                item = new PsdFolderItem(index, reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, groupMap, parent);
                 item->resize(size());
                 parent = item;
                 break; }
@@ -178,6 +178,7 @@ void PsdView::mouseDoubleClickEvent(QMouseEvent *event)
         dialog.setItem(child->abstractLayer(), child->groupMap());
         if (dialog.exec() == QDialog::Accepted) {
             emit updateText(child->abstractLayer());
+            d->model->setLayerHint(child->modelIndex(), child->abstractLayer()->exportHint());
         }
 
         d->rubberBand->hide();

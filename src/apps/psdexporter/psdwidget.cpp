@@ -3,7 +3,6 @@
 
 #include "psdwidget.h"
 #include "ui_psdwidget.h"
-#include "itemexportsettingdialog.h"
 #include "psdtreeitemmodel.h"
 
 #include <QtCore/QCryptographicHash>
