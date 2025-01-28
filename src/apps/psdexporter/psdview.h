@@ -7,7 +7,6 @@
 #include <psdtreeitemmodel.h>
 
 #include <QtWidgets/QWidget>
-#include <QtPsdGui/QPsdFolderLayerItem>
 
 class PsdView : public QWidget
 {
@@ -22,9 +21,10 @@ public slots:
     void setModel(PsdTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);
     void reset();
+    void clearSelection();
 
 signals:
-    void updateText(const QPsdAbstractLayerItem *item);
+    void itemSelected(const QModelIndex &index);
     void modelChanged(PsdTreeItemModel *model);
 
 protected:

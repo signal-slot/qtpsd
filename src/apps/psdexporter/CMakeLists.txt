@@ -12,7 +12,6 @@ qt_internal_add_app(psdexporter
         psdshapeitem.h psdshapeitem.cpp
         psdimageitem.h psdimageitem.cpp
         psdfolderitem.h psdfolderitem.cpp
-        itemexportsettingdialog.h itemexportsettingdialog.cpp itemexportsettingdialog.ui
         exportdialog.h exportdialog.cpp exportdialog.ui
         psdtreeitemmodel.h psdtreeitemmodel.cpp
     LIBRARIES

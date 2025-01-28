@@ -3,7 +3,6 @@
 
 #include "psdwidget.h"
 #include "ui_psdwidget.h"
-#include "itemexportsettingdialog.h"
 #include "psdtreeitemmodel.h"
 
 #include <QtCore/QCryptographicHash>
@@ -76,6 +75,11 @@ PsdWidget::Private::Private(::PsdWidget *parent)
 
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, q, [this]() {
         updateAttributes();
+        psdView->clearSelection();
+    });
+
+    connect(psdView, &PsdView::itemSelected, q, [this](const QModelIndex &index) {
+        treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     });
 
     connect(&model, &PsdTreeItemModel::fileInfoChanged, q, [this](const QFileInfo &fileInfo) {
