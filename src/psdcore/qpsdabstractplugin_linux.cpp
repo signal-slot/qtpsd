@@ -24,7 +24,7 @@ QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
             for (const auto &subDir : subDirs) {
                 QDir newDir = dir.absoluteFilePath(subDir);
                 auto ret = findPluginsDir(newDir);
-                if (ret.dirName() == "plugins")
+                if (ret.dirName() == QLatin1StringView("plugins"))
                     return ret;
             }
             return QDir();
@@ -34,7 +34,7 @@ QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
         pluginsDir.cd(type);
         return pluginsDir;
     } else {
-        qWarning() << "dladdrに失敗しました。";
+        qWarning() << u"dladdrに失敗しました。"_s;
     }
     return QDir();
 }
