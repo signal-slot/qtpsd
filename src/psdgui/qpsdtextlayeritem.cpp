@@ -25,8 +25,8 @@ QFont findProperFont(const QString &name) {
         cache.insert(name, font);
         return font;
     }
-    QString familySpecified = font.family().section(QLatin1Char('-'), 0, 0);
-    QString styleSpecified = font.family().section(QLatin1Char('-'), 1, 1);
+    QString familySpecified = font.family().section('-'_L1, 0, 0);
+    QString styleSpecified = font.family().section('-'_L1, 1, 1);
 
     static const QHash<QString, QString> substitute = {
                                                        { "MyriadPro"_L1, "Myriad Pro"_L1 },
@@ -50,7 +50,7 @@ QFont findProperFont(const QString &name) {
     } else {
         for (const auto &family : families) {
             QString familyWithoutSpaces = family;
-            familyWithoutSpaces.remove(QLatin1Char(' '));
+            familyWithoutSpaces.remove(' '_L1);
             if (familyWithoutSpaces == familySpecified) {
                 font.setFamily(family);
                 font.setStyleName(styleSpecified);
@@ -60,7 +60,7 @@ QFont findProperFont(const QString &name) {
         }
     }
 
-    QString familySpecifiedBeginning = familySpecified.section(QLatin1Char(' '), 0, 0);
+    QString familySpecifiedBeginning = familySpecified.section(' '_L1, 0, 0);
     for (const auto &family : families) {
         if (!family.startsWith(familySpecifiedBeginning)) {
             continue;
@@ -140,7 +140,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         run.font = findProperFont(fontInfo.value("Name"_L1).toString());
         run.font.setKerning(autoKerning);
         const auto ligatures = styleSheetData.value("Ligatures"_L1).toBool();
-        if (!ligatures && styleSheetData.contains(QLatin1StringView("Tracking"))) {
+        if (!ligatures && styleSheetData.contains("Tracking"_L1)) {
             const auto tracking = styleSheetData.value("Tracking"_L1).toDouble();
             run.font.setLetterSpacing(QFont::PercentageSpacing, tracking);
         }
@@ -150,7 +150,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         run.text = text.mid(start, runLength);
         start += runLength;
 
-        if (styleSheetData.contains(QLatin1StringView("StyleRunAlignment"))) {
+        if (styleSheetData.contains("StyleRunAlignment"_L1)) {
             // https://documentation.help/Illustrator-CS6/pe_StyleRunAlignmentType.html
             const auto styleRunAlignment = styleSheetData.value("StyleRunAlignment"_L1).toInteger();
             // Qt doesn't support icf
