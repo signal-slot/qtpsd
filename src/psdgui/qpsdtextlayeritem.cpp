@@ -4,7 +4,6 @@
 #include "qpsdtextlayeritem.h"
 
 #include <QtCore/QCborMap>
-#include <QtCore/QStringView>
 #include <QtGui/QFontInfo>
 #include <QtGui/QFontDatabase>
 
