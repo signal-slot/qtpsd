@@ -95,7 +95,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         transformParam[4], transformParam[5]
     );
 
-    const auto engineDataData = textData.data().value("EngineData"_L1).toByteArray();
+    const auto engineDataData = textData.data().value("EngineData").toByteArray();
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData);
     // qDebug().noquote() << QJsonDocument(engineData.toJsonObject()).toJson();
 
