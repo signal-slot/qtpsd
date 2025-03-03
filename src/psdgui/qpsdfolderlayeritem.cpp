@@ -27,7 +27,7 @@ QPsdFolderLayerItem::QPsdFolderLayerItem(const QPsdLayerRecord &record, bool ope
     d->opened = opened;
     const auto additionalLayerInformation = record.additionalLayerInformation();
     if (additionalLayerInformation.contains("artb")) {
-        const auto artb = additionalLayerInformation.value("artb").value<QPsdDescriptor>().data();
+        const auto artb = additionalLayerInformation.value("artb"_ba).value<QPsdDescriptor>().data();
 //        const auto guideIndeces = artb.value("guideIndeces").toList();
 
         const auto artboardRect = artb.value("artboardRect").value<QPsdDescriptor>().data();

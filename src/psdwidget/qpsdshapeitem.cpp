@@ -39,7 +39,7 @@ void QPsdShapeItem::paintEvent(QPaintEvent *event)
         painter.setPen(QPen(border->color(), border->size()));
     } else if (patternFill) {
         const auto record = layer->record();
-        const auto patt = record.additionalLayerInformation().value("Patt");
+        const auto patt = record.additionalLayerInformation().value("Patt"_ba);
         // TODO: find the pattern from below
         // However, there is no way to access it from here yet
         // parser.layerAndMaskInformation().additionalLayerInformation().value("Patt");

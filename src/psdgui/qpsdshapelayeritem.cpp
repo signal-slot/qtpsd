@@ -39,12 +39,12 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
     const auto additionalLayerInformation = record.additionalLayerInformation();
 
     if (additionalLayerInformation.contains("vsms")) {
-        d->path = parseShape(additionalLayerInformation.value("vsms").value<QPsdVectorMaskSetting>());
+        d->path = parseShape(additionalLayerInformation.value("vsms"_ba).value<QPsdVectorMaskSetting>());
     } else if (additionalLayerInformation.contains("vmsk")) {
-        d->path = parseShape(additionalLayerInformation.value("vmsk").value<QPsdVectorMaskSetting>());
+        d->path = parseShape(additionalLayerInformation.value("vmsk"_ba).value<QPsdVectorMaskSetting>());
     }
 
-    const auto vstk = additionalLayerInformation.value("vstk").value<QPsdVectorStrokeData>();
+    const auto vstk = additionalLayerInformation.value("vstk"_ba).value<QPsdVectorStrokeData>();
     if (vstk.strokeEnabled()) {
         QColor color(vstk.strokeStyleContent());
         color.setAlpha(vstk.strokeStyleOpacity().value() * 255 / 100);
@@ -74,7 +74,7 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
 
     if (vstk.fillEnabled()) {
         if (additionalLayerInformation.contains("vscg")) {
-            const auto vscg = additionalLayerInformation.value("vscg").value<QPsdVectorStrokeContentSetting>();
+            const auto vscg = additionalLayerInformation.value("vscg"_ba).value<QPsdVectorStrokeContentSetting>();
             switch (vscg.type()) {
             case QPsdVectorStrokeContentSetting::SolidColor:
                 d->brush = QBrush(QColor(vscg.solidColor()));
@@ -103,7 +103,7 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                 break; }
             }
         } else if (additionalLayerInformation.contains("SoCo")) {
-            const auto soco = additionalLayerInformation.value("SoCo").value<QPsdDescriptor>().data();
+            const auto soco = additionalLayerInformation.value("SoCo"_ba).value<QPsdDescriptor>().data();
             const auto clr_ = soco.value("Clr ").value<QPsdDescriptor>().data();
             const int rd__ = clr_.value("Rd  ").toDouble();
             const int grn_ = clr_.value("Grn ").toDouble();

@@ -57,18 +57,18 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
     const auto additionalLayerInformation = record.additionalLayerInformation();
 
     // Layer ID
-    const auto lyid = additionalLayerInformation.value("lyid").value<quint32>();
+    const auto lyid = additionalLayerInformation.value("lyid"_ba).value<quint32>();
     d->id = lyid;
 
     // Layer name
     d->name = QString::fromUtf8(record.name());
     if (additionalLayerInformation.contains("luni")) {
-        d->name = additionalLayerInformation.value("luni").toString();
+        d->name = additionalLayerInformation.value("luni"_ba).toString();
     }
 
     // Sheet Color setting
     if (additionalLayerInformation.contains("lclr")) {
-        d->color = QColor(additionalLayerInformation.value("lclr").toString());
+        d->color = QColor(additionalLayerInformation.value("lclr"_ba).toString());
     }
 
     // Layer visibility
@@ -81,13 +81,13 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
     d->rect = record.rect();
 
     if (additionalLayerInformation.contains("lrFX")) {
-        const auto effectsLayer = additionalLayerInformation.value("lrFX").value<QPsdEffectsLayer>();
+        const auto effectsLayer = additionalLayerInformation.value("lrFX"_ba).value<QPsdEffectsLayer>();
         d->effects = effectsLayer.effects();
     }
 
     // Effects
     if (additionalLayerInformation.contains("lfx2")) {
-        const auto lfx2 = additionalLayerInformation.value("lfx2").value<QPsdDescriptor>();
+        const auto lfx2 = additionalLayerInformation.value("lfx2"_ba).value<QPsdDescriptor>();
         std::function<bool(const QPsdDescriptor &, int indent)> debugDescriptor = [&](const QPsdDescriptor &descriptor, int indent) {
             const auto data = descriptor.data();
             if (data.contains("enab") && !data.value("enab").toBool()) {
@@ -358,7 +358,7 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
 
     // Vector mask
     if (additionalLayerInformation.contains("vmsk")) {
-        d->vectorMask = parseShape(additionalLayerInformation.value("vmsk").value<QPsdVectorMaskSetting>());
+        d->vectorMask = parseShape(additionalLayerInformation.value("vmsk"_ba).value<QPsdVectorMaskSetting>());
     }
 }
 

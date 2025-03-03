@@ -62,7 +62,7 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
             //TODO clipping support
 
             if (additionalLayerInformation.contains("SoLd")) {
-                const auto sold = additionalLayerInformation.value("SoLd").value<QPsdPlacedLayerData>();
+                const auto sold = additionalLayerInformation.value("SoLd"_ba).value<QPsdPlacedLayerData>();
                 const auto descriptor = sold.descriptor().data();
                 if (descriptor.contains("Idnt")) {
                     const auto uniqueId = descriptor.value("Idnt").toString().toLatin1();
@@ -74,7 +74,7 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
                     }
                 }
             } else if (additionalLayerInformation.contains("PlLd")) {
-                const auto plld = additionalLayerInformation.value("PlLd").value<QPsdPlacedLayer>();
+                const auto plld = additionalLayerInformation.value("PlLd"_ba).value<QPsdPlacedLayer>();
                 for (const auto &file : linkedFiles) {
                     if (file.uniqueId == plld.uniqueId()) {
                         item->setLinkedFile(file);
@@ -133,7 +133,7 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto additionalLayerInformation = layerAndMaskInformation.additionalLayerInformation();
 
     if (additionalLayerInformation.contains("lnk2")) {
-        const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
+        const auto lnk2 = additionalLayerInformation.value("lnk2"_ba).value<QPsdLinkedLayer>();
         d->linkedFiles = lnk2.files();
     }
 }

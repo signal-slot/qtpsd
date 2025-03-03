@@ -41,7 +41,7 @@ void tst_QPsdLayerTreeItemModel::parse_nested_layers()
             const auto additionalLayerInformation = layerRecord->additionalLayerInformation();
 
             // Layer ID
-            const auto lyid = additionalLayerInformation.value("lyid").value<quint32>();
+            const auto lyid = additionalLayerInformation.value("lyid"_ba).value<quint32>();
 
             QCOMPARE(layerId, lyid);
         }

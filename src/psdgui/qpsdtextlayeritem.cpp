@@ -26,8 +26,8 @@ QFont findProperFont(const QString &name) {
         cache.insert(name, font);
         return font;
     }
-    QString familySpecified = font.family().section(QLatin1Char('-'), 0, 0);
-    QString styleSpecified = font.family().section(QLatin1Char('-'), 1, 1);
+    QString familySpecified = font.family().section("-"_L1, 0, 0);
+    QString styleSpecified = font.family().section("-"_L1, 1, 1);
 
     static const QHash<QString, QString> substitute = {
                                                        { "MyriadPro"_L1, "Myriad Pro"_L1 },
@@ -87,7 +87,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     , d(new Private)
 {
     const auto additionalLayerInformation = record.additionalLayerInformation();
-    const auto tysh = additionalLayerInformation.value("TySh"_L1).value<QPsdTypeToolObjectSetting>();
+    const auto tysh = additionalLayerInformation.value("TySh"_ba).value<QPsdTypeToolObjectSetting>();
     const auto textData = tysh.textData();
     const auto transformParam = tysh.transform();
     const QTransform transform = QTransform(

@@ -280,7 +280,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 
         // Layer structure
         if (additionalLayerInformation.contains("lsdk")) {
-            const auto lsdk = additionalLayerInformation.value("lsdk").toInt();
+            const auto lsdk = additionalLayerInformation.value("lsdk"_ba).toInt();
             switch (lsdk) {
             case 1:
                 folderType = FolderType::OpenFolder;
@@ -293,7 +293,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
                 break;
             }
         } else {
-            const auto lsct = additionalLayerInformation.value("lsct").template value<QPsdSectionDividerSetting>();
+            const auto lsct = additionalLayerInformation.value("lsct"_ba).template value<QPsdSectionDividerSetting>();
             switch (lsct.type()) {
             case QPsdSectionDividerSetting::OpenFolder:
                 folderType = FolderType::OpenFolder;
@@ -337,7 +337,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         }
 
         // Layer ID
-        const auto lyid = additionalLayerInformation.value("lyid").template value<quint32>();
+        const auto lyid = additionalLayerInformation.value("lyid"_ba).template value<quint32>();
 
         d->treeNodeList.prepend(QPsdLayerTreeItemModel::Private::Node {
             i,
@@ -384,7 +384,7 @@ QString QPsdLayerTreeItemModel::layerName(const QModelIndex &index) const
 
     // Layer name
     if (additionalLayerInformation.contains("luni")) {
-        return additionalLayerInformation.value("luni").toString();
+        return additionalLayerInformation.value("luni"_ba).toString();
     } else {
         return QString::fromUtf8(layerRecord->name());
     }

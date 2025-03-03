@@ -43,7 +43,7 @@ QPsdFolderLayerItem *QPsdLayerTree::fromParser(const QPsdParser &parser)
     QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
     if (additionalLayerInformation.contains("lnk2")) {
         if (additionalLayerInformation.contains("lnk2")) {
-            const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
+            const auto lnk2 = additionalLayerInformation.value("lnk2"_ba).value<QPsdLinkedLayer>();
             linkedFiles = lnk2.files();
         }
     }
@@ -71,7 +71,7 @@ QPsdFolderLayerItem *QPsdLayerTree::fromParser(const QPsdParser &parser)
 
         // Layer structure
         if (additionalLayerInformation.contains("lsdk")) {
-            const auto lsdk = additionalLayerInformation.value("lsdk").toInt();
+            const auto lsdk = additionalLayerInformation.value("lsdk"_ba).toInt();
             switch (lsdk) {
             case 1:
                 item = new QPsdFolderLayerItem(record, true);
@@ -83,7 +83,7 @@ QPsdFolderLayerItem *QPsdLayerTree::fromParser(const QPsdParser &parser)
                 break;
             }
         } else {
-            const auto lsct = additionalLayerInformation.value("lsct").value<QPsdSectionDividerSetting>();
+            const auto lsct = additionalLayerInformation.value("lsct"_ba).value<QPsdSectionDividerSetting>();
             switch (lsct.type()) {
             case QPsdSectionDividerSetting::AnyOtherTypeOfLayer: {
                 if (additionalLayerInformation.contains("TySh")) {
@@ -106,7 +106,7 @@ QPsdFolderLayerItem *QPsdLayerTree::fromParser(const QPsdParser &parser)
                 }
 
                 if (additionalLayerInformation.contains("SoLd")) {
-                    const auto sold = additionalLayerInformation.value("SoLd").value<QPsdPlacedLayerData>();
+                    const auto sold = additionalLayerInformation.value("SoLd"_ba).value<QPsdPlacedLayerData>();
                     const auto descriptor = sold.descriptor().data();
                     if (descriptor.contains("Idnt")) {
                         const auto uniqueId = descriptor.value("Idnt").toString().toLatin1();
@@ -118,7 +118,7 @@ QPsdFolderLayerItem *QPsdLayerTree::fromParser(const QPsdParser &parser)
                         }
                     }
                 } else if (additionalLayerInformation.contains("PlLd")) {
-                    const auto plld = additionalLayerInformation.value("PlLd").value<QPsdPlacedLayer>();
+                    const auto plld = additionalLayerInformation.value("PlLd"_ba).value<QPsdPlacedLayer>();
                     for (const auto &file : linkedFiles) {
                         if (file.uniqueId == plld.uniqueId()) {
                             item->setLinkedFile(file);
