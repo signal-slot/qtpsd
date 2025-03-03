@@ -86,7 +86,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     , d(new Private)
 {
     const auto additionalLayerInformation = record.additionalLayerInformation();
-    const auto tysh = additionalLayerInformation.value("TySh"_L1).value<QPsdTypeToolObjectSetting>();
+    const auto tysh = additionalLayerInformation.value("TySh").value<QPsdTypeToolObjectSetting>();
     const auto textData = tysh.textData();
     const auto transformParam = tysh.transform();
     const QTransform transform = QTransform(
