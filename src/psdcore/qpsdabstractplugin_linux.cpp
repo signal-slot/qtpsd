@@ -4,6 +4,7 @@
 #include "qpsdabstractplugin.h"
 
 #include <dlfcn.h>
+#include <QtCore/QStringView>
 
 QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
 {
