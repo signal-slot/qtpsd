@@ -5,6 +5,13 @@
 #include <QtPsdCore/QPsdLayerRecord>
 #include <QtPsdCore/QPsdLayerTreeItemModel>
 #include <QtPsdCore/QPsdParser>
+#include <QtCore/QByteArray>
+
+// Define the _ba suffix for QByteArray literals
+inline QByteArray operator"" _ba(const char *str, size_t size)
+{
+    return QByteArray(str, static_cast<int>(size));
+}
 
 class tst_QPsdLayerTreeItemModel : public QObject
 {

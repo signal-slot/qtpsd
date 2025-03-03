@@ -8,6 +8,13 @@
 
 #include <QAbstractItemModel>
 #include <QFileInfo>
+#include <QtCore/QByteArray>
+
+// Define the _ba suffix for QByteArray literals
+inline QByteArray operator"" _ba(const char *str, size_t size)
+{
+    return QByteArray(str, static_cast<int>(size));
+}
 
 QT_BEGIN_NAMESPACE
 
