@@ -79,7 +79,7 @@ protected:
                 const auto jsonKeys = metaData.value("Keys"_L1).toArray();
                 QObject *object = loader.instance();
                 if (!object) {
-                    qFatal() << loader.errorString();
+                    qFatal("%s", qPrintable(loader.errorString()));
                 }
                 auto plugin = qobject_cast<T *>(object);
                 Q_ASSERT(plugin);
