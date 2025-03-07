@@ -49,10 +49,11 @@ public:
         QString componentName;
         NativeComponent baseElement = Container;
         bool visible = true;
+        bool exportAsImage = false;
         QSet<QString> properties;
 
         bool isDefaultValue() const {
-            return id.isEmpty() && type == Embed && componentName.isEmpty() && baseElement == Container;
+            return id.isEmpty() && type == Embed && componentName.isEmpty() && baseElement == Container && !exportAsImage;
         }
 
         static NativeComponent nativeName2Code(const QString &name) {
