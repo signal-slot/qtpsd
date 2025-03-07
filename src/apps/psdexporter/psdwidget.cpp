@@ -132,11 +132,17 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     };
     connect(typeEmbed, &QRadioButton::toggled, q, [=](bool checked) {
         embedWithTouch->setEnabled(checked);
+        exportAsImage->setEnabled(checked);
         if (isReset())
             changed();
     });
     embedWithTouch->setEnabled(typeEmbed->isChecked());
     connect(embedWithTouch, &QCheckBox::checkStateChanged, q, [=]() {
+        if (isReset())
+            changed();
+    });
+    exportAsImage->setEnabled(typeEmbed->isChecked());
+    connect(exportAsImage, &QCheckBox::checkStateChanged, q, [=]() {
         if (isReset())
             changed();
     });
@@ -268,6 +274,7 @@ void PsdWidget::Private::updateAttributes()
 
     UniqueOrNot<QPsdExporterTreeItemModel::ExportHint::Type> itemTypes(QPsdExporterTreeItemModel::ExportHint::None);
     UniqueOrNot<Qt::CheckState> itemWithTouch(Qt::PartiallyChecked);
+    UniqueOrNot<Qt::CheckState> itemExportAsImage(Qt::PartiallyChecked);
     UniqueOrNot<QList<QPersistentModelIndex>> itemMergeGroup;
     QSet<const QPersistentModelIndex> excludeFromMergeGroup;
     UniqueOrNot<QString> itemComponentName;
@@ -281,6 +288,7 @@ void PsdWidget::Private::updateAttributes()
         const auto hint = model.layerHint(row);
         itemTypes.add(hint.type);
         itemWithTouch.add(hint.baseElement == QPsdExporterTreeItemModel::ExportHint::TouchArea ? Qt::Checked : Qt::Unchecked);
+        itemExportAsImage.add(hint.exportAsImage ? Qt::Checked : Qt::Unchecked);
         qDebug() << hint.baseElement << itemWithTouch.isUnique() << itemWithTouch.value();
         QList<QPersistentModelIndex> groupIndexList;
         for (auto &v : groupVariantList) {
@@ -317,6 +325,7 @@ void PsdWidget::Private::updateAttributes()
 
     // reset all
     embedWithTouch->setCheckState(Qt::Unchecked);
+    exportAsImage->setCheckState(Qt::Unchecked);
     merge->clear();
     if (itemMergeGroup.isUnique()) {
         merge->setEnabled(true);
@@ -349,6 +358,8 @@ void PsdWidget::Private::updateAttributes()
         qDebug() << itemWithTouch.value() << embedWithTouch->checkState();
         embedWithTouch->setCheckState(itemWithTouch.value());
         qDebug() << itemWithTouch.value() << embedWithTouch->checkState();
+        exportAsImage->setEnabled(true);
+        exportAsImage->setCheckState(itemExportAsImage.value());
         break;
     case QPsdExporterTreeItemModel::ExportHint::Merge:
         merge->setCurrentText(itemComponentName.value());
@@ -394,6 +405,7 @@ void PsdWidget::Private::applyAttributes()
     }
     const auto type = types.checkedId();
     const auto withTouch = embedWithTouch->checkState();
+    const auto exportAsImageChecked = exportAsImage->checkState();
     QSet<QString> propertiesChecked;
     for (auto *property : properties->findChildren<QCheckBox *>()) {
         if (property->checkState() == Qt::Checked) {
@@ -414,6 +426,16 @@ void PsdWidget::Private::applyAttributes()
                 break;
             case Qt::Unchecked:
                 hint.baseElement = QPsdExporterTreeItemModel::ExportHint::Container;
+                break;
+            default:
+                break;
+            }
+            switch (exportAsImageChecked) {
+            case Qt::Checked:
+                hint.exportAsImage = true;
+                break;
+            case Qt::Unchecked:
+                hint.exportAsImage = false;
                 break;
             default:
                 break;
