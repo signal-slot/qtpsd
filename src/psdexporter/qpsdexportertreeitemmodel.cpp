@@ -80,6 +80,7 @@ void QPsdExporterTreeItemModel::Private::loadHintFile()
                 settings.value("name"_L1).toString(),
                 static_cast<ExportHint::NativeComponent>(settings.value("native"_L1).toInt()),
                 settings.value("visible"_L1).toBool(),
+                settings.value("exportAsImage"_L1).toBool(),
                 QSet<QString>(properties.begin(), properties.end()),
             };
             layerHints.insert(idstr, exportHint);
@@ -320,6 +321,7 @@ void QPsdExporterTreeItemModel::save()
                 }
                 object.insert("native"_L1, static_cast<int>(exportHint.baseElement));
                 object.insert("visible"_L1, exportHint.visible);
+                object.insert("exportAsImage"_L1, exportHint.exportAsImage);
                 if (!propList.isEmpty())
                     object.insert("properties"_L1, QJsonArray::fromStringList(propList));
                 layerHints.insert(idstr, object);
