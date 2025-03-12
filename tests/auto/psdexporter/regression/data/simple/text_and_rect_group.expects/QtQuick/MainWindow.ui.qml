@@ -42,7 +42,7 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "源ノ角ゴシック JP"
+                font.family: "SourceHanSans-Medium"
                 font.pointSize: 20
                 height: 58
                 horizontalAlignment: Text.AlignHCenter

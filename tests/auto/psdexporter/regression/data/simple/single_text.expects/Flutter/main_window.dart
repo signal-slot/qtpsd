@@ -27,7 +27,7 @@ class MainWindow extends StatelessWidget {
                         "Example1", 
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
-                          fontFamily: "源ノ角ゴシック JP",
+                          fontFamily: "SourceHanSans-Medium",
                           fontSize: 20,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
