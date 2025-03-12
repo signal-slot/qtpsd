@@ -445,8 +445,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         element->type = "Text";
         if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
             return false;
-        auto text = run.text;
-        element->properties.insert("text", u"\"%1\""_s.arg(text.replace("\n", "\\n")));
+        element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() / 1.5 * fontScaleFactor));
         element->properties.insert("color", run.color.name());

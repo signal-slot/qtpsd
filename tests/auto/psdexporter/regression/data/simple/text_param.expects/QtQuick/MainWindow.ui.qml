@@ -18,7 +18,7 @@ Item {
             font.family: "SourceHanSans-Medium"
             font.pointSize: 33.3333
             horizontalAlignment: Text.AlignHCenter
-            text: " \n "
+            text: ""
             verticalAlignment: Text.AlignVCenter
         }
         Item {
@@ -53,7 +53,7 @@ Item {
             font.pointSize: 33.3333
             height: 96
             horizontalAlignment: Text.AlignHCenter
-            text: "shooting\n "
+            text: "shooting"
             verticalAlignment: Text.AlignVCenter
             width: 239
             x: 30

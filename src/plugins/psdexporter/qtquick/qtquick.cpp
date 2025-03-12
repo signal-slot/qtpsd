@@ -337,12 +337,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         element->type = "Text";
         if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
             return false;
-        auto lines = run.text.split("\n");
-        // replace empty line with a space
-        for (auto &line : lines)
-            if (line.isEmpty())
-                line = " ";
-        element->properties.insert("text", u"\"%1\""_s.arg(lines.join("\\n")));
+        element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font.pointSize", run.font.pointSizeF() / 1.5 * fontScaleFactor);
         if (run.font.bold())
@@ -389,7 +384,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 }
                 Element textElement;
                 textElement.type = "Text";
-                textElement.properties.insert("text", u"\"%1\""_s.arg(text.isEmpty() ? " " : text));
+                textElement.properties.insert("text", u"\"%1\""_s.arg(text));
                 textElement.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font.pointSize", run.font.pointSizeF() / 1.5 * fontScaleFactor);
                 if (run.font.bold())
