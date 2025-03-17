@@ -25,10 +25,11 @@ class MainWindow extends StatelessWidget {
                     children: [
                       Text(
                         "Example1", 
+                        textScaler: TextScaler.linear(1),
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
                           fontFamily: "SourceHanSans-Medium",
-                          fontSize: 20,
+                          fontSize: 30,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
                         ),

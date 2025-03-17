@@ -15,7 +15,7 @@ Item {
         Text {
             color: "#000000"
             font.family: "SourceHanSans-Medium"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             height: 96
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
@@ -27,7 +27,7 @@ Item {
         Text {
             color: "#000000"
             font.family: "TimesNewRomanPSMT"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             height: 57
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
@@ -39,7 +39,7 @@ Item {
         Text {
             color: "#000000"
             font.family: "Wingdings"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             height: 54
             horizontalAlignment: Text.AlignHCenter
             text: "hub"
@@ -51,7 +51,7 @@ Item {
         Text {
             color: "#000000"
             font.family: "MS PMincho"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             height: 50
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
@@ -63,7 +63,7 @@ Item {
         Text {
             color: "#000000"
             font.family: "Exo2Roman-Thin"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             height: 56
             horizontalAlignment: Text.AlignHCenter
             text: "hug"

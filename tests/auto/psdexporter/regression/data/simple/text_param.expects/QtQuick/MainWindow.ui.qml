@@ -16,7 +16,7 @@ Item {
             anchors.fill: parent
             color: "#000000"
             font.family: "SourceHanSans-Medium"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
             verticalAlignment: Text.AlignVCenter
@@ -50,7 +50,7 @@ Item {
         Text {
             color: "#000000"
             font.family: "SourceHanSans-Medium"
-            font.pointSize: 33.3333
+            font.pixelSize: 50
             height: 96
             horizontalAlignment: Text.AlignHCenter
             text: "shooting"

@@ -1,40 +1,40 @@
 {
     "アートボード 1": {
-        "hub": {
+        "12pt": {
             "id": "",
-            "name": "hub",
+            "name": "12pt",
             "rect": {
-                "height": 49,
-                "width": 146,
-                "x": 424,
-                "y": 25
+                "height": 48,
+                "width": 115,
+                "x": 34,
+                "y": 37
             },
             "runs": [
                 {
                     "alignment": 128,
-                    "color": "#000000",
-                    "font": "Wingdings,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
-                    "text": "hub\n"
+                    "color": "#ffffff",
+                    "font": "SourceHanSans-Medium,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                    "text": "12pt\n"
                 }
             ],
             "type": "Text",
             "visible": true
         },
-        "hug": {
+        "150px": {
             "id": "",
-            "name": "hug",
+            "name": "150px",
             "rect": {
-                "height": 52,
-                "width": 94,
-                "x": 24,
-                "y": 24
+                "height": 143,
+                "width": 464,
+                "x": 162,
+                "y": 82
             },
             "runs": [
                 {
                     "alignment": 128,
-                    "color": "#000000",
-                    "font": "SourceHanSans-Medium,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
-                    "text": "hug\n"
+                    "color": "#ffffff",
+                    "font": "SourceHanSans-Medium,100,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                    "text": "150px\n"
                 }
             ],
             "type": "Text",

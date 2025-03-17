@@ -425,7 +425,7 @@ bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run r
     Element textStyleElement;
     textStyleElement.type = "TextStyle";
     textStyleElement.properties.insert("fontFamily",  u"\"%1\""_s.arg(run.font.family()));
-    textStyleElement.properties.insert("fontSize", run.font.pointSizeF() * fontScaleFactor / 1.5);
+    textStyleElement.properties.insert("fontSize", run.font.pointSizeF() * fontScaleFactor * 1.5);
     textStyleElement.properties.insert("height", 1.0);
     int weight = run.font.bold() ? 800 : 600;
     textStyleElement.properties.insert("fontVariations", u"[FontVariation.weight(%1)]"_s.arg(weight));
@@ -435,6 +435,7 @@ bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run r
     //TODO alignment horizontal / vertical
 
     element->properties.insert("style", QVariant::fromValue(textStyleElement));
+    element->properties.insert("textScaler"_L1, "TextScaler.linear(1)"_L1);
     return true;
 }
 

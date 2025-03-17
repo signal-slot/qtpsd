@@ -25,10 +25,11 @@ class MainWindow extends StatelessWidget {
                     children: [
                       Text(
                         "hug", 
+                        textScaler: TextScaler.linear(1),
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
                           fontFamily: "SourceHanSans-Medium",
-                          fontSize: 33.3333,
+                          fontSize: 50,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
                         ),
@@ -45,10 +46,11 @@ class MainWindow extends StatelessWidget {
                     children: [
                       Text(
                         "hug", 
+                        textScaler: TextScaler.linear(1),
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
                           fontFamily: "TimesNewRomanPSMT",
-                          fontSize: 33.3333,
+                          fontSize: 50,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
                         ),
@@ -65,10 +67,11 @@ class MainWindow extends StatelessWidget {
                     children: [
                       Text(
                         "hub", 
+                        textScaler: TextScaler.linear(1),
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
                           fontFamily: "Wingdings",
-                          fontSize: 33.3333,
+                          fontSize: 50,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
                         ),
@@ -85,10 +88,11 @@ class MainWindow extends StatelessWidget {
                     children: [
                       Text(
                         "hug", 
+                        textScaler: TextScaler.linear(1),
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
                           fontFamily: "MS PMincho",
-                          fontSize: 33.3333,
+                          fontSize: 50,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
                         ),
@@ -105,10 +109,11 @@ class MainWindow extends StatelessWidget {
                     children: [
                       Text(
                         "hug", 
+                        textScaler: TextScaler.linear(1),
                         style: TextStyle(
                           color: Color.fromARGB(255, 0, 0, 0),
                           fontFamily: "Exo2Roman-Thin",
-                          fontSize: 33.3333,
+                          fontSize: 50,
                           fontVariations: [FontVariation.weight(600)],
                           height: 1,
                         ),

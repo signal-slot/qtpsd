@@ -145,7 +145,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
             run.font.setLetterSpacing(QFont::PercentageSpacing, tracking);
         }
         const auto fontSize = styleSheetData.value("FontSize"_L1).toDouble();
-        run.font.setPointSizeF(transform.m22() * fontSize);
+        run.font.setPointSizeF(transform.m22() * fontSize / 1.5);
         const auto runLength = runLengthArray.at(i).toInteger();
         run.text = text.mid(start, runLength);
         start += runLength;

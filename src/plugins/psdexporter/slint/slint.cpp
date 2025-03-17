@@ -447,7 +447,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
             return false;
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
-        element->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() / 1.5 * fontScaleFactor));
+        element->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * 1.5 * fontScaleFactor));
         element->properties.insert("color", run.color.name());
         element->properties.insert("horizontal-alignment", "center");
         switch (run.alignment) {
@@ -496,7 +496,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                 textElement.type = "Text";
                 textElement.properties.insert("text", u"\"%1\""_s.arg(text));
                 textElement.properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
-                textElement.properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() / 1.5 * fontScaleFactor));
+                textElement.properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * 1.5 * fontScaleFactor));
                 textElement.properties.insert("color", run.color.name());
                 textElement.properties.insert("horizontal-alignment", "center");
                 switch (run.alignment) {
