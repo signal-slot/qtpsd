@@ -335,7 +335,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
             return false;
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
@@ -359,7 +359,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         }
     } else {
         element->type = "Item";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
             return false;
 
         Element column;
@@ -373,7 +373,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         rowLayout.properties.insert("anchors.horizontalCenter", "parent.horizontalCenter");
 
         for (const auto &run : runs) {
-            const auto texts = run.text.split("\n");
+            const auto texts = run.text.trimmed().split("\n");
             bool first = true;
             for (const auto &text : texts) {
                 if (first) {

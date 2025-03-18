@@ -374,7 +374,7 @@ bool QPsdExporterFlutterPlugin::outputPositioned(const QModelIndex &index, Eleme
 bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QModelIndex &index, Element *element) const
 {
     const auto *item = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(index));
-    QRect rect = item->bounds().toRect();
+    QRect rect = item->fontAdjustedBounds().toRect();
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
         auto parentIndex = indexMergeMap.key(index);
         while (parentIndex.isValid()) {

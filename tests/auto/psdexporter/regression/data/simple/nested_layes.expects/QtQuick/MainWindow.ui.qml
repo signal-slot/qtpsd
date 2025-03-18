@@ -61,7 +61,7 @@ Item {
                 color: "#000000"
                 font.family: "SourceHanSans-Medium"
                 font.pixelSize: 30
-                height: 58
+                height: 43
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
@@ -119,7 +119,7 @@ Item {
                 color: "#000000"
                 font.family: "SourceHanSans-Medium"
                 font.pixelSize: 30
-                height: 58
+                height: 43
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter

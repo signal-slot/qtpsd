@@ -16,7 +16,7 @@ Item {
             color: "#000000"
             font.family: "SourceHanSans-Medium"
             font.pixelSize: 50
-            height: 96
+            height: 70
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
             verticalAlignment: Text.AlignVCenter
@@ -28,7 +28,7 @@ Item {
             color: "#000000"
             font.family: "TimesNewRomanPSMT"
             font.pixelSize: 50
-            height: 57
+            height: 58
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
             verticalAlignment: Text.AlignVCenter
@@ -52,7 +52,7 @@ Item {
             color: "#000000"
             font.family: "MS PMincho"
             font.pixelSize: 50
-            height: 50
+            height: 48
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
             verticalAlignment: Text.AlignVCenter
@@ -64,7 +64,7 @@ Item {
             color: "#000000"
             font.family: "Exo2Roman-Thin"
             font.pixelSize: 50
-            height: 56
+            height: 58
             horizontalAlignment: Text.AlignHCenter
             text: "hug"
             verticalAlignment: Text.AlignVCenter

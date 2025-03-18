@@ -27,6 +27,7 @@ public:
 
     QList<Run> runs() const;
     QRectF bounds() const;
+    QRectF fontAdjustedBounds() const;
 
 private:
     class Private;

@@ -16,7 +16,7 @@ Item {
             color: "#ffffff"
             font.family: "SourceHanSans-Medium"
             font.pixelSize: 50
-            height: 96
+            height: 70
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
             verticalAlignment: Text.AlignVCenter
@@ -28,7 +28,7 @@ Item {
             color: "#ffffff"
             font.family: "SourceHanSans-Medium"
             font.pixelSize: 150
-            height: 289
+            height: 211
             horizontalAlignment: Text.AlignHCenter
             text: "150px"
             verticalAlignment: Text.AlignVCenter

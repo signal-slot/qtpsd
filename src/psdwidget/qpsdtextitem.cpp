@@ -12,7 +12,7 @@ QPsdTextItem::QPsdTextItem(const QModelIndex &index, const QPsdTextLayerItem *ps
     : QPsdAbstractItem(index, psdData, maskItem, group, parent)
 {
     const auto *layer = this->layer<QPsdTextLayerItem>();
-    setGeometry(layer->bounds().toRect());
+    setGeometry(layer->fontAdjustedBounds().toRect());
 }
 
 void QPsdTextItem::paintEvent(QPaintEvent *event)

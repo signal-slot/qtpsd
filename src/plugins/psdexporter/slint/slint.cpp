@@ -443,7 +443,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
             return false;
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
@@ -470,7 +470,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         }
     } else {
         element->type = "Rectangle";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
             return false;
 
         Element verticalLayout;
@@ -483,7 +483,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         horizontalLayout.properties.insert("spacing", 0);
 
         for (const auto &run : runs) {
-            const auto texts = run.text.split("\n");
+            const auto texts = run.text.trimmed().split("\n");
             bool first = true;
             for (const auto &text : texts) {
                 if (first) {
