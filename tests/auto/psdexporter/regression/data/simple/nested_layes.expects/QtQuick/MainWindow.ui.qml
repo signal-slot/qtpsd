@@ -59,11 +59,11 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "源ノ角ゴシック JP"
-                font.pointSize: 20
-                height: 58
+                font.family: "SourceHanSans-Medium"
+                font.pixelSize: 30
+                height: 43
                 horizontalAlignment: Text.AlignHCenter
-                text: "Example1\n "
+                text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50
@@ -117,11 +117,11 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "源ノ角ゴシック JP"
-                font.pointSize: 20
-                height: 58
+                font.family: "SourceHanSans-Medium"
+                font.pixelSize: 30
+                height: 43
                 horizontalAlignment: Text.AlignHCenter
-                text: "Example1\n "
+                text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50

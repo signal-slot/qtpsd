@@ -1,0 +1,53 @@
+{
+    "アートボード 1": {
+        "12pt": {
+            "id": "",
+            "name": "12pt",
+            "rect": {
+                "height": 48,
+                "width": 115,
+                "x": 34,
+                "y": 37
+            },
+            "runs": [
+                {
+                    "alignment": 128,
+                    "color": "#ffffff",
+                    "font": "SourceHanSans-Medium,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                    "text": "12pt\n"
+                }
+            ],
+            "type": "Text",
+            "visible": true
+        },
+        "150px": {
+            "id": "",
+            "name": "150px",
+            "rect": {
+                "height": 143,
+                "width": 464,
+                "x": 162,
+                "y": 82
+            },
+            "runs": [
+                {
+                    "alignment": 128,
+                    "color": "#ffffff",
+                    "font": "SourceHanSans-Medium,100,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                    "text": "150px\n"
+                }
+            ],
+            "type": "Text",
+            "visible": true
+        },
+        "id": "",
+        "name": "アートボード 1",
+        "rect": {
+            "height": 0,
+            "width": 0,
+            "x": 0,
+            "y": 0
+        },
+        "visible": true
+    }
+}

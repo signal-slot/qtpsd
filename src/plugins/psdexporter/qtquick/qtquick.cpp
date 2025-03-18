@@ -335,16 +335,11 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
             return false;
-        auto lines = run.text.split("\n");
-        // replace empty line with a space
-        for (auto &line : lines)
-            if (line.isEmpty())
-                line = " ";
-        element->properties.insert("text", u"\"%1\""_s.arg(lines.join("\\n")));
+        element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-        element->properties.insert("font.pointSize", run.font.pointSizeF() / 1.5 * fontScaleFactor);
+        element->properties.insert("font.pixelSize", run.font.pointSizeF() * 1.5 * fontScaleFactor);
         if (run.font.bold())
             element->properties.insert("font.bold", true);
         if (run.font.italic())
@@ -364,7 +359,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         }
     } else {
         element->type = "Item";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
             return false;
 
         Element column;
@@ -378,7 +373,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         rowLayout.properties.insert("anchors.horizontalCenter", "parent.horizontalCenter");
 
         for (const auto &run : runs) {
-            const auto texts = run.text.split("\n");
+            const auto texts = run.text.trimmed().split("\n");
             bool first = true;
             for (const auto &text : texts) {
                 if (first) {
@@ -389,9 +384,9 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 }
                 Element textElement;
                 textElement.type = "Text";
-                textElement.properties.insert("text", u"\"%1\""_s.arg(text.isEmpty() ? " " : text));
+                textElement.properties.insert("text", u"\"%1\""_s.arg(text));
                 textElement.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-                textElement.properties.insert("font.pointSize", run.font.pointSizeF() / 1.5 * fontScaleFactor);
+                textElement.properties.insert("font.pixelSize", run.font.pixelSize() * fontScaleFactor);
                 if (run.font.bold())
                     textElement.properties.insert("font.bold", true);
                 if (run.font.italic())
@@ -746,7 +741,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                         for (const auto &run : runs) {
                             if (first) {
                                 element.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-                                element.properties.insert("font.pointSize", run.font.pointSizeF() / 1.5);
+                                element.properties.insert("font.pixelSize", run.font.pixelSize() * fontScaleFactor);
                                 first = false;
                             }
                             text += run.text;

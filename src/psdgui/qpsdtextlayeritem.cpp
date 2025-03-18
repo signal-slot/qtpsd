@@ -79,6 +79,7 @@ class QPsdTextLayerItem::Private
 public:
     QList<Run> runs;
     QRectF bounds;
+    QRectF fontAdjustedBounds;
 };
 
 QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
@@ -145,7 +146,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
             run.font.setLetterSpacing(QFont::PercentageSpacing, tracking);
         }
         const auto fontSize = styleSheetData.value("FontSize"_L1).toDouble();
-        run.font.setPointSizeF(transform.m22() * fontSize);
+        run.font.setPointSizeF(transform.m22() * fontSize / 1.5);
         const auto runLength = runLengthArray.at(i).toInteger();
         run.text = text.mid(start, runLength);
         start += runLength;
@@ -203,7 +204,27 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         d->runs = runs;
     }
 
+    qreal contentHeight = 0;
+    qreal lineHeight = -1;
+    qreal lineLeading = -1;
+    for (int i = 0; i < d->runs.length(); i++) {        
+        QFontMetrics fontMetrics(d->runs.at(i).font);
+        if (lineHeight < fontMetrics.height()) {
+            lineHeight = fontMetrics.height();
+            lineLeading = fontMetrics.leading();
+        }
+
+        const auto texts = d->runs.at(i).text.trimmed().split("\n");
+        if (texts.size() > 1) {
+            contentHeight += lineHeight + lineLeading + (fontMetrics.height() + fontMetrics.leading()) * (texts.size() - 2);
+        }
+    }
+    contentHeight += lineHeight * 1.1;   // 1.1 is ad-hoc param 
+
     d->bounds = tysh.bounds();
+
+    d->fontAdjustedBounds = d->bounds;
+    d->fontAdjustedBounds.setHeight(contentHeight);
 }
 
 QPsdTextLayerItem::QPsdTextLayerItem()
@@ -221,5 +242,10 @@ QList<QPsdTextLayerItem::Run> QPsdTextLayerItem::runs() const
 QRectF QPsdTextLayerItem::bounds() const {
     return d->bounds;
 }
+
+QRectF QPsdTextLayerItem::fontAdjustedBounds() const {
+    return d->fontAdjustedBounds;
+}
+
 
 QT_END_NAMESPACE

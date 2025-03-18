@@ -1,0 +1,53 @@
+{
+    "アートボード 1": {
+        "hub": {
+            "id": "",
+            "name": "hub",
+            "rect": {
+                "height": 49,
+                "width": 146,
+                "x": 424,
+                "y": 25
+            },
+            "runs": [
+                {
+                    "alignment": 128,
+                    "color": "#000000",
+                    "font": "Wingdings,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
+                    "text": "hub\n"
+                }
+            ],
+            "type": "Text",
+            "visible": true
+        },
+        "hug": {
+            "id": "",
+            "name": "hug",
+            "rect": {
+                "height": 52,
+                "width": 94,
+                "x": 24,
+                "y": 24
+            },
+            "runs": [
+                {
+                    "alignment": 128,
+                    "color": "#000000",
+                    "font": "SourceHanSans-Medium,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                    "text": "hug\n"
+                }
+            ],
+            "type": "Text",
+            "visible": true
+        },
+        "id": "",
+        "name": "アートボード 1",
+        "rect": {
+            "height": 0,
+            "width": 0,
+            "x": 0,
+            "y": 0
+        },
+        "visible": true
+    }
+}
