@@ -1,97 +1,101 @@
 {
-    "アートボード 1": {
-        "flutter": {
-            "id": "",
-            "name": "flutter",
+    "children": [
+        {
+            "children": [
+                {
+                    "id": "31",
+                    "name": "flutter pixeled",
+                    "rect": {
+                        "height": 40,
+                        "width": 32,
+                        "x": 240,
+                        "y": 152
+                    },
+                    "type": "Image",
+                    "visible": true
+                },
+                {
+                    "id": "29",
+                    "name": "flutter",
+                    "rect": {
+                        "height": 40,
+                        "width": 32,
+                        "x": 240,
+                        "y": 82
+                    },
+                    "type": "Image",
+                    "visible": true
+                },
+                {
+                    "id": "32",
+                    "name": "slint ピクセル化",
+                    "rect": {
+                        "height": 48,
+                        "width": 36,
+                        "x": 150,
+                        "y": 149
+                    },
+                    "type": "Image",
+                    "visible": true
+                },
+                {
+                    "id": "27",
+                    "name": "slint",
+                    "rect": {
+                        "height": 48,
+                        "width": 36,
+                        "x": 150,
+                        "y": 79
+                    },
+                    "type": "Image",
+                    "visible": true
+                },
+                {
+                    "id": "34",
+                    "name": "ロゴ",
+                    "rect": {
+                        "height": 46,
+                        "width": 64,
+                        "x": 40,
+                        "y": 150
+                    },
+                    "type": "Image",
+                    "visible": true
+                },
+                {
+                    "id": "36",
+                    "name": "qtquick",
+                    "rect": {
+                        "height": 48,
+                        "width": 36,
+                        "x": 58,
+                        "y": 16
+                    },
+                    "type": "Image",
+                    "visible": true
+                },
+                {
+                    "id": "25",
+                    "name": "同名別画像",
+                    "rect": {
+                        "height": 46,
+                        "width": 64,
+                        "x": 40,
+                        "y": 80
+                    },
+                    "type": "Image",
+                    "visible": true
+                }
+            ],
+            "id": "3",
+            "name": "アートボード 1",
             "rect": {
-                "height": 40,
-                "width": 32,
-                "x": 240,
-                "y": 82
+                "height": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
             },
-            "type": "Image",
-            "visible": true
-        },
-        "flutter pixeled": {
-            "id": "",
-            "name": "flutter pixeled",
-            "rect": {
-                "height": 40,
-                "width": 32,
-                "x": 240,
-                "y": 152
-            },
-            "type": "Image",
-            "visible": true
-        },
-        "id": "",
-        "name": "アートボード 1",
-        "qtquick": {
-            "id": "",
-            "name": "qtquick",
-            "rect": {
-                "height": 48,
-                "width": 36,
-                "x": 58,
-                "y": 16
-            },
-            "type": "Image",
-            "visible": true
-        },
-        "rect": {
-            "height": 0,
-            "width": 0,
-            "x": 0,
-            "y": 0
-        },
-        "slint": {
-            "id": "",
-            "name": "slint",
-            "rect": {
-                "height": 48,
-                "width": 36,
-                "x": 150,
-                "y": 79
-            },
-            "type": "Image",
-            "visible": true
-        },
-        "slint ピクセル化": {
-            "id": "",
-            "name": "slint ピクセル化",
-            "rect": {
-                "height": 48,
-                "width": 36,
-                "x": 150,
-                "y": 149
-            },
-            "type": "Image",
-            "visible": true
-        },
-        "visible": true,
-        "ロゴ": {
-            "id": "",
-            "name": "ロゴ",
-            "rect": {
-                "height": 46,
-                "width": 64,
-                "x": 40,
-                "y": 150
-            },
-            "type": "Image",
-            "visible": true
-        },
-        "同名別画像": {
-            "id": "",
-            "name": "同名別画像",
-            "rect": {
-                "height": 46,
-                "width": 64,
-                "x": 40,
-                "y": 80
-            },
-            "type": "Image",
             "visible": true
         }
-    }
+    ]
 }

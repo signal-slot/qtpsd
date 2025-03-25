@@ -1,53 +1,57 @@
 {
-    "アートボード 1": {
-        "12pt": {
-            "id": "",
-            "name": "12pt",
-            "rect": {
-                "height": 48,
-                "width": 115,
-                "x": 34,
-                "y": 37
-            },
-            "runs": [
+    "children": [
+        {
+            "children": [
                 {
-                    "alignment": 128,
-                    "color": "#ffffff",
-                    "font": "源ノ角ゴシック JP,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
-                    "text": "12pt\n"
+                    "id": "6",
+                    "name": "150px",
+                    "rect": {
+                        "height": 143,
+                        "width": 464,
+                        "x": 162,
+                        "y": 82
+                    },
+                    "runs": [
+                        {
+                            "alignment": 128,
+                            "color": "#ffffff",
+                            "font": "源ノ角ゴシック JP,100,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
+                            "text": "150px\n"
+                        }
+                    ],
+                    "type": "Text",
+                    "visible": true
+                },
+                {
+                    "id": "5",
+                    "name": "12pt",
+                    "rect": {
+                        "height": 48,
+                        "width": 115,
+                        "x": 34,
+                        "y": 37
+                    },
+                    "runs": [
+                        {
+                            "alignment": 128,
+                            "color": "#ffffff",
+                            "font": "源ノ角ゴシック JP,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
+                            "text": "12pt\n"
+                        }
+                    ],
+                    "type": "Text",
+                    "visible": true
                 }
             ],
-            "type": "Text",
-            "visible": true
-        },
-        "150px": {
-            "id": "",
-            "name": "150px",
+            "id": "3",
+            "name": "アートボード 1",
             "rect": {
-                "height": 143,
-                "width": 464,
-                "x": 162,
-                "y": 82
+                "height": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
             },
-            "runs": [
-                {
-                    "alignment": 128,
-                    "color": "#ffffff",
-                    "font": "源ノ角ゴシック JP,100,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
-                    "text": "150px\n"
-                }
-            ],
-            "type": "Text",
             "visible": true
-        },
-        "id": "",
-        "name": "アートボード 1",
-        "rect": {
-            "height": 0,
-            "width": 0,
-            "x": 0,
-            "y": 0
-        },
-        "visible": true
-    }
+        }
+    ]
 }
