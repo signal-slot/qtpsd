@@ -22,6 +22,7 @@ public:
         settings.beginGroup("ExportDialog");
         settings.beginGroup(plugin->key());
         directory->setText(settings.value("directory").toString());
+        licenseText->setPlainText(settings.value("licenseText").toString());
         resolution->addItem(tr("Original\t(%1x%2)").arg(size.width()).arg(size.height()), size);
         resolution->addItem(tr("4K\t(3840x2160)"), QSize(3840, 2160));
         resolution->addItem(tr("FHD\t(1920x1080)"), QSize(1920, 1080));
@@ -96,6 +97,7 @@ ExportDialog::~ExportDialog() = default;
 void ExportDialog::accept()
 {
     d->settings.setValue("directory", d->directory->text());
+    d->settings.setValue("licenseText", d->licenseText->toPlainText());
 
     const auto mo = d->plugin->metaObject();
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); i++) {
@@ -156,3 +158,7 @@ int ExportDialog::height() const
     return d->height->value();
 }
 
+QString ExportDialog::licenseText() const
+{
+    return d->licenseText->toPlainText();
+}

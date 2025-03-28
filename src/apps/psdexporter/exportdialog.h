@@ -27,6 +27,7 @@ public:
     int resolutionIndex() const;
     int width() const;
     int height() const;
+    QString licenseText() const;
 
 public slots:
     void accept() override;
