@@ -44,6 +44,7 @@ private:
     mutable bool makeCompact = false;
     mutable bool imageScaling = false;
     mutable QDir dir;
+    mutable QString licenseText;
 
     using ImportData = QHash<QString, QSet<QString>>;
     struct Export {
@@ -80,6 +81,7 @@ bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, c
     fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
     makeCompact = hint.value("makeCompact", false).toBool();
     imageScaling = hint.value("imageScaling", false).toBool();
+    licenseText = hint.value("licenseText").toString();
 
     generateMaps();
 
@@ -770,6 +772,14 @@ bool QPsdExporterSlintPlugin::saveTo(const QString &baseName, Element *element, 
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
     QTextStream out(&file);
+
+    if (!licenseText.isEmpty()) {
+        const QStringList lines = licenseText.split('\n');
+        for (const QString &line : lines) {
+            out << "// " << line << "\n";
+        }
+        out << "\n";
+    }
 
     for (auto i = imports.cbegin(), end = imports.cend(); i != end; ++i) {
         out << "import {" << i.value().values().join(", ") << "} from \"" << i.key() << "\";\n";

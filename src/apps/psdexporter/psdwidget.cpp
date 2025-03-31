@@ -540,6 +540,7 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
         hint.insert("fontScaleFactor", dialog.fontScaleFactor());
         hint.insert("imageScaling", dialog.imageScaling() == ExportDialog::Scaled);
         hint.insert("makeCompact", dialog.makeCompact());
+        hint.insert("licenseText", dialog.licenseText());
         break;
     }
 

@@ -65,6 +65,7 @@ private:
     mutable qreal fontScaleFactor = 1.0;
     mutable bool makeCompact = false;
     mutable bool imageScaling = false;
+    mutable QString licenseText;
 
     bool outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds = {}) const;
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
@@ -93,6 +94,7 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
     makeCompact = hint.value("makeCompact", false).toBool();
     imageScaling = hint.value("imageScaling", false).toBool();
+    licenseText = hint.value("licenseText").toString();
 
     if (!generateMaps()) {
         return false;
@@ -831,6 +833,15 @@ bool QPsdExporterQtQuickPlugin::saveTo(const QString &baseName, Element *element
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
     QTextStream out(&file);
+
+    if (!licenseText.isEmpty()) {
+        const QStringList lines = licenseText.split('\n');
+        for (const QString &line : lines) {
+            out << "// " << line << "\n";
+        }
+        out << "\n";
+    }
+
     auto imporList = QList<QString>(imports.begin(), imports.end());
     std::sort(imporList.begin(), imporList.end(), [](const QString &a, const QString &b) {
         const auto ia = a.indexOf(".");

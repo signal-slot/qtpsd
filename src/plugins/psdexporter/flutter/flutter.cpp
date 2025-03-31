@@ -74,6 +74,7 @@ private:
     mutable bool imageScaling = false;
     mutable QDir dir;
     mutable QPsdImageStore imageStore;
+    mutable QString licenseText;
 
     static QByteArray indentString(int level);
     static QString valueAsText(QVariant value);
@@ -144,7 +145,7 @@ QString QPsdExporterFlutterPlugin::colorValue(const QColor &color)
 bool QPsdExporterFlutterPlugin::saveStaticFile(const QString &name) const
 {
     QFile src(":/flutter/%1"_L1.arg(name));
-    return src.copy(dir.absoluteFilePath(name));   
+    return src.copy(dir.absoluteFilePath(name));
 }
 
 bool QPsdExporterFlutterPlugin::traverseVariant(QTextStream &out, const QVariant &value, int level, bool skipFirstIndent) const
@@ -249,7 +250,7 @@ bool QPsdExporterFlutterPlugin::traverseElement(QTextStream &out, const Element 
         traverseElement(out, &elem, level, true);
         out << ",\n";
     }
-    
+
     if (!element->children.isEmpty()) {
         out << indentString(level) << "children: [\n";
 
@@ -272,6 +273,14 @@ bool QPsdExporterFlutterPlugin::saveTo(const QString &baseName, Element *element
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
     QTextStream out(&file);
+
+    if (!licenseText.isEmpty()) {
+        const QStringList lines = licenseText.split('\n');
+        for (const QString &line : lines) {
+            out << "// " << line << "\n";
+        }
+        out << "\n";
+    }
 
     auto importValues = imports.values();
     std::sort(importValues.begin(), importValues.end(), std::less<QString>());
@@ -538,7 +547,7 @@ bool QPsdExporterFlutterPlugin::outputPathProp(const QPainterPath &path, Element
         case QPainterPath::LineToElement:
             list.append(u"..lineTo(%1, %2)"_s.arg(x).arg(y));
             break;
-        case QPainterPath::CurveToElement: 
+        case QPainterPath::CurveToElement:
             c1x = x;
             c1y = y;
             control = 1;
@@ -664,13 +673,13 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             for (auto it = list.constBegin(); it != list.constEnd(); it++) {
                 traverseTree(*it, &stackElement, imports, exports, QPsdAbstractLayerItem::ExportHint::Embed);
             }
-    
+
             inkWell.properties.insert("child"_L1, QVariant::fromValue(stackElement));
         }
 
         containerElement.properties.insert("child"_L1, QVariant::fromValue(inkWell));
         containerElement.properties.insert("decoration"_L1, QVariant::fromValue(decorationElement));
-    
+
         Element materialElement;
         materialElement.type = "Material"_L1;
         materialElement.properties.insert("type"_L1, "MaterialType.transparency"_L1);
@@ -997,7 +1006,8 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
     makeCompact = hint.value("makeCompact", false).toBool();
     imageScaling = hint.value("imageScaling", false).toBool();
-    
+    licenseText = hint.value("licenseText").toString();
+
     if (!generateMaps()) {
         return false;
     }
