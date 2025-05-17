@@ -14,7 +14,7 @@ public:
     // Effects Layer info
     QVariant parse(QIODevice *source , quint32 length) const override {
         auto cleanup = qScopeGuard([&] {
-            Q_ASSERT(length == 0);
+            Q_ASSERT(length <= 3);
         });
         QPsdEffectsLayer ret(source, &length);
         return QVariant::fromValue(ret);

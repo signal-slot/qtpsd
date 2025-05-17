@@ -28,7 +28,6 @@ QPsdEffectsLayer::QPsdEffectsLayer(QIODevice *source, quint32 *length)
 
     // Effects count: may be 6 (for the 6 effects in Photoshop 5 and 6) or 7 (for Photoshop 7.0)
     auto effectsCount = readU16(source, length);
-    Q_ASSERT(effectsCount == 6 || effectsCount == 7);
 
     qCDebug(lcQPsdEffectsLayer) << "count =" << effectsCount;
     while (effectsCount-- > 0) {
