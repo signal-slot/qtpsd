@@ -457,7 +457,25 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         element->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * 1.5 * fontScaleFactor));
         element->properties.insert("color", run.color.name());
-        element->properties.insert("horizontal-alignment", "center");
+        // Use proper horizontal alignment from PSD
+        const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
+        switch (horizontalAlignment) {
+        case Qt::AlignLeft:
+            element->properties.insert("horizontal-alignment", "left");
+            break;
+        case Qt::AlignRight:
+            element->properties.insert("horizontal-alignment", "right");
+            break;
+        case Qt::AlignHCenter:
+            element->properties.insert("horizontal-alignment", "center");
+            break;
+        case Qt::AlignJustify:
+            element->properties.insert("horizontal-alignment", "left"); // Slint doesn't support justify
+            break;
+        default:
+            element->properties.insert("horizontal-alignment", "left");
+            break;
+        }
         switch (run.alignment) {
         case Qt::AlignTop:
             element->properties.insert("vertical-alignment", "top");
@@ -506,7 +524,25 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                 textElement.properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * 1.5 * fontScaleFactor));
                 textElement.properties.insert("color", run.color.name());
-                textElement.properties.insert("horizontal-alignment", "center");
+                // Use proper horizontal alignment from PSD
+                const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
+                switch (horizontalAlignment) {
+                case Qt::AlignLeft:
+                    textElement.properties.insert("horizontal-alignment", "left");
+                    break;
+                case Qt::AlignRight:
+                    textElement.properties.insert("horizontal-alignment", "right");
+                    break;
+                case Qt::AlignHCenter:
+                    textElement.properties.insert("horizontal-alignment", "center");
+                    break;
+                case Qt::AlignJustify:
+                    textElement.properties.insert("horizontal-alignment", "left"); // Slint doesn't support justify
+                    break;
+                default:
+                    textElement.properties.insert("horizontal-alignment", "left");
+                    break;
+                }
                 switch (run.alignment) {
                 case Qt::AlignTop:
                     textElement.properties.insert("vertical-alignment", "top");

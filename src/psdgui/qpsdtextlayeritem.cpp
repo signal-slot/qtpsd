@@ -113,6 +113,38 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto runArray = styleRun.value("RunArray"_L1).toArray();
     const auto runLengthArray = styleRun.value("RunLengthArray"_L1).toArray();
 
+    // Parse paragraph-level alignment for horizontal alignment
+    const auto paragraphRun = engineDict.value("ParagraphRun"_L1).toMap();
+    const auto paragraphRunArray = paragraphRun.value("RunArray"_L1).toArray();
+    Qt::Alignment defaultHorizontalAlignment = Qt::AlignLeft; // Default to left alignment
+
+    if (!paragraphRunArray.isEmpty()) {
+        const auto firstParagraph = paragraphRunArray.first().toMap();
+        const auto paragraphSheet = firstParagraph.value("ParagraphSheet"_L1).toMap();
+        const auto paragraphProperties = paragraphSheet.value("Properties"_L1).toMap();
+
+        if (paragraphProperties.contains("Justification"_L1)) {
+            const auto justification = paragraphProperties.value("Justification"_L1).toInteger();
+            switch (justification) {
+            case 0: // left
+                defaultHorizontalAlignment = Qt::AlignLeft;
+                break;
+            case 1: // right
+                defaultHorizontalAlignment = Qt::AlignRight;
+                break;
+            case 2: // center
+                defaultHorizontalAlignment = Qt::AlignHCenter;
+                break;
+            case 3: // justify
+                defaultHorizontalAlignment = Qt::AlignJustify;
+                break;
+            default:
+                qDebug() << "Unknown justification:" << justification;
+                break;
+            }
+        }
+    }
+
     int start = 0;
     for (int i = 0; i < runLengthArray.size(); i++) {
         Run run;
@@ -155,6 +187,10 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         run.text = text.mid(start, runLength).replace('\x03'_L1, '\n'_L1);
         start += runLength;
 
+        // Set horizontal alignment from paragraph justification
+        run.alignment = defaultHorizontalAlignment;
+
+        // Parse vertical alignment from StyleRunAlignment
         if (styleSheetData.contains("StyleRunAlignment"_L1)) {
             // https://documentation.help/Illustrator-CS6/pe_StyleRunAlignmentType.html
             const auto styleRunAlignment = styleSheetData.value("StyleRunAlignment"_L1).toInteger();
@@ -162,22 +198,22 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
             // https://learn.microsoft.com/en-us/typography/opentype/spec/baselinetags#icfbox
             switch (styleRunAlignment) {
             case 0: // bottom
-                run.alignment = Qt::AlignBottom;
+                run.alignment |= Qt::AlignBottom;
                 break;
             case 1: // icf bottom
-                run.alignment = Qt::AlignBottom;
+                run.alignment |= Qt::AlignBottom;
                 break;
             case 2: // roman baseline
-                run.alignment = Qt::AlignBottom;
+                run.alignment |= Qt::AlignBottom;
                 break;
             case 3: // center
-                run.alignment = Qt::AlignVCenter;
+                run.alignment |= Qt::AlignVCenter;
                 break;
             case 4: // icf top
-                run.alignment = Qt::AlignTop;
+                run.alignment |= Qt::AlignTop;
                 break;
             case 5: // top
-                run.alignment = Qt::AlignTop;
+                run.alignment |= Qt::AlignTop;
                 break;
             default:
                 qWarning() << "Unknown styleRunAlignment" << styleRunAlignment;
@@ -211,7 +247,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     qreal contentHeight = 0;
     qreal lineHeight = -1;
     qreal lineLeading = -1;
-    for (int i = 0; i < d->runs.length(); i++) {        
+    for (int i = 0; i < d->runs.length(); i++) {
         QFontMetrics fontMetrics(d->runs.at(i).font);
         if (lineHeight < fontMetrics.height()) {
             lineHeight = fontMetrics.height();
@@ -223,7 +259,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
             contentHeight += lineHeight + lineLeading + (fontMetrics.height() + fontMetrics.leading()) * (texts.size() - 2);
         }
     }
-    contentHeight += lineHeight * 1.1;   // 1.1 is ad-hoc param 
+    contentHeight += lineHeight * 1.1;   // 1.1 is ad-hoc param
 
     d->bounds = tysh.bounds();
 

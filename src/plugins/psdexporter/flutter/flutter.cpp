@@ -446,7 +446,25 @@ bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run r
     //TODO italic
     textStyleElement.properties.insert("color", colorValue(run.color));
     
-    element->properties.insert("textAlign"_L1, "TextAlign.center"_L1);
+    // Use proper horizontal alignment from PSD
+    const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
+    switch (horizontalAlignment) {
+    case Qt::AlignLeft:
+        element->properties.insert("textAlign"_L1, "TextAlign.left"_L1);
+        break;
+    case Qt::AlignRight:
+        element->properties.insert("textAlign"_L1, "TextAlign.right"_L1);
+        break;
+    case Qt::AlignHCenter:
+        element->properties.insert("textAlign"_L1, "TextAlign.center"_L1);
+        break;
+    case Qt::AlignJustify:
+        element->properties.insert("textAlign"_L1, "TextAlign.justify"_L1);
+        break;
+    default:
+        element->properties.insert("textAlign"_L1, "TextAlign.left"_L1);
+        break;
+    }
 
     //TODO alignment vertical
 

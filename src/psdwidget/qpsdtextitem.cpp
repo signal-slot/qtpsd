@@ -104,7 +104,51 @@ void QPsdTextItem::paintEvent(QPaintEvent *event)
                     size.setHeight(h);
             }
         }
-        qreal x = (width() - size.width()) / 2;
+        // Calculate x position based on text alignment instead of forcing center alignment
+        qreal x = 0;
+
+        // Use the original layer bounds to determine proper positioning
+        const auto layerBounds = layer->bounds();
+        const auto widgetGeom = geometry();
+
+        // Calculate the offset from widget origin to layer bounds origin
+        qreal layerOffsetX = layerBounds.x() - widgetGeom.x();
+
+        // Extract horizontal alignment from the first chunk
+        Qt::Alignment horizontalAlignment = Qt::AlignLeft; // Default to left alignment
+        if (!line.isEmpty()) {
+            horizontalAlignment = static_cast<Qt::Alignment>(line.first().alignment & Qt::AlignHorizontal_Mask);
+        }
+
+        // Position text based on the PSD horizontal alignment
+        switch (horizontalAlignment) {
+        case Qt::AlignLeft:
+            // For left alignment, position at the layer bounds left edge
+            x = layerOffsetX;
+            break;
+        case Qt::AlignRight:
+            // For right alignment, position so text ends at layer bounds right edge
+            x = layerOffsetX + layerBounds.width() - size.width();
+            break;
+        case Qt::AlignHCenter:
+            // For center alignment, center within layer bounds
+            x = layerOffsetX + (layerBounds.width() - size.width()) / 2;
+            break;
+        case Qt::AlignJustify:
+            // For justify, treat as left alignment for now
+            x = layerOffsetX;
+            break;
+        default:
+            // Default to left alignment
+            x = layerOffsetX;
+            break;
+        }
+
+        // Ensure x is not negative (fallback to left alignment)
+        if (x < 0) {
+            x = 0;
+        }
+
         for (const auto &chunk : line) {
             painter.setFont(chunk.font);
             painter.setPen(chunk.color);

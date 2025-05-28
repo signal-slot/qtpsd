@@ -355,7 +355,25 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         if (run.font.italic())
             element->properties.insert("font.italic", true);
         element->properties.insert("color", u"\"%1\""_s.arg(run.color.name()));
-        element->properties.insert("horizontalAlignment", "Text.AlignHCenter");
+        // Use proper horizontal alignment from PSD
+        const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
+        switch (horizontalAlignment) {
+        case Qt::AlignLeft:
+            element->properties.insert("horizontalAlignment", "Text.AlignLeft");
+            break;
+        case Qt::AlignRight:
+            element->properties.insert("horizontalAlignment", "Text.AlignRight");
+            break;
+        case Qt::AlignHCenter:
+            element->properties.insert("horizontalAlignment", "Text.AlignHCenter");
+            break;
+        case Qt::AlignJustify:
+            element->properties.insert("horizontalAlignment", "Text.AlignJustify");
+            break;
+        default:
+            element->properties.insert("horizontalAlignment", "Text.AlignLeft");
+            break;
+        }
         switch (run.alignment) {
         case Qt::AlignTop:
             element->properties.insert("verticalAlignment", "Text.AlignTop");
