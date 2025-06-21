@@ -11,7 +11,6 @@ class QPsdChannelImageData::Private : public QSharedData
 public:
     Private();
     QHash<QPsdChannelInfo::ChannelID, QByteArray> imageData;
-    QPsdFileHeader header;
 
     const unsigned char *data(QPsdChannelInfo::ChannelID channelID) const {
         if (!imageData.contains(channelID))
@@ -152,17 +151,6 @@ const unsigned char *QPsdChannelImageData::a() const
         alpha = d->data(QPsdChannelInfo::Alpha);
     }
     return alpha;
-}
-
-QPsdFileHeader QPsdChannelImageData::header() const
-{
-    return d->header;
-}
-
-void QPsdChannelImageData::setHeader(const QPsdFileHeader &header)
-{
-    d->header = header;
-    setDepth(header.depth());
 }
 
 QT_END_NAMESPACE

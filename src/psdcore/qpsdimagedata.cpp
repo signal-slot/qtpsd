@@ -20,9 +20,9 @@ QPsdImageData::QPsdImageData()
 QPsdImageData::QPsdImageData(const QPsdFileHeader &header, QIODevice *source)
     : QPsdImageData()
 {
+    setHeader(header);
     setWidth(header.width());
     setHeight(header.height());
-    setDepth(header.depth());
 
     // Image Data Section
     // https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_89817

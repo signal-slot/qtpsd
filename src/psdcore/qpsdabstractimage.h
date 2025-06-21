@@ -25,6 +25,9 @@ public:
     quint16 depth() const;
     quint8 opacity() const;
 
+    QPsdFileHeader header() const;
+    void setHeader(const QPsdFileHeader &header);
+
     virtual QByteArray imageData() const = 0;
     virtual bool hasAlpha() const { return false; }
     QByteArray toImage(QPsdFileHeader::ColorMode colorMode) const;
@@ -32,7 +35,6 @@ public:
 protected:
     void setWidth(quint32 width);
     void setHeight(quint32 height);
-    void setDepth(quint16 depth);
     void setOpacity(quint8 opacity);
 
     virtual const unsigned char *gray() const = 0;

@@ -13,8 +13,8 @@ class QPsdAbstractImage::Private : public QSharedData
 public:
     quint32 width = 0;
     quint32 height = 0;
-    quint16 depth = 0;
     quint8 opacity = 0;
+    QPsdFileHeader header;
 };
 
 QPsdAbstractImage::QPsdAbstractImage()
@@ -60,12 +60,9 @@ void QPsdAbstractImage::setHeight(quint32 height)
 
 quint16 QPsdAbstractImage::depth() const
 {
-    return d->depth;
-}
-
-void QPsdAbstractImage::setDepth(quint16 depth)
-{
-    d->depth = depth;
+    // Return header depth if set (non-zero), otherwise default to 8
+    quint16 headerDepth = d->header.depth();
+    return headerDepth ? headerDepth : 8;
 }
 
 quint8 QPsdAbstractImage::opacity() const
@@ -76,6 +73,16 @@ quint8 QPsdAbstractImage::opacity() const
 void QPsdAbstractImage::setOpacity(quint8 opacity)
 {
     d->opacity = opacity;
+}
+
+QPsdFileHeader QPsdAbstractImage::header() const
+{
+    return d->header;
+}
+
+void QPsdAbstractImage::setHeader(const QPsdFileHeader &header)
+{
+    d->header = header;
 }
 
 QByteArray QPsdAbstractImage::readRLE(QIODevice *source, int height, quint32 *length)

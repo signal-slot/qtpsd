@@ -26,9 +26,6 @@ public:
     QByteArray transparencyMaskData() const;
     QByteArray userSuppliedLayerMask() const;
 
-    QPsdFileHeader header() const;
-    void setHeader(const QPsdFileHeader &header);
-
 protected:
     const unsigned char *gray() const override;
     const unsigned char *r() const override;
