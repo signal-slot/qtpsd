@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -20,8 +21,9 @@ public:
         Q_ASSERT(version == 2 || version == 3);
 
         if (version == 2) {
-            const auto color = readColor(source, &length);
-            Q_UNUSED(color);
+            const auto colorSpace = readColorSpace(source, &length);
+            const auto color = colorSpace.toString();
+            Q_UNUSED(color); // TODO: Store photo filter color when Phfl structure is implemented
         } else {
             const auto l = readS32(source, &length);
             const auto a = readS32(source, &length);

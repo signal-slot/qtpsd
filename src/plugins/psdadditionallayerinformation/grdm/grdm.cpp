@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -36,10 +37,11 @@ public:
             Q_UNUSED(location);
             const auto midpoint = readU32(source, &length);
             Q_UNUSED(midpoint);
-            const auto color = readColor(source, &length);
-            Q_UNUSED(color);
+            const auto colorSpace = readColorSpace(source, &length);
+            const auto color = colorSpace.toString();
+            Q_UNUSED(color); // TODO: Store gradient stop color when Grdm structure is implemented
 
-            skip(source, 2, &length);
+            skip(source, 2, &length); // Unknown padding
         }
 
         const auto countTransparencyStops = readU16(source, &length);
