@@ -4,6 +4,7 @@
 #include <QtPsdCore/qpsdeffectslayerplugin.h>
 #include <QtPsdCore/qpsdlayerrecord.h>
 #include <QtPsdCore/qpsdsofieffect.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -39,7 +40,8 @@ public:
         ret.setBlendMode(blendKey);
 
         // Color space
-        skip(source, 10, length); // TODO
+        const auto colorSpace = readColorSpace(source, length);
+        // Note: QPsdSofiEffect doesn't store the initial color, only native color
 
         // Opacity
         const auto opacity = readU8(source, length);
@@ -50,7 +52,8 @@ public:
         ret.setEnabled(enabled);
 
         // Native color space
-        const auto nativeColor = readColor(source, length);
+        const auto nativeColorSpace = readColorSpace(source, length);
+        const auto nativeColor = nativeColorSpace.toString();
         ret.setNativeColor(nativeColor);
 
         return ret.isEnabled() ? QVariant::fromValue(ret) : QVariant();

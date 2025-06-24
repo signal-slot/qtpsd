@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qpsdgloballayermaskinfo.h"
+#include "qpsdcolorspace.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -41,11 +42,16 @@ QPsdGlobalLayerMaskInfo::QPsdGlobalLayerMaskInfo(QIODevice *source)
 
     EnsureSeek es(source, d->length);
 
-    // Overlay color space (undocumented).
-    d->overlayColorSpace = readU16(source);
-
-    // 4 * 2 byte color components
-    d->color = readColor(source);
+    // Overlay color space (undocumented) followed by 4 * 2 byte color components
+    QPsdColorSpace colorSpace;
+    colorSpace.setId(static_cast<QPsdColorSpace::Id>(readU16(source)));
+    colorSpace.color().raw.value1 = readU16(source);
+    colorSpace.color().raw.value2 = readU16(source);
+    colorSpace.color().raw.value3 = readU16(source);
+    colorSpace.color().raw.value4 = readU16(source);
+    
+    d->overlayColorSpace = colorSpace.id();
+    d->color = colorSpace.toString();
 
     // Opacity. 0 = transparent, 100 = opaque.
     d->opacity = readU16(source);

@@ -12,6 +12,7 @@ qt_internal_add_module(PsdCore
         qpsdchannelimagedata.cpp qpsdchannelimagedata.h
         qpsdchannelinfo.cpp qpsdchannelinfo.h
         qpsdcolormodedata.cpp qpsdcolormodedata.h
+        qpsdcolorspace.cpp qpsdcolorspace.h
         qpsddescriptor.cpp qpsddescriptor.h
         qpsdfileheader.cpp qpsdfileheader.h
         qpsdgloballayermaskinfo.cpp qpsdgloballayermaskinfo.h

@@ -3,6 +3,7 @@
 
 #include <QtPsdCore/qpsdeffectslayerplugin.h>
 #include <QtPsdCore/qpsdoglweffect.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -39,7 +40,8 @@ public:
         qCDebug(lcQPsdEffectsLayerOglwPlugin) << "Intensity:" << intensity;
 
         // Color: 2 bytes for space followed by 4 * 2 byte color component
-        const auto color = readColor(source, length);
+        const auto colorSpace = readColorSpace(source, length);
+        const auto color = colorSpace.toString();
         ret.setColor(color);
         qCDebug(lcQPsdEffectsLayerOglwPlugin) << "Color:" << color;
 
@@ -62,7 +64,8 @@ public:
 
         // (Version 2 only) Native color space. 2 bytes for space followed by 4 * 2 byte color component
         if (version == 2) {
-            const auto nativeColor = readColor(source, length);
+            const auto nativeColorSpace = readColorSpace(source, length);
+            const auto nativeColor = nativeColorSpace.toString();
             ret.setNativeColor(nativeColor);
             qCDebug(lcQPsdEffectsLayerOglwPlugin) << "Native color:" << nativeColor;
         }

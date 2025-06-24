@@ -14,6 +14,8 @@
 
 QT_BEGIN_NAMESPACE
 
+class QPsdColorSpace;
+
 class Q_PSDCORE_EXPORT QPsdSection
 {
 public:
@@ -92,6 +94,7 @@ protected:
 
     static QRect readRectangle(QIODevice *source, quint32 *length = nullptr);
     static QString readColor(QIODevice *source, quint32 *length = nullptr);
+    static QPsdColorSpace readColorSpace(QIODevice *source, quint32 *length = nullptr);
 
     static double readPathNumber(QIODevice *source, quint32 *length = nullptr);
 

@@ -3,6 +3,7 @@
 
 #include <QtPsdCore/qpsdeffectslayerplugin.h>
 #include <QtPsdCore/qpsdbevleffect.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -58,12 +59,14 @@ public:
         qCDebug(lcQPsdEffectsLayerBevlPlugin) << "Shadow blend" << shadowBlendKey;
 
         // Highlight color: 2 bytes for space followed by 4 * 2 byte color component
-        const auto highlightColor = readColor(source, length);
+        const auto highlightColorSpace = readColorSpace(source, length);
+        const auto highlightColor = highlightColorSpace.toString();
         ret.setHighlightColor(highlightColor);
         qCDebug(lcQPsdEffectsLayerBevlPlugin) << "Highlight color:" << highlightColor;
 
         // Shadow color: 2 bytes for space followed by 4 * 2 byte color component
-        const auto shadowColor = readColor(source, length);
+        const auto shadowColorSpace = readColorSpace(source, length);
+        const auto shadowColor = shadowColorSpace.toString();
         ret.setShadowColor(shadowColor);
         qCDebug(lcQPsdEffectsLayerBevlPlugin) << "Shadow color:" << shadowColor;
 
@@ -100,12 +103,14 @@ public:
         // The following are present in version 2 only
         if (version == 2) {
             // Real highlight color: 2 bytes for space; 4 * 2 byte color component
-            const auto realHighlightColor = readColor(source, length);
+            const auto realHighlightColorSpace = readColorSpace(source, length);
+            const auto realHighlightColor = realHighlightColorSpace.toString();
             ret.setRealHighlightColor(realHighlightColor);
             qCDebug(lcQPsdEffectsLayerBevlPlugin) << "Real highlight color:" << realHighlightColor;
 
             // Real shadow color: 2 bytes for space; 4 * 2 byte color component
-            const auto realShadowColor = readColor(source, length);
+            const auto realShadowColorSpace = readColorSpace(source, length);
+            const auto realShadowColor = realShadowColorSpace.toString();
             ret.setRealShadowColor(realShadowColor);
             qCDebug(lcQPsdEffectsLayerBevlPlugin) << "Real shadow color:" << realShadowColor;
         }

@@ -3,6 +3,7 @@
 
 #include <QtPsdCore/qpsdeffectslayerplugin.h>
 #include <QtPsdCore/qpsdshadoweffect.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -49,7 +50,8 @@ public:
         qCDebug(lcQPsdEffectsLayerShadowPlugin) << "Distance:" << distance;
 
         // Color: 2 bytes for space followed by 4 * 2 byte color component
-        QString color = readColor(source, length);
+        const auto colorSpace = readColorSpace(source, length);
+        const auto color = colorSpace.toString();
         ret.setColor(color);
         qCDebug(lcQPsdEffectsLayerShadowPlugin) << "Color:" << color;
 
@@ -76,7 +78,8 @@ public:
         qCDebug(lcQPsdEffectsLayerShadowPlugin) << "Opacity:" << opacity;
 
         // Native color: 2 bytes for space followed by 4 * 2 byte color component
-        const auto nativeColor = readColor(source, length);
+        const auto nativeColorSpace = readColorSpace(source, length);
+        const auto nativeColor = nativeColorSpace.toString();
         ret.setNativeColor(nativeColor);
         qCDebug(lcQPsdEffectsLayerShadowPlugin) << "Native color:" << nativeColor;
 

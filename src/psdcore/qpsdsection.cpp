@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qpsdsection.h"
+#include "qpsdcolorspace.h"
 
 #include <QtCore/QStringDecoder>
 
@@ -131,6 +132,22 @@ double QPsdSection::readPathNumber(QIODevice *source, quint32 *length)
     const auto ret = static_cast<double>(a) + static_cast<double>(b) / std::pow(2, 24);
     // qDebug() << a << b1 << b2 << b3 << b << ret;
     return ret;
+}
+
+QPsdColorSpace QPsdSection::readColorSpace(QIODevice *source, quint32 *length)
+{
+    QPsdColorSpace colorSpace;
+    
+    // Read color space ID (2 bytes)
+    colorSpace.setId(static_cast<QPsdColorSpace::Id>(readU16(source, length)));
+    
+    // Read four 16-bit color values (8 bytes total)
+    colorSpace.color().raw.value1 = readU16(source, length);
+    colorSpace.color().raw.value2 = readU16(source, length);
+    colorSpace.color().raw.value3 = readU16(source, length);
+    colorSpace.color().raw.value4 = readU16(source, length);
+    
+    return colorSpace;
 }
 
 QT_END_NAMESPACE
