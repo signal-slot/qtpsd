@@ -12,8 +12,6 @@
 
 #include <QtWidgets/QRubberBand>
 
-#include <QtPsdCore>
-
 QT_BEGIN_NAMESPACE
 
 class QPsdView::Private
@@ -27,7 +25,6 @@ private:
 public:
     void modelChanged(QPsdWidgetTreeItemModel *model);
 
-    QPsdParser psdParser;
     QRubberBand *rubberBand;
     QPsdWidgetTreeItemModel *model = nullptr;
     QMetaObject::Connection modelConnection;
