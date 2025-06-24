@@ -126,29 +126,31 @@ QPsdExporterTreeItemModel::~QPsdExporterTreeItemModel()
 
 void QPsdExporterTreeItemModel::setSourceModel(QAbstractItemModel *source)
 {
-    beginResetModel();
-    for (const auto &conn: d->sourceConnections) {
-        disconnect(conn);
+    if (!d->sourceConnections.isEmpty()) {
+        for (const auto &conn: d->sourceConnections) {
+            disconnect(conn);
+        }
+        d->sourceConnections.clear();
     }
-    d->sourceConnections.clear();
 
     QIdentityProxyModel::setSourceModel(source);
     QPsdLayerTreeItemModel *model = dynamic_cast<QPsdLayerTreeItemModel *>(source);
-    d->sourceConnections = QList<QMetaObject::Connection> {
-        connect(source, &QAbstractItemModel::modelReset, this, [this]() {
-            beginResetModel();
-            d->loadHintFile();
-            endResetModel();
-        }),
-        connect(model, &QPsdLayerTreeItemModel::fileInfoChanged, this, [this](const QFileInfo &fileInfo) {
-            emit fileInfoChanged(fileInfo);
-        }),
-        connect(model, &QPsdLayerTreeItemModel::errorOccurred, this, [this](const QString &errorMessage) {
-            setErrorMessage(errorMessage);
-        }),
-    };
 
-    endResetModel();
+    if (model) {
+        d->sourceConnections = QList<QMetaObject::Connection> {
+            connect(source, &QAbstractItemModel::modelReset, this, [this]() {
+                beginResetModel();
+                d->loadHintFile();
+                endResetModel();
+            }),
+            connect(model, &QPsdLayerTreeItemModel::fileInfoChanged, this, [this](const QFileInfo &fileInfo) {
+                emit fileInfoChanged(fileInfo);
+            }),
+            connect(model, &QPsdLayerTreeItemModel::errorOccurred, this, [this](const QString &errorMessage) {
+                setErrorMessage(errorMessage);
+            }),
+        };
+    }
 }
 
 QPsdGuiLayerTreeItemModel *QPsdExporterTreeItemModel::guiLayerTreeItemModel() const

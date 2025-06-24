@@ -11,7 +11,8 @@ QT_BEGIN_NAMESPACE
 class QPsdImageStore::Private : public QSharedData {
 public:
     Private(const QDir &d, const QString &p) : dir(d), path(p) {
-        dir.mkpath(path);
+        if (!path.isEmpty())
+            dir.mkpath(path);
     }
 
     const QDir dir;
