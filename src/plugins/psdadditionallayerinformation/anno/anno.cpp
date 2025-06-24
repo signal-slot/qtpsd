@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -36,8 +37,9 @@ public:
             Q_UNUSED(iconLocation);
             const auto popupLocation = readRectangle(source, &length);
             Q_UNUSED(popupLocation);
-            const auto color = readColor(source, &length);
-            Q_UNUSED(color);
+            const auto colorSpace = readColorSpace(source, &length);
+            const auto color = colorSpace.toString();
+            Q_UNUSED(color); // TODO: Store annotation color when Anno structure is implemented
             const auto author = readPascalString(source, 2, &length);
             Q_UNUSED(author);
             const auto name = readPascalString(source, 2, &length);

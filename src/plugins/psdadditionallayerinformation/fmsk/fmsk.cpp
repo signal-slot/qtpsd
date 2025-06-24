@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -17,8 +18,8 @@ public:
         });
 
         // Color space
-        auto data = readByteArray(source, 10, &length);
-        Q_UNUSED(data); // TODO
+        auto colorSpace = readColorSpace(source, &length);
+        Q_UNUSED(colorSpace); // TODO: Store filter mask color when FMsk structure is implemented
 
         // Opacity
         auto opacity = readU16(source, &length);
