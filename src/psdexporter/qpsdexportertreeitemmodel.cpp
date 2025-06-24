@@ -126,13 +126,14 @@ QPsdExporterTreeItemModel::~QPsdExporterTreeItemModel()
 
 void QPsdExporterTreeItemModel::setSourceModel(QAbstractItemModel *source)
 {
+    QIdentityProxyModel::setSourceModel(source);
+
     beginResetModel();
     for (const auto &conn: d->sourceConnections) {
         disconnect(conn);
     }
     d->sourceConnections.clear();
 
-    QIdentityProxyModel::setSourceModel(source);
     QPsdLayerTreeItemModel *model = dynamic_cast<QPsdLayerTreeItemModel *>(source);
     d->sourceConnections = QList<QMetaObject::Connection> {
         connect(source, &QAbstractItemModel::modelReset, this, [this]() {

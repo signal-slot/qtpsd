@@ -11,7 +11,8 @@ QT_BEGIN_NAMESPACE
 class QPsdImageStore::Private : public QSharedData {
 public:
     Private(const QDir &d, const QString &p) : dir(d), path(p) {
-        dir.mkpath(path);
+        if (!path.isEmpty())
+            dir.mkpath(path);
     }
 
     const QDir dir;
@@ -25,7 +26,7 @@ public:
     QString sha256file(const QDir &dir, const QString &filename);
 };
 
-QPsdImageStore::QPsdImageStore(const QDir &dir, const QString &path) 
+QPsdImageStore::QPsdImageStore(const QDir &dir, const QString &path)
     : d(new Private(dir, path))
 {
 }
@@ -87,7 +88,7 @@ QString QPsdImageStore::save(const QString &filename, const QImage &image, const
             }
         }
 
-        // increment filename and retry    
+        // increment filename and retry
         fname = u"%1_%2.%3"_s.arg(fileInfo.completeBaseName()).arg(++i).arg(fileInfo.suffix());
     }
 
