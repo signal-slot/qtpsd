@@ -8,24 +8,20 @@
 
 QT_BEGIN_NAMESPACE
 
-QPsdTextItem::QPsdTextItem(const QModelIndex &index, const QPsdTextLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
+QPsdTextItem::QPsdTextItem(const QModelIndex &index, const QPsdTextLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
     : QPsdAbstractItem(index, psdData, maskItem, group, parent)
+{}
+
+void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     const auto *layer = this->layer<QPsdTextLayerItem>();
+    QRect rect;
+
     if (layer->textType() != QPsdTextLayerItem::TextType::ParagraphText) {
-        setGeometry(layer->fontAdjustedBounds().toRect());
+        rect = layer->fontAdjustedBounds().toRect();
+    } else {
+        rect = layer->rect();
     }
-}
-
-void QPsdTextItem::paintEvent(QPaintEvent *event)
-{
-    QPsdAbstractItem::paintEvent(event);
-
-    const auto *layer = this->layer<QPsdTextLayerItem>();
-
-    QPainter painter(this);
-    // painter.drawImage(0, 0, layer->image());
-    // painter.setOpacity(0.5);
 
     const auto runs = layer->runs();
     struct Chunk {
@@ -61,9 +57,9 @@ void QPsdTextItem::paintEvent(QPaintEvent *event)
             chunk.color = run.color;
             chunk.text = line;
             chunk.alignment = run.alignment | flag;
-            painter.setFont(chunk.font);
+            painter->setFont(chunk.font);
             QFontMetrics fontMetrics(chunk.font);
-            auto bRect = painter.boundingRect(QRectF(0, 0, width(), height()), chunk.alignment, line);
+            auto bRect = painter->boundingRect(rect, chunk.alignment, line);
             chunk.size = bRect.size();
             // adjust size, for boundingRect is too small?
             if (chunk.font.pointSizeF() * 1.5 > chunk.size.height()) {
@@ -86,9 +82,8 @@ void QPsdTextItem::paintEvent(QPaintEvent *event)
         }
         contentHeight += maxHeight;
     }
-    auto geom = geometry();
-    geom.setHeight(contentHeight);
-    setGeometry(geom);
+
+    rect.setHeight(contentHeight);
 
     qreal y = 0;
     for (const auto &line : lines) {
@@ -109,7 +104,7 @@ void QPsdTextItem::paintEvent(QPaintEvent *event)
 
         // Use the original layer bounds to determine proper positioning
         const auto layerBounds = layer->bounds();
-        const auto widgetGeom = geometry();
+        const auto widgetGeom = rect;
 
         // Calculate the offset from widget origin to layer bounds origin
         qreal layerOffsetX = layerBounds.x() - widgetGeom.x();
@@ -150,10 +145,10 @@ void QPsdTextItem::paintEvent(QPaintEvent *event)
         }
 
         for (const auto &chunk : line) {
-            painter.setFont(chunk.font);
-            painter.setPen(chunk.color);
+            painter->setFont(chunk.font);
+            painter->setPen(chunk.color);
             // qDebug() << chunk.text << chunk.size << chunk.alignment;
-            painter.drawText(x, y, chunk.size.width(), chunk.size.height(), chunk.alignment, chunk.text);
+            painter->drawText(x, y, chunk.size.width(), chunk.size.height(), chunk.alignment, chunk.text);
             x += chunk.size.width();
         }
         y += size.height();

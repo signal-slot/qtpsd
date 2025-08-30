@@ -8,6 +8,7 @@ qt_internal_add_module(PsdWidget
     SOURCES
         qpsdwidgetglobal.h
         qpsdview.h qpsdview.cpp
+        qpsdscene.h qpsdscene.cpp
         qpsdabstractitem.h qpsdabstractitem.cpp
         qpsdtextitem.h qpsdtextitem.cpp
         qpsdshapeitem.h qpsdshapeitem.cpp
@@ -19,11 +20,6 @@ qt_internal_add_module(PsdWidget
     PUBLIC_LIBRARIES
         Qt::Widgets
         Qt::PsdGui
-)
-
-target_sources(PsdWidget
-  PRIVATE
-    qpsdwidgettreeitemmodel.cpp qpsdwidgettreeitemmodel.h
 )
 
 ## Scopes:

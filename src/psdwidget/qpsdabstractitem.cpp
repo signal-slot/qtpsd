@@ -27,13 +27,19 @@ QPsdAbstractItem::Private::Private(const QModelIndex &index, const QPsdAbstractL
     , layer(layer), maskItem(maskItem), group(group), index(index)
 {
     q->setVisible(layer->isVisible());
-    q->setGeometry(layer->rect());
 }
 
-QPsdAbstractItem::QPsdAbstractItem(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
-    : QWidget(parent)
+QPsdAbstractItem::QPsdAbstractItem(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
+    : QGraphicsItem(parent)
     , d(new Private(index, layer, maskItem, group, this))
-{}
+{
+    auto pos = d->layer->rect().topLeft();
+    if (parent) {
+        pos -= parent->pos().toPoint();
+    }
+    setPos(pos);
+    setFlags(ItemIsSelectable);
+}
 
 QPsdAbstractItem::~QPsdAbstractItem() = default;
 
@@ -59,12 +65,12 @@ void QPsdAbstractItem::setMask(QPainter *painter) const
         index = model->parent(index);
     }
     if (d->layer && d->maskItem) {
-        QPixmap pixmap(size());
+        QPixmap pixmap(d->layer->rect().size());
         pixmap.fill(Qt::transparent);
         const auto maskItem = d->maskItem;
         const QImage maskImage = maskItem->transparencyMask();
         if (!maskImage.size().isEmpty() && maskItem->rect().isValid()) {
-            const auto intersected = maskItem->rect().intersected(geometry());
+            const auto intersected = maskItem->rect().intersected(d->layer->rect());
             QPainter p(&pixmap);
             p.drawImage(intersected.translated(-x(), -y()), maskImage, intersected.translated(-maskItem->rect().x(), -maskItem->rect().y()));
             p.end();
@@ -87,6 +93,11 @@ QMap<quint32, QString> QPsdAbstractItem::groupMap() const
 QModelIndex QPsdAbstractItem::modelIndex() const
 {
     return d->index;
+}
+
+QRectF QPsdAbstractItem::boundingRect() const
+{
+    return QRectF{QPointF { 0, 0 }, d->layer->rect().size()};
 }
 
 QT_END_NAMESPACE

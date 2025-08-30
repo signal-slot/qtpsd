@@ -11,12 +11,11 @@ QT_BEGIN_NAMESPACE
 
 class QPsdShapeItem : public QPsdAbstractItem
 {
-    Q_OBJECT
 public:
-    QPsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent = nullptr);
+    QPsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent = nullptr);
 
 protected:
-    void paintEvent(QPaintEvent *event) override;
+    virtual void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
 };
 
 QT_END_NAMESPACE

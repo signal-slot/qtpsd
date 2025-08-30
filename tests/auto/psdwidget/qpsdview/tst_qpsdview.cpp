@@ -11,6 +11,7 @@
 #include <QtPsdGui/qpsdguiglobal.h>
 #include <QtPsdWidget/QPsdView>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
+#include <QtPsdWidget/QPsdScene>
 #include <QtCore/QTextStream>
 #include <QtCore/QFile>
 #include <QtCore/QDateTime>
@@ -118,9 +119,6 @@ QImage tst_QPsdView::renderPsdView(const QString &filePath)
 
     // Create the view
     QPsdView view;
-    view.setModel(&model);
-    view.setShowChecker(false);
-    view.reset();
 
     // Get the size from the model
     const QSize canvasSize = model.size();
@@ -132,7 +130,10 @@ QImage tst_QPsdView::renderPsdView(const QString &filePath)
     view.setAttribute(Qt::WA_TranslucentBackground);
 
     // Ensure the widget is properly sized
-    view.resize(canvasSize);
+    view.resize(canvasSize.grownBy({1, 1, 1, 1}));
+    view.viewport()->resize(canvasSize);
+
+    view.setModel(&model);
 
     // Create image with transparent background
     QImage rendered(canvasSize, QImage::Format_ARGB32);
