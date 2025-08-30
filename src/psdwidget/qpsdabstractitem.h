@@ -6,18 +6,17 @@
 
 #include <QtPsdGui/QPsdAbstractLayerItem>
 
-#include <QtWidgets/QWidget>
+#include <QtWidgets/QGraphicsItem>
 #include <QtCore/QPersistentModelIndex>
 
 QT_BEGIN_NAMESPACE
 
 class QPainter;
 
-class QPsdAbstractItem : public QWidget
+class QPsdAbstractItem : public QGraphicsItem
 {
-    Q_OBJECT
 public:
-    QPsdAbstractItem(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent = nullptr);
+    QPsdAbstractItem(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent = nullptr);
     ~QPsdAbstractItem();
 
     quint32 id() const;
@@ -25,6 +24,8 @@ public:
     const QPsdAbstractLayerItem *abstractLayer() const;
     QMap<quint32, QString> groupMap() const;
     QModelIndex modelIndex() const;
+
+    virtual QRectF boundingRect() const override;
 
 protected:
     void setMask(QPainter *painter) const;

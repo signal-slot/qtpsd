@@ -10,20 +10,17 @@
 
 QT_BEGIN_NAMESPACE
 
-QPsdShapeItem::QPsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
+QPsdShapeItem::QPsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
     : QPsdAbstractItem(index, psdData, maskItem, group, parent)
 {}
 
-void QPsdShapeItem::paintEvent(QPaintEvent *event)
+void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
-    QPsdAbstractItem::paintEvent(event);
-
     const auto *layer = this->layer<QPsdShapeLayerItem>();
 
-    QPainter painter(this);
-    setMask(&painter);
-    painter.setOpacity(abstractLayer()->opacity());
-    painter.setRenderHint(QPainter::Antialiasing);
+    setMask(painter);
+    painter->setOpacity(abstractLayer()->opacity());
+    painter->setRenderHint(QPainter::Antialiasing);
 
     // painter.drawImage(0, 0, layer->image());
     // painter.setOpacity(0.5);
@@ -33,10 +30,10 @@ void QPsdShapeItem::paintEvent(QPaintEvent *event)
     const auto *patternFill = layer->patternFill();
     const auto pathInfo = layer->pathInfo();
     if (gradient) {
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QBrush(*gradient));
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QBrush(*gradient));
     } else if (border) {
-        painter.setPen(QPen(border->color(), border->size()));
+        painter->setPen(QPen(border->color(), border->size()));
     } else if (patternFill) {
         const auto record = layer->record();
         const auto patt = record.additionalLayerInformation().value("Patt");
@@ -45,20 +42,20 @@ void QPsdShapeItem::paintEvent(QPaintEvent *event)
         // parser.layerAndMaskInformation().additionalLayerInformation().value("Patt");
         return;
     } else {
-        painter.setPen(layer->pen());
-        painter.setBrush(layer->brush());
+        painter->setPen(layer->pen());
+        painter->setBrush(layer->brush());
     }
 
-    const auto dw = painter.pen().widthF() / 2.0;
+    const auto dw = painter->pen().widthF() / 2.0;
     switch (pathInfo.type) {
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
-        painter.drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
+        painter->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
         break;
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-        painter.drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
+        painter->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
         break;
     default:
-        painter.drawPath(pathInfo.path);
+        painter->drawPath(pathInfo.path);
         break;
     }
 }

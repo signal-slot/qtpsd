@@ -1,40 +1,36 @@
-// Copyright (C) 2024 Signal Slot Inc.
+// Copyright (C) 2025 Signal Slot Inc.
 // SPDX-License-Identifier: BSD-3-Clause
 
-#ifndef QPSDVIEW_H
-#define QPSDVIEW_H
+#ifndef QPSDSCENE_H
+#define QPSDSCENE_H
 
 #include <QtPsdWidget/qpsdwidgetglobal.h>
-#include <QtPsdWidget/qpsdwidgettreeitemmodel.h>
 
-#include <QtWidgets/QGraphicsView>
+#include <QtWidgets/QGraphicsScene>
 
 QT_BEGIN_NAMESPACE
 
-class QPsdScene;
+class QPsdWidgetTreeItemModel;
 
-class Q_PSDWIDGET_EXPORT QPsdView : public QGraphicsView
+class Q_PSDWIDGET_EXPORT QPsdScene : public QGraphicsScene
 {
     Q_OBJECT
-    Q_PROPERTY(bool showChecker READ showChecker WRITE setShowChecker NOTIFY showCheckerChanged)
+
 public:
-    QPsdView(QWidget *parent = nullptr);
-    ~QPsdView() override;
+    QPsdScene(QObject *parent = nullptr);
+    virtual ~QPsdScene();
 
     QPsdWidgetTreeItemModel *model() const;
     bool showChecker() const;
 
 public slots:
     void setModel(QPsdWidgetTreeItemModel *model);
-    void setPsdScene(QPsdScene *scene);
     void setItemVisible(quint32 id, bool visible);
     void reset();
-    void clearSelection();
     void setShowChecker(bool show);
 
 signals:
     void itemSelected(const QModelIndex &index);
-    void sceneChanged(QPsdScene *scene);
     void modelChanged(QPsdWidgetTreeItemModel *model);
     void showCheckerChanged(bool show);
 
@@ -45,4 +41,4 @@ private:
 
 QT_END_NAMESPACE
 
-#endif // QPSDVIEW_H
+#endif // QPSDSCENE_H

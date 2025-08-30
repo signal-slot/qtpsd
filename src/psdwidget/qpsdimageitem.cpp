@@ -11,25 +11,23 @@
 
 QT_BEGIN_NAMESPACE
 
-QPsdImageItem::QPsdImageItem(const QModelIndex &index, const QPsdImageLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QWidget *parent)
+QPsdImageItem::QPsdImageItem(const QModelIndex &index, const QPsdImageLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
     : QPsdAbstractItem(index, psdData, maskItem, group, parent)
-{}
-
-void QPsdImageItem::paintEvent(QPaintEvent *event)
 {
-    QPsdAbstractItem::paintEvent(event);
+}
 
-    QPainter painter(this);
-    setMask(&painter);
+void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
+{
+    setMask(painter);
 
     const auto *layer = this->layer<QPsdImageLayerItem>();
-    QRect r = rect();
+    QRect r = QRect{{0, 0}, layer->rect().size()};
     QImage image = layer->image();
 
     QImage linkedImage = layer->linkedImage();
     if (!linkedImage.isNull()) {
-        image = linkedImage.scaled(width(), height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        r = QRect((width() - image.width()) / 2, (height() - image.height()) / 2, image.width(), image.height());
+        image = linkedImage.scaled(r.width(), r.height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        r = QRect((r.width() - image.width()) / 2, (r.height() - image.height()) / 2, image.width(), image.height());
     }
 
     const auto effects = layer->effects();
@@ -75,10 +73,10 @@ void QPsdImageItem::paintEvent(QPaintEvent *event)
             Q_UNUSED(blur);
             
             // Draw shadow behind the layer
-            painter.save();
-            painter.setOpacity(opacity);
-            painter.drawImage(r.translated(offset.toPoint()), shadowImage);
-            painter.restore();
+            painter->save();
+            painter->setOpacity(opacity);
+            painter->drawImage(r.translated(offset.toPoint()), shadowImage);
+            painter->restore();
         }
     }
     
@@ -103,17 +101,16 @@ void QPsdImageItem::paintEvent(QPaintEvent *event)
         }
     }
 
-    painter.setCompositionMode(QtPsdGui::compositionMode(layer->record().blendMode()));
-    
+    painter->setCompositionMode(QtPsdGui::compositionMode(layer->record().blendMode()));
     // Finally, draw the layer itself
-    painter.drawImage(r, image);
+    painter->drawImage(r, image);
 
     const auto *gradient = layer->gradient();
     if (gradient) {
-        painter.setOpacity(0.71);
-        painter.setPen(Qt::NoPen);
-        painter.setBrush(QBrush(*gradient));
-        painter.drawRect(rect());
+        painter->setOpacity(0.71);
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(QBrush(*gradient));
+        painter->drawRect(r);
     }
 }
 
