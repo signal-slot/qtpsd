@@ -189,7 +189,7 @@
     </item>
    </layout>
   </widget>
-  <widget class="QScrollArea" name="scrollArea">
+  <widget class="QPsdView" name="psdView">
    <property name="geometry">
     <rect>
      <x>460</x>
@@ -198,27 +198,13 @@
      <height>205</height>
     </rect>
    </property>
-   <property name="widgetResizable">
-    <bool>false</bool>
-   </property>
-   <widget class="QPsdView" name="psdView">
-    <property name="geometry">
-     <rect>
-      <x>0</x>
-      <y>0</y>
-      <width>125</width>
-      <height>205</height>
-     </rect>
-    </property>
-   </widget>
   </widget>
  </widget>
  <customwidgets>
   <customwidget>
    <class>QPsdView</class>
-   <extends>QWidget</extends>
+   <extends>QGraphicsView</extends>
    <header>qpsdview.h</header>
-   <container>1</container>
   </customwidget>
  </customwidgets>
  <resources/>
