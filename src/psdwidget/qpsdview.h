@@ -38,6 +38,9 @@ signals:
     void modelChanged(QPsdWidgetTreeItemModel *model);
     void showCheckerChanged(bool show);
 
+protected:
+    void paintEvent(QPaintEvent *event) override;
+
 private:
     class Private;
     QScopedPointer<Private> d;
