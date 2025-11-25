@@ -31,8 +31,8 @@ public:
 };
 
 QPsdView::Private::Private(QPsdView *parent)
-    : scene(nullptr)
-    , q(parent)
+    : q(parent)
+    , scene(nullptr)
 {
 }
 
