@@ -14,6 +14,8 @@ QPsdTextItem::QPsdTextItem(const QModelIndex &index, const QPsdTextLayerItem *ps
 
 void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+    Q_UNUSED(option);
+
     const auto *layer = this->layer<QPsdTextLayerItem>();
     QRect rect;
 
