@@ -27,7 +27,7 @@ public slots:
     void setModel(QPsdWidgetTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);
     void reset();
-    void setShowChecker(bool show);
+    void setShowChecker(bool showChecker);
 
 signals:
     void itemSelected(const QModelIndex &index);

@@ -108,9 +108,9 @@ bool QPsdView::showChecker() const
     return d->scene->showChecker();
 }
 
-void QPsdView::setShowChecker(bool show)
+void QPsdView::setShowChecker(bool showChecker)
 {
-    d->scene->setShowChecker(show);
+    d->scene->setShowChecker(showChecker);
 }
 
 void QPsdView::reset()

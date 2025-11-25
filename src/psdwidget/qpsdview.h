@@ -30,7 +30,7 @@ public slots:
     void setItemVisible(quint32 id, bool visible);
     void reset();
     void clearSelection();
-    void setShowChecker(bool show);
+    void setShowChecker(bool showChecker);
 
 signals:
     void itemSelected(const QModelIndex &index);

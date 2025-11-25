@@ -150,13 +150,13 @@ void QPsdScene::reset()
     setSceneRect(QRect{ QPoint{}, d->model->size() });
 }
 
-void QPsdScene::setShowChecker(bool show)
+void QPsdScene::setShowChecker(bool showChecker)
 {
-    if (show == d->showChecker) {
+    if (d->showChecker == showChecker) {
         return;
     }
 
-    if (show) {
+    if (showChecker) {
         const auto unitSize = 25;
         QImage checker(unitSize * 2, unitSize * 2, QImage::Format_ARGB32);
         QPainter painter(&checker);
@@ -168,8 +168,8 @@ void QPsdScene::setShowChecker(bool show)
         setBackgroundBrush(Qt::NoBrush);
     }
 
-    d->showChecker = show;
-    emit showCheckerChanged(show);
+    d->showChecker = showChecker;
+    emit showCheckerChanged(showChecker);
 }
 
 QT_END_NAMESPACE
