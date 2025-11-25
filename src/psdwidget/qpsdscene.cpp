@@ -41,9 +41,22 @@ QPsdScene::Private::~Private()
 {
 }
 
+void QPsdScene::Private::modelChanged(QPsdWidgetTreeItemModel *model)
+{
+    QObject::disconnect(modelConnection);
+
+    if (model) {
+        modelConnection = QObject::connect(model, &QAbstractItemModel::modelReset, q, &QPsdScene::reset);
+    }
+    q->reset();
+}
+
 QPsdScene::QPsdScene(QObject *parent)
     : QGraphicsScene(parent), d(new Private(this))
 {
+    connect(this, &QPsdScene::modelChanged, this, [this](QPsdWidgetTreeItemModel *model) {
+        d->modelChanged(model); 
+    });
 }
 
 QPsdScene::~QPsdScene()
@@ -60,14 +73,7 @@ void QPsdScene::setModel(QPsdWidgetTreeItemModel *model)
     if (model == d->model) {
         return;
     }
-    QObject::disconnect(d->modelConnection);
-
     d->model = model;
-
-    if (model) {
-        d->modelConnection = QObject::connect(model, &QAbstractItemModel::modelReset, this, &QPsdScene::reset);
-    }
-    reset();
 
     emit modelChanged(model);
 }
