@@ -16,17 +16,23 @@ QT_BEGIN_NAMESPACE
 class QPsdView::Private
 {
 public:
-    Private();
+    Private(QPsdView *parent);
+
+private:
+    QPsdView *q;
 
 public:
     QPsdScene *scene;
     QList<QMetaObject::Connection> sceneConnections;
     QRect rubberBandRect;
+
     QRegion rubberBandRegion(const QWidget *widget, const QRect &rect) const;
+    void sceneChanged(QPsdScene *scene);
 };
 
-QPsdView::Private::Private()
+QPsdView::Private::Private(QPsdView *parent)
     : scene(nullptr)
+    , q(parent)
 {
 }
 
@@ -46,10 +52,45 @@ QRegion QPsdView::Private::rubberBandRegion(const QWidget *widget, const QRect &
     return tmp;
 }
 
+void QPsdView::Private::sceneChanged(QPsdScene *scene)
+{
+    for (const auto &conn: sceneConnections) {
+        disconnect(conn);
+    }
+    sceneConnections.clear();
+
+    if (scene) {
+        sceneConnections = {
+            QObject::connect(scene, &QPsdScene::modelChanged, q, &QPsdView::modelChanged),
+            QObject::connect(scene, &QPsdScene::itemSelected, q, &QPsdView::itemSelected),
+            QObject::connect(scene, &QPsdScene::showCheckerChanged, q, &QPsdView::showCheckerChanged),
+            QObject::connect(scene, &QPsdScene::selectionChanged, q, [this]() {
+                const auto items = this->scene->selectedItems();
+                if (items.size() == 0) {
+                    rubberBandRect = QRect {};
+                } else if (items.size() == 1) {
+                    const auto item = items.at(0);
+                    const auto rect = item->sceneBoundingRect().toRect();
+
+                    const QPsdAbstractItem *psdItem = dynamic_cast<const QPsdAbstractItem *>(item);
+                    if (psdItem) {
+                        emit q->itemSelected(psdItem->modelIndex());
+                    }
+                    rubberBandRect = rect;
+                }
+            }),
+        };
+    }
+}
+
 QPsdView::QPsdView(QWidget *parent)
     : QGraphicsView(parent)
-    , d(new Private)
+    , d(new Private(this))
 {
+    connect(this, &QPsdView::sceneChanged, this, [this](QPsdScene *scene) {
+        d->sceneChanged(scene);
+    });
+
     setAlignment(Qt::AlignLeft | Qt::AlignTop);
     setPsdScene(new QPsdScene(parent));
 }
@@ -63,39 +104,15 @@ QPsdWidgetTreeItemModel *QPsdView::model() const
 
 void QPsdView::setPsdScene(QPsdScene *scene)
 {
-    if (d->scene != scene) {
-        d->scene = scene;
-
-        for (const auto &conn: d->sceneConnections) {
-            disconnect(conn);
-        }
-        d->sceneConnections.clear();
-
-        d->sceneConnections = {
-            connect(d->scene, &QPsdScene::modelChanged, this, &QPsdView::modelChanged),
-            connect(d->scene, &QPsdScene::itemSelected, this, &QPsdView::itemSelected),
-            connect(d->scene, &QPsdScene::showCheckerChanged, this, &QPsdView::showCheckerChanged),
-            connect(d->scene, &QPsdScene::selectionChanged, this, [&]() {
-                const auto items = d->scene->selectedItems();
-                if (items.size() == 0) {
-                    d->rubberBandRect = QRect {};
-                } else if (items.size() == 1) {
-                    const auto item = items.at(0);
-                    const auto rect = item->sceneBoundingRect().toRect();
-
-                    const QPsdAbstractItem *psdItem = dynamic_cast<const QPsdAbstractItem *>(item);
-                    if (psdItem) {
-                        emit itemSelected(psdItem->modelIndex());
-                    }
-                    d->rubberBandRect = rect;
-                }
-            }),
-        };
-
-        setScene(scene);
-
-        emit sceneChanged(scene);
+    if (d->scene == scene) {
+        return;
     }
+
+    d->scene = scene;
+
+    setScene(scene);
+
+    emit sceneChanged(scene);
 }
 
 void QPsdView::setModel(QPsdWidgetTreeItemModel *model)
