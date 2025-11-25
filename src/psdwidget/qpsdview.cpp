@@ -8,6 +8,7 @@
 #include <QtGui/QPainter>
 #include <QtGui/QPaintEvent>
 
+#include <QtWidgets/QStyleOption>
 #include <QtWidgets/QRubberBand>
 
 QT_BEGIN_NAMESPACE
@@ -15,10 +16,7 @@ QT_BEGIN_NAMESPACE
 class QPsdView::Private
 {
 public:
-    Private(QPsdView *parent);
-
-private:
-    QPsdView *q;
+    Private();
 
 public:
     QPsdScene *scene;
@@ -27,9 +25,8 @@ public:
     QRegion rubberBandRegion(const QWidget *widget, const QRect &rect) const;
 };
 
-QPsdView::Private::Private(QPsdView *parent)
-    : q(parent)
-    , scene(nullptr)
+QPsdView::Private::Private()
+    : scene(nullptr)
 {
 }
 
@@ -51,7 +48,7 @@ QRegion QPsdView::Private::rubberBandRegion(const QWidget *widget, const QRect &
 
 QPsdView::QPsdView(QWidget *parent)
     : QGraphicsView(parent)
-    , d(new Private(this))
+    , d(new Private)
 {
     setAlignment(Qt::AlignLeft | Qt::AlignTop);
     setPsdScene(new QPsdScene(parent));
