@@ -18,6 +18,9 @@ QPsdImageItem::QPsdImageItem(const QModelIndex &index, const QPsdImageLayerItem 
 
 void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+    
     setMask(painter);
 
     const auto *layer = this->layer<QPsdImageLayerItem>();
