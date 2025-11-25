@@ -25,7 +25,7 @@ public:
     QMap<quint32, QString> groupMap() const;
     QModelIndex modelIndex() const;
 
-    virtual QRectF boundingRect() const override;
+    QRectF boundingRect() const override;
 
 protected:
     void setMask(QPainter *painter) const;
