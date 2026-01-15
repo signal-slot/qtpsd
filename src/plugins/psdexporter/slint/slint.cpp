@@ -123,8 +123,24 @@ bool QPsdExporterSlintPlugin::outputBase(const QModelIndex &index, Element *elem
             parentIndex = model()->parent(parentIndex);
         }
     }
-    if (item->opacity() < 1.0) {
-        element->properties.insert("opacity", item->opacity());
+    // Handle opacity and fillOpacity
+    // In Photoshop: opacity affects everything (including effects), fillOpacity affects only content
+    const qreal opacity = item->opacity();
+    const qreal fillOpacity = item->fillOpacity();
+    const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty();
+
+    if (hasEffects) {
+        // When there are effects, apply opacity to the whole item
+        // fillOpacity will be applied to the content in outputImage/outputShape
+        if (opacity < 1.0) {
+            element->properties.insert("opacity", opacity);
+        }
+    } else {
+        // When no effects, combine opacity and fillOpacity
+        const qreal combinedOpacity = opacity * fillOpacity;
+        if (combinedOpacity < 1.0) {
+            element->properties.insert("opacity", combinedOpacity);
+        }
     }
     outputRect(rect, element, true);
     return true;
@@ -700,6 +716,27 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
     const auto *image = dynamic_cast<const QPsdImageLayerItem *>(model()->layerItem(imageIndex));
     QPsdImageStore imageStore(dir, "images"_L1);
 
+    // Check if we need to apply fillOpacity to image content
+    const qreal fillOpacity = image->fillOpacity();
+    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty();
+    const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
+
+    auto applyFillOpacity = [fillOpacity](QImage &img) {
+        if (fillOpacity >= 1.0)
+            return;
+        img = img.convertToFormat(QImage::Format_ARGB32);
+        for (int y = 0; y < img.height(); ++y) {
+            QRgb *scanLine = reinterpret_cast<QRgb *>(img.scanLine(y));
+            for (int x = 0; x < img.width(); ++x) {
+                const int alpha = qAlpha(scanLine[x]);
+                if (alpha > 0) {
+                    const int newAlpha = qRound(alpha * fillOpacity);
+                    scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
+                }
+            }
+        }
+    };
+
     QString name;
     bool done = false;
     const auto linkedFile = image->linkedFile();
@@ -708,6 +745,9 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
         if (!qimage.isNull()) {
             if (imageScaling) {
                 qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            }
+            if (needsFillOpacity) {
+                applyFillOpacity(qimage);
             }
             QByteArray format = linkedFile.type.trimmed();
             name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData())), qimage, format.constData());
@@ -718,6 +758,9 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
         QImage qimage = image->image();
         if (imageScaling) {
             qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        if (needsFillOpacity) {
+            applyFillOpacity(qimage);
         }
         name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
     }

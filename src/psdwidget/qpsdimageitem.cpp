@@ -76,8 +76,9 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             Q_UNUSED(blur);
             
             // Draw shadow behind the layer
+            // Effects use layer opacity (not fill opacity)
             painter->save();
-            painter->setOpacity(opacity);
+            painter->setOpacity(layer->opacity() * opacity);
             painter->drawImage(r.translated(offset.toPoint()), shadowImage);
             painter->restore();
         }
@@ -105,6 +106,10 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     }
 
     painter->setCompositionMode(QtPsdGui::compositionMode(layer->record().blendMode()));
+    // Apply both opacity and fill opacity to the layer content
+    // In Photoshop: opacity affects everything, fill opacity affects only layer pixels (not effects)
+    // Effects (drop shadow etc.) were already drawn above with just opacity
+    painter->setOpacity(layer->opacity() * layer->fillOpacity());
     // Finally, draw the layer itself
     painter->drawImage(r, image);
 

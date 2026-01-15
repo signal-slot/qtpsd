@@ -3,8 +3,10 @@
         {
             "children": [
                 {
+                    "fillOpacity": 1,
                     "id": "11",
                     "name": "段落テキストは折り返される",
+                    "opacity": 1,
                     "rect": {
                         "height": 107,
                         "width": 146,
@@ -13,7 +15,7 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "KozGoPr6N-Regular,16,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "段落テキストは折り返される\n"
@@ -224,8 +226,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "9",
                     "name": "Shift +改行",
+                    "opacity": 1,
                     "rect": {
                         "height": 80,
                         "width": 84,
@@ -234,7 +238,7 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "KozGoPr6N-Regular,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "Shift\n+改行\n"
@@ -495,8 +499,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "7",
                     "name": "文字列中に 別フォント",
+                    "opacity": 1,
                     "rect": {
                         "height": 82,
                         "width": 141,
@@ -505,25 +511,25 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "KozGoPr6N-Regular,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "文字列"
                         },
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "KozGoPr6N-Regular,10.6667,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "中"
                         },
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "KozGoPr6N-Regular,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "に\n別"
                         },
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "源ノ角ゴシック JP,12,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "フォント\n"
@@ -884,8 +890,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "6",
                     "name": "文字列中に 改行",
+                    "opacity": 1,
                     "rect": {
                         "height": 82,
                         "width": 157,
@@ -894,7 +902,7 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "源ノ角ゴシック JP,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "文字列中に\n改行\n"
@@ -1156,8 +1164,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "5",
                     "name": "レイヤー 1",
+                    "opacity": 1,
                     "rect": {
                         "height": 0,
                         "width": 0,
@@ -1166,7 +1176,7 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#eac3c3",
                             "font": "源ノ角ゴシック JP,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "\n"
@@ -1376,8 +1386,10 @@
                     "visible": true
                 }
             ],
+            "fillOpacity": 1,
             "id": "3",
             "name": "アートボード 1",
+            "opacity": 1,
             "rect": {
                 "height": 0,
                 "width": 0,

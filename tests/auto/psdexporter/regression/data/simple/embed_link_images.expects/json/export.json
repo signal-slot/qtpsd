@@ -3,8 +3,10 @@
         {
             "children": [
                 {
+                    "fillOpacity": 1,
                     "id": "31",
                     "name": "flutter pixeled",
+                    "opacity": 1,
                     "rect": {
                         "height": 40,
                         "width": 32,
@@ -15,8 +17,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "29",
                     "name": "flutter",
+                    "opacity": 1,
                     "rect": {
                         "height": 40,
                         "width": 32,
@@ -27,8 +31,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "32",
                     "name": "slint ピクセル化",
+                    "opacity": 1,
                     "rect": {
                         "height": 48,
                         "width": 36,
@@ -39,8 +45,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "27",
                     "name": "slint",
+                    "opacity": 1,
                     "rect": {
                         "height": 48,
                         "width": 36,
@@ -51,8 +59,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "34",
                     "name": "ロゴ",
+                    "opacity": 1,
                     "rect": {
                         "height": 46,
                         "width": 64,
@@ -63,8 +73,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "36",
                     "name": "qtquick",
+                    "opacity": 1,
                     "rect": {
                         "height": 48,
                         "width": 36,
@@ -75,8 +87,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "25",
                     "name": "同名別画像",
+                    "opacity": 1,
                     "rect": {
                         "height": 46,
                         "width": 64,
@@ -87,8 +101,10 @@
                     "visible": true
                 }
             ],
+            "fillOpacity": 1,
             "id": "3",
             "name": "アートボード 1",
+            "opacity": 1,
             "rect": {
                 "height": 0,
                 "width": 0,

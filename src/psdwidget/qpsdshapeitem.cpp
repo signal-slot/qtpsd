@@ -22,7 +22,9 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     const auto *layer = this->layer<QPsdShapeLayerItem>();
 
     setMask(painter);
-    painter->setOpacity(abstractLayer()->opacity());
+    // Apply both opacity and fill opacity for shape content
+    // In Photoshop, fill opacity affects only the layer content, not effects
+    painter->setOpacity(abstractLayer()->opacity() * abstractLayer()->fillOpacity());
     painter->setRenderHint(QPainter::Antialiasing);
 
     // painter.drawImage(0, 0, layer->image());

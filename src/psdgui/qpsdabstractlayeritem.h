@@ -42,6 +42,7 @@ public:
     QColor color() const;
     bool isVisible() const;
     qreal opacity() const;
+    qreal fillOpacity() const;
     QRect rect() const;
     QGradient *gradient() const;
     QCborMap dropShadow() const;

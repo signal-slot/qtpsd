@@ -100,6 +100,8 @@ bool QPsdExporterJsonPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
             rect.insert("mask", toJson(item->vectorMask().path));
         object.insert("rect", rect);
         object.insert("visible", hint.visible);
+        object.insert("opacity", item->opacity());
+        object.insert("fillOpacity", item->fillOpacity());
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder:
             break;

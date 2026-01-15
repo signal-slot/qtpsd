@@ -3,8 +3,10 @@
         {
             "children": [
                 {
+                    "fillOpacity": 1,
                     "id": "5",
                     "name": "多角形 1",
+                    "opacity": 0.3686274509803922,
                     "path": [
                         {
                             "type": "MoveTo",
@@ -113,8 +115,10 @@
                     "visible": true
                 }
             ],
+            "fillOpacity": 1,
             "id": "3",
             "name": "アートボード 1",
+            "opacity": 1,
             "rect": {
                 "height": 0,
                 "width": 0,

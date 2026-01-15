@@ -27,6 +27,7 @@ public:
     QColor color = Qt::transparent;
     bool visible = true;
     qreal opacity = 1.0;
+    qreal fillOpacity = 1.0;
     QRect rect;
     QSize documentSize;
     QScopedPointer<QGradient> gradient;
@@ -72,6 +73,11 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
 
     // Layer opacity
     d->opacity = record.opacity() / 255.0;
+
+    // Fill opacity (iOpa)
+    if (additionalLayerInformation.contains("iOpa")) {
+        d->fillOpacity = additionalLayerInformation.value("iOpa").value<quint8>() / 255.0;
+    }
 
     // Layer rectangle
     d->rect = record.rect();
@@ -382,6 +388,11 @@ bool QPsdAbstractLayerItem::isVisible() const
 qreal QPsdAbstractLayerItem::opacity() const
 {
     return d->opacity;
+}
+
+qreal QPsdAbstractLayerItem::fillOpacity() const
+{
+    return d->fillOpacity;
 }
 
 QRect QPsdAbstractLayerItem::rect() const

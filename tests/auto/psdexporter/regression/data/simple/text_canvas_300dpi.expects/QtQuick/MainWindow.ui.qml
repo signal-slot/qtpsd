@@ -19,7 +19,6 @@ Item {
             height: 70
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
-            verticalAlignment: Text.AlignVCenter
             width: 120
             x: 30
             y: 30
@@ -31,7 +30,6 @@ Item {
             height: 211
             horizontalAlignment: Text.AlignHCenter
             text: "150px"
-            verticalAlignment: Text.AlignVCenter
             width: 478
             x: 150
             y: 60

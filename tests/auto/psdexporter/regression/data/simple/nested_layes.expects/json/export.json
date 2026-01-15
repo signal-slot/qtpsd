@@ -5,8 +5,10 @@
                 {
                     "children": [
                         {
+                            "fillOpacity": 1,
                             "id": "21",
                             "name": "Example1",
+                            "opacity": 1,
                             "rect": {
                                 "height": 32,
                                 "width": 155,
@@ -15,7 +17,7 @@
                             },
                             "runs": [
                                 {
-                                    "alignment": 128,
+                                    "alignment": 132,
                                     "color": "#000000",
                                     "font": "源ノ角ゴシック JP,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                                     "text": "Example1\n"
@@ -208,8 +210,10 @@
                         {
                             "children": [
                                 {
+                                    "fillOpacity": 1,
                                     "id": "19",
                                     "name": "長方形 3",
+                                    "opacity": 1,
                                     "path": [
                                         {
                                             "type": "MoveTo",
@@ -279,8 +283,10 @@
                                     "visible": true
                                 },
                                 {
+                                    "fillOpacity": 1,
                                     "id": "18",
                                     "name": "長方形 2",
+                                    "opacity": 1,
                                     "path": [
                                         {
                                             "type": "MoveTo",
@@ -350,8 +356,10 @@
                                     "visible": true
                                 }
                             ],
+                            "fillOpacity": 1,
                             "id": "20",
                             "name": "グループ 1b",
+                            "opacity": 1,
                             "rect": {
                                 "height": 0,
                                 "width": 0,
@@ -361,8 +369,10 @@
                             "visible": true
                         },
                         {
+                            "fillOpacity": 1,
                             "id": "16",
                             "name": "長方形 1",
+                            "opacity": 1,
                             "path": [
                                 {
                                     "type": "MoveTo",
@@ -484,8 +494,10 @@
                             "visible": true
                         }
                     ],
+                    "fillOpacity": 1,
                     "id": "22",
                     "name": "グループ 2b",
+                    "opacity": 1,
                     "rect": {
                         "height": 0,
                         "width": 0,
@@ -497,8 +509,10 @@
                 {
                     "children": [
                         {
+                            "fillOpacity": 1,
                             "id": "5",
                             "name": "Example1",
+                            "opacity": 1,
                             "rect": {
                                 "height": 32,
                                 "width": 155,
@@ -507,7 +521,7 @@
                             },
                             "runs": [
                                 {
-                                    "alignment": 128,
+                                    "alignment": 132,
                                     "color": "#000000",
                                     "font": "源ノ角ゴシック JP,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                                     "text": "Example1\n"
@@ -700,8 +714,10 @@
                         {
                             "children": [
                                 {
+                                    "fillOpacity": 1,
                                     "id": "12",
                                     "name": "長方形 3",
+                                    "opacity": 1,
                                     "path": [
                                         {
                                             "type": "MoveTo",
@@ -771,8 +787,10 @@
                                     "visible": true
                                 },
                                 {
+                                    "fillOpacity": 1,
                                     "id": "9",
                                     "name": "長方形 2",
+                                    "opacity": 1,
                                     "path": [
                                         {
                                             "type": "MoveTo",
@@ -842,8 +860,10 @@
                                     "visible": true
                                 }
                             ],
+                            "fillOpacity": 1,
                             "id": "10",
                             "name": "グループ 1a",
+                            "opacity": 1,
                             "rect": {
                                 "height": 0,
                                 "width": 0,
@@ -853,8 +873,10 @@
                             "visible": true
                         },
                         {
+                            "fillOpacity": 1,
                             "id": "8",
                             "name": "長方形 1",
+                            "opacity": 1,
                             "path": [
                                 {
                                     "type": "MoveTo",
@@ -976,8 +998,10 @@
                             "visible": true
                         }
                     ],
+                    "fillOpacity": 1,
                     "id": "13",
                     "name": "グループ 2a",
+                    "opacity": 1,
                     "rect": {
                         "height": 0,
                         "width": 0,
@@ -987,8 +1011,10 @@
                     "visible": true
                 }
             ],
+            "fillOpacity": 1,
             "id": "3",
             "name": "アートボード 1",
+            "opacity": 1,
             "rect": {
                 "height": 0,
                 "width": 0,

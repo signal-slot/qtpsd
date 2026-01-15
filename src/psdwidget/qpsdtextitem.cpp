@@ -18,6 +18,10 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     Q_UNUSED(widget);
 
     const auto *layer = this->layer<QPsdTextLayerItem>();
+
+    // Apply both opacity and fill opacity for text content
+    painter->setOpacity(layer->opacity() * layer->fillOpacity());
+
     QRect rect;
 
     if (layer->textType() != QPsdTextLayerItem::TextType::ParagraphText) {

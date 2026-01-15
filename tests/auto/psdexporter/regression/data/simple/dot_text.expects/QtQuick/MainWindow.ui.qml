@@ -19,7 +19,6 @@ Item {
             height: 43
             horizontalAlignment: Text.AlignHCenter
             text: "."
-            verticalAlignment: Text.AlignVCenter
             width: 9
             x: 125
             y: 80

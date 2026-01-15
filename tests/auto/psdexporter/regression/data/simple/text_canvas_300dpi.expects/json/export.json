@@ -3,8 +3,10 @@
         {
             "children": [
                 {
+                    "fillOpacity": 1,
                     "id": "6",
                     "name": "150px",
+                    "opacity": 1,
                     "rect": {
                         "height": 143,
                         "width": 464,
@@ -13,7 +15,7 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#ffffff",
                             "font": "源ノ角ゴシック JP,100,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "150px\n"
@@ -223,8 +225,10 @@
                     "visible": true
                 },
                 {
+                    "fillOpacity": 1,
                     "id": "5",
                     "name": "12pt",
+                    "opacity": 1,
                     "rect": {
                         "height": 48,
                         "width": 115,
@@ -233,7 +237,7 @@
                     },
                     "runs": [
                         {
-                            "alignment": 128,
+                            "alignment": 132,
                             "color": "#ffffff",
                             "font": "源ノ角ゴシック JP,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "12pt\n"
@@ -443,8 +447,10 @@
                     "visible": true
                 }
             ],
+            "fillOpacity": 1,
             "id": "3",
             "name": "アートボード 1",
+            "opacity": 1,
             "rect": {
                 "height": 0,
                 "width": 0,
