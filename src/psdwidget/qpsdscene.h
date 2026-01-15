@@ -6,6 +6,7 @@
 
 #include <QtPsdWidget/qpsdwidgetglobal.h>
 
+#include <QtCore/QModelIndex>
 #include <QtWidgets/QGraphicsScene>
 
 QT_BEGIN_NAMESPACE
@@ -31,6 +32,7 @@ public slots:
 
 signals:
     void itemSelected(const QModelIndex &index);
+    void itemsSelected(const QModelIndexList &indexes);
     void modelChanged(QPsdWidgetTreeItemModel *model);
     void showCheckerChanged(bool show);
 

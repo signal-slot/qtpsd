@@ -141,10 +141,12 @@ MainWindow::Private::Private(::MainWindow *parent)
         if (index < 0) {
             q->setWindowModified(false);
             q->setWindowTitle(applicationName);
+            statusbar->clearMessage();
             return;
         }
         q->setWindowModified(tabWidget->currentWidget()->isWindowModified());
         q->setWindowTitle(tabWidget->currentWidget()->windowTitle().replace("*", "[*]") + " - " + applicationName);
+        statusbar->clearMessage();
     }, Qt::QueuedConnection); // first addTab changes its index before tooltip is set
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, q, [this](int index) {
@@ -251,6 +253,11 @@ void MainWindow::Private::openFile(const QString &fileName)
             if (tabWidget->currentWidget() == viewer) {
                 q->setWindowModified(viewer->isWindowModified());
                 q->setWindowTitle(title + " - " + applicationName);
+            }
+        });
+        connect(viewer, &PsdWidget::selectionInfoChanged, q, [this, viewer](const QString &info) {
+            if (tabWidget->currentWidget() == viewer) {
+                statusbar->showMessage(info);
             }
         });
         tabWidget->setTabToolTip(index, fileName);

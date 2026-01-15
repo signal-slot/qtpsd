@@ -34,6 +34,7 @@ public slots:
 
 signals:
     void itemSelected(const QModelIndex &index);
+    void itemsSelected(const QModelIndexList &indexes);
     void sceneChanged(QPsdScene *scene);
     void modelChanged(QPsdWidgetTreeItemModel *model);
     void showCheckerChanged(bool show);

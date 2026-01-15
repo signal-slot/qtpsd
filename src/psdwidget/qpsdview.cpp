@@ -63,6 +63,7 @@ void QPsdView::Private::sceneChanged(QPsdScene *scene)
         sceneConnections = {
             QObject::connect(scene, &QPsdScene::modelChanged, q, &QPsdView::modelChanged),
             QObject::connect(scene, &QPsdScene::itemSelected, q, &QPsdView::itemSelected),
+            QObject::connect(scene, &QPsdScene::itemsSelected, q, &QPsdView::itemsSelected),
             QObject::connect(scene, &QPsdScene::showCheckerChanged, q, &QPsdView::showCheckerChanged),
             QObject::connect(scene, &QPsdScene::selectionChanged, q, [this]() {
                 const auto items = this->scene->selectedItems();
@@ -77,6 +78,21 @@ void QPsdView::Private::sceneChanged(QPsdScene *scene)
                         emit q->itemSelected(psdItem->modelIndex());
                     }
                     rubberBandRect = rect;
+                } else {
+                    // Multiple items selected
+                    QModelIndexList indexes;
+                    QRect combinedRect;
+                    for (const auto *item : items) {
+                        const QPsdAbstractItem *psdItem = dynamic_cast<const QPsdAbstractItem *>(item);
+                        if (psdItem) {
+                            indexes.append(psdItem->modelIndex());
+                        }
+                        combinedRect = combinedRect.united(item->sceneBoundingRect().toRect());
+                    }
+                    if (!indexes.isEmpty()) {
+                        emit q->itemsSelected(indexes);
+                    }
+                    rubberBandRect = combinedRect;
                 }
             }),
         };

@@ -88,6 +88,13 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     });
 
+    connect(psdView, &QPsdView::itemsSelected, q, [this](const QModelIndexList &indexes) {
+        treeView->selectionModel()->clearSelection();
+        for (const auto &index : indexes) {
+            treeView->selectionModel()->select(index, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        }
+    });
+
     connect(&model, &PsdTreeItemModel::fileInfoChanged, q, [this](const QFileInfo &fileInfo) {
         windowTitle = fileInfo.fileName();
         q->setWindowTitle(windowTitle);
@@ -245,7 +252,20 @@ void PsdWidget::Private::updateAttributes()
     const auto rows = treeView->selectionModel()->selectedRows();
     if (rows.isEmpty()) {
         attributes->setEnabled(false);
+        emit q->selectionInfoChanged(QString());
         return;
+    }
+
+    // Emit selection info for status bar
+    if (rows.size() == 1) {
+        const auto *item = model.layerItem(rows.first());
+        if (item) {
+            const auto rect = item->rect();
+            emit q->selectionInfoChanged(QObject::tr("Position: %1, %2  Size: %3 × %4")
+                .arg(rect.x()).arg(rect.y()).arg(rect.width()).arg(rect.height()));
+        }
+    } else {
+        emit q->selectionInfoChanged(QObject::tr("%1 items selected").arg(rows.size()));
     }
 
     attributes->setEnabled(true);
