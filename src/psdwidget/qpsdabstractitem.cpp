@@ -5,6 +5,7 @@
 #include "qpsdwidgettreeitemmodel.h"
 
 #include <QtGui/QPainter>
+#include <QtPsdGui/QPsdShapeLayerItem>
 
 QT_BEGIN_NAMESPACE
 
@@ -57,25 +58,68 @@ void QPsdAbstractItem::setMask(QPainter *painter) const
 {
     QModelIndex index = d->index;
     const auto *model = dynamic_cast<const QPsdWidgetTreeItemModel *>(index.model());
+    const QPointF currentTopLeft = d->layer->rect().topLeft();
     while (index.isValid()) {
         const QPsdAbstractLayerItem *layer = model->layerItem(index);
-        if (layer->vectorMask().type != QPsdAbstractLayerItem::PathInfo::None) {
-            painter->setClipPath(layer->vectorMask().path, Qt::IntersectClip);
+        const auto vmask = layer->vectorMask();
+        if (vmask.type != QPsdAbstractLayerItem::PathInfo::None) {
+            // Transform the path from parent's local coordinates to current item's local coordinates
+            const QPointF offset = layer->rect().topLeft() - currentTopLeft;
+            QPainterPath clipPath;
+            switch (vmask.type) {
+            case QPsdAbstractLayerItem::PathInfo::Rectangle:
+                clipPath.addRect(vmask.rect);
+                break;
+            case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+                clipPath.addRoundedRect(vmask.rect, vmask.radius, vmask.radius);
+                break;
+            default:
+                clipPath = vmask.path;
+                break;
+            }
+            painter->setClipPath(clipPath.translated(offset), Qt::IntersectClip);
         }
         index = model->parent(index);
     }
     if (d->layer && d->maskItem) {
-        QPixmap pixmap(d->layer->rect().size());
-        pixmap.fill(Qt::transparent);
         const auto maskItem = d->maskItem;
-        const QImage maskImage = maskItem->transparencyMask();
-        if (!maskImage.size().isEmpty() && maskItem->rect().isValid()) {
-            const auto intersected = maskItem->rect().intersected(d->layer->rect());
-            QPainter p(&pixmap);
-            p.drawImage(intersected.translated(-x(), -y()), maskImage, intersected.translated(-maskItem->rect().x(), -maskItem->rect().y()));
-            p.end();
+        // Get mask path - for shape layers, use pathInfo() since vectorMask() may be empty
+        QPsdAbstractLayerItem::PathInfo maskInfo;
+        if (maskItem->type() == QPsdAbstractLayerItem::Shape) {
+            const auto *shapeItem = reinterpret_cast<const QPsdShapeLayerItem *>(maskItem);
+            maskInfo = shapeItem->pathInfo();
+        } else {
+            maskInfo = maskItem->vectorMask();
+        }
+        if (maskInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
+            // Transform the path from mask layer's coordinates to current item's coordinates
+            const QPointF offset = maskItem->rect().topLeft() - currentTopLeft;
+            QPainterPath clipPath;
+            switch (maskInfo.type) {
+            case QPsdAbstractLayerItem::PathInfo::Rectangle:
+                clipPath.addRect(maskInfo.rect);
+                break;
+            case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+                clipPath.addRoundedRect(maskInfo.rect, maskInfo.radius, maskInfo.radius);
+                break;
+            default:
+                clipPath = maskInfo.path;
+                break;
+            }
+            painter->setClipPath(clipPath.translated(offset), Qt::IntersectClip);
+        } else {
+            // Fall back to transparency mask (for image layers used as clipping masks)
+            const QImage maskImage = maskItem->transparencyMask();
+            if (!maskImage.size().isEmpty() && maskItem->rect().isValid()) {
+                QPixmap pixmap(d->layer->rect().size());
+                pixmap.fill(Qt::transparent);
+                const auto intersected = maskItem->rect().intersected(d->layer->rect());
+                QPainter p(&pixmap);
+                p.drawImage(intersected.translated(-x(), -y()), maskImage, intersected.translated(-maskItem->rect().x(), -maskItem->rect().y()));
+                p.end();
 
-            painter->setClipRegion(QRegion(pixmap.createHeuristicMask()), Qt::IntersectClip);
+                painter->setClipRegion(QRegion(pixmap.createHeuristicMask()), Qt::IntersectClip);
+            }
         }
     }
 }
