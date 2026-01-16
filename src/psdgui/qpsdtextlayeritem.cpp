@@ -92,11 +92,13 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto tysh = additionalLayerInformation.value("TySh").value<QPsdTypeToolObjectSetting>();
     const auto textData = tysh.textData();
     const auto transformParam = tysh.transform();
-    const QTransform transform = QTransform(
-        transformParam[0], transformParam[1],
-        transformParam[2], transformParam[3],
-        transformParam[4], transformParam[5]
-    );
+    // Use identity matrix as default if transform parameters are missing or incomplete
+    const QTransform transform = (transformParam.size() >= 6)
+        ? QTransform(
+            transformParam[0], transformParam[1],
+            transformParam[2], transformParam[3],
+            transformParam[4], transformParam[5])
+        : QTransform();
 
     const auto engineDataData = textData.data().value("EngineData").toByteArray();
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData);
