@@ -11,6 +11,7 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QSettings>
 
+#include <QtWidgets/QApplication>
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QPushButton>
@@ -503,15 +504,19 @@ void PsdWidget::load(const QString &fileName)
 
 void PsdWidget::reload()
 {
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     save();
     d->settings.endGroup();
     load(d->model.fileName());
     d->treeView->reset();
+    QApplication::restoreOverrideCursor();
 }
 
 void PsdWidget::save()
 {
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     d->model.save();
+    QApplication::restoreOverrideCursor();
 
     setWindowModified(false);
     setWindowTitle(d->windowTitle);

@@ -7,6 +7,7 @@
 
 #include <QtCore/QSettings>
 #include <QtGui/QCloseEvent>
+#include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
 #include <QtPsdExporter/QPsdExporterPlugin>
@@ -240,8 +241,10 @@ void MainWindow::Private::openFile(const QString &fileName)
     }
 
     // open the file as a new tab
+    QApplication::setOverrideCursor(Qt::WaitCursor);
     auto viewer = new PsdWidget(q);
     viewer->load(fileName);
+    QApplication::restoreOverrideCursor();
     if (viewer->errorMessage().isEmpty()) {
         int index = tabWidget->addTab(viewer, viewer->windowIcon(), viewer->windowTitle());
         connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
