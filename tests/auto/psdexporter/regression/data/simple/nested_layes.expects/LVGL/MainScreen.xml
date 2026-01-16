@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="240" scrollbar_mode="off" style_pad_all="0" width="320" x="0" y="0">
+    <lv_obj height="240" style_bg_color="0xf7e790" style_bg_opa="255" width="320" x="0" y="0"/>
+    <lv_obj height="52" style_bg_color="0xd4f5c9" style_bg_opa="255" style_radius="20" width="182" x="39" y="49"/>
+    <lv_obj height="13" style_bg_color="0x217903" style_bg_opa="255" width="139" x="72" y="89"/>
+    <lv_obj height="14" style_bg_color="0x5e88e7" style_bg_opa="255" width="25" x="79" y="81"/>
+    <lv_label height="43" style_text_align="center" style_text_color="0x000000" style_text_font="montserrat 30" text="Example1" width="160" x="50" y="63"/>
+    <lv_obj height="52" style_bg_color="0xd4f5c9" style_bg_opa="255" style_radius="20" width="182" x="39" y="134"/>
+    <lv_obj height="12" style_bg_color="0x217903" style_bg_opa="255" width="139" x="72" y="174"/>
+    <lv_obj height="14" style_bg_color="0x5e88e7" style_bg_opa="255" width="25" x="179" y="166"/>
+    <lv_label height="43" style_text_align="center" style_text_color="0x000000" style_text_font="montserrat 30" text="Example1" width="160" x="50" y="143"/>
+  </view>
+</component>
