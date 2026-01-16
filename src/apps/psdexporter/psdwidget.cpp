@@ -11,6 +11,9 @@
 #include <QtCore/QFileInfo>
 #include <QtCore/QSettings>
 
+#include <QtGui/QClipboard>
+#include <QtGui/QPainter>
+
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QLineEdit>
@@ -520,6 +523,23 @@ void PsdWidget::save()
 
     setWindowModified(false);
     setWindowTitle(d->windowTitle);
+}
+
+void PsdWidget::copyViewToClipboard()
+{
+    auto *scene = d->psdView->scene();
+    if (!scene)
+        return;
+
+    QRectF sceneRect = scene->sceneRect();
+    QImage image(sceneRect.size().toSize(), QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+
+    QPainter painter(&image);
+    scene->render(&painter);
+    painter.end();
+
+    QApplication::clipboard()->setImage(image);
 }
 
 void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)

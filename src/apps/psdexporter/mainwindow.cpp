@@ -138,6 +138,14 @@ MainWindow::Private::Private(::MainWindow *parent)
         qApp->aboutQt();
     });
 
+    connect(copyView, &QAction::triggered, q, [this]() {
+        int index = tabWidget->currentIndex();
+        if (index < 0)
+            return;
+        auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+        psdWidget->copyViewToClipboard();
+    });
+
     connect(tabWidget, &QTabWidget::currentChanged, q, [this](int index) {
         if (index < 0) {
             q->setWindowModified(false);
@@ -308,6 +316,7 @@ void MainWindow::Private::updateFileMenus()
     reload->setEnabled(enabled);
     save->setEnabled(enabled && q->isWindowModified());
     close->setEnabled(enabled);
+    copyView->setEnabled(enabled);
 }
 
 MainWindow::MainWindow(QWidget *parent)

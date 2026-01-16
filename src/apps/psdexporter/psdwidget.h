@@ -28,6 +28,7 @@ public slots:
     void reload();
     void save();
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
+    void copyViewToClipboard();
 
 private slots:
     void setErrorMessage(const QString &errorMessage);
