@@ -18,6 +18,7 @@ public:
     ~Private();
 
     bool isValidIndex(const QModelIndex &index) const;
+    bool isSkipped(const QModelIndex &index) const;
 
     const ::PsdTreeItemModel *q;
 };
@@ -33,6 +34,18 @@ PsdTreeItemModel::Private::~Private()
 bool PsdTreeItemModel::Private::isValidIndex(const QModelIndex &index) const
 {
     return index.isValid() && index.model() == q;
+}
+
+bool PsdTreeItemModel::Private::isSkipped(const QModelIndex &index) const
+{
+    if (!index.isValid())
+        return false;
+
+    const auto hint = q->layerHint(index);
+    if (hint.type == QPsdExporterTreeItemModel::ExportHint::Skip)
+        return true;
+
+    return isSkipped(index.parent());
 }
 
 PsdTreeItemModel::PsdTreeItemModel(QObject *parent)
@@ -126,6 +139,10 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         default:
             break;
         }
+        break;
+    case Qt::ForegroundRole:
+        if (d->isSkipped(index))
+            return QBrush(Qt::gray);
         break;
     case Qt::BackgroundRole: {
         QColor color = item->color();
