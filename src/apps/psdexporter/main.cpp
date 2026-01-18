@@ -7,10 +7,40 @@
 
 #include <QtCore/QCommandLineParser>
 #include <QtCore/QLoggingCategory>
+#include <QtCore/QRegularExpression>
 #include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 
-static int runAutoExport(const QString &input, const QString &type, const QString &outdir)
+static QSize parseResolution(const QString &resolution, const QSize &originalSize)
+{
+    static const QHash<QString, QSize> presets = {
+        {"original", QSize()},
+        {"4k", QSize(3840, 2160)},
+        {"fhd", QSize(1920, 1080)},
+        {"hd", QSize(1280, 720)},
+        {"xga", QSize(1024, 768)},
+        {"svga", QSize(800, 600)},
+        {"vga", QSize(640, 480)},
+        {"qvga", QSize(320, 240)},
+    };
+
+    QString lower = resolution.toLower();
+    if (presets.contains(lower)) {
+        QSize size = presets.value(lower);
+        return size.isEmpty() ? originalSize : size;
+    }
+
+    // Try to parse as WIDTHxHEIGHT
+    QRegularExpression re("^(\\d+)x(\\d+)$");
+    auto match = re.match(resolution);
+    if (match.hasMatch()) {
+        return QSize(match.captured(1).toInt(), match.captured(2).toInt());
+    }
+
+    return QSize(); // Invalid
+}
+
+static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution)
 {
     QFileInfo inputInfo(input);
     if (!inputInfo.exists()) {
@@ -48,14 +78,21 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         return 1;
     }
 
+    QSize outputSize = parseResolution(resolution, model.size());
+    if (outputSize.isEmpty()) {
+        qCritical() << "Invalid resolution:" << resolution;
+        qCritical() << "Use preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT format";
+        return 1;
+    }
+
     QVariantMap hint;
-    hint.insert("width", model.size().width());
-    hint.insert("height", model.size().height());
+    hint.insert("width", outputSize.width());
+    hint.insert("height", outputSize.height());
     hint.insert("fontScaleFactor", 1.0);
     hint.insert("imageScaling", false);
     hint.insert("makeCompact", false);
 
-    qInfo() << "Exporting" << input << "to" << outdir << "using" << type;
+    qInfo() << "Exporting" << input << "to" << outdir << "using" << type << "at" << outputSize;
     if (!plugin->exportTo(&model, outdir, hint)) {
         qCritical() << "Export failed";
         return 1;
@@ -95,6 +132,12 @@ int main(int argc, char *argv[])
                                     "directory");
     parser.addOption(outdirOption);
 
+    QCommandLineOption resolutionOption(QStringList() << "resolution",
+                                        "Output resolution: preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT",
+                                        "resolution",
+                                        "original");
+    parser.addOption(resolutionOption);
+
     QCommandLineOption listOption(QStringList() << "list",
                                   "List available exporter types");
     parser.addOption(listOption);
@@ -122,7 +165,8 @@ int main(int argc, char *argv[])
         }
         return runAutoExport(parser.value(inputOption),
                              parser.value(typeOption),
-                             parser.value(outdirOption));
+                             parser.value(outdirOption),
+                             parser.value(resolutionOption));
     }
 
     MainWindow window;
