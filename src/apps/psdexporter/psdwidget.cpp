@@ -88,14 +88,28 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         psdView->clearSelection();
     });
 
-    connect(psdView, &QPsdView::itemSelected, q, [this](const QModelIndex &index) {
-        treeView->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
+    auto expandToIndex = [this](const QModelIndex &sourceIndex) {
+        QModelIndex index = model.mapFromSource(sourceIndex);
+        QModelIndex parent = index.parent();
+        while (parent.isValid()) {
+            treeView->expand(parent);
+            parent = parent.parent();
+        }
+        treeView->scrollTo(index);
+    };
+
+    connect(psdView, &QPsdView::itemSelected, q, [this, expandToIndex](const QModelIndex &index) {
+        expandToIndex(index);
+        QModelIndex proxyIndex = model.mapFromSource(index);
+        treeView->selectionModel()->select(proxyIndex, QItemSelectionModel::ClearAndSelect | QItemSelectionModel::Rows);
     });
 
-    connect(psdView, &QPsdView::itemsSelected, q, [this](const QModelIndexList &indexes) {
+    connect(psdView, &QPsdView::itemsSelected, q, [this, expandToIndex](const QModelIndexList &indexes) {
         treeView->selectionModel()->clearSelection();
         for (const auto &index : indexes) {
-            treeView->selectionModel()->select(index, QItemSelectionModel::Select | QItemSelectionModel::Rows);
+            expandToIndex(index);
+            QModelIndex proxyIndex = model.mapFromSource(index);
+            treeView->selectionModel()->select(proxyIndex, QItemSelectionModel::Select | QItemSelectionModel::Rows);
         }
     });
 
