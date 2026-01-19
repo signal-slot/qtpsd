@@ -70,7 +70,7 @@ QVariant PsdTreeItemModel::headerData(int section, Qt::Orientation orientation, 
         case Column::Name:
             return "Layers"_L1;
         case Column::Visible:
-            return "Visible"_L1;
+            return u"👁"_s;
         case Column::Export:
             return "Export"_L1;
         }
