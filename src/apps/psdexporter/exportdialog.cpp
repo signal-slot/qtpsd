@@ -32,7 +32,10 @@ public:
         resolution->addItem(tr("VGA\t(640x480)"), QSize(640, 480));
         resolution->addItem(tr("QVGA\t(320x240)"), QSize(320, 240));
         resolution->addItem(tr("Custom"));
-        resolution->setCurrentIndex(hint.value("resolutionIndex", settings.value("resolution", 0).toInt()).toInt());
+        int resolutionIndex = hint.value("resolutionIndex", settings.value("resolution", 0)).toInt();
+        if (resolutionIndex < 0 || resolutionIndex >= resolution->count())
+            resolutionIndex = 0;
+        resolution->setCurrentIndex(resolutionIndex);
         connect(resolution, &QComboBox::currentIndexChanged, q, [=](int index) {
             const auto data = resolution->currentData();
             width->setEnabled(!data.isValid());
