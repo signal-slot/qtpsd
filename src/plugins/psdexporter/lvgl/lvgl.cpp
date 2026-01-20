@@ -17,7 +17,7 @@ class QPsdExporterLvglPlugin : public QPsdExporterPlugin
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QPsdExporterFactoryInterface" FILE "lvgl.json")
 public:
-    int priority() const override { return 10; }
+    int priority() const override { return 50; }
     QIcon icon() const override {
         return QIcon(":/lvgl/lvgl.png");
     }
