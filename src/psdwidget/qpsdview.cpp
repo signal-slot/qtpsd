@@ -7,6 +7,8 @@
 
 #include <QtGui/QPainter>
 #include <QtGui/QPaintEvent>
+#include <QtGui/QWheelEvent>
+#include <cmath>
 
 #include <QtWidgets/QStyleOption>
 #include <QtWidgets/QRubberBand>
@@ -196,6 +198,26 @@ void QPsdView::paintEvent(QPaintEvent *event)
         }
 
         viewport()->style()->drawControl(QStyle::CE_RubberBand, &option, &painter, viewport());
+    }
+}
+
+void QPsdView::wheelEvent(QWheelEvent *event)
+{
+    if (event->modifiers() & Qt::ControlModifier) {
+        // Ctrl+wheel = zoom
+        const qreal currentScale = transform().m11();
+        const qreal delta = event->angleDelta().y() / 120.0;  // Standard wheel step
+        const qreal factor = std::pow(1.1, delta);  // 10% per step
+        qreal newScale = currentScale * factor;
+
+        // Clamp to 10% - 1000% range
+        newScale = qBound(0.1, newScale, 10.0);
+
+        setTransform(QTransform::fromScale(newScale, newScale));
+        emit scaleChanged(newScale);
+        event->accept();
+    } else {
+        QGraphicsView::wheelEvent(event);
     }
 }
 

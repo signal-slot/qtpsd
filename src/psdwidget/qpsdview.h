@@ -40,8 +40,12 @@ signals:
     void modelChanged(QPsdWidgetTreeItemModel *model);
     void showCheckerChanged(bool show);
 
+signals:
+    void scaleChanged(qreal scale);
+
 protected:
     void paintEvent(QPaintEvent *event) override;
+    void wheelEvent(QWheelEvent *event) override;
 
 private:
     class Private;

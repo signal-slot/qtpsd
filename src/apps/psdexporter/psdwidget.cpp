@@ -125,6 +125,8 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         q->setWindowTitle(windowTitle);
     });
 
+    connect(psdView, &QPsdView::scaleChanged, q, &::PsdWidget::viewScaleChanged);
+
     updateAttributes();
     settings.beginGroup("Files");
 

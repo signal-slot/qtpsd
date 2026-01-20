@@ -39,6 +39,7 @@ private slots:
 signals:
     void errorOccurred(const QString &errorMessage);
     void selectionInfoChanged(const QString &info);
+    void viewScaleChanged(qreal scale);
 
 private:
     class Private;

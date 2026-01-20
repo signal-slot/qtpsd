@@ -314,6 +314,15 @@ void MainWindow::Private::openFile(const QString &fileName)
                 statusbar->showMessage(info);
             }
         });
+        connect(viewer, &PsdWidget::viewScaleChanged, q, [this, viewer](qreal scale) {
+            if (tabWidget->currentWidget() == viewer) {
+                int sliderValue = qRound(std::log10(scale) * 100);
+                scaleSlider->blockSignals(true);
+                scaleSlider->setValue(sliderValue);
+                scaleSlider->blockSignals(false);
+                scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
+            }
+        });
         tabWidget->setTabToolTip(index, fileName);
         tabWidget->setCurrentIndex(index);
         updateRecentFiles(fileName);
