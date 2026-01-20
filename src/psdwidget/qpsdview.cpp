@@ -156,6 +156,21 @@ void QPsdView::setItemVisible(quint32 id, bool visible)
     d->scene->setItemVisible(id, visible);
 }
 
+void QPsdView::selectItem(const QModelIndex &index)
+{
+    d->scene->selectItem(index);
+    const auto selectedItems = d->scene->selectedItems();
+    if (!selectedItems.isEmpty()) {
+        const auto item = selectedItems.first();
+        d->rubberBandRect = item->sceneBoundingRect().toRect();
+        ensureVisible(item);
+        viewport()->update();
+    } else {
+        d->rubberBandRect = QRect {};
+        viewport()->update();
+    }
+}
+
 void QPsdView::clearSelection()
 {
     d->rubberBandRect = QRect {};

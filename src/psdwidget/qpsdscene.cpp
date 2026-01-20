@@ -94,6 +94,20 @@ void QPsdScene::setItemVisible(quint32 id, bool visible)
     }
 }
 
+void QPsdScene::selectItem(const QModelIndex &index)
+{
+    clearSelection();
+    if (!index.isValid())
+        return;
+    for (auto item : items()) {
+        auto *psdItem = dynamic_cast<QPsdAbstractItem*>(item);
+        if (psdItem && psdItem->modelIndex() == index) {
+            psdItem->setSelected(true);
+            break;
+        }
+    }
+}
+
 void QPsdScene::reset()
 {
     auto items = this->items();

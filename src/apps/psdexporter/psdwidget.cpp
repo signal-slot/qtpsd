@@ -85,7 +85,14 @@ PsdWidget::Private::Private(::PsdWidget *parent)
 
     connect(treeView->selectionModel(), &QItemSelectionModel::selectionChanged, q, [this]() {
         updateAttributes();
-        psdView->clearSelection();
+        const auto rows = treeView->selectionModel()->selectedRows();
+        if (rows.size() == 1) {
+            // Select single item in view and scroll to it
+            QModelIndex sourceIndex = model.mapToSource(rows.first());
+            psdView->selectItem(sourceIndex);
+        } else {
+            psdView->clearSelection();
+        }
     });
 
     auto expandToIndex = [this](const QModelIndex &sourceIndex) {
