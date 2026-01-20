@@ -6,10 +6,13 @@
 #include "psdwidget.h"
 
 #include <QtCore/QSettings>
+#include <cmath>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QSlider>
 #include <QtPsdExporter/QPsdExporterPlugin>
 
 class MainWindow::Private : public Ui::MainWindow
@@ -30,6 +33,8 @@ private:
 public:
     QString applicationName;
     QSettings settings;
+    QSlider *scaleSlider = nullptr;
+    QLabel *scaleLabel = nullptr;
 };
 
 MainWindow::Private::Private(::MainWindow *parent)
@@ -151,11 +156,23 @@ MainWindow::Private::Private(::MainWindow *parent)
             q->setWindowModified(false);
             q->setWindowTitle(applicationName);
             statusbar->clearMessage();
+            scaleSlider->setEnabled(false);
             return;
         }
         q->setWindowModified(tabWidget->currentWidget()->isWindowModified());
         q->setWindowTitle(tabWidget->currentWidget()->windowTitle().replace("*", "[*]") + " - " + applicationName);
         statusbar->clearMessage();
+        scaleSlider->setEnabled(true);
+        // Update slider to reflect current view's scale
+        auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+        if (psdWidget) {
+            qreal scale = psdWidget->viewScale();
+            int sliderValue = qRound(std::log10(scale) * 100);
+            scaleSlider->blockSignals(true);
+            scaleSlider->setValue(sliderValue);
+            scaleSlider->blockSignals(false);
+            scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
+        }
     }, Qt::QueuedConnection); // first addTab changes its index before tooltip is set
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, q, [this](int index) {
@@ -168,6 +185,32 @@ MainWindow::Private::Private(::MainWindow *parent)
     });
 
     updateFileMenus();
+
+    // Scale slider in status bar (log scale: 10% to 1000%)
+    scaleSlider = new QSlider(Qt::Horizontal, q);
+    scaleSlider->setRange(-100, 100);  // log10(0.1)=-1 to log10(10)=1, scaled by 100
+    scaleSlider->setValue(0);  // 100% = 10^0
+    scaleSlider->setFixedWidth(150);
+    scaleSlider->setToolTip(tr("Zoom (10% - 1000%)"));
+
+    scaleLabel = new QLabel(u"100%"_s, q);
+    scaleLabel->setFixedWidth(50);
+    scaleLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    statusbar->addPermanentWidget(scaleLabel);
+    statusbar->addPermanentWidget(scaleSlider);
+    scaleSlider->setEnabled(false);  // Disabled until a file is opened
+
+    connect(scaleSlider, &QSlider::valueChanged, q, [this](int value) {
+        qreal scale = std::pow(10.0, value / 100.0);
+        scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
+        int index = tabWidget->currentIndex();
+        if (index >= 0) {
+            auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+            if (psdWidget)
+                psdWidget->setViewScale(scale);
+        }
+    });
 
     settings.beginGroup("Session");
     const QStringList files = settings.value("files").toStringList();

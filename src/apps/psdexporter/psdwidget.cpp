@@ -492,6 +492,7 @@ PsdWidget::~PsdWidget()
 {
     d->settings.setValue("splitterState", saveState());
     d->settings.setValue("treeState", d->treeView->header()->saveState());
+    d->settings.setValue("viewScale", viewScale());
 }
 
 void PsdWidget::load(const QString &fileName)
@@ -517,6 +518,10 @@ void PsdWidget::load(const QString &fileName)
     traverseTreeView(d->treeView->rootIndex());
 
     d->psdView->setModel(d->model.widgetModel());
+
+    // Restore view scale (default to 1.0 = 100%)
+    qreal scale = d->settings.value("viewScale", 1.0).toDouble();
+    setViewScale(scale);
 }
 
 void PsdWidget::reload()
@@ -633,4 +638,14 @@ void PsdWidget::setErrorMessage(const QString &errorMessage)
     if (d->errorMessage == errorMessage) return;
     d->errorMessage = errorMessage;
     emit errorOccurred(errorMessage);
+}
+
+qreal PsdWidget::viewScale() const
+{
+    return d->psdView->transform().m11();
+}
+
+void PsdWidget::setViewScale(qreal scale)
+{
+    d->psdView->setTransform(QTransform::fromScale(scale, scale));
 }

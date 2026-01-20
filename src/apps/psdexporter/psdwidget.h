@@ -23,12 +23,15 @@ public:
     QVariantMap exportHint(const QString& exporterKey) const;
     void updateExportHint(const QString &key, const QVariantMap &hint);
 
+    qreal viewScale() const;
+
 public slots:
     void load(const QString &fileName);
     void reload();
     void save();
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
     void copyViewToClipboard();
+    void setViewScale(qreal scale);
 
 private slots:
     void setErrorMessage(const QString &errorMessage);
