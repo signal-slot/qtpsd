@@ -14,11 +14,11 @@ class PsdTreeItemModel : public QPsdExporterTreeItemModel
 public:
     enum Roles {
         ExportIdRole = QPsdGuiLayerTreeItemModel::LayerItemObjectRole + 10,
+        PlaceholderTextRole,
     };
     enum Column {
         Name = 0,
-        Visible,
-        Export
+        Visible
     };
 
     explicit PsdTreeItemModel(QObject *parent = nullptr);

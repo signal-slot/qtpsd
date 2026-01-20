@@ -16,10 +16,66 @@
 
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QButtonGroup>
+#include <QtWidgets/QHeaderView>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QStyledItemDelegate>
+
+class NameDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        QWidget *editor = QStyledItemDelegate::createEditor(parent, option, index);
+        if (auto *lineEdit = qobject_cast<QLineEdit *>(editor)) {
+            QString placeholder = index.data(PsdTreeItemModel::PlaceholderTextRole).toString();
+            lineEdit->setPlaceholderText(placeholder);
+        }
+        return editor;
+    }
+};
+
+class CenteredCheckBoxDelegate : public QStyledItemDelegate
+{
+public:
+    using QStyledItemDelegate::QStyledItemDelegate;
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &option, const QModelIndex &index) const override
+    {
+        QStyleOptionViewItem opt = option;
+        initStyleOption(&opt, index);
+
+        // Draw background
+        opt.widget->style()->drawPrimitive(QStyle::PE_PanelItemViewItem, &opt, painter, opt.widget);
+
+        // Draw centered checkbox
+        QStyleOptionButton checkBoxOpt;
+        checkBoxOpt.state = QStyle::State_Enabled;
+        if (index.data(Qt::CheckStateRole).toInt() == Qt::Checked)
+            checkBoxOpt.state |= QStyle::State_On;
+        else
+            checkBoxOpt.state |= QStyle::State_Off;
+
+        QRect checkBoxRect = opt.widget->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &checkBoxOpt, opt.widget);
+        checkBoxOpt.rect = QStyle::alignedRect(opt.direction, Qt::AlignCenter, checkBoxRect.size(), opt.rect);
+
+        opt.widget->style()->drawPrimitive(QStyle::PE_IndicatorCheckBox, &checkBoxOpt, painter, opt.widget);
+    }
+
+    bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override
+    {
+        if (event->type() == QEvent::MouseButtonRelease) {
+            bool checked = index.data(Qt::CheckStateRole).toBool();
+            model->setData(index, !checked, Qt::CheckStateRole);
+            return true;
+        }
+        return QStyledItemDelegate::editorEvent(event, model, option, index);
+    }
+};
 
 class PsdWidget::Private : public Ui::PsdWidget
 {
@@ -47,6 +103,15 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     setupUi(q);
     model.setSourceModel(&widgetModel);
     treeView->setModel(&model);
+    treeView->setItemDelegateForColumn(PsdTreeItemModel::Name, new NameDelegate(treeView));
+    treeView->setItemDelegateForColumn(PsdTreeItemModel::Visible, new CenteredCheckBoxDelegate(treeView));
+
+    // Configure Visible column: fixed small size, non-resizable
+    auto *header = treeView->header();
+    header->setStretchLastSection(false);
+    header->setSectionResizeMode(PsdTreeItemModel::Name, QHeaderView::Stretch);
+    header->setSectionResizeMode(PsdTreeItemModel::Visible, QHeaderView::Fixed);
+    header->resizeSection(PsdTreeItemModel::Visible, 30);
 
     connect(&model, &PsdTreeItemModel::dataChanged, q, [this](const QModelIndex &topLeft, const QModelIndex &bottomRight, const QList<int> &roles) {
         const auto *model = dynamic_cast<const PsdTreeItemModel *>(topLeft.model());
@@ -512,6 +577,13 @@ void PsdWidget::load(const QString &fileName)
     d->settings.beginGroup(QCryptographicHash::hash(fileName.toUtf8(), QCryptographicHash::Md5));
     restoreState(d->settings.value("splitterState").toByteArray());
     d->treeView->header()->restoreState(d->settings.value("treeState").toByteArray());
+
+    // Ensure Visible column stays fixed after restoring state
+    auto *header = d->treeView->header();
+    header->setStretchLastSection(false);
+    header->setSectionResizeMode(PsdTreeItemModel::Name, QHeaderView::Stretch);
+    header->setSectionResizeMode(PsdTreeItemModel::Visible, QHeaderView::Fixed);
+    header->resizeSection(PsdTreeItemModel::Visible, 30);
 
     std::function<void(const QModelIndex &index)> traverseTreeView;
     traverseTreeView = [&](const QModelIndex &index) {

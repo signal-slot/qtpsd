@@ -71,8 +71,6 @@ QVariant PsdTreeItemModel::headerData(int section, Qt::Orientation orientation, 
             return "Layers"_L1;
         case Column::Visible:
             return u"👁"_s;
-        case Column::Export:
-            return "Export"_L1;
         }
         break;
     case Qt::TextAlignmentRole:
@@ -95,7 +93,7 @@ QHash<int, QByteArray> PsdTreeItemModel::roleNames() const
 int PsdTreeItemModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return 3;
+    return 2;
 }
 
 QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
@@ -109,16 +107,15 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     case Qt::DisplayRole:
         switch (index.column()) {
         case Column::Name:
-            return item->name();
-        case Column::Export:
-            return exportHint.id;
+            // Show custom name if set, otherwise original name
+            return exportHint.id.isEmpty() ? item->name() : exportHint.id;
         default:
             break;
         }
         break;
     case Qt::EditRole:
         switch (index.column()) {
-        case Column::Export:
+        case Column::Name:
             return exportHint.id;
         default:
             break;
@@ -143,6 +140,17 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
     case Qt::ForegroundRole:
         if (d->isSkipped(index))
             return QBrush(Qt::gray);
+        // Show red if name is edited
+        if (index.column() == Column::Name && !exportHint.id.isEmpty())
+            return QBrush(Qt::red);
+        break;
+    case Roles::PlaceholderTextRole:
+        switch (index.column()) {
+        case Column::Name:
+            return item->name();
+        default:
+            break;
+        }
         break;
     case Qt::BackgroundRole: {
         QColor color = item->color();
@@ -170,6 +178,18 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
 bool PsdTreeItemModel::setData(const QModelIndex &index, const QVariant &value, int role)
 {
     switch (index.column()) {
+    case Column::Name:
+        if (role == Qt::EditRole) {
+            QPsdExporterTreeItemModel::ExportHint exportHint = layerHint(index);
+            const QString newId = value.toString();
+            if (exportHint.id == newId)
+                return false;
+            exportHint.id = newId;
+            setLayerHint(index, exportHint);
+            emit dataChanged(index, index);
+            return true;
+        }
+        break;
     case Column::Visible:
         if (role == Qt::CheckStateRole) {
             setVisible(index, value.toBool());
@@ -178,11 +198,6 @@ bool PsdTreeItemModel::setData(const QModelIndex &index, const QVariant &value, 
             return true;
         }
         break;
-    case Column::Export: {
-        QPsdExporterTreeItemModel::ExportHint exportHint = layerHint(index);
-        exportHint.id = value.toString();
-        setLayerHint(index, exportHint);
-        return true; }
     default:
         break;
     }
@@ -194,10 +209,10 @@ Qt::ItemFlags PsdTreeItemModel::flags(const QModelIndex &index) const
 {
     Qt::ItemFlags flags = QAbstractItemModel::flags(index);
     switch (index.column()) {
+    case Column::Name:
+        return flags | Qt::ItemIsEditable;
     case Column::Visible:
         return flags | Qt::ItemIsUserCheckable;
-    case Column::Export:
-        return flags | Qt::ItemIsEditable;
     default:
         break;
     }
