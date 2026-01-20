@@ -18,6 +18,7 @@ public:
     };
     enum Column {
         Name = 0,
+        Use,
         Visible
     };
 

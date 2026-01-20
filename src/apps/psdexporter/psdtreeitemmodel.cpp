@@ -69,6 +69,8 @@ QVariant PsdTreeItemModel::headerData(int section, Qt::Orientation orientation, 
         switch (section) {
         case Column::Name:
             return "Layers"_L1;
+        case Column::Use:
+            return u"🆔"_s;
         case Column::Visible:
             return u"👁"_s;
         }
@@ -93,7 +95,7 @@ QHash<int, QByteArray> PsdTreeItemModel::roleNames() const
 int PsdTreeItemModel::columnCount(const QModelIndex &parent) const
 {
     Q_UNUSED(parent);
-    return 2;
+    return 3;
 }
 
 QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
@@ -123,6 +125,7 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         break;
     case Qt::TextAlignmentRole:
         switch (index.column()) {
+        case Column::Use:
         case Column::Visible:
             return Qt::AlignHCenter;
         default:
@@ -131,6 +134,8 @@ QVariant PsdTreeItemModel::data(const QModelIndex &index, int role) const
         break;
     case Qt::CheckStateRole:
         switch (index.column()) {
+        case Column::Use:
+            return exportHint.id.isEmpty() ? Qt::Unchecked : Qt::Checked;
         case Column::Visible:
             return isVisible(index) ? Qt::Checked : Qt::Unchecked;
         default:
@@ -186,7 +191,20 @@ bool PsdTreeItemModel::setData(const QModelIndex &index, const QVariant &value, 
                 return false;
             exportHint.id = newId;
             setLayerHint(index, exportHint);
-            emit dataChanged(index, index);
+            emit dataChanged(index, index.siblingAtColumn(Column::Use));
+            return true;
+        }
+        break;
+    case Column::Use:
+        if (role == Qt::CheckStateRole) {
+            const QPsdAbstractLayerItem *item = layerItem(index);
+            QPsdExporterTreeItemModel::ExportHint exportHint = layerHint(index);
+            const QString newId = value.toBool() ? item->name() : QString();
+            if (exportHint.id == newId)
+                return false;
+            exportHint.id = newId;
+            setLayerHint(index, exportHint);
+            emit dataChanged(index.siblingAtColumn(Column::Name), index);
             return true;
         }
         break;
@@ -211,6 +229,7 @@ Qt::ItemFlags PsdTreeItemModel::flags(const QModelIndex &index) const
     switch (index.column()) {
     case Column::Name:
         return flags | Qt::ItemIsEditable;
+    case Column::Use:
     case Column::Visible:
         return flags | Qt::ItemIsUserCheckable;
     default:

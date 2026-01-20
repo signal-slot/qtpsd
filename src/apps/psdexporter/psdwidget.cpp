@@ -68,10 +68,10 @@ public:
 
     bool editorEvent(QEvent *event, QAbstractItemModel *model, const QStyleOptionViewItem &option, const QModelIndex &index) override
     {
-        if (event->type() == QEvent::MouseButtonRelease) {
-            bool checked = index.data(Qt::CheckStateRole).toBool();
-            model->setData(index, !checked, Qt::CheckStateRole);
-            return true;
+        if (event->type() == QEvent::MouseButtonRelease || event->type() == QEvent::MouseButtonDblClick) {
+            const Qt::CheckState currentState = static_cast<Qt::CheckState>(index.data(Qt::CheckStateRole).toInt());
+            const Qt::CheckState newState = (currentState == Qt::Checked) ? Qt::Unchecked : Qt::Checked;
+            return model->setData(index, newState, Qt::CheckStateRole);
         }
         return QStyledItemDelegate::editorEvent(event, model, option, index);
     }
@@ -104,12 +104,15 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     model.setSourceModel(&widgetModel);
     treeView->setModel(&model);
     treeView->setItemDelegateForColumn(PsdTreeItemModel::Name, new NameDelegate(treeView));
+    treeView->setItemDelegateForColumn(PsdTreeItemModel::Use, new CenteredCheckBoxDelegate(treeView));
     treeView->setItemDelegateForColumn(PsdTreeItemModel::Visible, new CenteredCheckBoxDelegate(treeView));
 
-    // Configure Visible column: fixed small size, non-resizable
+    // Configure Use and Visible columns: fixed small size, non-resizable
     auto *header = treeView->header();
     header->setStretchLastSection(false);
     header->setSectionResizeMode(PsdTreeItemModel::Name, QHeaderView::Stretch);
+    header->setSectionResizeMode(PsdTreeItemModel::Use, QHeaderView::Fixed);
+    header->resizeSection(PsdTreeItemModel::Use, 30);
     header->setSectionResizeMode(PsdTreeItemModel::Visible, QHeaderView::Fixed);
     header->resizeSection(PsdTreeItemModel::Visible, 30);
 
@@ -578,10 +581,12 @@ void PsdWidget::load(const QString &fileName)
     restoreState(d->settings.value("splitterState").toByteArray());
     d->treeView->header()->restoreState(d->settings.value("treeState").toByteArray());
 
-    // Ensure Visible column stays fixed after restoring state
+    // Ensure Use and Visible columns stay fixed after restoring state
     auto *header = d->treeView->header();
     header->setStretchLastSection(false);
     header->setSectionResizeMode(PsdTreeItemModel::Name, QHeaderView::Stretch);
+    header->setSectionResizeMode(PsdTreeItemModel::Use, QHeaderView::Fixed);
+    header->resizeSection(PsdTreeItemModel::Use, 30);
     header->setSectionResizeMode(PsdTreeItemModel::Visible, QHeaderView::Fixed);
     header->resizeSection(PsdTreeItemModel::Visible, 30);
 
