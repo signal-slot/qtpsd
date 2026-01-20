@@ -968,7 +968,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
         }
         break;
     }
-    case QPsdExporterTreeItemModel::ExportHint::Custom: {
+    case QPsdExporterTreeItemModel::ExportHint::Component: {
         ImportData i;
         i.insert("package:flutter/material.dart");
         ExportData x;

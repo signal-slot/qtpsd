@@ -51,7 +51,7 @@
       <property name="title">
        <string>Type</string>
       </property>
-      <layout class="QFormLayout" name="formLayout">
+      <layout class="QGridLayout" name="typeGridLayout">
        <item row="0" column="0">
         <widget class="QRadioButton" name="typeEmbed">
          <property name="text">
@@ -80,9 +80,9 @@
         <widget class="QComboBox" name="merge"/>
        </item>
        <item row="2" column="0">
-        <widget class="QRadioButton" name="typeCustom">
+        <widget class="QRadioButton" name="typeComponent">
          <property name="text">
-          <string>&amp;Custom</string>
+          <string>C&amp;omponent</string>
          </property>
         </widget>
        </item>
@@ -119,6 +119,9 @@
           <string>&amp;Skip</string>
          </property>
         </widget>
+       </item>
+       <item row="4" column="1">
+        <widget class="QWidget" name="widget" native="true"/>
        </item>
       </layout>
      </widget>

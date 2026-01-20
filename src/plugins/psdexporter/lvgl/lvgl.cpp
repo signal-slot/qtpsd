@@ -225,7 +225,7 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
         }
         break; }
     case QPsdExporterTreeItemModel::ExportHint::Native:
-    case QPsdExporterTreeItemModel::ExportHint::Custom: {
+    case QPsdExporterTreeItemModel::ExportHint::Component: {
         Element element;
         element.id = id;
         outputBase(index, &element);

@@ -210,7 +210,7 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     }
     types.setId(typeEmbed, QPsdExporterTreeItemModel::ExportHint::Embed);
     types.setId(typeMerge, QPsdExporterTreeItemModel::ExportHint::Merge);
-    types.setId(typeCustom, QPsdExporterTreeItemModel::ExportHint::Custom);
+    types.setId(typeComponent, QPsdExporterTreeItemModel::ExportHint::Component);
     types.setId(typeNative, QPsdExporterTreeItemModel::ExportHint::Native);
     types.setId(typeSkip, QPsdExporterTreeItemModel::ExportHint::Skip);
 
@@ -254,7 +254,7 @@ PsdWidget::Private::Private(::PsdWidget *parent)
             changed();
     });
 
-    connect(typeCustom, &QRadioButton::toggled, q, [=](bool checked) {
+    connect(typeComponent, &QRadioButton::toggled, q, [=](bool checked) {
         customEnabled->setEnabled(checked);
         custom->setEnabled(checked && customEnabled->isChecked());
         customBase->setEnabled(checked);
@@ -267,12 +267,12 @@ PsdWidget::Private::Private(::PsdWidget *parent)
             changed();
     });
 
-    custom->setEnabled(typeCustom->isChecked());
+    custom->setEnabled(typeComponent->isChecked());
     connect(custom, &QLineEdit::textChanged, q, [=]() {
         if (isReset())
             changed();
     });
-    customBase->setEnabled(typeCustom->isChecked());
+    customBase->setEnabled(typeComponent->isChecked());
     connect(customBase, &QComboBox::currentIndexChanged, q, [=]() {
         if (isReset())
             changed();
@@ -449,7 +449,7 @@ void PsdWidget::Private::updateAttributes()
         typeMerge->setEnabled(false);
     }
     customEnabled->setChecked(rows.length() == 1);
-    customEnabled->setEnabled(false);
+    customEnabled->setEnabled(rows.length() > 1);
     custom->setText(QString());
     custom->setEnabled(false);
     customBase->setCurrentIndex(-1);
@@ -468,8 +468,9 @@ void PsdWidget::Private::updateAttributes()
     case QPsdExporterTreeItemModel::ExportHint::Merge:
         merge->setCurrentText(itemComponentName.value());
         break;
-    case QPsdExporterTreeItemModel::ExportHint::Custom:
+    case QPsdExporterTreeItemModel::ExportHint::Component:
         customEnabled->setChecked(itemComponentName.isUnique());
+        custom->setEnabled(customEnabled->isChecked());
         if (customEnabled->isChecked()) {
             custom->setText(itemComponentName.value());
             if (itemCustomBase.isUnique()) {
@@ -538,8 +539,8 @@ void PsdWidget::Private::applyAttributes()
             hint.type = QPsdExporterTreeItemModel::ExportHint::Merge;
             hint.componentName = merge->currentText();
             break;
-        case QPsdExporterTreeItemModel::ExportHint::Custom:
-            hint.type = QPsdExporterTreeItemModel::ExportHint::Custom;
+        case QPsdExporterTreeItemModel::ExportHint::Component:
+            hint.type = QPsdExporterTreeItemModel::ExportHint::Component;
             if (customEnabled->isEnabled()) {
                 hint.componentName = custom->text();
                 hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(customBase->currentText());

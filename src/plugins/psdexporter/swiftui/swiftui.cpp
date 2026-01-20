@@ -721,7 +721,7 @@ bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *
         parent->children.append(element);
         break;
     }
-    case QPsdExporterTreeItemModel::ExportHint::Custom: {
+    case QPsdExporterTreeItemModel::ExportHint::Component: {
         ImportData i;
         ExportData x;
 

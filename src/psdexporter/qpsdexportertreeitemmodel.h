@@ -32,7 +32,7 @@ public:
         enum Type {
             Embed,
             Merge,
-            Custom,
+            Component,
             Native,
             Skip,
             None,

@@ -836,7 +836,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             return false;
         parent->children.append(element);
         break; }
-    case QPsdExporterTreeItemModel::ExportHint::Custom: {
+    case QPsdExporterTreeItemModel::ExportHint::Component: {
         ImportData i;
         i.insert("QtQuick");
         ExportData x;

@@ -331,7 +331,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
 
         parent->children.append(element);
         break; }
-    case QPsdExporterTreeItemModel::ExportHint::Custom: {
+    case QPsdExporterTreeItemModel::ExportHint::Component: {
         ImportData i;
         ExportData x;
         Element component;
