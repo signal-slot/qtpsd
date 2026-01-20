@@ -13,6 +13,7 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QSlider>
+#include <QtWidgets/QToolButton>
 #include <QtPsdExporter/QPsdExporterPlugin>
 
 class MainWindow::Private : public Ui::MainWindow
@@ -197,6 +198,18 @@ MainWindow::Private::Private(::MainWindow *parent)
     scaleLabel->setFixedWidth(50);
     scaleLabel->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
 
+    auto *fitButton = new QToolButton(q);
+    fitButton->setText(tr("Fit"));
+    fitButton->setToolTip(tr("Fit to window"));
+    fitButton->setEnabled(false);
+
+    auto *resetButton = new QToolButton(q);
+    resetButton->setText(tr("100%"));
+    resetButton->setToolTip(tr("Reset to 100%"));
+    resetButton->setEnabled(false);
+
+    statusbar->addPermanentWidget(fitButton);
+    statusbar->addPermanentWidget(resetButton);
     statusbar->addPermanentWidget(scaleLabel);
     statusbar->addPermanentWidget(scaleSlider);
     scaleSlider->setEnabled(false);  // Disabled until a file is opened
@@ -210,6 +223,29 @@ MainWindow::Private::Private(::MainWindow *parent)
             if (psdWidget)
                 psdWidget->setViewScale(scale);
         }
+    });
+
+    connect(fitButton, &QToolButton::clicked, q, [this]() {
+        int index = tabWidget->currentIndex();
+        if (index >= 0) {
+            auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+            if (psdWidget)
+                psdWidget->fitToView();
+        }
+    });
+
+    connect(resetButton, &QToolButton::clicked, q, [this]() {
+        int index = tabWidget->currentIndex();
+        if (index >= 0) {
+            auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+            if (psdWidget)
+                psdWidget->setViewScale(1.0);
+        }
+    });
+
+    connect(tabWidget, &QTabWidget::currentChanged, q, [fitButton, resetButton, this](int index) {
+        fitButton->setEnabled(index >= 0);
+        resetButton->setEnabled(index >= 0);
     });
 
     settings.beginGroup("Session");

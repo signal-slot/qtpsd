@@ -32,6 +32,7 @@ public slots:
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
     void copyViewToClipboard();
     void setViewScale(qreal scale);
+    void fitToView();
 
 private slots:
     void setErrorMessage(const QString &errorMessage);

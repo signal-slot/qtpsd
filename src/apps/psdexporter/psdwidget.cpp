@@ -729,4 +729,27 @@ qreal PsdWidget::viewScale() const
 void PsdWidget::setViewScale(qreal scale)
 {
     d->psdView->setTransform(QTransform::fromScale(scale, scale));
+    emit viewScaleChanged(scale);
+}
+
+void PsdWidget::fitToView()
+{
+    auto *scene = d->psdView->scene();
+    if (!scene)
+        return;
+
+    QRectF sceneRect = scene->sceneRect();
+    QRectF viewRect = d->psdView->viewport()->rect();
+
+    if (sceneRect.isEmpty() || viewRect.isEmpty())
+        return;
+
+    qreal scaleX = viewRect.width() / sceneRect.width();
+    qreal scaleY = viewRect.height() / sceneRect.height();
+    qreal scale = qMin(scaleX, scaleY);
+
+    // Clamp to valid range (10% - 1000%)
+    scale = qBound(0.1, scale, 10.0);
+
+    setViewScale(scale);
 }
