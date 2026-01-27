@@ -3,13 +3,9 @@
 
 add_subdirectory(psdcore)
 add_subdirectory(psdgui)
-add_subdirectory(plugins)
-
-# psdexporter, psdwidget, apps are not needed for WASM builds
-if(NOT EMSCRIPTEN)
-    add_subdirectory(psdexporter)
-    if(TARGET Qt6::Widgets)
-        add_subdirectory(psdwidget)
-    endif()
-    add_subdirectory(apps)
+add_subdirectory(psdexporter)
+if(TARGET Qt6::Widgets)
+    add_subdirectory(psdwidget)
 endif()
+add_subdirectory(plugins)
+add_subdirectory(apps)
