@@ -243,7 +243,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         }
     });
 
-    connect(tabWidget, &QTabWidget::currentChanged, q, [fitButton, resetButton, this](int index) {
+    connect(tabWidget, &QTabWidget::currentChanged, q, [fitButton, resetButton](int index) {
         fitButton->setEnabled(index >= 0);
         resetButton->setEnabled(index >= 0);
     });
