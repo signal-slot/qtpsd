@@ -32,6 +32,59 @@ Q_SIGNALS:
     void keyChanged(const QByteArray &key);
 
 protected:
+#ifdef Q_OS_WASM
+    // Static plugin support for WASM
+    template <typename T>
+    static QByteArrayList keys(const char *iid, const char * /*subdir*/) {
+        static QByteArrayList ret = [&]() {
+            QByteArrayList keys;
+            const auto staticPlugins = QPluginLoader::staticPlugins();
+            for (const QStaticPlugin &sp : staticPlugins) {
+                const auto json = sp.metaData();
+                if (json.value("IID"_L1).toString() != QLatin1StringView(iid))
+                    continue;
+                const auto metaData = json.value("MetaData"_L1).toObject();
+                const auto jsonKeys = metaData.value("Keys"_L1).toArray();
+                for (const QJsonValue &jsonKey : jsonKeys) {
+                    keys.append(jsonKey.toString().toUtf8());
+                }
+            }
+            return keys;
+        }();
+        return ret;
+    }
+
+    template <typename T>
+    static T *plugin(const char *iid, const char * /*subdir*/, const QByteArray &key) {
+        static QHash<QByteArray, T *> plugins = [&]() {
+            QHash<QByteArray, T *> ret;
+            const auto staticPlugins = QPluginLoader::staticPlugins();
+            for (const QStaticPlugin &sp : staticPlugins) {
+                const auto json = sp.metaData();
+                if (json.value("IID"_L1).toString() != QLatin1StringView(iid))
+                    continue;
+                const auto metaData = json.value("MetaData"_L1).toObject();
+                const auto jsonKeys = metaData.value("Keys"_L1).toArray();
+                QObject *object = sp.instance();
+                if (!object)
+                    continue;
+                auto plugin = qobject_cast<T *>(object);
+                if (!plugin)
+                    continue;
+                for (const QJsonValue &jsonKey : jsonKeys) {
+                    ret.insert(jsonKey.toString().toLatin1(), plugin);
+                }
+            }
+            return ret;
+        }();
+
+        auto ret = plugins.value(key);
+        if (ret)
+            ret->setKey(key);
+        return qobject_cast<T *>(ret);
+    }
+#else
+    // Dynamic plugin support for desktop platforms
     template <typename T>
     static QByteArrayList keys(const char *iid, const char *subdir) {
         static QByteArrayList ret = [&]() {
@@ -95,9 +148,12 @@ protected:
             ret->setKey(key);
         return qobject_cast<T *>(ret);
     }
+#endif
 
 private:
+#ifndef Q_OS_WASM
     static QDir qpsdPluginDir(const QString &type);
+#endif
     class Private;
     QScopedPointer<Private> d;
 };

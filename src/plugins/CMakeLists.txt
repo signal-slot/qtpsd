@@ -4,4 +4,8 @@
 add_subdirectory(psdadditionallayerinformation)
 add_subdirectory(psddescriptor)
 add_subdirectory(psdeffectslayer)
-add_subdirectory(psdexporter)
+
+# psdexporter plugins require the PsdExporter module, skip for WASM
+if(NOT EMSCRIPTEN)
+    add_subdirectory(psdexporter)
+endif()
