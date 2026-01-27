@@ -17,7 +17,7 @@ class Q_PSDCORE_EXPORT QPsdDescriptorPlugin : public QPsdAbstractPlugin
 public:
     explicit QPsdDescriptorPlugin(QObject *parent = nullptr);
 
-    virtual QVariant parse(QIODevice *source , quint32 *length) const = 0;
+    virtual QVariant parse(QIODevice *source, quint32 *length) const = 0;
 
     static QByteArrayList keys() {
         return QPsdAbstractPlugin::keys<QPsdDescriptorPlugin>(QPsdDescriptorFactoryInterface_iid, "psddescriptor");
