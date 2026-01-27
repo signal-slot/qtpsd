@@ -70,7 +70,7 @@ QString QPsdSection::readString(QIODevice *source, quint32 *length)
     const auto size = readS32(source, length);
     Q_ASSERT(size < 1024);
     const auto data = readByteArray(source, size * 2, length);
-    static QStringDecoder decoder(QStringDecoder::Utf16BE);
+    QStringDecoder decoder(QStringDecoder::Utf16BE);
     QString ret = decoder.decode(data);
     if (ret.endsWith(QChar::Null))
         ret.chop(1);
@@ -84,7 +84,7 @@ QString QPsdSection::readStringLE(QIODevice *source, quint32 *length)
     const auto size = readU32LE(source, length);
     Q_ASSERT(size < 1024);
     const auto data = readByteArray(source, size * 2, length);
-    static QStringDecoder decoder(QStringDecoder::Utf16LE);
+    QStringDecoder decoder(QStringDecoder::Utf16LE);
     QString ret = decoder.decode(data);
     if (ret.endsWith(QChar::Null))
         ret.chop(1);
