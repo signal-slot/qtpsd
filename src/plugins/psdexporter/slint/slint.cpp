@@ -633,6 +633,15 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background"_L1, gradString);
                 break; }
+            case QGradient::RadialGradient: {
+                const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                QStringList grad = { "@radial-gradient(circle" };
+                for (const auto &stop : radial->stops()) {
+                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element2.properties.insert("background"_L1, gradString);
+                break; }
             default:
                 qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
@@ -652,6 +661,15 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                     const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
                     QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0 ) + "deg" };
                     for (const auto &stop : linear->stops()) {
+                        grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    }
+                    const QString gradString = grad.join(", ") + ")";
+                    element2.properties.insert("background", gradString);
+                    break; }
+                case QGradient::RadialGradient: {
+                    const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                    QStringList grad = { "@radial-gradient(circle" };
+                    for (const auto &stop : radial->stops()) {
                         grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                     }
                     const QString gradString = grad.join(", ") + ")";
@@ -686,6 +704,15 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
                 QStringList grad { "@linear-gradient(" + QString::number(180.0 - (angle) * 180.0 / M_PI) + "deg " };
                 for (const auto &stop : linear->stops()) {
+                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element->properties.insert("fill", gradString);
+                break; }
+            case QGradient::RadialGradient: {
+                const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                QStringList grad = { "@radial-gradient(circle" };
+                for (const auto &stop : radial->stops()) {
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
