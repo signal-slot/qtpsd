@@ -512,6 +512,40 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 }
 
                 break; }
+            case QGradient::RadialGradient: {
+                if (!isNoGpu()) {
+                    const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                    imports->insert("Qt5Compat.GraphicalEffects as GE");
+                    Element effect;
+                    effect.type = "GE.RadialGradient";
+                    if (filled) {
+                        if (!outputBase(shapeIndex, &effect, imports))
+                            return false;
+                    } else {
+                        outputRect(path.rect, &effect);
+                    }
+                    const qreal elemW = path.rect.width() * horizontalScale;
+                    const qreal elemH = path.rect.height() * verticalScale;
+                    effect.properties.insert("horizontalOffset", radial->center().x() * horizontalScale - elemW / 2);
+                    effect.properties.insert("verticalOffset", radial->center().y() * verticalScale - elemH / 2);
+                    effect.properties.insert("horizontalRadius", radial->radius() * horizontalScale);
+                    effect.properties.insert("verticalRadius", radial->radius() * verticalScale);
+                    Element gradient;
+                    gradient.type = "gradient: Gradient";
+                    for (const auto &stop : radial->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        gradient.children.append(stopElement);
+                    }
+                    effect.children.append(gradient);
+                    if (filled)
+                        *element = effect;
+                    else
+                        element->children.prepend(effect);
+                }
+                break; }
             default:
                 qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
@@ -591,6 +625,37 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 }
 
                 break; }
+            case QGradient::RadialGradient: {
+                if (!isNoGpu()) {
+                    const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                    imports->insert("Qt5Compat.GraphicalEffects as GE");
+                    Element effect;
+                    effect.type = "GE.RadialGradient";
+                    if (filled) {
+                        if (!outputBase(shapeIndex, &effect, imports))
+                            return false;
+                    } else {
+                        outputRect(path.rect, &effect);
+                    }
+                    const qreal elemW = path.rect.width() * horizontalScale;
+                    const qreal elemH = path.rect.height() * verticalScale;
+                    effect.properties.insert("horizontalOffset", radial->center().x() * horizontalScale - elemW / 2);
+                    effect.properties.insert("verticalOffset", radial->center().y() * verticalScale - elemH / 2);
+                    effect.properties.insert("horizontalRadius", radial->radius() * horizontalScale);
+                    effect.properties.insert("verticalRadius", radial->radius() * verticalScale);
+                    Element gradient;
+                    gradient.type = "gradient: Gradient";
+                    for (const auto &stop : radial->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        gradient.children.append(stopElement);
+                    }
+                    effect.children.append(gradient);
+                    rectElement.layers.append(effect);
+                }
+                break; }
             default:
                 qFatal() << "Unsupported gradient type"_L1 << g->type();
             }
@@ -641,6 +706,25 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 }
                 shapePath.children.append(gradient);
                 qDebug() << gradient.children.length();
+                break; }
+            case QGradient::RadialGradient: {
+                const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                Element gradient;
+                gradient.type = "fillGradient: RadialGradient";
+                gradient.properties.insert("centerX", radial->center().x() * horizontalScale);
+                gradient.properties.insert("centerY", radial->center().y() * verticalScale);
+                gradient.properties.insert("centerRadius", radial->radius() * std::max(horizontalScale, verticalScale));
+                gradient.properties.insert("focalX", radial->focalPoint().x() * horizontalScale);
+                gradient.properties.insert("focalY", radial->focalPoint().y() * verticalScale);
+                gradient.properties.insert("focalRadius", radial->focalRadius() * std::max(horizontalScale, verticalScale));
+                for (const auto &stop : radial->stops()) {
+                    Element stopElement;
+                    stopElement.type = "GradientStop";
+                    stopElement.properties.insert("position", stop.first);
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    gradient.children.append(stopElement);
+                }
+                shapePath.children.append(gradient);
                 break; }
             default:
                 qFatal() << "Unsupported gradient type"_L1 << g->type();
