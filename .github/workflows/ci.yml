@@ -51,11 +51,11 @@ jobs:
 
       - name: Configure
         run: |
-          cmake -S . -B build -G "Ninja" -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_CONFIGURATION_TYPES="Debug;Release" ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
+          cmake -S . -B build -G "Ninja" -DCMAKE_PREFIX_PATH="$env:QT_ROOT_DIR" -DCMAKE_BUILD_TYPE=RelWithDebInfo ${{ matrix.no-error }} -DQT_BUILD_EXAMPLES=1 -DQT_BUILD_TESTS=1
 
       - name: Build
         run: |
-          cmake --build build --config RelWithDebInfo --parallel
+          cmake --build build --parallel
   
       - name: Install
         run: |
