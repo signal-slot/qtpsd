@@ -533,6 +533,22 @@ bool QPsdExporterFlutterPlugin::outputGradient(const QGradient *gradient, const 
 
         break;
     }
+    case QGradient::RadialGradient: {
+        element->type = "RadialGradient";
+
+        const QRadialGradient *radial = reinterpret_cast<const QRadialGradient*>(gradient);
+
+        element->properties.insert("center", u"Alignment(%1, %2)"_s.arg((radial->center().x() * 2 - rect.width()) / rect.width()).arg((radial->center().y() * 2 - rect.height()) / rect.height()));
+        element->properties.insert("radius", radial->radius() / std::min(rect.width(), rect.height()));
+        if (radial->focalPoint() != radial->center()) {
+            element->properties.insert("focal", u"Alignment(%1, %2)"_s.arg((radial->focalPoint().x() * 2 - rect.width()) / rect.width()).arg((radial->focalPoint().y() * 2 - rect.height()) / rect.height()));
+        }
+        if (radial->focalRadius() > 0) {
+            element->properties.insert("focalRadius", radial->focalRadius() / std::min(rect.width(), rect.height()));
+        }
+
+        break;
+    }
     default:
         qFatal() << "Unsupported gradient type"_L1 << gradient->type();
     }

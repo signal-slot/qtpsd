@@ -401,6 +401,22 @@ bool QPsdExporterSwiftUIPlugin::outputGradient(const QGradient *gradient, const 
             .arg(colors.join(", "), startPoint, endPoint));
         break;
     }
+    case QGradient::RadialGradient: {
+        const QRadialGradient *radial = static_cast<const QRadialGradient*>(gradient);
+
+        QStringList colors;
+        for (const auto &stop : radial->stops()) {
+            colors.append(colorValue(stop.second));
+        }
+
+        element->modifiers.append(u".fill(RadialGradient(colors: [%1], center: UnitPoint(x: %2, y: %3), startRadius: %4, endRadius: %5))"_s
+            .arg(colors.join(", "))
+            .arg(radial->center().x() / rect.width(), 0, 'f', 2)
+            .arg(radial->center().y() / rect.height(), 0, 'f', 2)
+            .arg(radial->focalRadius() * unitScale, 0, 'f', 1)
+            .arg(radial->radius() * unitScale, 0, 'f', 1));
+        break;
+    }
     default:
         qWarning() << "Unsupported gradient type" << gradient->type();
         return false;
