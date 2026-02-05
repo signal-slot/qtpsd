@@ -3,36 +3,59 @@ import SwiftUI
 struct MainView: View {
     var body: some View {
         ZStack {
-            Image("_________L_a_y_e_r___g_r_o_u_p__")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 0.0, height: 0.0)
-                .position(x: 0.0, y: 0.0)
-            VStack(alignment: .leading, spacing: 0) {
+            Group {
+                Rectangle
+                    .fill(Color(red: 0.004, green: 0.141, blue: 0.004))
+                    .frame(width: 320.0, height: 240.0)
+                    .position(x: 160.0, y: 120.0)
+                Text("")
+                    .font(.custom("SourceHanSans-Medium", size: 50))
+                    .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 0.0, height: 54.0)
+                    .position(x: 38.0, y: 71.0)
+                Text("文字列中に\n改行")
+                    .font(.custom("SourceHanSans-Medium", size: 30))
+                    .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 160.0, height: 63.0)
+                    .position(x: 82.0, y: 41.5)
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 0) {
+                        Text("文字列")
+                            .font(.custom("KozGoPr6N-Regular", size: 30))
+                            .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                        Text("中")
+                            .font(.custom("KozGoPr6N-Regular", size: 16))
+                            .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                        Text("に")
+                            .font(.custom("KozGoPr6N-Regular", size: 30))
+                            .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                    }
+                    HStack(spacing: 0) {
+                        Text("別")
+                            .font(.custom("KozGoPr6N-Regular", size: 30))
+                            .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                        Text("フォント")
+                            .font(.custom("SourceHanSans-Medium", size: 18))
+                            .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                    }
+                }
+                    .frame(width: 144.0, height: 63.0)
+                    .position(x: 241.0, y: 41.5)
+                Text("Shift\n+改行")
+                    .font(.custom("KozGoPr6N-Regular", size: 30))
+                    .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 86.0, height: 63.0)
+                    .position(x: 68.0, y: 141.5)
+                Text("段落テキストは折り返される")
+                    .font(.custom("KozGoPr6N-Regular", size: 24))
+                    .foregroundStyle(Color(red: 0.918, green: 0.763, blue: 0.763))
+                    .multilineTextAlignment(.center)
+                    .frame(width: 158.0, height: 116.0)
+                    .position(x: 239.0, y: 168.0)
             }
-                .frame(width: 0.0, height: -1.0)
-                .position(x: 0.0, y: -0.5)
-            VStack(alignment: .leading, spacing: 0) {
-            }
-                .frame(width: 0.0, height: -1.0)
-                .position(x: 0.0, y: -0.5)
-            VStack(alignment: .leading, spacing: 0) {
-            }
-                .frame(width: 0.0, height: -1.0)
-                .position(x: 0.0, y: -0.5)
-            VStack(alignment: .leading, spacing: 0) {
-            }
-                .frame(width: 0.0, height: -1.0)
-                .position(x: 0.0, y: -0.5)
-            VStack(alignment: .leading, spacing: 0) {
-            }
-                .frame(width: 0.0, height: -1.0)
-                .position(x: 0.0, y: -0.5)
-            Image("____0_0_0_0_0_0____1")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 0.0, height: 0.0)
-                .position(x: 0.0, y: 0.0)
         }
         .frame(width: 320.0, height: 240.0)
     }

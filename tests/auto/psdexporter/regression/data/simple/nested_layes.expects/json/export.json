@@ -19,7 +19,7 @@
                                 {
                                     "alignment": 132,
                                     "color": "#000000",
-                                    "font": "源ノ角ゴシック JP,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
+                                    "font": "SourceHanSans-Medium,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                                     "text": "Example1\n"
                                 }
                             ],
@@ -523,7 +523,7 @@
                                 {
                                     "alignment": 132,
                                     "color": "#000000",
-                                    "font": "源ノ角ゴシック JP,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
+                                    "font": "SourceHanSans-Medium,20,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                                     "text": "Example1\n"
                                 }
                             ],

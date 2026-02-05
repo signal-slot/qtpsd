@@ -59,9 +59,9 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "源ノ角ゴシック JP"
+                font.family: "SourceHanSans-Medium"
                 font.pixelSize: 30
-                height: 43
+                height: 33
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 width: 160
@@ -116,9 +116,9 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "源ノ角ゴシック JP"
+                font.family: "SourceHanSans-Medium"
                 font.pixelSize: 30
-                height: 43
+                height: 33
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 width: 160

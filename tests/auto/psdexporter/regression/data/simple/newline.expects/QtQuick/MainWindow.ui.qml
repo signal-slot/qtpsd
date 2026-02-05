@@ -16,16 +16,16 @@ Item {
         Text {
             anchors.fill: parent
             color: "#eac3c3"
-            font.family: "源ノ角ゴシック JP"
+            font.family: "SourceHanSans-Medium"
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
         }
         Text {
             color: "#eac3c3"
-            font.family: "源ノ角ゴシック JP"
+            font.family: "SourceHanSans-Medium"
             font.pixelSize: 30
-            height: 82
+            height: 63
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
             width: 160
@@ -33,7 +33,7 @@ Item {
             y: 10
         }
         Item {
-            height: 82
+            height: 63
             width: 144
             x: 169
             y: 10
@@ -77,7 +77,7 @@ Item {
                     Text {
                         Layout.fillHeight: true
                         color: "#eac3c3"
-                        font.family: "源ノ角ゴシック JP"
+                        font.family: "SourceHanSans-Medium"
                         font.pixelSize: 18
                         text: "フォント"
                     }
@@ -88,7 +88,7 @@ Item {
             color: "#eac3c3"
             font.family: "KozGoPr6N-Regular"
             font.pixelSize: 30
-            height: 82
+            height: 63
             horizontalAlignment: Text.AlignHCenter
             text: "Shift\n+改行"
             width: 86

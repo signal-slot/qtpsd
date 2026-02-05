@@ -15,7 +15,7 @@ Item {
         Text {
             anchors.fill: parent
             color: "#000000"
-            font.family: "源ノ角ゴシック JP"
+            font.family: "SourceHanSans-Medium"
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
@@ -48,9 +48,9 @@ Item {
         }
         Text {
             color: "#000000"
-            font.family: "源ノ角ゴシック JP"
+            font.family: "SourceHanSans-Medium"
             font.pixelSize: 50
-            height: 70
+            height: 54
             horizontalAlignment: Text.AlignHCenter
             text: "shooting"
             width: 239

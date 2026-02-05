@@ -17,7 +17,7 @@ class MainWindow extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned(
-                  height: 70,
+                  height: 54,
                   left: 30,
                   top: 30,
                   width: 120,
@@ -27,7 +27,7 @@ class MainWindow extends StatelessWidget {
                     textScaler: TextScaler.linear(1),
                     style: TextStyle(
                       color: Color.fromARGB(255, 255, 255, 255),
-                      fontFamily: "源ノ角ゴシック JP",
+                      fontFamily: "SourceHanSans-Medium",
                       fontSize: 50,
                       fontVariations: [FontVariation.weight(600)],
                       height: 1,
@@ -35,7 +35,7 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 211,
+                  height: 163,
                   left: 150,
                   top: 60,
                   width: 478,
@@ -45,7 +45,7 @@ class MainWindow extends StatelessWidget {
                     textScaler: TextScaler.linear(1),
                     style: TextStyle(
                       color: Color.fromARGB(255, 255, 255, 255),
-                      fontFamily: "源ノ角ゴシック JP",
+                      fontFamily: "SourceHanSans-Medium",
                       fontSize: 150,
                       fontVariations: [FontVariation.weight(600)],
                       height: 1,

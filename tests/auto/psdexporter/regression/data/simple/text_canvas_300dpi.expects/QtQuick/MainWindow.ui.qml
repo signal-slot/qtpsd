@@ -14,9 +14,9 @@ Item {
         }
         Text {
             color: "#ffffff"
-            font.family: "源ノ角ゴシック JP"
+            font.family: "SourceHanSans-Medium"
             font.pixelSize: 50
-            height: 70
+            height: 54
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
             width: 120
@@ -25,9 +25,9 @@ Item {
         }
         Text {
             color: "#ffffff"
-            font.family: "源ノ角ゴシック JP"
+            font.family: "SourceHanSans-Medium"
             font.pixelSize: 150
-            height: 211
+            height: 163
             horizontalAlignment: Text.AlignHCenter
             text: "150px"
             width: 478

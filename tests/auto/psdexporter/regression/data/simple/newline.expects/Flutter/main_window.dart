@@ -22,14 +22,14 @@ class MainWindow extends StatelessWidget {
                   textScaler: TextScaler.linear(1),
                   style: TextStyle(
                     color: Color.fromARGB(255, 234, 195, 195),
-                    fontFamily: "源ノ角ゴシック JP",
+                    fontFamily: "SourceHanSans-Medium",
                     fontSize: 50,
                     fontVariations: [FontVariation.weight(600)],
                     height: 1,
                   ),
                 ),
                 Positioned(
-                  height: 82,
+                  height: 63,
                   left: 2,
                   top: 10,
                   width: 160,
@@ -39,7 +39,7 @@ class MainWindow extends StatelessWidget {
                     textScaler: TextScaler.linear(1),
                     style: TextStyle(
                       color: Color.fromARGB(255, 234, 195, 195),
-                      fontFamily: "源ノ角ゴシック JP",
+                      fontFamily: "SourceHanSans-Medium",
                       fontSize: 30,
                       fontVariations: [FontVariation.weight(600)],
                       height: 1,
@@ -47,7 +47,7 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 82,
+                  height: 63,
                   left: 169,
                   top: 10,
                   width: 144,
@@ -113,7 +113,7 @@ class MainWindow extends StatelessWidget {
                             textScaler: TextScaler.linear(1),
                             style: TextStyle(
                               color: Color.fromARGB(255, 234, 195, 195),
-                              fontFamily: "源ノ角ゴシック JP",
+                              fontFamily: "SourceHanSans-Medium",
                               fontSize: 18,
                               fontVariations: [FontVariation.weight(600)],
                               height: 1,
@@ -125,7 +125,7 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 82,
+                  height: 63,
                   left: 25,
                   top: 110,
                   width: 86,
