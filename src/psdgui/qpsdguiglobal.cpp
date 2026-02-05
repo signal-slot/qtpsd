@@ -32,7 +32,7 @@ QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader
                         size_t byteIndex = static_cast<size_t>(y) * bytesPerRow + x / 8;
                         int bitIndex = 7 - (x % 8); // MSB first
                         bool bit = (src[byteIndex] >> bitIndex) & 1;
-                        dst[y * w + x] = bit ? 255 : 0;
+                        dst[y * w + x] = bit ? 0 : 255;
                     }
                 }
             } else {
