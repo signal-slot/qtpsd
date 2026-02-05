@@ -11,6 +11,8 @@ QT_BEGIN_NAMESPACE
 class Q_PSDGUI_EXPORT QPsdShapeLayerItem : public QPsdAbstractLayerItem
 {
 public:
+    enum StrokeAlignment { StrokeCenter, StrokeInside, StrokeOutside };
+
     QPsdShapeLayerItem(const QPsdLayerRecord &record);
     QPsdShapeLayerItem();
     ~QPsdShapeLayerItem() override;
@@ -18,6 +20,7 @@ public:
 
     QPen pen() const;
     QBrush brush() const;
+    StrokeAlignment strokeAlignment() const;
     QPsdAbstractLayerItem::PathInfo pathInfo() const;
 
 private:

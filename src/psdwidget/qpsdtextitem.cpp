@@ -19,6 +19,7 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
     const auto *layer = this->layer<QPsdTextLayerItem>();
 
+    painter->setCompositionMode(QtPsdGui::compositionMode(layer->record().blendMode()));
     // Apply both opacity and fill opacity for text content
     painter->setOpacity(layer->opacity() * layer->fillOpacity());
 

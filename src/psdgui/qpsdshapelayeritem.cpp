@@ -34,6 +34,7 @@ class QPsdShapeLayerItem::Private
 public:
     QPen pen = Qt::NoPen;
     QBrush brush = Qt::NoBrush;
+    QPsdShapeLayerItem::StrokeAlignment strokeAlignment = QPsdShapeLayerItem::StrokeCenter;
     QPsdAbstractLayerItem::PathInfo path;
 };
 
@@ -88,6 +89,15 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
             }
             d->pen.setWidthF(vstk.strokeStyleLineWidth().value());
             d->pen.setMiterLimit(vstk.strokeStyleMiterLimit());
+
+            const auto lineAlignment = vstk.strokeStyleLineAlignment().value();
+            if (lineAlignment == "strokeStyleAlignInside") {
+                d->strokeAlignment = StrokeInside;
+            } else if (lineAlignment == "strokeStyleAlignOutside") {
+                d->strokeAlignment = StrokeOutside;
+            } else {
+                d->strokeAlignment = StrokeCenter;
+            }
         }
 
         if (vstk.fillEnabled()) {
@@ -170,6 +180,11 @@ QPen QPsdShapeLayerItem::pen() const
 QBrush QPsdShapeLayerItem::brush() const
 {
     return d->brush;
+}
+
+QPsdShapeLayerItem::StrokeAlignment QPsdShapeLayerItem::strokeAlignment() const
+{
+    return d->strokeAlignment;
 }
 
 QPsdAbstractLayerItem::PathInfo QPsdShapeLayerItem::pathInfo() const

@@ -4,6 +4,7 @@
 #include "qpsdshapeitem.h"
 
 #include <QtGui/QPainter>
+#include <QtGui/QPainterPath>
 #include <QtPsdCore/QPsdVectorMaskSetting>
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdPatternFill>
@@ -22,6 +23,7 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     const auto *layer = this->layer<QPsdShapeLayerItem>();
 
     setMask(painter);
+    painter->setCompositionMode(QtPsdGui::compositionMode(layer->record().blendMode()));
     // Apply both opacity and fill opacity for shape content
     // In Photoshop, fill opacity affects only the layer content, not effects
     painter->setOpacity(abstractLayer()->opacity() * abstractLayer()->fillOpacity());
@@ -51,17 +53,75 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         painter->setBrush(layer->brush());
     }
 
-    const auto dw = painter->pen().widthF() / 2.0;
-    switch (pathInfo.type) {
-    case QPsdAbstractLayerItem::PathInfo::Rectangle:
-        painter->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
-        break;
-    case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-        painter->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
-        break;
-    default:
-        painter->drawPath(pathInfo.path);
-        break;
+    const auto strokeAlignment = layer->strokeAlignment();
+    if (strokeAlignment == QPsdShapeLayerItem::StrokeInside && painter->pen().style() != Qt::NoPen) {
+        // For "inside" stroke: draw fill first, then clip to path and draw stroke with 2x width
+        QPen strokePen = painter->pen();
+        QBrush fillBrush = painter->brush();
+
+        // Draw fill without stroke
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(fillBrush);
+        switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::Rectangle:
+            painter->drawRect(pathInfo.rect);
+            break;
+        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+            painter->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            break;
+        default:
+            painter->drawPath(pathInfo.path);
+            break;
+        }
+
+        // Draw stroke clipped to inside of the path
+        painter->save();
+        switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::Rectangle: {
+            QPainterPath clipPath;
+            clipPath.addRect(pathInfo.rect);
+            painter->setClipPath(clipPath, Qt::IntersectClip);
+            break;
+        }
+        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
+            QPainterPath clipPath;
+            clipPath.addRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            painter->setClipPath(clipPath, Qt::IntersectClip);
+            break;
+        }
+        default:
+            painter->setClipPath(pathInfo.path, Qt::IntersectClip);
+            break;
+        }
+        strokePen.setWidthF(strokePen.widthF() * 2.0);
+        painter->setPen(strokePen);
+        painter->setBrush(Qt::NoBrush);
+        switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::Rectangle:
+            painter->drawRect(pathInfo.rect);
+            break;
+        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+            painter->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            break;
+        default:
+            painter->drawPath(pathInfo.path);
+            break;
+        }
+        painter->restore();
+    } else {
+        // For "center" or "outside" stroke (or no stroke): draw as-is
+        const auto dw = painter->pen().widthF() / 2.0;
+        switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::Rectangle:
+            painter->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
+            break;
+        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+            painter->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
+            break;
+        default:
+            painter->drawPath(pathInfo.path);
+            break;
+        }
     }
 }
 
