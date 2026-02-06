@@ -365,7 +365,10 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
         if (w > 0 && h > 0) {
             QImage maskImage(w, h, QImage::Format_Grayscale8);
             if (!maskImage.isNull() && static_cast<size_t>(layerMaskData.size()) >= static_cast<size_t>(w) * h) {
-                memcpy(maskImage.bits(), layerMaskData.constData(), w * h);
+                // Row-by-row copy to handle QImage row alignment (bytesPerLine may differ from width)
+                for (int y = 0; y < h; ++y) {
+                    memcpy(maskImage.scanLine(y), layerMaskData.constData() + y * w, w);
+                }
                 d->layerMask = maskImage;
                 d->layerMaskRect = maskRect;
                 d->layerMaskDefaultColor = maskInfo.defaultColor();
