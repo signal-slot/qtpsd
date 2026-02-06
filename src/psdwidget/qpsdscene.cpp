@@ -12,6 +12,7 @@
 
 #include <QtPsdGui/QPsdAbstractLayerItem>
 #include <QtGui/QPainter>
+#include <QtWidgets/QGraphicsPixmapItem>
 
 QT_BEGIN_NAMESPACE
 
@@ -166,6 +167,16 @@ void QPsdScene::reset()
     };
 
     traverseTree(QModelIndex(), nullptr);
+
+    // If no layers were added (e.g., bitmap mode PSD with no layer records),
+    // fall back to rendering the merged image from the Image Data section
+    if (this->items().isEmpty()) {
+        QImage mergedImage = d->model->mergedImage();
+        if (!mergedImage.isNull()) {
+            QGraphicsPixmapItem *pixmapItem = new QGraphicsPixmapItem(QPixmap::fromImage(mergedImage));
+            addItem(pixmapItem);
+        }
+    }
 
     setSceneRect(QRect{ QPoint{}, d->model->size() });
 }

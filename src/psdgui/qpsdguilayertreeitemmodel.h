@@ -7,6 +7,7 @@
 #include <QtPsdGui/qpsdabstractlayeritem.h>
 
 #include <QtPsdCore/QPsdLayerTreeItemModel>
+#include <QtGui/QImage>
 
 QT_BEGIN_NAMESPACE
 
@@ -28,6 +29,8 @@ public:
     void fromParser(const QPsdParser &parser) override;
 
     const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const;
+
+    QImage mergedImage() const;
 
 private:
     class Private;

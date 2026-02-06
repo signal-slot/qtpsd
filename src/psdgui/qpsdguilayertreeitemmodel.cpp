@@ -9,6 +9,11 @@
 #include "qpsdguilayertreeitemmodel.h"
 #include "qpsdplacedlayer.h"
 #include "qpsdplacedlayerdata.h"
+#include "qpsdguiglobal.h"
+#include <QtPsdCore/QPsdParser>
+#include <QtPsdCore/QPsdFileHeader>
+#include <QtPsdCore/QPsdImageData>
+#include <QtPsdCore/QPsdColorModeData>
 
 QT_BEGIN_NAMESPACE
 
@@ -21,9 +26,10 @@ public:
     QPsdAbstractLayerItem *layerItemObject(const QPsdLayerRecord *layerRecord, QPsdLayerTreeItemModel::FolderType folderType);
 
     const QPsdGuiLayerTreeItemModel *q;
-    
+
     QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
     QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
+    QImage mergedImage;
 };
 
 QPsdGuiLayerTreeItemModel::Private::Private(const QPsdGuiLayerTreeItemModel *model) : q(model)
@@ -138,11 +144,24 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
         const auto lnk2 = additionalLayerInformation.value("lnk2").value<QPsdLinkedLayer>();
         d->linkedFiles = lnk2.files();
     }
+
+    // Store the merged image (Image Data section) for fallback rendering
+    // This is useful when the PSD has no layer records (e.g., bitmap mode files)
+    const auto header = parser.fileHeader();
+    const auto imageData = parser.imageData();
+    const auto colorModeData = parser.colorModeData();
+    const auto iccProfile = parser.iccProfile();
+    d->mergedImage = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
 }
 
 const QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::layerItem(const QModelIndex &index) const
 {
     return d->layerItemObject(layerRecord(index), folderType(index));
+}
+
+QImage QPsdGuiLayerTreeItemModel::mergedImage() const
+{
+    return d->mergedImage;
 }
 
 QT_END_NAMESPACE
