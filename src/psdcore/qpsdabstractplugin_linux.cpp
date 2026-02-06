@@ -3,10 +3,20 @@
 
 #include "qpsdabstractplugin.h"
 
+#include <QtCore/QLibraryInfo>
+
 #include <dlfcn.h>
 
 QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
 {
+    // First, try the standard Qt plugin path
+    QDir pluginsDir(QLibraryInfo::path(QLibraryInfo::PluginsPath));
+    if (pluginsDir.exists(type)) {
+        pluginsDir.cd(type);
+        return pluginsDir;
+    }
+
+    // Fallback: search relative to the library location (for development builds)
     Dl_info info;
     if (dladdr((void*)&qpsdPluginDir, &info)) {
         const auto path = info.dli_fname;
