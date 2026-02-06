@@ -5,6 +5,7 @@
 #include "qpsdfileheader.h"
 
 #include <cmath>
+#include <QtEndian>
 
 QT_BEGIN_NAMESPACE
 
@@ -167,16 +168,22 @@ QByteArray QPsdAbstractImage::toImage(QPsdFileHeader::ColorMode colorMode) const
                 }
             }
         } else if (bytesPerChannel == 4) {
-            // 32-bit per channel (float)
+            // 32-bit per channel (float) - PSD stores floats in big-endian
             for (quint32 i = 0; i < size; i++) {
-                ret.append(reinterpret_cast<const char*>(pb), 4);
+                // Convert from big-endian to native endianness
+                quint32 bVal = qFromBigEndian<quint32>(pb);
+                quint32 gVal = qFromBigEndian<quint32>(pg);
+                quint32 rVal = qFromBigEndian<quint32>(pr);
+                ret.append(reinterpret_cast<const char*>(&bVal), 4);
                 pb += 4;
-                ret.append(reinterpret_cast<const char*>(pg), 4);
+                ret.append(reinterpret_cast<const char*>(&gVal), 4);
                 pg += 4;
-                ret.append(reinterpret_cast<const char*>(pr), 4);
+                ret.append(reinterpret_cast<const char*>(&rVal), 4);
                 pr += 4;
                 if (pa) {
-                    float alpha = *reinterpret_cast<const float*>(pa);
+                    quint32 aVal = qFromBigEndian<quint32>(pa);
+                    float alpha;
+                    memcpy(&alpha, &aVal, 4);
                     alpha = alpha * static_cast<float>(o / 0xff);
                     ret.append(reinterpret_cast<const char*>(&alpha), 4);
                     pa += 4;
