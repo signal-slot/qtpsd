@@ -9,14 +9,7 @@
 
 QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
 {
-    // First, try the standard Qt plugin path
-    QDir pluginsDir(QLibraryInfo::path(QLibraryInfo::PluginsPath));
-    if (pluginsDir.exists(type)) {
-        pluginsDir.cd(type);
-        return pluginsDir;
-    }
-
-    // Fallback: search relative to the library location (for development builds)
+    // First, try relative to the library location (for development builds)
     Dl_info info;
     if (dladdr((void*)&qpsdPluginDir, &info)) {
         const auto path = info.dli_fname;
@@ -41,10 +34,20 @@ QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
         };
         pluginsDir.cdUp();
         pluginsDir = findPluginsDir(pluginsDir);
-        pluginsDir.cd(type);
-        return pluginsDir;
+        if (pluginsDir.exists(type)) {
+            pluginsDir.cd(type);
+            return pluginsDir;
+        }
     } else {
         qWarning() << u"dladdrに失敗しました。"_s;
     }
+
+    // Fallback: try the standard Qt plugin path (for installed builds)
+    QDir pluginsDir(QLibraryInfo::path(QLibraryInfo::PluginsPath));
+    if (pluginsDir.exists(type)) {
+        pluginsDir.cd(type);
+        return pluginsDir;
+    }
+
     return QDir();
 }

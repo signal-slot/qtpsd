@@ -129,6 +129,11 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
         }
     } else {
         rect = rectBounds;
+        if (makeCompact) {
+            // makeCompact の場合、位置は indexRectMap から取得（親に対する相対座標）
+            QRect compactRect = indexRectMap.value(index);
+            rect.moveTopLeft(compactRect.topLeft());
+        }
     }
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
         auto parentIndex = indexMergeMap.key(index);
