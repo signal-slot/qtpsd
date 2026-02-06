@@ -118,5 +118,37 @@ const unsigned char *QPsdImageData::k() const
     return y() + width() * height() * depth() / 8;
 }
 
+const unsigned char *QPsdImageData::a() const
+{
+    if (!hasAlpha())
+        return nullptr;
+
+    const auto channelSize = width() * height() * depth() / 8;
+    switch (header().colorMode()) {
+    case QPsdFileHeader::RGB:
+        // Alpha comes after R, G, B
+        return b() + channelSize;
+    case QPsdFileHeader::CMYK:
+        // Alpha comes after C, M, Y, K
+        return k() + channelSize;
+    default:
+        return nullptr;
+    }
+}
+
+bool QPsdImageData::hasAlpha() const
+{
+    const auto channels = header().channels();
+    switch (header().colorMode()) {
+    case QPsdFileHeader::RGB:
+        return channels > 3;
+    case QPsdFileHeader::CMYK:
+        return channels > 4;
+    case QPsdFileHeader::Grayscale:
+        return channels > 1;
+    default:
+        return false;
+    }
+}
 
 QT_END_NAMESPACE

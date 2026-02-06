@@ -21,8 +21,10 @@ public:
     void swap(QPsdImageData &other) noexcept { d.swap(other.d); }
 
     QByteArray imageData() const override;
+    bool hasAlpha() const override;
 
 protected:
+    const unsigned char *a() const override;
     const unsigned char *gray() const override;
     const unsigned char *r() const override;
     const unsigned char *g() const override;
