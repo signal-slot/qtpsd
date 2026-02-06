@@ -63,6 +63,9 @@ public:
     PathInfo vectorMask() const;
     QImage image() const;
     QImage transparencyMask() const;
+    QImage layerMask() const;
+    QRect layerMaskRect() const;
+    quint8 layerMaskDefaultColor() const;
 
     QPsdLinkedLayer::LinkedFile linkedFile() const;
     void setLinkedFile(const QPsdLinkedLayer::LinkedFile &linkedFile);

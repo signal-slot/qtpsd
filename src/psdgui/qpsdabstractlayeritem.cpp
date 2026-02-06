@@ -37,6 +37,9 @@ public:
     PathInfo vectorMask;
     QImage image;
     QImage transparencyMask;
+    QImage layerMask;
+    QRect layerMaskRect;
+    quint8 layerMaskDefaultColor = 255;  // Default: outside mask is opaque
     QPsdLinkedLayer::LinkedFile linkedFile;
     QVariantList effects;
 };
@@ -332,7 +335,7 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
     // Use imageDataToImage function to create a QImage that owns its data
     d->image = QtPsdGui::imageDataToImage(imageData, header);
 
-    // Layer mask
+    // Transparency mask
     const auto transparencyMaskData = imageData.transparencyMaskData();
     if (!transparencyMaskData.isEmpty()) {
         const auto w = imageData.width();
@@ -342,6 +345,31 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
         if (!image.isNull() && static_cast<size_t>(transparencyMaskData.size()) >= static_cast<size_t>(w) * h) {
             memcpy(image.bits(), transparencyMaskData.constData(), w * h);
             d->transparencyMask = image;
+        }
+    }
+
+    // User-supplied layer mask (raster mask)
+    const auto layerMaskData = imageData.userSuppliedLayerMask();
+    const auto maskInfo = record.layerMaskAdjustmentLayerData();
+    // Skip if:
+    // - No layer mask data
+    // - Mask info is empty
+    // - Mask is disabled
+    // - Mask came from rendering other data (e.g. rasterized vector mask)
+    // - Mask is from vector data (handled separately via vectorMask())
+    if (!layerMaskData.isEmpty() && !maskInfo.isEmpty() && !maskInfo.isLayerMaskDisabled()
+        && !maskInfo.isLayerMaskFromRenderingOtherData() && !maskInfo.isLayerMaskFromVectorData()) {
+        const auto maskRect = maskInfo.rect();
+        const auto w = maskRect.width();
+        const auto h = maskRect.height();
+        if (w > 0 && h > 0) {
+            QImage maskImage(w, h, QImage::Format_Grayscale8);
+            if (!maskImage.isNull() && static_cast<size_t>(layerMaskData.size()) >= static_cast<size_t>(w) * h) {
+                memcpy(maskImage.bits(), layerMaskData.constData(), w * h);
+                d->layerMask = maskImage;
+                d->layerMaskRect = maskRect;
+                d->layerMaskDefaultColor = maskInfo.defaultColor();
+            }
         }
     }
 
@@ -433,6 +461,21 @@ QImage QPsdAbstractLayerItem::image() const
 QImage QPsdAbstractLayerItem::transparencyMask() const
 {
     return d->transparencyMask;
+}
+
+QImage QPsdAbstractLayerItem::layerMask() const
+{
+    return d->layerMask;
+}
+
+QRect QPsdAbstractLayerItem::layerMaskRect() const
+{
+    return d->layerMaskRect;
+}
+
+quint8 QPsdAbstractLayerItem::layerMaskDefaultColor() const
+{
+    return d->layerMaskDefaultColor;
 }
 
 QPsdLinkedLayer::LinkedFile QPsdAbstractLayerItem::linkedFile() const

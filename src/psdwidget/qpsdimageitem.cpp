@@ -3,6 +3,7 @@
 
 #include "qpsdimageitem.h"
 #include <QtCore/QBuffer>
+#include <QtCore/QDebug>
 #include <QtCore/QtMath>
 #include <QtGui/QImageReader>
 #include <QtGui/QPainter>
@@ -73,6 +74,40 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     if (!linkedImage.isNull()) {
         image = linkedImage.scaled(r.width(), r.height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
         r = QRect((r.width() - image.width()) / 2, (r.height() - image.height()) / 2, image.width(), image.height());
+    }
+
+    // Apply raster layer mask if present
+    const QImage layerMask = layer->layerMask();
+    if (!layerMask.isNull()) {
+        const QRect maskRect = layer->layerMaskRect();
+        const QRect layerRect = layer->rect();
+        const int defaultColor = layer->layerMaskDefaultColor();  // 0=outside transparent, 255=outside opaque
+
+        // Convert image to ARGB32 for alpha manipulation
+        image = image.convertToFormat(QImage::Format_ARGB32);
+
+        // Apply mask: multiply alpha by mask value
+        for (int y = 0; y < image.height(); ++y) {
+            QRgb *scanLine = reinterpret_cast<QRgb *>(image.scanLine(y));
+            for (int x = 0; x < image.width(); ++x) {
+                // Calculate the corresponding position in the mask
+                // Mask rect is in document coordinates, layer content is at (0,0) relative to layer rect
+                const int maskX = (layerRect.x() + x) - maskRect.x();
+                const int maskY = (layerRect.y() + y) - maskRect.y();
+
+                int maskValue = defaultColor;  // Outside mask uses defaultColor
+                if (maskX >= 0 && maskX < layerMask.width() &&
+                    maskY >= 0 && maskY < layerMask.height()) {
+                    // Get mask value (grayscale: 0=transparent, 255=opaque)
+                    maskValue = qGray(layerMask.pixel(maskX, maskY));
+                }
+
+                // Multiply existing alpha by mask value
+                const int alpha = qAlpha(scanLine[x]);
+                const int newAlpha = (alpha * maskValue) / 255;
+                scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
+            }
+        }
     }
 
     const auto effects = layer->effects();
