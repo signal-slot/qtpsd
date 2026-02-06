@@ -1,6 +1,6 @@
 # QtPsd Similarity Test Results
 
-Generated on: 2026-02-06T15:40:56
+Generated on: 2026-02-06T16:34:46
 
 ## Summary Statistics
 
@@ -8,7 +8,7 @@ Generated on: 2026-02-06T15:40:56
 |--------|-----------------------|-------------------------|
 | Total Tests | 145 | 145 |
 | Passed Tests (>50%) | 116 (69.0%) | 100 (80.0%) |
-| Average Similarity | 69.29% | 79.88% |
+| Average Similarity | 69.29% | 80.20% |
 | Minimum Similarity | 0.00% | 0.00% |
 | Maximum Similarity | 100.00% | 100.00% |
 
@@ -299,7 +299,7 @@ Generated on: 2026-02-06T15:40:56
 | [read-write/smart-filters-2/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read-write/smart-filters-2/src.psd) | 333.0 KB | 2.25%  | ❌ FAILED | [<img src="images/psd2png/ag-psd/read-write/smart-filters-2/src.png" width="100">](images/psd2png/ag-psd/read-write/smart-filters-2/src.png) | [<img src="images/imagedata/ag-psd/read-write/smart-filters-2/src.png" width="100">](images/imagedata/ag-psd/read-write/smart-filters-2/src.png) | [<img src="images/imagedata/ag-psd/read-write/smart-filters-2/src_diff.png" width="100">](images/imagedata/ag-psd/read-write/smart-filters-2/src_diff.png) |
 | [read/placed-transform/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read/placed-transform/src.psd) | 344.3 KB | 100.00%  | ✅ PERFECT | [<img src="images/psd2png/ag-psd/read/placed-transform/src.png" width="100">](images/psd2png/ag-psd/read/placed-transform/src.png) | [<img src="images/imagedata/ag-psd/read/placed-transform/src.png" width="100">](images/imagedata/ag-psd/read/placed-transform/src.png) | [<img src="images/imagedata/ag-psd/read/placed-transform/src_diff.png" width="100">](images/imagedata/ag-psd/read/placed-transform/src_diff.png) |
 | [read-write/werps/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read-write/werps/src.psd) | 657.2 KB | 100.00%  | ✅ PERFECT | [<img src="images/psd2png/ag-psd/read-write/werps/src.png" width="100">](images/psd2png/ag-psd/read-write/werps/src.png) | [<img src="images/imagedata/ag-psd/read-write/werps/src.png" width="100">](images/imagedata/ag-psd/read-write/werps/src.png) | [<img src="images/imagedata/ag-psd/read-write/werps/src_diff.png" width="100">](images/imagedata/ag-psd/read-write/werps/src_diff.png) |
-| [read/cmyk/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read/cmyk/src.psd) | 718.9 KB | 52.30%  | ⚠️ LOW | [<img src="images/psd2png/ag-psd/read/cmyk/src.png" width="100">](images/psd2png/ag-psd/read/cmyk/src.png) | [<img src="images/imagedata/ag-psd/read/cmyk/src.png" width="100">](images/imagedata/ag-psd/read/cmyk/src.png) | [<img src="images/imagedata/ag-psd/read/cmyk/src_diff.png" width="100">](images/imagedata/ag-psd/read/cmyk/src_diff.png) |
+| [read/cmyk/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read/cmyk/src.psd) | 718.9 KB | 99.31%  | ✅ PERFECT | [<img src="images/psd2png/ag-psd/read/cmyk/src.png" width="100">](images/psd2png/ag-psd/read/cmyk/src.png) | [<img src="images/imagedata/ag-psd/read/cmyk/src.png" width="100">](images/imagedata/ag-psd/read/cmyk/src.png) | [<img src="images/imagedata/ag-psd/read/cmyk/src_diff.png" width="100">](images/imagedata/ag-psd/read/cmyk/src_diff.png) |
 | [read/rle-fail/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read/rle-fail/src.psd) | 1.1 MB | 100.00%  | ✅ PERFECT | [<img src="images/psd2png/ag-psd/read/rle-fail/src.png" width="100">](images/psd2png/ag-psd/read/rle-fail/src.png) | [<img src="images/imagedata/ag-psd/read/rle-fail/src.png" width="100">](images/imagedata/ag-psd/read/rle-fail/src.png) | [<img src="images/imagedata/ag-psd/read/rle-fail/src_diff.png" width="100">](images/imagedata/ag-psd/read/rle-fail/src_diff.png) |
 | [read/32bits/src.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read/32bits/src.psd) | 1.2 MB | 0.22%  | ❌ FAILED | [<img src="images/psd2png/ag-psd/read/32bits/src.png" width="100">](images/psd2png/ag-psd/read/32bits/src.png) | [<img src="images/imagedata/ag-psd/read/32bits/src.png" width="100">](images/imagedata/ag-psd/read/32bits/src.png) | [<img src="images/imagedata/ag-psd/read/32bits/src_diff.png" width="100">](images/imagedata/ag-psd/read/32bits/src_diff.png) |
 | [read-write/cyllinder-warp/expected.psd](https://github.com/Agamnentzar/ag-psd/tree/master/test/read-write/cyllinder-warp/expected.psd) | 1.4 MB | 100.00%  | ✅ PERFECT | [<img src="images/psd2png/ag-psd/read-write/cyllinder-warp/expected.png" width="100">](images/psd2png/ag-psd/read-write/cyllinder-warp/expected.png) | [<img src="images/imagedata/ag-psd/read-write/cyllinder-warp/expected.png" width="100">](images/imagedata/ag-psd/read-write/cyllinder-warp/expected.png) | [<img src="images/imagedata/ag-psd/read-write/cyllinder-warp/expected_diff.png" width="100">](images/imagedata/ag-psd/read-write/cyllinder-warp/expected_diff.png) |
