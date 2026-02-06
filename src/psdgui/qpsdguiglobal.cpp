@@ -85,7 +85,12 @@ QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader
             } else {
                 image = QImage(w, h, QImage::Format_BGR888);
                 if (!image.isNull() && static_cast<size_t>(data.size()) >= static_cast<size_t>(w) * h * 3) {
-                    memcpy(image.bits(), data.constData(), w * h * 3);
+                    // Copy row by row to handle QImage's bytesPerLine alignment
+                    const auto srcBytesPerLine = w * 3;
+                    const uchar* src = reinterpret_cast<const uchar*>(data.constData());
+                    for (quint32 y = 0; y < h; ++y) {
+                        memcpy(image.scanLine(y), src + y * srcBytesPerLine, srcBytesPerLine);
+                    }
                 } else {
                     qFatal() << Q_FUNC_INFO << __LINE__;
                 }
