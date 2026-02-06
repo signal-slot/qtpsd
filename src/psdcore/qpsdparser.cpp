@@ -90,4 +90,18 @@ QPsdImageData QPsdParser::imageData() const
     return d->imageData;
 }
 
+QByteArray QPsdParser::iccProfile() const
+{
+    // ICC Profile resource ID is 0x040F (1039)
+    constexpr quint16 IccProfileResourceId = 0x040F;
+
+    const auto blocks = d->imageResources.imageResourceBlocks();
+    for (const auto &block : blocks) {
+        if (block.id() == IccProfileResourceId) {
+            return block.data();
+        }
+    }
+    return QByteArray();
+}
+
 QT_END_NAMESPACE

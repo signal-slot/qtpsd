@@ -3,7 +3,7 @@
 QT_BEGIN_NAMESPACE
 
 namespace QtPsdGui {
-QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader &fileHeader, const QPsdColorModeData &colorModeData)
+QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader &fileHeader, const QPsdColorModeData &colorModeData, const QByteArray &iccProfile)
 {
     QImage image;
     const auto w = imageData.width();
@@ -165,6 +165,15 @@ QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader
             image = QImage(w, h, QImage::Format_CMYK8888);
             if (!image.isNull() && static_cast<size_t>(data.size()) >= static_cast<size_t>(w) * h * 4) {
                 memcpy(image.bits(), data.constData(), w * h * 4);
+
+                // Apply ICC color profile if available
+                if (!iccProfile.isEmpty()) {
+                    QColorSpace cmykColorSpace = QColorSpace::fromIccProfile(iccProfile);
+                    if (cmykColorSpace.isValid()) {
+                        image.setColorSpace(cmykColorSpace);
+                        image = image.convertedToColorSpace(QColorSpace::SRgb);
+                    }
+                }
             } else {
                 qFatal() << Q_FUNC_INFO << __LINE__;
             }

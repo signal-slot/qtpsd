@@ -386,6 +386,8 @@ void tst_QPsdView::compareRendering()
 
     const auto header = parser.fileHeader();
     const auto imageData = parser.imageData();
+    const auto colorModeData = parser.colorModeData();
+    const auto iccProfile = parser.iccProfile();
 
     // Skip if no image data
     if (imageData.width() == 0 || imageData.height() == 0) {
@@ -408,7 +410,7 @@ void tst_QPsdView::compareRendering()
     }
 
     // Convert toplevel imageData to QImage
-    QImage toplevelImage = QtPsdGui::imageDataToImage(imageData, header);
+    QImage toplevelImage = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
     if (toplevelImage.isNull()) {
         // If conversion failed, create a transparent image of the expected size
         const QSize canvasSize(header.width(), header.height());

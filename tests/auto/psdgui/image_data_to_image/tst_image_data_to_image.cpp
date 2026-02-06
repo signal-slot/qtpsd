@@ -61,10 +61,11 @@ void tst_ImageDataToImage::imageData()
 
     const auto header = parser.fileHeader();
     const auto colorModeData = parser.colorModeData();
+    const auto iccProfile = parser.iccProfile();
 
     const auto imageData = parser.imageData();
     if (imageData.width() > 0 && imageData.height() > 0) {
-        const QImage image = QtPsdGui::imageDataToImage(imageData, header, colorModeData);
+        const QImage image = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
         QVERIFY(!image.isNull());
         QCOMPARE(image.width(), imageData.width());
         QCOMPARE(image.height(), imageData.height());

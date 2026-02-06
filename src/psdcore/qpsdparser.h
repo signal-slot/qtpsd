@@ -51,6 +51,13 @@ public:
     QPsdImageData imageData() const;
 
     /*!
+     * Returns the ICC color profile embedded in the PSD file, if present.
+     * The ICC profile can be used for accurate color conversion.
+     * \return The ICC profile data, or an empty QByteArray if not present.
+     */
+    QByteArray iccProfile() const;
+
+    /*!
      * Loads and parses a PSD file from the specified source path.
      * \param source The path to the PSD file to load.
      */
