@@ -23,6 +23,8 @@ QPsdImageData::QPsdImageData(const QPsdFileHeader &header, QIODevice *source)
     setHeader(header);
     setWidth(header.width());
     setHeight(header.height());
+    // Image Data is the composite image - no layer opacity should be applied
+    setOpacity(255);
 
     // Image Data Section
     // https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_89817

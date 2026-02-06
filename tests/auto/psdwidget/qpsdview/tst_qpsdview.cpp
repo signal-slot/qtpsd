@@ -177,6 +177,14 @@ double tst_QPsdView::compareImages(const QImage &img1, const QImage &img2)
         return 0.0;
     }
 
+    // Composite a pixel over white background: R' = (R * A + 255 * (255 - A)) / 255
+    auto compositeOverWhite = [](int r, int g, int b, int a) -> std::tuple<int, int, int> {
+        int rr = (r * a + 255 * (255 - a)) / 255;
+        int gg = (g * a + 255 * (255 - a)) / 255;
+        int bb = (b * a + 255 * (255 - a)) / 255;
+        return {rr, gg, bb};
+    };
+
     // Helper function to convert RGB to HSV
     auto rgbToHsv = [](int r, int g, int b) -> std::tuple<double, double, double> {
         double rf = r / 255.0;
@@ -220,17 +228,22 @@ double tst_QPsdView::compareImages(const QImage &img1, const QImage &img2)
             int r1 = qRed(pixelA), g1 = qGreen(pixelA), b1 = qBlue(pixelA), a1 = qAlpha(pixelA);
             int r2 = qRed(pixelB), g2 = qGreen(pixelB), b2 = qBlue(pixelB), a2 = qAlpha(pixelB);
 
-            // Skip fully transparent pixels
-            if (a1 < 10 && a2 < 10) {
+            // Composite both pixels over white to resolve alpha differences
+            auto [cr1, cg1, cb1] = compositeOverWhite(r1, g1, b1, a1);
+            auto [cr2, cg2, cb2] = compositeOverWhite(r2, g2, b2, a2);
+
+            // Skip pixels where both composited results are near-white (no visible content)
+            if (cr1 >= 250 && cg1 >= 250 && cb1 >= 250 &&
+                cr2 >= 250 && cg2 >= 250 && cb2 >= 250) {
                 continue;
             }
 
-            // For pixels where at least one image has opacity
+            // For pixels where at least one image has visible content
             pixelsWithContent++;
 
-            // Convert to HSV for perceptually accurate comparison
-            auto [h1, s1, v1] = rgbToHsv(r1, g1, b1);
-            auto [h2, s2, v2] = rgbToHsv(r2, g2, b2);
+            // Convert composited RGB to HSV for perceptually accurate comparison
+            auto [h1, s1, v1] = rgbToHsv(cr1, cg1, cb1);
+            auto [h2, s2, v2] = rgbToHsv(cr2, cg2, cb2);
 
             // Calculate hue difference (circular)
             double hDiff = qAbs(h1 - h2);
@@ -241,21 +254,8 @@ double tst_QPsdView::compareImages(const QImage &img1, const QImage &img2)
             double sDiff = qAbs(s1 - s2);
             double vDiff = qAbs(v1 - v2);
 
-            // Alpha difference (normalized to 0-1)
-            double aDiff = qAbs(a1 - a2) / 255.0;
-
-            // Special handling for white vs non-white comparison
-            bool aIsWhite = (r1 >= 250 && g1 >= 250 && b1 >= 250);
-            bool bIsWhite = (r2 >= 250 && g2 >= 250 && b2 >= 250);
-
-            double pixelDiff;
-            if (aIsWhite != bIsWhite) {
-                // One is white, the other is not - this is a significant difference
-                pixelDiff = 1.0;
-            } else {
-                // Weighted combination (Value and Alpha are most important for perception)
-                pixelDiff = hDiff * 0.2 + sDiff * 0.2 + vDiff * 0.4 + aDiff * 0.2;
-            }
+            // Weighted combination (no alpha term needed since alpha is resolved by compositing)
+            double pixelDiff = hDiff * 0.3 + sDiff * 0.3 + vDiff * 0.4;
 
             // Accumulate difference
             totalDiff += pixelDiff;
@@ -281,18 +281,6 @@ double tst_QPsdView::compareImages(const QImage &img1, const QImage &img2)
 
     // Use the lower of the two similarities to be more conservative
     double similarity = qMin(contentBasedSimilarity, hsvBasedSimilarity);
-
-    // Debug for smart-filters-2
-    static int debugCount = 0;
-    if (debugCount < 5 && similarity > 50 && pixelsDifferent > 1000) {
-        qDebug() << "Similarity calculation:"
-                 << "pixelsWithContent=" << pixelsWithContent
-                 << "pixelsDifferent=" << pixelsDifferent
-                 << "contentBasedSimilarity=" << contentBasedSimilarity << "%"
-                 << "hsvBasedSimilarity=" << hsvBasedSimilarity << "%"
-                 << "final similarity=" << similarity << "%";
-        debugCount++;
-    }
 
     return similarity;
 }
@@ -334,6 +322,14 @@ QImage tst_QPsdView::createDiffImage(const QImage &img1, const QImage &img2)
     QImage diff(img1.size(), QImage::Format_ARGB32);
     diff.fill(Qt::transparent);  // Start with transparent background
 
+    // Composite a pixel over white background: R' = (R * A + 255 * (255 - A)) / 255
+    auto compositeOverWhite = [](int r, int g, int b, int a) -> std::tuple<int, int, int> {
+        int rr = (r * a + 255 * (255 - a)) / 255;
+        int gg = (g * a + 255 * (255 - a)) / 255;
+        int bb = (b * a + 255 * (255 - a)) / 255;
+        return {rr, gg, bb};
+    };
+
     for (int y = 0; y < diff.height(); ++y) {
         for (int x = 0; x < diff.width(); ++x) {
             QRgb p1 = img1.pixel(x, y);
@@ -343,9 +339,13 @@ QImage tst_QPsdView::createDiffImage(const QImage &img1, const QImage &img2)
             int r1 = qRed(p1), g1 = qGreen(p1), b1 = qBlue(p1), a1 = qAlpha(p1);
             int r2 = qRed(p2), g2 = qGreen(p2), b2 = qBlue(p2), a2 = qAlpha(p2);
 
-            // Check if pixels are effectively the same (considering alpha)
-            bool p1HasContent = (a1 > 128) && (r1 < 128 || g1 < 128 || b1 < 128); // Non-transparent and dark
-            bool p2HasContent = (a2 > 128) && (r2 < 128 || g2 < 128 || b2 < 128); // Non-transparent and dark
+            // Composite both pixels over white
+            auto [cr1, cg1, cb1] = compositeOverWhite(r1, g1, b1, a1);
+            auto [cr2, cg2, cb2] = compositeOverWhite(r2, g2, b2, a2);
+
+            // "Has content" = any composited channel < 240
+            bool p1HasContent = (cr1 < 240 || cg1 < 240 || cb1 < 240);
+            bool p2HasContent = (cr2 < 240 || cg2 < 240 || cb2 < 240);
 
             if (p1HasContent && !p2HasContent) {
                 // Only in img1 (psd2png) - show as red
@@ -354,8 +354,8 @@ QImage tst_QPsdView::createDiffImage(const QImage &img1, const QImage &img2)
                 // Only in img2 - show as blue
                 diff.setPixel(x, y, qRgba(0, 0, 255, 255));
             } else if (p1HasContent && p2HasContent) {
-                // In both - check if they're actually different
-                int colorDiff = qAbs(r1 - r2) + qAbs(g1 - g2) + qAbs(b1 - b2);
+                // In both - check if composited colors differ
+                int colorDiff = qAbs(cr1 - cr2) + qAbs(cg1 - cg2) + qAbs(cb1 - cb2);
                 if (colorDiff > 30) {
                     // Different colors - show as yellow
                     diff.setPixel(x, y, qRgba(255, 255, 0, 255));
