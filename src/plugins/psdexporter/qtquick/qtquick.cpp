@@ -960,6 +960,9 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             component.properties.insert("highlighted", (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted));
             break;
         }
+        // Component files have their own coordinate space; x/y belong on the instance side only
+        component.properties.remove("x");
+        component.properties.remove("y");
         saveTo(hint.componentName + ".ui", &component, i, x);
 
         Element element;

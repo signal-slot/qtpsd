@@ -40,11 +40,7 @@ void QPsdExporterPlugin::Private::generateChildrenRectMap(const QPersistentModel
 
     if (index.isValid()) {
         if (hasChildren) {
-            if (!model->parent(index).isValid()) {
-                q->childrenRectMap.insert(index, QRect { { 0, 0}, model->size() });
-            } else {
-                q->childrenRectMap.insert(index, childrenRect);
-            }
+            q->childrenRectMap.insert(index, childrenRect);
         } else {
             q->childrenRectMap.insert(index, model->rect(index));
         }
