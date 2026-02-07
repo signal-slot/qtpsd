@@ -356,6 +356,7 @@ void PsdWidget::Private::updateAttributes()
         sizeValue->clear();
         colorValue->clear();
         textValue->clear();
+        fontValue->clear();
         imageValue->clear();
         return;
     }
@@ -381,12 +382,14 @@ void PsdWidget::Private::updateAttributes()
                 colorValue->clear();
             }
 
-            // Text value (for text layers)
+            // Text and Font values (for text layers)
             if (item->type() == QPsdAbstractLayerItem::Text) {
                 const auto *textItem = dynamic_cast<const QPsdTextLayerItem *>(item);
                 if (textItem) {
+                    const auto runs = textItem->runs();
+                    // Text value
                     QStringList texts;
-                    for (const auto &run : textItem->runs()) {
+                    for (const auto &run : runs) {
                         texts.append(run.text);
                     }
                     QString fullText = texts.join(QString());
@@ -396,11 +399,21 @@ void PsdWidget::Private::updateAttributes()
                     }
                     fullText.replace(u'\n', u' ');
                     textValue->setText(fullText);
+
+                    // Font value - show first run's font
+                    if (!runs.isEmpty()) {
+                        const auto &font = runs.first().font;
+                        fontValue->setText(QStringLiteral("%1 %2pt").arg(font.family()).arg(font.pointSizeF(), 0, 'f', 1));
+                    } else {
+                        fontValue->clear();
+                    }
                 } else {
                     textValue->clear();
+                    fontValue->clear();
                 }
             } else {
                 textValue->clear();
+                fontValue->clear();
             }
 
             // Image value (for image layers)
@@ -464,8 +477,9 @@ void PsdWidget::Private::updateAttributes()
             colorValue->clear();
         }
 
-        // Text and Image are cleared for multiple selection
+        // Text, Font and Image are cleared for multiple selection
         textValue->clear();
+        fontValue->clear();
         imageValue->clear();
     }
 
@@ -482,7 +496,7 @@ void PsdWidget::Private::updateAttributes()
         "size",
     };
     static const QHash<QPsdAbstractLayerItem::Type, QSet<QString>> additionalProperties = {
-        { QPsdAbstractLayerItem::Text, { "color", "text" } },
+        { QPsdAbstractLayerItem::Text, { "color", "text", "font" } },
         { QPsdAbstractLayerItem::Shape, { "color" } },
         { QPsdAbstractLayerItem::Image, { "image" } }
     };
