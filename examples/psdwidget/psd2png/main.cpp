@@ -57,6 +57,7 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
     parser.addOption({"verbose"_L1, "Enable verbose logging"_L1});
     parser.addOption({{"l"_L1, "layers"_L1}, "Print layer information"_L1});
+    parser.addOption({{"i"_L1, "image-data"_L1}, "Generate PNG from baked image data instead of compositing layers"_L1});
     parser.addPositionalArgument("input"_L1, "Input PSD file"_L1);
     parser.addPositionalArgument("output"_L1, "Output PNG file"_L1);
     parser.process(app);
@@ -86,16 +87,25 @@ int main(int argc, char *argv[])
         printLayerInfo(&model, QModelIndex(), 0, parser.isSet("verbose"_L1));
     }
 
-    QPsdScene scene;
-    scene.setModel(&model);
+    QImage image;
+    if (parser.isSet("image-data"_L1)) {
+        image = model.mergedImage();
+        if (image.isNull()) {
+            qCritical() << "No image data found in PSD file";
+            return 1;
+        }
+    } else {
+        QPsdScene scene;
+        scene.setModel(&model);
 
-    const QSize size = model.size();
-    QImage image(size, QImage::Format_ARGB32_Premultiplied);
-    image.fill(Qt::transparent);
+        const QSize size = model.size();
+        image = QImage(size, QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::transparent);
 
-    QPainter painter(&image);
-    scene.render(&painter);
-    painter.end();
+        QPainter painter(&image);
+        scene.render(&painter);
+        painter.end();
+    }
 
     if (!image.save(outputFile)) {
         qCritical() << "Error saving PNG:" << outputFile;
