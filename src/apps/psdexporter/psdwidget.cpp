@@ -7,6 +7,8 @@
 #include "psdtreeitemmodel.h"
 #include "exportdialog.h"
 
+#include <QtPsdGui/QPsdTextLayerItem>
+
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QFileInfo>
 #include <QtCore/QSettings>
@@ -348,19 +350,123 @@ void PsdWidget::Private::updateAttributes()
     if (rows.isEmpty()) {
         attributes->setEnabled(false);
         emit q->selectionInfoChanged(QString());
+        // Clear all value labels
+        visibleValue->clear();
+        positionValue->clear();
+        sizeValue->clear();
+        colorValue->clear();
+        textValue->clear();
+        imageValue->clear();
         return;
     }
 
-    // Emit selection info for status bar
+    // Emit selection info for status bar and update property value labels
     if (rows.size() == 1) {
         const auto *item = model.layerItem(rows.first());
         if (item) {
             const auto rect = item->rect();
             emit q->selectionInfoChanged(QObject::tr("Position: %1, %2  Size: %3 × %4")
                 .arg(rect.x()).arg(rect.y()).arg(rect.width()).arg(rect.height()));
+
+            // Update property value labels
+            visibleValue->setText(item->isVisible() ? QObject::tr("Yes") : QObject::tr("No"));
+            positionValue->setText(QStringLiteral("%1, %2").arg(rect.x()).arg(rect.y()));
+            sizeValue->setText(QStringLiteral("%1 × %2").arg(rect.width()).arg(rect.height()));
+
+            // Color value
+            const auto color = item->color();
+            if (color.isValid()) {
+                colorValue->setText(color.name(QColor::HexRgb));
+            } else {
+                colorValue->clear();
+            }
+
+            // Text value (for text layers)
+            if (item->type() == QPsdAbstractLayerItem::Text) {
+                const auto *textItem = dynamic_cast<const QPsdTextLayerItem *>(item);
+                if (textItem) {
+                    QStringList texts;
+                    for (const auto &run : textItem->runs()) {
+                        texts.append(run.text);
+                    }
+                    QString fullText = texts.join(QString());
+                    // Truncate if too long
+                    if (fullText.length() > 20) {
+                        fullText = fullText.left(17) + QStringLiteral("...");
+                    }
+                    fullText.replace(u'\n', u' ');
+                    textValue->setText(fullText);
+                } else {
+                    textValue->clear();
+                }
+            } else {
+                textValue->clear();
+            }
+
+            // Image value (for image layers)
+            if (item->type() == QPsdAbstractLayerItem::Image) {
+                const auto img = item->image();
+                if (!img.isNull()) {
+                    // Scale image to fit in label (max 48px height)
+                    QPixmap pixmap = QPixmap::fromImage(img);
+                    if (pixmap.height() > 48) {
+                        pixmap = pixmap.scaledToHeight(48, Qt::SmoothTransformation);
+                    }
+                    imageValue->setPixmap(pixmap);
+                } else {
+                    imageValue->clear();
+                }
+            } else {
+                imageValue->clear();
+            }
         }
     } else {
         emit q->selectionInfoChanged(QObject::tr("%1 items selected").arg(rows.size()));
+
+        // Check if all selected items have the same values
+        UniqueOrNot<bool> visibleUnique;
+        UniqueOrNot<QPoint> positionUnique;
+        UniqueOrNot<QSize> sizeUnique;
+        UniqueOrNot<QColor> colorUnique;
+
+        for (const auto &row : rows) {
+            const auto *item = model.layerItem(row);
+            if (item) {
+                visibleUnique.add(item->isVisible());
+                positionUnique.add(item->rect().topLeft());
+                sizeUnique.add(item->rect().size());
+                colorUnique.add(item->color());
+            }
+        }
+
+        // Display values if unique, otherwise show "(multiple)" or clear
+        if (visibleUnique.isUnique()) {
+            visibleValue->setText(visibleUnique.value() ? QObject::tr("Yes") : QObject::tr("No"));
+        } else {
+            visibleValue->setText(QObject::tr("(multiple)"));
+        }
+
+        if (positionUnique.isUnique()) {
+            positionValue->setText(QStringLiteral("%1, %2").arg(positionUnique.value().x()).arg(positionUnique.value().y()));
+        } else {
+            positionValue->clear();
+        }
+
+        if (sizeUnique.isUnique()) {
+            sizeValue->setText(QStringLiteral("%1 × %2").arg(sizeUnique.value().width()).arg(sizeUnique.value().height()));
+        } else {
+            sizeValue->clear();
+        }
+
+        if (colorUnique.isUnique() && colorUnique.value().isValid()) {
+            colorValue->setText(colorUnique.value().name(QColor::HexRgb));
+        } else {
+            colorValue->clear();
+        }
+
+        // Text and Image are cleared for multiple selection
+        textValue->clear();
+        imageValue->clear();
     }
 
     attributes->setEnabled(true);
