@@ -175,6 +175,10 @@ QPsdVectorMaskSetting::QPsdVectorMaskSetting(QIODevice *source, quint32 length)
             // https://www.adobe.com/devnet-apps/photoshop/fileformatashtml/#50577409_17587
             // says "The remaining 24 bytes of the first record are zeroes." However...
             pathInfo.operation = static_cast<PathInfo::Operation>(readU16(source, &length));
+            // Per-path fill rule: 2 = non-zero winding, otherwise even-odd
+            const auto pathFlags = readU16(source, &length);
+            pathInfo.fillRule = (pathFlags == 2) ? NonZero : EvenOdd;
+            qCDebug(lcQPsdVectorMaskSetting) << "pathFlags" << pathFlags << "fillRule" << pathInfo.fillRule;
             break; }
         case 1:   // Closed subpath Bezier knot, linked
         case 2:   // Closed subpath Bezier knot, unlinked

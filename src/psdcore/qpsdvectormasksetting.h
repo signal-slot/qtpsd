@@ -47,6 +47,7 @@ public:
             And,   // Intersect
         };
         Operation operation;
+        FillRule fillRule = EvenOdd;
         enum Type {
             Rectangle,
             RoundedRectangle,

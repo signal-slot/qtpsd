@@ -505,23 +505,23 @@ QPsdAbstractLayerItem::PathInfo QPsdAbstractLayerItem::parseShape(const QPsdVect
 
     // check if the path is rectangle
     const auto subPathList = vms.subPathList();
-    static Qt::FillRule lastFill = Qt::OddEvenFill;
     for (const auto &pathInfo : subPathList) {
         ret.type = PathInfo::Path;
-        switch (vms.fillRule()) {
-        case QPsdVectorMaskSetting::Same:
-            ret.path.setFillRule(lastFill);
-            break;
+        // Use per-path fill rule from the subpath length record
+        switch (pathInfo.fillRule) {
         case QPsdVectorMaskSetting::EvenOdd:
             ret.path.setFillRule(Qt::OddEvenFill);
             break;
         case QPsdVectorMaskSetting::NonZero:
             ret.path.setFillRule(Qt::WindingFill);
             break;
+        default:
+            ret.path.setFillRule(Qt::OddEvenFill);
+            break;
         }
-        lastFill = ret.path.fillRule();
 
         QPainterPath currentPath;
+        currentPath.setFillRule(ret.path.fillRule());
         QPsdVectorMaskSetting::BezierPath initialPath;
         QPsdVectorMaskSetting::BezierPath lastPath;
         for (const auto &path : pathInfo.subPath) {
