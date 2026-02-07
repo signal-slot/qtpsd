@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qpsdlayerandmaskinformation.h"
+#include "qpsdfileheader.h"
 
 QT_BEGIN_NAMESPACE
 
@@ -73,6 +74,11 @@ QPsdGlobalLayerMaskInfo QPsdLayerAndMaskInformation::globalLayerMaskInfo() const
 QHash<QByteArray, QVariant> QPsdLayerAndMaskInformation::additionalLayerInformation() const
 {
     return d->additionalLayerInformation;
+}
+
+void QPsdLayerAndMaskInformation::setFileHeader(const QPsdFileHeader &fileHeader)
+{
+    d->layerInfo.setFileHeader(fileHeader);
 }
 
 QT_END_NAMESPACE

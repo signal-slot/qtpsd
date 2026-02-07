@@ -23,6 +23,8 @@ public:
     QList<QPsdLayerRecord> records() const;
     QList<QPsdChannelImageData> channelImageData() const;
 
+    void setFileHeader(const QPsdFileHeader &fileHeader);
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

@@ -8,6 +8,7 @@
 #include <QtPsdCore/qpsdlayerinfo.h>
 #include <QtPsdCore/qpsdgloballayermaskinfo.h>
 #include <QtPsdCore/qpsdadditionallayerinformation.h>
+#include <QtPsdCore/qpsdfileheader.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -23,6 +24,8 @@ public:
     QPsdLayerInfo layerInfo() const;
     QPsdGlobalLayerMaskInfo globalLayerMaskInfo() const;
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
+
+    void setFileHeader(const QPsdFileHeader &fileHeader);
 
 private:
     class Private;

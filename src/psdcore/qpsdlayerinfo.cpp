@@ -83,4 +83,17 @@ QList<QPsdChannelImageData> QPsdLayerInfo::channelImageData() const
     return d->channelImageData;
 }
 
+void QPsdLayerInfo::setFileHeader(const QPsdFileHeader &fileHeader)
+{
+    // Set the file header on all channel image data entries
+    for (int i = 0; i < d->channelImageData.size(); ++i) {
+        d->channelImageData[i].setHeader(fileHeader);
+    }
+
+    // Also update records with their corresponding image data
+    for (int i = 0; i < d->records.size() && i < d->channelImageData.size(); ++i) {
+        d->records[i].setImageData(d->channelImageData[i]);
+    }
+}
+
 QT_END_NAMESPACE

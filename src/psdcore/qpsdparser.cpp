@@ -58,6 +58,9 @@ void QPsdParser::load(const QString &psd)
     if (!file.isOpen())
         return;
 
+    // Set file header on layer info so layer records have proper document size
+    d->layerAndMaskInformation.setFileHeader(d->fileHeader);
+
     d->imageData = QPsdImageData(d->fileHeader, &file);
     if (!file.isOpen())
         return;
