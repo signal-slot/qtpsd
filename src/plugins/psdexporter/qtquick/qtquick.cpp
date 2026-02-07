@@ -902,7 +902,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                         for (const auto &run : runs) {
                             if (first) {
                                 element.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-                                element.properties.insert("font.pixelSize", std::round(run.font.pixelSize() * fontScaleFactor));
+                                element.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * 1.5 * fontScaleFactor));
                                 first = false;
                             }
                             text += run.text;
