@@ -13,7 +13,7 @@ project(QtPsd
 
 set(QT_NO_INTERNAL_COMPATIBILITY_FUNCTIONS TRUE)
 
-find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS BuildInternals Core Gui)
+find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS BuildInternals Core CorePrivate Gui)
 find_package(Qt6 ${PROJECT_VERSION} CONFIG OPTIONAL_COMPONENTS Widgets)
 qt_internal_project_setup()
 
