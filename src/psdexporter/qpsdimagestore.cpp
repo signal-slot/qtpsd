@@ -77,6 +77,10 @@ QString QPsdImageStore::save(const QString &filename, const QImage &image, const
                 // file not found
                 std::pair<QByteArray, QString> sha256img = d->sha256image(image, format);
 
+                // format not writable (e.g. PDF) -> return empty to trigger caller's fallback
+                if (sha256img.first.isEmpty())
+                    return {};
+
                 // create file
                 QFile f(d->imageDir().absoluteFilePath(fname));
                 if (f.open(QIODevice::WriteOnly)) {

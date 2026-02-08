@@ -4,6 +4,7 @@
 #include <QtPsdExporter/qpsdexporterplugin.h>
 #include <QtGui/QImage>
 #include <QtCore/QDir>
+#include <QtCore/QFile>
 
 QT_BEGIN_NAMESPACE
 
@@ -44,15 +45,35 @@ bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, c
                 break; }
             case QPsdAbstractLayerItem::Image: {
                 const auto *imageItem = dynamic_cast<const QPsdImageLayerItem *>(item);
-                QImage image = imageItem->linkedImage();
-                QString name = imageItem->linkedFile().name;
-                if (image.isNull()) {
-                    image = item->image();
-                    name = item->name() + ".png"_L1;
+                const auto linkedFile = imageItem->linkedFile();
+                if (!linkedFile.data.isEmpty()) {
+                    if (imageScaling) {
+                        QImage qimage = imageItem->linkedImage();
+                        if (!qimage.isNull()) {
+                            qimage = qimage.scaled(item->rect().size(), Qt::KeepAspectRatio);
+                            if (!qimage.save(directory->filePath(linkedFile.name))) {
+                                // Write-unsupported format (e.g. PDF) -> PNG fallback
+                                const QString name = item->name() + ".png"_L1;
+                                qimage.save(directory->filePath(name));
+                            }
+                        } else {
+                            // linkedImage() failed -> baked raster + PNG
+                            QImage fallback = item->image().scaled(item->rect().size(), Qt::KeepAspectRatio);
+                            fallback.save(directory->filePath(item->name() + ".png"_L1));
+                        }
+                    } else {
+                        // No scaling -> write raw linked file data directly
+                        QFile f(directory->filePath(linkedFile.name));
+                        if (f.open(QIODevice::WriteOnly))
+                            f.write(linkedFile.data);
+                    }
+                } else {
+                    // No linked data -> baked raster + PNG
+                    QImage image = item->image();
+                    if (imageScaling)
+                        image = image.scaled(item->rect().size(), Qt::KeepAspectRatio);
+                    image.save(directory->filePath(item->name() + ".png"_L1));
                 }
-                if (imageScaling)
-                    image = image.scaled(item->rect().size(), Qt::KeepAspectRatio);
-                image.save(directory->filePath(name));
                 break; }
             default:
                 break;
