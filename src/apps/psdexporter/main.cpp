@@ -6,6 +6,7 @@
 #include "psdtreeitemmodel.h"
 
 #include <QtCore/QCommandLineParser>
+#include <QtCore/QMetaProperty>
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QRegularExpression>
 #include <QtPsdExporter/QPsdExporterPlugin>
@@ -40,7 +41,7 @@ static QSize parseResolution(const QString &resolution, const QSize &originalSiz
     return QSize(); // Invalid
 }
 
-static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution)
+static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs)
 {
     QFileInfo inputInfo(input);
     if (!inputInfo.exists()) {
@@ -58,6 +59,44 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     if (plugin->exportType() != QPsdExporterPlugin::Directory) {
         qCritical() << "Exporter" << type << "does not support directory export";
         return 1;
+    }
+
+    // Apply plugin-specific properties from CLI (e.g., --effect-mode nogpu)
+    const auto mo = plugin->metaObject();
+    for (const auto &arg : propertyArgs) {
+        const auto parts = arg.split('=');
+        if (parts.size() != 2) continue;
+        const auto propName = parts.at(0).toUtf8();
+        const auto propValue = parts.at(1);
+        int idx = mo->indexOfProperty(propName.constData());
+        if (idx < 0) {
+            qCritical() << "Unknown property:" << propName << "for exporter" << type;
+            return 1;
+        }
+        const auto prop = mo->property(idx);
+        if (prop.isEnumType()) {
+            const auto enumerator = prop.enumerator();
+            bool found = false;
+            for (int j = 0; j < enumerator.keyCount(); j++) {
+                if (propValue.compare(QString::fromLatin1(enumerator.key(j)), Qt::CaseInsensitive) == 0) {
+                    prop.write(plugin, enumerator.value(j));
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                QStringList validValues;
+                for (int j = 0; j < enumerator.keyCount(); j++)
+                    validValues << QString::fromLatin1(enumerator.key(j)).toLower();
+                qCritical() << "Invalid value:" << propValue << "for property" << propName;
+                qCritical() << "Valid values:" << validValues.join(", ");
+                return 1;
+            }
+        } else if (prop.typeId() == QMetaType::Bool) {
+            prop.write(plugin, QVariant(propValue).toBool());
+        } else {
+            prop.write(plugin, propValue);
+        }
     }
 
     QDir outDir(outdir);
@@ -138,6 +177,11 @@ int main(int argc, char *argv[])
                                         "original");
     parser.addOption(resolutionOption);
 
+    QCommandLineOption effectModeOption(QStringList() << "effect-mode",
+                                        "Effect rendering mode (nogpu, qt5effects, effectmaker)",
+                                        "mode");
+    parser.addOption(effectModeOption);
+
     QCommandLineOption listOption(QStringList() << "list",
                                   "List available exporter types");
     parser.addOption(listOption);
@@ -163,10 +207,14 @@ int main(int argc, char *argv[])
             qCritical() << "Auto export requires all three options: -input, -type, -outdir";
             return 1;
         }
+        QStringList propertyArgs;
+        if (parser.isSet(effectModeOption))
+            propertyArgs << u"effectMode=%1"_s.arg(parser.value(effectModeOption));
         return runAutoExport(parser.value(inputOption),
                              parser.value(typeOption),
                              parser.value(outdirOption),
-                             parser.value(resolutionOption));
+                             parser.value(resolutionOption),
+                             propertyArgs);
     }
 
     MainWindow window;

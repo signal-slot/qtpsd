@@ -7,6 +7,7 @@
 #include <QtCore/QSettings>
 #include <QtCore/QMetaMethod>
 #include <QtPsdExporter/QPsdExporterPlugin>
+#include <QtWidgets/QComboBox>
 #include <QtWidgets/QFileDialog>
 
 class ExportDialog::Private : public Ui::ExportDialog
@@ -71,7 +72,20 @@ public:
                 formLayout->addRow(plugin->toUpperCamelCase(key, " "), checkBox);
                 break; }
             default:
-                formLayout->addRow(key, new QLabel(u"%1(%2) not supported"_s.arg(prop.typeName()).arg(prop.typeId())));
+                if (prop.isEnumType()) {
+                    auto comboBox = new QComboBox;
+                    comboBox->setObjectName(key);
+                    const auto enumerator = prop.enumerator();
+                    int savedValue = settings.value(u"%1_%2"_s.arg(plugin->name()).arg(key), prop.read(plugin).toInt()).toInt();
+                    for (int j = 0; j < enumerator.keyCount(); j++) {
+                        comboBox->addItem(plugin->toUpperCamelCase(enumerator.key(j), " "), enumerator.value(j));
+                        if (enumerator.value(j) == savedValue)
+                            comboBox->setCurrentIndex(j);
+                    }
+                    formLayout->addRow(plugin->toUpperCamelCase(key, " "), comboBox);
+                } else {
+                    formLayout->addRow(key, new QLabel(u"%1(%2) not supported"_s.arg(prop.typeName()).arg(prop.typeId())));
+                }
                 break;
             }
         }
@@ -113,6 +127,15 @@ void ExportDialog::accept()
             prop.write(d->plugin, widget->isChecked());
             d->settings.setValue(u"%1_%2"_s.arg(d->plugin->name()).arg(key), widget->isChecked());
             break; }
+        default:
+            if (prop.isEnumType()) {
+                const auto widget = findChild<QComboBox *>(key);
+                Q_ASSERT(widget);
+                int value = widget->currentData().toInt();
+                prop.write(d->plugin, value);
+                d->settings.setValue(u"%1_%2"_s.arg(d->plugin->name()).arg(key), value);
+            }
+            break;
         }
     }
     QDialog::accept();
