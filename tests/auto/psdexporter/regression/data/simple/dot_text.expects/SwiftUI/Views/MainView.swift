@@ -9,7 +9,7 @@ struct MainView: View {
                     .frame(width: 320.0, height: 240.0)
                     .position(x: 160.0, y: 120.0)
                 Text(".")
-                    .font(.custom("SourceHanSans-Medium", size: 30))
+                    .font(.custom("Source Han Sans", size: 30))
                     .foregroundStyle(Color(red: 0.000, green: 0.000, blue: 0.000))
                     .multilineTextAlignment(.center)
                     .frame(width: 9.0, height: 33.0)

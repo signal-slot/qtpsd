@@ -59,7 +59,7 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "SourceHanSans-Medium"
+                font.family: "Source Han Sans"
                 font.pixelSize: 30
                 height: 33
                 horizontalAlignment: Text.AlignHCenter
@@ -116,7 +116,7 @@ Item {
             }
             Text {
                 color: "#000000"
-                font.family: "SourceHanSans-Medium"
+                font.family: "Source Han Sans"
                 font.pixelSize: 30
                 height: 33
                 horizontalAlignment: Text.AlignHCenter

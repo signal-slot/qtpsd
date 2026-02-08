@@ -16,14 +16,14 @@ Item {
         Text {
             anchors.fill: parent
             color: "#eac3c3"
-            font.family: "SourceHanSans-Medium"
+            font.family: "Source Han Sans"
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
         }
         Text {
             color: "#eac3c3"
-            font.family: "SourceHanSans-Medium"
+            font.family: "Source Han Sans"
             font.pixelSize: 30
             height: 63
             horizontalAlignment: Text.AlignHCenter
@@ -45,21 +45,21 @@ Item {
                     Text {
                         Layout.fillHeight: true
                         color: "#eac3c3"
-                        font.family: "KozGoPr6N-Regular"
+                        font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
                         text: "文字列"
                     }
                     Text {
                         Layout.fillHeight: true
                         color: "#eac3c3"
-                        font.family: "KozGoPr6N-Regular"
+                        font.family: "Koz Go Pr6N"
                         font.pixelSize: 16
                         text: "中"
                     }
                     Text {
                         Layout.fillHeight: true
                         color: "#eac3c3"
-                        font.family: "KozGoPr6N-Regular"
+                        font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
                         text: "に"
                     }
@@ -70,14 +70,14 @@ Item {
                     Text {
                         Layout.fillHeight: true
                         color: "#eac3c3"
-                        font.family: "KozGoPr6N-Regular"
+                        font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
                         text: "別"
                     }
                     Text {
                         Layout.fillHeight: true
                         color: "#eac3c3"
-                        font.family: "SourceHanSans-Medium"
+                        font.family: "Source Han Sans"
                         font.pixelSize: 18
                         text: "フォント"
                     }
@@ -86,7 +86,7 @@ Item {
         }
         Text {
             color: "#eac3c3"
-            font.family: "KozGoPr6N-Regular"
+            font.family: "Koz Go Pr6N"
             font.pixelSize: 30
             height: 63
             horizontalAlignment: Text.AlignHCenter
@@ -97,7 +97,7 @@ Item {
         }
         Text {
             color: "#eac3c3"
-            font.family: "KozGoPr6N-Regular"
+            font.family: "Koz Go Pr6N"
             font.pixelSize: 24
             height: 116
             horizontalAlignment: Text.AlignHCenter

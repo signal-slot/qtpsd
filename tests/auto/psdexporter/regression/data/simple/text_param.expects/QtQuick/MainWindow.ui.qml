@@ -15,7 +15,7 @@ Item {
         Text {
             anchors.fill: parent
             color: "#000000"
-            font.family: "SourceHanSans-Medium"
+            font.family: "Source Han Sans"
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
@@ -48,7 +48,7 @@ Item {
         }
         Text {
             color: "#000000"
-            font.family: "SourceHanSans-Medium"
+            font.family: "Source Han Sans"
             font.pixelSize: 50
             height: 54
             horizontalAlignment: Text.AlignHCenter

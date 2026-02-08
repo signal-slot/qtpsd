@@ -17,7 +17,7 @@
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "KozGoPr6N-Regular,24,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Koz Go Pr6N,24,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
                             "text": "段落テキストは折り返される\n"
                         }
                     ],
@@ -240,7 +240,7 @@
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "KozGoPr6N-Regular,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Koz Go Pr6N,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
                             "text": "Shift\n+改行\n"
                         }
                     ],
@@ -513,25 +513,25 @@
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "KozGoPr6N-Regular,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Koz Go Pr6N,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
                             "text": "文字列"
                         },
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "KozGoPr6N-Regular,16,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Koz Go Pr6N,16,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
                             "text": "中"
                         },
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "KozGoPr6N-Regular,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Koz Go Pr6N,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Regular",
                             "text": "に\n別"
                         },
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "SourceHanSans-Medium,18,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Source Han Sans,18,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "フォント\n"
                         }
                     ],
@@ -904,7 +904,7 @@
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "SourceHanSans-Medium,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Source Han Sans,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "文字列中に\n改行\n"
                         }
                     ],
@@ -1178,7 +1178,7 @@
                         {
                             "alignment": 132,
                             "color": "#eac3c3",
-                            "font": "SourceHanSans-Medium,50,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Source Han Sans,50,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "\n"
                         }
                     ],

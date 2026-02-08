@@ -22,7 +22,7 @@ class MainWindow extends StatelessWidget {
                   textScaler: TextScaler.linear(1),
                   style: TextStyle(
                     color: Color.fromARGB(255, 234, 195, 195),
-                    fontFamily: "SourceHanSans-Medium",
+                    fontFamily: "Source Han Sans",
                     fontSize: 50,
                     fontVariations: [FontVariation.weight(600)],
                     height: 1,
@@ -39,7 +39,7 @@ class MainWindow extends StatelessWidget {
                     textScaler: TextScaler.linear(1),
                     style: TextStyle(
                       color: Color.fromARGB(255, 234, 195, 195),
-                      fontFamily: "SourceHanSans-Medium",
+                      fontFamily: "Source Han Sans",
                       fontSize: 30,
                       fontVariations: [FontVariation.weight(600)],
                       height: 1,
@@ -61,7 +61,7 @@ class MainWindow extends StatelessWidget {
                             textScaler: TextScaler.linear(1),
                             style: TextStyle(
                               color: Color.fromARGB(255, 234, 195, 195),
-                              fontFamily: "KozGoPr6N-Regular",
+                              fontFamily: "Koz Go Pr6N",
                               fontSize: 30,
                               fontVariations: [FontVariation.weight(600)],
                               height: 1,
@@ -73,7 +73,7 @@ class MainWindow extends StatelessWidget {
                             textScaler: TextScaler.linear(1),
                             style: TextStyle(
                               color: Color.fromARGB(255, 234, 195, 195),
-                              fontFamily: "KozGoPr6N-Regular",
+                              fontFamily: "Koz Go Pr6N",
                               fontSize: 16,
                               fontVariations: [FontVariation.weight(600)],
                               height: 1,
@@ -85,7 +85,7 @@ class MainWindow extends StatelessWidget {
                             textScaler: TextScaler.linear(1),
                             style: TextStyle(
                               color: Color.fromARGB(255, 234, 195, 195),
-                              fontFamily: "KozGoPr6N-Regular",
+                              fontFamily: "Koz Go Pr6N",
                               fontSize: 30,
                               fontVariations: [FontVariation.weight(600)],
                               height: 1,
@@ -101,7 +101,7 @@ class MainWindow extends StatelessWidget {
                             textScaler: TextScaler.linear(1),
                             style: TextStyle(
                               color: Color.fromARGB(255, 234, 195, 195),
-                              fontFamily: "KozGoPr6N-Regular",
+                              fontFamily: "Koz Go Pr6N",
                               fontSize: 30,
                               fontVariations: [FontVariation.weight(600)],
                               height: 1,
@@ -113,7 +113,7 @@ class MainWindow extends StatelessWidget {
                             textScaler: TextScaler.linear(1),
                             style: TextStyle(
                               color: Color.fromARGB(255, 234, 195, 195),
-                              fontFamily: "SourceHanSans-Medium",
+                              fontFamily: "Source Han Sans",
                               fontSize: 18,
                               fontVariations: [FontVariation.weight(600)],
                               height: 1,
@@ -135,7 +135,7 @@ class MainWindow extends StatelessWidget {
                     textScaler: TextScaler.linear(1),
                     style: TextStyle(
                       color: Color.fromARGB(255, 234, 195, 195),
-                      fontFamily: "KozGoPr6N-Regular",
+                      fontFamily: "Koz Go Pr6N",
                       fontSize: 30,
                       fontVariations: [FontVariation.weight(600)],
                       height: 1,
@@ -153,7 +153,7 @@ class MainWindow extends StatelessWidget {
                     textScaler: TextScaler.linear(1),
                     style: TextStyle(
                       color: Color.fromARGB(255, 234, 195, 195),
-                      fontFamily: "KozGoPr6N-Regular",
+                      fontFamily: "Koz Go Pr6N",
                       fontSize: 24,
                       fontVariations: [FontVariation.weight(600)],
                       height: 1,

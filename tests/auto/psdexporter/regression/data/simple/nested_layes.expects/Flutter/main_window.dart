@@ -70,7 +70,7 @@ class MainWindow extends StatelessWidget {
                           textScaler: TextScaler.linear(1),
                           style: TextStyle(
                             color: Color.fromARGB(255, 0, 0, 0),
-                            fontFamily: "SourceHanSans-Medium",
+                            fontFamily: "Source Han Sans",
                             fontSize: 30,
                             fontVariations: [FontVariation.weight(600)],
                             height: 1,
@@ -134,7 +134,7 @@ class MainWindow extends StatelessWidget {
                           textScaler: TextScaler.linear(1),
                           style: TextStyle(
                             color: Color.fromARGB(255, 0, 0, 0),
-                            fontFamily: "SourceHanSans-Medium",
+                            fontFamily: "Source Han Sans",
                             fontSize: 30,
                             fontVariations: [FontVariation.weight(600)],
                             height: 1,

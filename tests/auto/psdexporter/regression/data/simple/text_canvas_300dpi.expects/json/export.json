@@ -17,7 +17,7 @@
                         {
                             "alignment": 132,
                             "color": "#ffffff",
-                            "font": "SourceHanSans-Medium,150,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Source Han Sans,150,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "150px\n"
                         }
                     ],
@@ -239,7 +239,7 @@
                         {
                             "alignment": 132,
                             "color": "#ffffff",
-                            "font": "SourceHanSans-Medium,50,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "Source Han Sans,50,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
                             "text": "12pt\n"
                         }
                     ],

@@ -24,7 +24,7 @@ struct MainView: View {
                             .position(x: 91.5, y: 88.0)
                     }
                     Text("Example1")
-                        .font(.custom("SourceHanSans-Medium", size: 30))
+                        .font(.custom("Source Han Sans", size: 30))
                         .foregroundStyle(Color(red: 0.000, green: 0.000, blue: 0.000))
                         .multilineTextAlignment(.center)
                         .frame(width: 160.0, height: 33.0)
@@ -46,7 +46,7 @@ struct MainView: View {
                             .position(x: 191.5, y: 173.0)
                     }
                     Text("Example1")
-                        .font(.custom("SourceHanSans-Medium", size: 30))
+                        .font(.custom("Source Han Sans", size: 30))
                         .foregroundStyle(Color(red: 0.000, green: 0.000, blue: 0.000))
                         .multilineTextAlignment(.center)
                         .frame(width: 160.0, height: 33.0)
