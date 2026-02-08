@@ -17,26 +17,28 @@ public:
         });
 
         const auto shadows = readBalance(source, &length);
-        Q_UNUSED(shadows);
         const auto midtones = readBalance(source, &length);
-        Q_UNUSED(midtones);
         const auto highlights = readBalance(source, &length);
-        Q_UNUSED(highlights);
         const auto preserveLuminosity = readU8(source, &length);
-        Q_UNUSED(preserveLuminosity);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"shadows"_s, shadows);
+        result.insert(u"midtones"_s, midtones);
+        result.insert(u"highlights"_s, highlights);
+        result.insert(u"preserveLuminosity"_s, preserveLuminosity != 0);
+        return result;
     }
 
     QVariant readBalance(QIODevice *source, quint32 *length) const {
         const auto cyanRed = readS16(source, length);
-        Q_UNUSED(cyanRed);
         const auto magentaGreen = readS16(source, length);
-        Q_UNUSED(magentaGreen);
         const auto yellowBlue = readS16(source, length);
-        Q_UNUSED(yellowBlue);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"cyanRed"_s, cyanRed);
+        result.insert(u"magentaGreen"_s, magentaGreen);
+        result.insert(u"yellowBlue"_s, yellowBlue);
+        return result;
     }
 };
 

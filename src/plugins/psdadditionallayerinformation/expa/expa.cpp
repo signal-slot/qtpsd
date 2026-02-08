@@ -19,13 +19,14 @@ public:
         const auto version = readU16(source, &length);
         Q_ASSERT(version == 1);
         const auto exposure = readFloat(source, &length);
-        Q_UNUSED(exposure);
         const auto offset = readFloat(source, &length);
-        Q_UNUSED(offset);
         const auto gamma = readFloat(source, &length);
-        Q_UNUSED(gamma);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"exposure"_s, static_cast<double>(exposure));
+        result.insert(u"offset"_s, static_cast<double>(offset));
+        result.insert(u"gamma"_s, static_cast<double>(gamma));
+        return result;
     }
 
 };

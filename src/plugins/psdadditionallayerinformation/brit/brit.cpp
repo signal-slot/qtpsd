@@ -16,18 +16,19 @@ public:
             Q_ASSERT(length == 0);
         });
 
-        const auto brightness = readU16(source, &length);
-        Q_UNUSED(brightness);
-        const auto contrast = readU16(source, &length);
-        Q_UNUSED(contrast);        
+        const auto brightness = readS16(source, &length);
+        const auto contrast = readS16(source, &length);
         const auto mean = readU16(source, &length);
-        Q_UNUSED(mean);
         const auto lab = readU8(source, &length);
-        Q_UNUSED(lab);
         // padding
         skip(source, 1, &length);
 
-        return QVariant{};
+        QVariantMap result;
+        result.insert(u"brightness"_s, brightness);
+        result.insert(u"contrast"_s, contrast);
+        result.insert(u"meanValue"_s, mean);
+        result.insert(u"labColorOnly"_s, lab != 0);
+        return result;
     }
 };
 

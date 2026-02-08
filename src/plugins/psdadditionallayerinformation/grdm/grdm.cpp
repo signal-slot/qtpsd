@@ -20,81 +20,88 @@ public:
         const auto version = readU16(source, &length);
         Q_ASSERT(version == 1 || version == 3);
         const auto reversed = readU8(source, &length);
-        Q_UNUSED(reversed);
         const auto dithered = readU8(source, &length);
-        Q_UNUSED(dithered);
+        QVariantMap result;
+        result.insert(u"reverse"_s, reversed != 0);
+        result.insert(u"dither"_s, dithered != 0);
+
         if (version == 3) {
-            // method == Gcls, Lnr, Perc or Smoo
             const auto method = readByteArray(source, 4, &length);
-            Q_UNUSED(method);
+            result.insert(u"method"_s, QString::fromLatin1(method));
         }
         const auto name = readString(source, &length);
-        Q_UNUSED(name);
+        result.insert(u"name"_s, name);
 
         const auto countColorStops = readU16(source, &length);
+        QVariantList colorStops;
         for (quint16 i = 0; i < countColorStops; i++) {
             const auto location = readU32(source, &length);
-            Q_UNUSED(location);
             const auto midpoint = readU32(source, &length);
-            Q_UNUSED(midpoint);
             const auto colorSpace = readColorSpace(source, &length);
-            const auto color = colorSpace.toString();
-            Q_UNUSED(color); // TODO: Store gradient stop color when Grdm structure is implemented
-
             skip(source, 2, &length); // Unknown padding
+
+            QVariantMap stop;
+            stop.insert(u"location"_s, location);
+            stop.insert(u"midpoint"_s, midpoint);
+            stop.insert(u"color"_s, colorSpace.toString());
+            colorStops.append(stop);
         }
+        result.insert(u"colorStops"_s, colorStops);
 
         const auto countTransparencyStops = readU16(source, &length);
+        QVariantList transparencyStops;
         for (quint16 i = 0; i < countTransparencyStops; i++) {
             const auto location = readU32(source, &length);
-            Q_UNUSED(location);
             const auto midpoint = readU32(source, &length);
-            Q_UNUSED(midpoint);
-            const auto tramsparency = readU16(source, &length);
-            Q_UNUSED(tramsparency);
+            const auto transparency = readU16(source, &length);
+
+            QVariantMap stop;
+            stop.insert(u"location"_s, location);
+            stop.insert(u"midpoint"_s, midpoint);
+            stop.insert(u"opacity"_s, transparency);
+            transparencyStops.append(stop);
         }
+        result.insert(u"transparencyStops"_s, transparencyStops);
 
         const auto expansionCount = readU16(source, &length);
         Q_ASSERT(expansionCount == 2);
 
         const auto interpolation = readU16(source, &length);
-        Q_UNUSED(interpolation);
+        result.insert(u"interpolation"_s, interpolation);
         const auto len = readU16(source, &length);
         Q_ASSERT(len == 32);
         const auto gradientMode = readU16(source, &length);
-        Q_UNUSED(gradientMode);
+        result.insert(u"gradientMode"_s, gradientMode);
         const auto randomSeed = readU32(source, &length);
-        Q_UNUSED(randomSeed);
+        result.insert(u"randomSeed"_s, randomSeed);
         const auto showTransparency = readU16(source, &length);
-        Q_UNUSED(showTransparency);
+        result.insert(u"showTransparency"_s, showTransparency != 0);
         const auto useVectorColor = readU16(source, &length);
-        Q_UNUSED(useVectorColor);
+        result.insert(u"useVectorColor"_s, useVectorColor != 0);
         const auto roughness = readU32(source, &length);
-        Q_UNUSED(roughness);
+        result.insert(u"roughness"_s, roughness);
+
         const auto colorModel = readU16(source, &length);
-        Q_UNUSED(colorModel);
+        result.insert(u"colorModel"_s, colorModel);
 
         const auto minColor1 = readU16(source, &length);
-        Q_UNUSED(minColor1);
-        const auto minColor2= readU16(source, &length);
-        Q_UNUSED(minColor2);
+        const auto minColor2 = readU16(source, &length);
         const auto minColor3 = readU16(source, &length);
-        Q_UNUSED(minColor3);
         const auto minColor4 = readU16(source, &length);
-        Q_UNUSED(minColor4);
 
         const auto maxColor1 = readU16(source, &length);
-        Q_UNUSED(maxColor1);
         const auto maxColor2 = readU16(source, &length);
-        Q_UNUSED(maxColor2);
         const auto maxColor3 = readU16(source, &length);
-        Q_UNUSED(maxColor3);
         const auto maxColor4 = readU16(source, &length);
-        Q_UNUSED(maxColor4);
+
+        QVariantList minColor = {minColor1, minColor2, minColor3, minColor4};
+        QVariantList maxColor = {maxColor1, maxColor2, maxColor3, maxColor4};
+        result.insert(u"minColor"_s, minColor);
+        result.insert(u"maxColor"_s, maxColor);
 
         skip(source, 2, &length);
 
-        return {};
+        return result;
     }
 };
 

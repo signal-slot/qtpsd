@@ -20,25 +20,28 @@ public:
         const auto version = readU16(source, &length);
         Q_ASSERT(version == 2 || version == 3);
 
+        QVariantMap result;
+
         if (version == 2) {
             const auto colorSpace = readColorSpace(source, &length);
-            const auto color = colorSpace.toString();
-            Q_UNUSED(color); // TODO: Store photo filter color when Phfl structure is implemented
+            result.insert(u"color"_s, colorSpace.toString());
         } else {
             const auto l = readS32(source, &length);
             const auto a = readS32(source, &length);
             const auto b = readS32(source, &length);
-            Q_UNUSED(l);
-            Q_UNUSED(a);
-            Q_UNUSED(b);
+            QVariantMap lab;
+            lab.insert(u"l"_s, l);
+            lab.insert(u"a"_s, a);
+            lab.insert(u"b"_s, b);
+            result.insert(u"labColor"_s, lab);
         }
-        
-        const auto density = readS32(source, &length);
-        Q_UNUSED(density);
-        const auto preserveLuminosity = readU8(source, &length);
-        Q_UNUSED(preserveLuminosity);
 
-        return {};
+        const auto density = readS32(source, &length);
+        const auto preserveLuminosity = readU8(source, &length);
+
+        result.insert(u"density"_s, density);
+        result.insert(u"preserveLuminosity"_s, preserveLuminosity != 0);
+        return result;
     }
 };
 

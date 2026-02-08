@@ -20,41 +20,42 @@ public:
         Q_ASSERT(version == 2);
 
         const auto master = readHue(source, &length);
-        Q_UNUSED(master);
         const auto reds = readHue(source, &length);
-        Q_UNUSED(reds);
         const auto yellows = readHue(source, &length);
-        Q_UNUSED(yellows);
         const auto greens = readHue(source, &length);
-        Q_UNUSED(greens);
         const auto cyans = readHue(source, &length);
-        Q_UNUSED(cyans);
         const auto blues = readHue(source, &length);
-        Q_UNUSED(blues);
         const auto magentas = readHue(source, &length);
-        Q_UNUSED(magentas);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"master"_s, master);
+        result.insert(u"reds"_s, reds);
+        result.insert(u"yellows"_s, yellows);
+        result.insert(u"greens"_s, greens);
+        result.insert(u"cyans"_s, cyans);
+        result.insert(u"blues"_s, blues);
+        result.insert(u"magentas"_s, magentas);
+        return result;
     }
 
     QVariant readHue(QIODevice *source, quint32 *length) const {
-        const auto a1 = readU16(source, length);
-        Q_UNUSED(a1);
-        const auto a2 = readU16(source, length);
-        Q_UNUSED(a2);
-        const auto a3 = readU16(source, length);
-        Q_UNUSED(a3);
-        const auto a4 = readU16(source, length);
-        Q_UNUSED(a4);
-
+        const auto a = readS16(source, length);
+        const auto b = readS16(source, length);
+        const auto c = readS16(source, length);
+        const auto d = readS16(source, length);
         const auto hue = readS16(source, length);
-        Q_UNUSED(hue);
         const auto saturation = readS16(source, length);
-        Q_UNUSED(saturation);
         const auto lightness = readS16(source, length);
-        Q_UNUSED(lightness);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"a"_s, a);
+        result.insert(u"b"_s, b);
+        result.insert(u"c"_s, c);
+        result.insert(u"d"_s, d);
+        result.insert(u"hue"_s, hue);
+        result.insert(u"saturation"_s, saturation);
+        result.insert(u"lightness"_s, lightness);
+        return result;
     }
 };
 

@@ -118,6 +118,35 @@ void QPsdScene::reset()
         return;
     }
 
+    // Check if any layers are adjustment layers
+    bool hasAdjustmentLayers = false;
+    std::function<void(const QModelIndex)> scanForAdjustments = [&](const QModelIndex index) {
+        if (hasAdjustmentLayers) return;
+        if (index.isValid()) {
+            const QPsdAbstractLayerItem *layer = d->model->layerItem(index);
+            if (layer && layer->type() == QPsdAbstractLayerItem::Adjustment) {
+                hasAdjustmentLayers = true;
+                return;
+            }
+        }
+        for (int r = 0; r < d->model->rowCount(index); r++) {
+            scanForAdjustments(d->model->index(r, 0, index));
+        }
+    };
+    scanForAdjustments(QModelIndex());
+
+    if (hasAdjustmentLayers) {
+        // Use the merged image from the Image Data section
+        // This image is pre-composited by Photoshop and includes all adjustment effects
+        QImage mergedImage = d->model->mergedImage();
+        if (!mergedImage.isNull()) {
+            QGraphicsPixmapItem *pixmapItem = new QGraphicsPixmapItem(QPixmap::fromImage(mergedImage));
+            addItem(pixmapItem);
+        }
+        setSceneRect(QRect{ QPoint{}, d->model->size() });
+        return;
+    }
+
     std::function<void(const QModelIndex, QGraphicsItem *)> traverseTree = [&](const QModelIndex index, QGraphicsItem *parent) {
         if (index.isValid()) {
             const QPsdAbstractLayerItem *layer = d->model->layerItem(index);

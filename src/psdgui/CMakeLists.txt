@@ -12,6 +12,7 @@ qt_internal_add_module(PsdGui
         qpsdshapelayeritem.h qpsdshapelayeritem.cpp
         qpsdfolderlayeritem.h qpsdfolderlayeritem.cpp
         qpsdimagelayeritem.h qpsdimagelayeritem.cpp
+        qpsdadjustmentlayeritem.h qpsdadjustmentlayeritem.cpp
         qpsdborder.h qpsdborder.cpp
         qpsdpatternfill.h qpsdpatternfill.cpp
         qpsdfontmapper.h qpsdfontmapper.cpp

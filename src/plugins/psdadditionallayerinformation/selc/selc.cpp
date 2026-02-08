@@ -20,43 +20,36 @@ public:
         Q_ASSERT(version == 1);
 
         const auto mode = readU16(source, &length);
-        Q_UNUSED(mode);
 
         skip(source, 8, &length);
 
-        const auto reds = readSelectiveColors(source, &length);
-        Q_UNUSED(reds);
-        const auto yellows = readSelectiveColors(source, &length);
-        Q_UNUSED(yellows);
-        const auto greens = readSelectiveColors(source, &length);
-        Q_UNUSED(greens);
-        const auto cyans = readSelectiveColors(source, &length);
-        Q_UNUSED(cyans);
-        const auto blues = readSelectiveColors(source, &length);
-        Q_UNUSED(blues);
-        const auto magentas = readSelectiveColors(source, &length);
-        Q_UNUSED(magentas);
-        const auto whites = readSelectiveColors(source, &length);
-        Q_UNUSED(whites);
-        const auto neutrals = readSelectiveColors(source, &length);
-        Q_UNUSED(neutrals);
-        const auto blacks = readSelectiveColors(source, &length);
-        Q_UNUSED(blacks);
+        QVariantMap result;
+        result.insert(u"mode"_s, mode == 0 ? u"relative"_s : u"absolute"_s);
+        result.insert(u"reds"_s, readSelectiveColors(source, &length));
+        result.insert(u"yellows"_s, readSelectiveColors(source, &length));
+        result.insert(u"greens"_s, readSelectiveColors(source, &length));
+        result.insert(u"cyans"_s, readSelectiveColors(source, &length));
+        result.insert(u"blues"_s, readSelectiveColors(source, &length));
+        result.insert(u"magentas"_s, readSelectiveColors(source, &length));
+        result.insert(u"whites"_s, readSelectiveColors(source, &length));
+        result.insert(u"neutrals"_s, readSelectiveColors(source, &length));
+        result.insert(u"blacks"_s, readSelectiveColors(source, &length));
 
-        return {};
+        return result;
     }
 
     QVariant readSelectiveColors(QIODevice *source, quint32 *length) const {
         const auto c = readS16(source, length);
-        Q_UNUSED(c);
         const auto m = readS16(source, length);
-        Q_UNUSED(m);
         const auto y = readS16(source, length);
-        Q_UNUSED(y);
         const auto k = readS16(source, length);
-        Q_UNUSED(k);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"c"_s, c);
+        result.insert(u"m"_s, m);
+        result.insert(u"y"_s, y);
+        result.insert(u"k"_s, k);
+        return result;
     }
 };
 

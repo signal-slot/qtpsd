@@ -18,39 +18,39 @@ public:
 
         const auto monochrome = readU16(source, &length) != 0;
 
+        QVariantMap result;
+        result.insert(u"monochrome"_s, monochrome);
+
         if (!monochrome) {
-            const auto red = readMixer(source, &length);
-            Q_UNUSED(red);
-            const auto green = readMixer(source, &length);
-            Q_UNUSED(green);
-            const auto blue = readMixer(source, &length);
-            Q_UNUSED(blue);
+            result.insert(u"red"_s, readMixer(source, &length));
+            result.insert(u"green"_s, readMixer(source, &length));
+            result.insert(u"blue"_s, readMixer(source, &length));
         }
-        const auto gray = readMixer(source, &length);
-        Q_UNUSED(gray);
+        result.insert(u"gray"_s, readMixer(source, &length));
 
         if (monochrome) {
             skip(source, 3 * 5 * 2, &length);
         }
 
-        return {};
+        return result;
     }
 
     QVariant readMixer(QIODevice *source, quint32 *length) const {
         const auto red = readS16(source, length);
-        Q_UNUSED(red);
         const auto green = readS16(source, length);
-        Q_UNUSED(green);
         const auto blue = readS16(source, length);
-        Q_UNUSED(blue);
 
         const auto v1 = readU16(source, length);
         Q_UNUSED(v1);
 
         const auto constant = readS16(source, length);
-        Q_UNUSED(constant);
 
-        return {};
+        QVariantMap result;
+        result.insert(u"red"_s, red);
+        result.insert(u"green"_s, green);
+        result.insert(u"blue"_s, blue);
+        result.insert(u"constant"_s, constant);
+        return result;
     }
 };
 

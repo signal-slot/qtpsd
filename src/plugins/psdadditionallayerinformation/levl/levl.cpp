@@ -20,33 +20,35 @@ public:
         Q_ASSERT(length == 0x0278);
 
         const auto rgb = readLevels(source, &length);
-        Q_UNUSED(rgb);
         const auto red = readLevels(source, &length);
-        Q_UNUSED(red);
         const auto green = readLevels(source, &length);
-        Q_UNUSED(green);
         const auto blue = readLevels(source, &length);
-        Q_UNUSED(blue);
 
         // has many unknown data.. (592 bytes)
         skip(source, length, &length);
 
-        return QVariant{};
+        QVariantMap result;
+        result.insert(u"rgb"_s, rgb);
+        result.insert(u"red"_s, red);
+        result.insert(u"green"_s, green);
+        result.insert(u"blue"_s, blue);
+        return result;
     }
 
     QVariant readLevels(QIODevice *source, quint32 *length) const {
         const auto shadowInput = readU16(source, length);
-        Q_UNUSED(shadowInput);
         const auto highlightInput = readU16(source, length);
-        Q_UNUSED(highlightInput);
         const auto shadowOutput = readU16(source, length);
-        Q_UNUSED(shadowOutput);
         const auto highlightOutput = readU16(source, length);
-        Q_UNUSED(highlightOutput);
         const auto midtoneInput = readU16(source, length);
-        Q_UNUSED(midtoneInput);
 
-        return QVariant{};
+        QVariantMap result;
+        result.insert(u"shadowInput"_s, shadowInput);
+        result.insert(u"highlightInput"_s, highlightInput);
+        result.insert(u"shadowOutput"_s, shadowOutput);
+        result.insert(u"highlightOutput"_s, highlightOutput);
+        result.insert(u"midtoneInput"_s, midtoneInput);
+        return result;
     }
 };
 

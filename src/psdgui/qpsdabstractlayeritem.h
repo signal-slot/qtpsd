@@ -28,6 +28,7 @@ public:
         Shape,
         Image,
         Folder,
+        Adjustment,
     };
     QPsdAbstractLayerItem(int width, int height);
     QPsdAbstractLayerItem(const QPsdLayerRecord &record);

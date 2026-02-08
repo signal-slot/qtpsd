@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qpsdabstractlayeritem.h"
+#include "qpsdadjustmentlayeritem.h"
 #include "qpsdfolderlayeritem.h"
 #include "qpsdimagelayeritem.h"
 #include "qpsdshapelayeritem.h"
@@ -58,13 +59,32 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
         case QPsdLayerTreeItemModel::FolderType::ClosedFolder:
             item = new QPsdFolderLayerItem(*layerRecord, false);
             break;
-        default:
+        default: {
+            // Known adjustment layer ALI keys
+            static const QList<QByteArray> adjustmentKeys = {
+                "brit", "levl", "curv", "expA", "vibA", "hue2", "blnc",
+                "blwh", "phfl", "mixr", "clrL", "nvrt", "post", "thrs",
+                "grdm", "selc"
+            };
+
             if (additionalLayerInformation.contains("TySh")) {
                 item = new QPsdTextLayerItem(*layerRecord);
             } else if (additionalLayerInformation.contains("vscg") || additionalLayerInformation.contains("SoCo")) {
                 item = new QPsdShapeLayerItem(*layerRecord);
             } else {
-                item = new QPsdImageLayerItem(*layerRecord);
+                // Check for adjustment layer keys
+                QByteArray foundKey;
+                for (const auto &key : adjustmentKeys) {
+                    if (additionalLayerInformation.contains(key)) {
+                        foundKey = key;
+                        break;
+                    }
+                }
+                if (!foundKey.isEmpty()) {
+                    item = new QPsdAdjustmentLayerItem(*layerRecord, foundKey);
+                } else {
+                    item = new QPsdImageLayerItem(*layerRecord);
+                }
             }
 
             //TODO clipping support
@@ -92,7 +112,8 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
             }
 
             break;
-        }
+        } // default
+        } // switch
 
         if (item) {
             mapLayerItemObjects.insert(layerRecord, item);
