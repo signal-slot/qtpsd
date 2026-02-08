@@ -29,7 +29,7 @@ class MainWindow extends StatelessWidget {
                         color: Color.fromARGB(255, 90, 111, 14),
                         shape: QtPsdPathBorder(
                           path: Path()
-                          ..fillType = PathFillType.evenOdd
+                          ..fillType = PathFillType.nonZero
                           ..moveTo(66.5, 2)
                           ..cubicTo(66.5, 2, 119.027, 20.4198, 119.027, 20.4198)
                           ..cubicTo(119.027, 20.4198, 132, 61.8087, 132, 61.8087)

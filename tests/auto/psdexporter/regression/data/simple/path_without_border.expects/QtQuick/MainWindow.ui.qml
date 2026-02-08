@@ -26,7 +26,7 @@ Item {
             }
             ShapePath {
                 fillColor: "#5a6f0e"
-                fillRule: ShapePath.OddEvenFill
+                fillRule: ShapePath.WindingFill
                 strokeColor: "transparent"
                 strokeWidth: 1
                 PathMove {
