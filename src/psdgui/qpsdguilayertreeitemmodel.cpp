@@ -135,6 +135,10 @@ QVariant QPsdGuiLayerTreeItemModel::data(const QModelIndex &index, int role) con
 
 void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
 {
+    // Set the current PSD path context for font resolution
+    // Note: fileName() is available from the parent class after load() is called
+    QPsdTextLayerItem::setCurrentPsdPath(fileName());
+
     QPsdLayerTreeItemModel::fromParser(parser);
 
     const auto layerAndMaskInformation = parser.layerAndMaskInformation();

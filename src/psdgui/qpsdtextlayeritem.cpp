@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qpsdtextlayeritem.h"
+#include "qpsdfontmapper.h"
 
 #include <QtCore/QCborMap>
 #include <QtGui/QFontInfo>
@@ -14,65 +15,8 @@
 QT_BEGIN_NAMESPACE
 
 namespace {
-// MyriadPro-Bold -> "Myriad Pro", "Bold"
-// SourceHanSans-Medium -> "源ノ角ゴシック JP Medium", "Medium"
-// SourceHanSans-Bold -> "源ノ角ゴシック JP", "Bold"
-QFont findProperFont(const QString &name) {
-    static QHash<QString, QFont> cache;
-    if (cache.contains(name))
-        return cache.value(name);
-    QFont font(name);
-    if (QFontInfo(font).exactMatch()) {
-        cache.insert(name, font);
-        return font;
-    }
-    QString familySpecified = font.family().section('-'_L1, 0, 0);
-    QString styleSpecified = font.family().section('-'_L1, 1, 1);
-
-    static const QHash<QString, QString> substitute = {
-                                                       { "MyriadPro"_L1, "Myriad Pro"_L1 },
-                                                       { "SourceHanSans"_L1, u"源ノ角ゴシック JP"_s },
-                                                       };
-    if (substitute.contains(familySpecified)) {
-        familySpecified = substitute.value(familySpecified);
-    }
-
-    static const auto families = QFontDatabase::families();
-    if (families.contains(familySpecified + " " + styleSpecified)) {
-        font.setFamily(familySpecified + " " + styleSpecified);
-        font.setStyleName(styleSpecified);
-        cache.insert(name, font);
-        return font;
-    } else if (families.contains(familySpecified)) {
-        font.setFamily(familySpecified);
-        font.setStyleName(styleSpecified);
-        cache.insert(name, font);
-        return font;
-    } else {
-        for (const auto &family : families) {
-            QString familyWithoutSpaces = family;
-            familyWithoutSpaces.remove(' '_L1);
-            if (familyWithoutSpaces == familySpecified) {
-                font.setFamily(family);
-                font.setStyleName(styleSpecified);
-                cache.insert(name, font);
-                return font;
-            }
-        }
-    }
-
-    QString familySpecifiedBeginning = familySpecified.section(' '_L1, 0, 0);
-    for (const auto &family : families) {
-        if (!family.startsWith(familySpecifiedBeginning)) {
-            continue;
-        }
-        qDebug() << family << (family == familySpecified + " " + styleSpecified) << (family == familySpecified);
-    }
-    qWarning() << name << "doesn't match any font" << familySpecified << styleSpecified;
-    cache.insert(name, font);
-    return font;
-}
-
+// Thread-local storage for current PSD path context
+Q_CONSTINIT static thread_local QString s_currentPsdPath;
 }
 
 class QPsdTextLayerItem::Private
@@ -82,6 +26,7 @@ public:
     QRectF bounds;
     QRectF fontAdjustedBounds;
     TextType textType;
+    QPointF textOrigin;  // Text baseline anchor (tx, ty from transform)
 };
 
 QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
@@ -99,6 +44,11 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
             transformParam[2], transformParam[3],
             transformParam[4], transformParam[5])
         : QTransform();
+
+    // Store text origin (tx, ty) - this is the baseline anchor for point text
+    if (transformParam.size() >= 6) {
+        d->textOrigin = QPointF(transformParam[4], transformParam[5]);
+    }
 
     const auto engineDataData = textData.data().value("EngineData").toByteArray();
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData);
@@ -174,7 +124,8 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         }
         const auto fontIndex = styleSheetData.value("Font"_L1).toInteger();
         const auto fontInfo = fontSet.at(fontIndex).toMap();
-        run.font = findProperFont(fontInfo.value("Name"_L1).toString());
+        run.originalFontName = fontInfo.value("Name"_L1).toString();
+        run.font = QPsdFontMapper::instance()->resolveFont(run.originalFontName, s_currentPsdPath);
         run.font.setKerning(autoKerning);
         const auto ligatures = styleSheetData.value("Ligatures"_L1).toBool();
         if (!ligatures && styleSheetData.contains("Tracking"_L1)) {
@@ -302,6 +253,20 @@ QRectF QPsdTextLayerItem::fontAdjustedBounds() const {
 
 QPsdTextLayerItem::TextType QPsdTextLayerItem::textType() const {
     return d->textType;
+}
+
+QPointF QPsdTextLayerItem::textOrigin() const {
+    return d->textOrigin;
+}
+
+void QPsdTextLayerItem::setCurrentPsdPath(const QString &path)
+{
+    s_currentPsdPath = path;
+}
+
+QString QPsdTextLayerItem::currentPsdPath()
+{
+    return s_currentPsdPath;
 }
 
 QT_END_NAMESPACE

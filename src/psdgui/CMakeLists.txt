@@ -14,6 +14,7 @@ qt_internal_add_module(PsdGui
         qpsdimagelayeritem.h qpsdimagelayeritem.cpp
         qpsdborder.h qpsdborder.cpp
         qpsdpatternfill.h qpsdpatternfill.cpp
+        qpsdfontmapper.h qpsdfontmapper.cpp
         qpsdguilayertreeitemmodel.h qpsdguilayertreeitemmodel.cpp
     INCLUDE_DIRECTORIES
         ${CMAKE_CURRENT_SOURCE_DIR}

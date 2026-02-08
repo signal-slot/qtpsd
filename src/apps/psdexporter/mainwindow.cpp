@@ -152,6 +152,14 @@ MainWindow::Private::Private(::MainWindow *parent)
         psdWidget->copyViewToClipboard();
     });
 
+    connect(fontMapping, &QAction::triggered, q, [this]() {
+        int index = tabWidget->currentIndex();
+        if (index < 0)
+            return;
+        auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+        psdWidget->showFontMappingDialog();
+    });
+
     connect(tabWidget, &QTabWidget::currentChanged, q, [this](int index) {
         if (index < 0) {
             q->setWindowModified(false);
@@ -405,6 +413,7 @@ void MainWindow::Private::updateFileMenus()
     save->setEnabled(enabled && q->isWindowModified());
     close->setEnabled(enabled);
     copyView->setEnabled(enabled);
+    fontMapping->setEnabled(enabled);
 }
 
 MainWindow::MainWindow(QWidget *parent)

@@ -5,6 +5,7 @@
 
 #include <QtPsdCore/QPsdParser>
 #include <QtPsdGui/QPsdFolderLayerItem>
+#include <QtPsdGui/QPsdFontMapper>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 
 #include <QtCore/QDir>
@@ -40,6 +41,7 @@ public:
 #define HINTFILE_MAGIC_VERSION 1
 #define HINTFILE_LAYER_HINTS_KEY "layers"_L1
 #define HINTFILE_EXPORT_HINTS_KEY "exports"_L1
+#define HINTFILE_FONT_MAPPING_KEY "fontMapping"_L1
 
 QPsdExporterTreeItemModel::Private::Private(const ::QPsdExporterTreeItemModel *model) : q(model)
 {
@@ -66,6 +68,9 @@ void QPsdExporterTreeItemModel::Private::loadHintFile()
     layerHints.clear();
     exportHints.clear();
 
+    // Get the PSD file path for font mapping context
+    const QString psdPath = q->fileName();
+
     QFileInfo hintFileInfo(hintFileName);
     if (hintFileInfo.exists()) {
         QJsonDocument hintDoc = loadHint(hintFileInfo.absoluteFilePath());
@@ -89,6 +94,12 @@ void QPsdExporterTreeItemModel::Private::loadHintFile()
         for (const auto &exporterKey : exportHintsJson.keys()) {
             QVariantMap map = exportHintsJson.value(exporterKey).toObject().toVariantMap();
             exportHints.insert(exporterKey, map);
+        }
+
+        // Load font mappings from hint file
+        if (root.contains(HINTFILE_FONT_MAPPING_KEY) && !psdPath.isEmpty()) {
+            QJsonObject fontMappingJson = root.value(HINTFILE_FONT_MAPPING_KEY).toObject();
+            QPsdFontMapper::instance()->loadFromHint(psdPath, fontMappingJson);
         }
     }
 }
@@ -337,10 +348,17 @@ void QPsdExporterTreeItemModel::save()
         exportHints.insert(exporterKey, QJsonObject::fromVariantMap(d->exportHints.value(exporterKey)));
     }
 
+    // Get font mappings for this PSD file
+    const QString psdPath = fileName();
+    QJsonObject fontMappingJson = QPsdFontMapper::instance()->toHint(psdPath);
+
     QJsonObject root;
     root.insert(HINTFILE_MAGIC_KEY, HINTFILE_MAGIC_VERSION);
     root.insert(HINTFILE_LAYER_HINTS_KEY, layerHints);
     root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHints);
+    if (!fontMappingJson.isEmpty()) {
+        root.insert(HINTFILE_FONT_MAPPING_KEY, fontMappingJson);
+    }
 
     doc.setObject(root);
 

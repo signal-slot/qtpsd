@@ -26,10 +26,30 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     QRect rect;
 
     if (layer->textType() != QPsdTextLayerItem::TextType::ParagraphText) {
-        rect = layer->fontAdjustedBounds().toRect();
+        // Use PSD bounds directly instead of recalculated fontAdjustedBounds
+        // fontAdjustedBounds depends on Qt font metrics which vary by font
+        rect = layer->bounds().toRect();
     } else {
         rect = layer->rect();
     }
+
+    // Calculate offset from item position (layer->rect()) to actual text bounds
+    // The item is positioned at layer->rect().topLeft(), but text should be at bounds()
+    const QPointF boundsOffset = layer->bounds().topLeft() - QPointF(layer->rect().topLeft());
+    qreal baseY = boundsOffset.y();
+    qreal baseX = boundsOffset.x();
+
+    // For point text, use baseline-based positioning from textOrigin
+    // textOrigin() returns the baseline anchor position (transform tx, ty)
+    const bool isPointText = (layer->textType() == QPsdTextLayerItem::TextType::PointText);
+    qreal baselineY = 0;
+    qreal pointTextX = 0;
+    if (isPointText) {
+        // For point text, use the transform origin as the anchor point
+        pointTextX = layer->textOrigin().x() - layer->rect().left();
+        baselineY = layer->textOrigin().y() - layer->rect().top();
+    }
+
 
     const auto runs = layer->runs();
     struct Chunk {
@@ -95,7 +115,7 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
     rect.setHeight(contentHeight);
 
-    qreal y = 0;
+    qreal y = baseY;  // Start from the bounds offset
     for (const auto &line : lines) {
         QSizeF size;
         for (const auto &chunk : line) {
@@ -109,15 +129,9 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
                     size.setHeight(h);
             }
         }
-        // Calculate x position based on text alignment instead of forcing center alignment
-        qreal x = 0;
 
-        // Use the original layer bounds to determine proper positioning
-        const auto layerBounds = layer->bounds();
-        const auto widgetGeom = rect;
-
-        // Calculate the offset from widget origin to layer bounds origin
-        qreal layerOffsetX = layerBounds.x() - widgetGeom.x();
+        // Calculate x position based on text alignment
+        qreal x;
 
         // Extract horizontal alignment from the first chunk
         Qt::Alignment horizontalAlignment = Qt::AlignLeft; // Default to left alignment
@@ -125,41 +139,66 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             horizontalAlignment = static_cast<Qt::Alignment>(line.first().alignment & Qt::AlignHorizontal_Mask);
         }
 
-        // Position text based on the PSD horizontal alignment
-        switch (horizontalAlignment) {
-        case Qt::AlignLeft:
-            // For left alignment, position at the layer bounds left edge
-            x = layerOffsetX;
-            break;
-        case Qt::AlignRight:
-            // For right alignment, position so text ends at layer bounds right edge
-            x = layerOffsetX + layerBounds.width() - size.width();
-            break;
-        case Qt::AlignHCenter:
-            // For center alignment, center within layer bounds
-            x = layerOffsetX + (layerBounds.width() - size.width()) / 2;
-            break;
-        case Qt::AlignJustify:
-            // For justify, treat as left alignment for now
-            x = layerOffsetX;
-            break;
-        default:
-            // Default to left alignment
-            x = layerOffsetX;
-            break;
-        }
+        if (isPointText) {
+            // For point text, textOrigin is the anchor point
+            // Alignment determines where the text is positioned relative to this anchor
+            switch (horizontalAlignment) {
+            case Qt::AlignLeft:
+                // Text starts at anchor
+                x = pointTextX;
+                break;
+            case Qt::AlignRight:
+                // Text ends at anchor
+                x = pointTextX - size.width();
+                break;
+            case Qt::AlignHCenter:
+                // Text is centered on anchor
+                x = pointTextX - size.width() / 2;
+                break;
+            default:
+                x = pointTextX;
+                break;
+            }
+        } else {
+            // For paragraph text, use bounds-based positioning
+            x = baseX;
+            const auto layerBounds = layer->bounds();
 
-        // Ensure x is not negative (fallback to left alignment)
-        if (x < 0) {
-            x = 0;
+            switch (horizontalAlignment) {
+            case Qt::AlignLeft:
+                // For left alignment, already at baseX
+                break;
+            case Qt::AlignRight:
+                // For right alignment, position so text ends at layer bounds right edge
+                x = baseX + layerBounds.width() - size.width();
+                break;
+            case Qt::AlignHCenter:
+                // For center alignment, center within layer bounds
+                x = baseX + (layerBounds.width() - size.width()) / 2;
+                break;
+            case Qt::AlignJustify:
+                // For justify, treat as left alignment for now
+                break;
+            default:
+                break;
+            }
         }
 
         for (const auto &chunk : line) {
             painter->setFont(chunk.font);
             painter->setPen(chunk.color);
-            // qDebug() << chunk.text << chunk.size << chunk.alignment;
-            painter->drawText(x, y, chunk.size.width(), chunk.size.height(), chunk.alignment, chunk.text);
-            x += chunk.size.width();
+            if (isPointText) {
+                // For point text, draw at the baseline position directly
+                // drawText(QPointF, QString) uses the point as baseline-left
+                painter->drawText(QPointF(x, baselineY), chunk.text);
+                x += painter->fontMetrics().horizontalAdvance(chunk.text);
+            } else {
+                painter->drawText(x, y, chunk.size.width(), chunk.size.height(), chunk.alignment, chunk.text);
+                x += chunk.size.width();
+            }
+        }
+        if (isPointText) {
+            baselineY += size.height();
         }
         y += size.height();
     }

@@ -8,6 +8,7 @@
 #include "exportdialog.h"
 
 #include <QtPsdGui/QPsdTextLayerItem>
+#include <QtPsdWidget/QPsdFontMappingDialog>
 
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QFileInfo>
@@ -199,6 +200,10 @@ PsdWidget::Private::Private(::PsdWidget *parent)
 
     updateAttributes();
     settings.beginGroup("Files");
+
+    // Make fontValue label clickable to open font mapping dialog
+    fontValue->setCursor(Qt::PointingHandCursor);
+    fontValue->installEventFilter(q);
 
     for (auto *radioButton : type->findChildren<QRadioButton *>()) {
         types.addButton(radioButton);
@@ -686,6 +691,15 @@ PsdWidget::PsdWidget(QWidget *parent)
     , d(new Private(this))
 {}
 
+bool PsdWidget::eventFilter(QObject *watched, QEvent *event)
+{
+    if (watched == d->fontValue && event->type() == QEvent::MouseButtonRelease) {
+        showFontMappingDialog();
+        return true;
+    }
+    return QSplitter::eventFilter(watched, event);
+}
+
 PsdWidget::~PsdWidget()
 {
     d->settings.setValue("splitterState", saveState());
@@ -878,4 +892,46 @@ void PsdWidget::fitToView()
     scale = qBound(0.1, scale, 10.0);
 
     setViewScale(scale);
+}
+
+QStringList PsdWidget::fontsUsed() const
+{
+    QStringList fonts;
+
+    // Traverse all layers to find text layers and collect font names
+    std::function<void(const QModelIndex &)> collectFonts = [&](const QModelIndex &index) {
+        if (index.isValid()) {
+            const auto *item = d->model.layerItem(index);
+            if (item && item->type() == QPsdAbstractLayerItem::Text) {
+                const auto *textItem = dynamic_cast<const QPsdTextLayerItem *>(item);
+                if (textItem) {
+                    for (const auto &run : textItem->runs()) {
+                        // Get the original font name from the PSD
+                        QString fontName = run.originalFontName;
+                        if (!fontName.isEmpty() && !fonts.contains(fontName)) {
+                            fonts.append(fontName);
+                        }
+                    }
+                }
+            }
+        }
+        for (int i = 0; i < d->model.rowCount(index); i++) {
+            collectFonts(d->model.index(i, 0, index));
+        }
+    };
+    collectFonts({});
+
+    fonts.sort();
+    return fonts;
+}
+
+void PsdWidget::showFontMappingDialog()
+{
+    QPsdFontMappingDialog dialog(fileName(), this);
+    dialog.setFontsUsed(fontsUsed());
+
+    if (dialog.exec() == QDialog::Accepted) {
+        // Reload to apply new font mappings
+        reload();
+    }
 }

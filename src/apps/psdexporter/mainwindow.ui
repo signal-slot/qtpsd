@@ -77,6 +77,8 @@
      <string>&amp;Edit</string>
     </property>
     <addaction name="copyView"/>
+    <addaction name="separator"/>
+    <addaction name="fontMapping"/>
    </widget>
    <widget class="QMenu" name="menu_Help">
     <property name="title">
@@ -178,6 +180,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+C</string>
+   </property>
+  </action>
+  <action name="fontMapping">
+   <property name="text">
+    <string>&amp;Font Mapping...</string>
    </property>
   </action>
  </widget>

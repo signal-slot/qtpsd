@@ -25,6 +25,9 @@ public:
 
     qreal viewScale() const;
 
+    // Get list of fonts used in the PSD
+    QStringList fontsUsed() const;
+
 public slots:
     void load(const QString &fileName);
     void reload();
@@ -33,6 +36,10 @@ public slots:
     void copyViewToClipboard();
     void setViewScale(qreal scale);
     void fitToView();
+    void showFontMappingDialog();
+
+protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
 
 private slots:
     void setErrorMessage(const QString &errorMessage);

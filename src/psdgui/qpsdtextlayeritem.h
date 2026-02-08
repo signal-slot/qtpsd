@@ -17,6 +17,7 @@ public:
     struct Run {
         QString text;
         QFont font;
+        QString originalFontName;  // Original font name from PSD (e.g., "MyriadPro-Bold")
         QColor color;
         Qt::Alignment alignment = Qt::AlignVCenter;
     };
@@ -34,6 +35,14 @@ public:
     QRectF bounds() const;
     QRectF fontAdjustedBounds() const;
     TextType textType() const;
+
+    // Returns the text origin point (tx, ty from the transform)
+    // For point text, this is the baseline anchor position
+    QPointF textOrigin() const;
+
+    // Set the current PSD path context for font resolution (thread-local)
+    static void setCurrentPsdPath(const QString &path);
+    static QString currentPsdPath();
 
 private:
     class Private;
