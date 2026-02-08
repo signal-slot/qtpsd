@@ -264,7 +264,7 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
         // Font modifier
         element->modifiers.append(u".font(.custom(\"%1\", size: %2))"_s
             .arg(run.font.family())
-            .arg(qRound(run.font.pointSizeF() * 1.5 * fontScaleFactor)));
+            .arg(qRound(run.font.pointSizeF() * fontScaleFactor)));
 
         // Color modifier
         element->modifiers.append(u".foregroundStyle(%1)"_s.arg(colorValue(run.color)));
@@ -319,7 +319,7 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
                 textElement.properties.insert("content", QString(textLine).replace("\"", "\\\""));
                 textElement.modifiers.append(u".font(.custom(\"%1\", size: %2))"_s
                     .arg(run.font.family())
-                    .arg(qRound(run.font.pointSizeF() * 1.5 * fontScaleFactor)));
+                    .arg(qRound(run.font.pointSizeF() * fontScaleFactor)));
                 textElement.modifiers.append(u".foregroundStyle(%1)"_s.arg(colorValue(run.color)));
 
                 if (run.font.bold()) {

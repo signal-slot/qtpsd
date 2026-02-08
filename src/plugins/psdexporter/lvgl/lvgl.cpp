@@ -287,7 +287,7 @@ bool QPsdExporterLvglPlugin::outputText(const QModelIndex &textIndex, Element *e
     QColor color = firstRun.color;
     element->attributes.insert("style_text_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
 
-    int fontSize = qRound(firstRun.font.pointSizeF() * 1.5);
+    int fontSize = qRound(firstRun.font.pointSizeF());
     element->attributes.insert("style_text_font", u"montserrat %1"_s.arg(fontSize));
 
     // Horizontal alignment

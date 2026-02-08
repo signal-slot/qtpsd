@@ -370,7 +370,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             return false;
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-        element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * 1.5 * fontScaleFactor));
+        element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
         if (run.font.bold())
             element->properties.insert("font.bold", true);
         if (run.font.italic())
@@ -435,7 +435,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 textElement.type = "Text";
                 textElement.properties.insert("text", u"\"%1\""_s.arg(text));
                 textElement.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-                textElement.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * 1.5 * fontScaleFactor));
+                textElement.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
                 if (run.font.bold())
                     textElement.properties.insert("font.bold", true);
                 if (run.font.italic())
@@ -902,7 +902,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                         for (const auto &run : runs) {
                             if (first) {
                                 element.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
-                                element.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * 1.5 * fontScaleFactor));
+                                element.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
                                 first = false;
                             }
                             text += run.text;

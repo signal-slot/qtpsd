@@ -61,6 +61,8 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             }
             Chunk chunk;
             chunk.font = run.font;
+            // Scale font for Qt rendering (PSD stores original size, Qt needs DPI adjustment)
+            chunk.font.setPointSizeF(run.font.pointSizeF() / 1.5);
             chunk.font.setStyleStrategy(QFont::PreferTypoLineMetrics);
             chunk.color = run.color;
             chunk.text = line;
@@ -70,8 +72,8 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             auto bRect = painter->boundingRect(rect, chunk.alignment, line);
             chunk.size = bRect.size();
             // adjust size, for boundingRect is too small?
-            if (chunk.font.pointSizeF() * 1.5 > chunk.size.height()) {
-                chunk.size.setHeight(chunk.font.pointSizeF() * 1.5);
+            if (run.font.pointSizeF() > chunk.size.height()) {
+                chunk.size.setHeight(run.font.pointSizeF());
             }
             currentLine.append(chunk);
         }

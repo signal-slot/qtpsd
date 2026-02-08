@@ -14,29 +14,27 @@ QDir QPsdAbstractPlugin::qpsdPluginDir(const QString &type)
     if (dladdr((void*)&qpsdPluginDir, &info)) {
         const auto path = info.dli_fname;
         QFileInfo fi(QString::fromUtf8(path));
-        QDir pluginsDir = fi.absoluteDir();
+        QDir libDir = fi.absoluteDir();
 
-        std::function<QDir(QDir)> findPluginsDir;
-        findPluginsDir = [&](QDir dir) -> QDir{
-            if (dir.exists("plugins"_L1)) {
-                dir.cd("plugins"_L1);
-                return dir;
-            }
+        // Try Qt-standard plugin path first: lib64/qt6/plugins or lib/qt6/plugins
+        QDir qtPluginsDir = libDir;
+        if (qtPluginsDir.cd("qt6/plugins"_L1) && qtPluginsDir.exists(type)) {
+            qtPluginsDir.cd(type);
+            return qtPluginsDir;
+        }
 
-            const auto subDirs = dir.entryList(QDir::Dirs | QDir::NoDotAndDotDot);
-            for (const auto &subDir : subDirs) {
-                QDir newDir = dir.absoluteFilePath(subDir);
-                auto ret = findPluginsDir(newDir);
-                if (ret.dirName() == "plugins"_L1)
-                    return ret;
-            }
-            return QDir();
-        };
-        pluginsDir.cdUp();
-        pluginsDir = findPluginsDir(pluginsDir);
-        if (pluginsDir.exists(type)) {
-            pluginsDir.cd(type);
-            return pluginsDir;
+        // Try parent's qt6/plugins (e.g., build/lib64 -> build/lib64/qt6/plugins)
+        qtPluginsDir = libDir;
+        qtPluginsDir.cdUp();
+        if (qtPluginsDir.cd("lib64/qt6/plugins"_L1) && qtPluginsDir.exists(type)) {
+            qtPluginsDir.cd(type);
+            return qtPluginsDir;
+        }
+        qtPluginsDir = libDir;
+        qtPluginsDir.cdUp();
+        if (qtPluginsDir.cd("lib/qt6/plugins"_L1) && qtPluginsDir.exists(type)) {
+            qtPluginsDir.cd(type);
+            return qtPluginsDir;
         }
     } else {
         qWarning() << u"dladdrに失敗しました。"_s;

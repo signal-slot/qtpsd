@@ -17,7 +17,7 @@
                         {
                             "alignment": 132,
                             "color": "#000000",
-                            "font": "SourceHanSans-Medium,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "SourceHanSans-Medium,50,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "shooting\n"
                         }
                     ],
@@ -378,7 +378,7 @@
                         {
                             "alignment": 132,
                             "color": "#000000",
-                            "font": "SourceHanSans-Medium,33.3333,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
+                            "font": "SourceHanSans-Medium,50,-1,5,400,0,0,0,0,0,0,0,0,0,0,1",
                             "text": "\n"
                         }
                     ],

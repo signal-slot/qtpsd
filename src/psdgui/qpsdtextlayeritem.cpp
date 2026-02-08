@@ -182,7 +182,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
             run.font.setLetterSpacing(QFont::PercentageSpacing, tracking);
         }
         const auto fontSize = styleSheetData.value("FontSize"_L1).toDouble();
-        run.font.setPointSizeF(transform.m22() * fontSize / 1.5);
+        run.font.setPointSizeF(transform.m22() * fontSize);
         const auto runLength = runLengthArray.at(i).toInteger();
         // replace 0x03 (ETX) to newline for Shift+Enter in Photoshop
         // https://community.adobe.com/t5/photoshop-ecosystem-discussions/replacing-quot-shift-enter-quot-aka-etx-aka-lt-0x03-gt-aka-end-of-transmission-character-within-text/td-p/12517124
@@ -250,7 +250,10 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     qreal lineHeight = -1;
     qreal lineLeading = -1;
     for (int i = 0; i < d->runs.length(); i++) {
-        QFontMetrics fontMetrics(d->runs.at(i).font);
+        // Scale font for Qt metrics calculation (PSD stores original size)
+        QFont scaledFont = d->runs.at(i).font;
+        scaledFont.setPointSizeF(scaledFont.pointSizeF() / 1.5);
+        QFontMetrics fontMetrics(scaledFont);
         if (lineHeight < fontMetrics.height()) {
             lineHeight = fontMetrics.height();
             lineLeading = fontMetrics.leading();

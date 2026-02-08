@@ -187,7 +187,7 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
 
         element->textContent = run.text.trimmed().replace("\n"_L1, "\\n"_L1);
         element->styles.append({"fontFamily"_L1, u"'%1'"_s.arg(run.font.family())});
-        element->styles.append({"fontSize"_L1, qRound(run.font.pointSizeF() * 1.5 * fontScaleFactor)});
+        element->styles.append({"fontSize"_L1, qRound(run.font.pointSizeF() * fontScaleFactor)});
         element->styles.append({"color"_L1, colorValue(run.color)});
 
         if (run.font.bold()) {
@@ -229,7 +229,7 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
                 textElement.type = "Text"_L1;
                 textElement.textContent = textLine;
                 textElement.styles.append({"fontFamily"_L1, u"'%1'"_s.arg(run.font.family())});
-                textElement.styles.append({"fontSize"_L1, qRound(run.font.pointSizeF() * 1.5 * fontScaleFactor)});
+                textElement.styles.append({"fontSize"_L1, qRound(run.font.pointSizeF() * fontScaleFactor)});
                 textElement.styles.append({"color"_L1, colorValue(run.color)});
                 if (run.font.bold()) {
                     textElement.styles.append({"fontWeight"_L1, "'bold'"_L1});
