@@ -11,10 +11,47 @@
 #include <QtGui/QBrush>
 #include <QtGui/QPen>
 
+#include <QtPsdCore/qpsdblend.h>
 #include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdGui/QPsdBorder>
 
 QT_BEGIN_NAMESPACE
+
+static QString blendModeString(QPsdBlend::Mode mode)
+{
+    switch (mode) {
+    case QPsdBlend::Normal:      return u"normal"_s;
+    case QPsdBlend::Dissolve:    return u"dissolve"_s;
+    case QPsdBlend::Darken:      return u"darken"_s;
+    case QPsdBlend::Multiply:    return u"multiply"_s;
+    case QPsdBlend::ColorBurn:   return u"colorBurn"_s;
+    case QPsdBlend::LinearBurn:  return u"linearBurn"_s;
+    case QPsdBlend::DarkerColor: return u"darkerColor"_s;
+    case QPsdBlend::Lighten:     return u"lighten"_s;
+    case QPsdBlend::Screen:      return u"screen"_s;
+    case QPsdBlend::ColorDodge:  return u"colorDodge"_s;
+    case QPsdBlend::LinearDodge: return u"linearDodge"_s;
+    case QPsdBlend::LighterColor: return u"lighterColor"_s;
+    case QPsdBlend::Overlay:     return u"overlay"_s;
+    case QPsdBlend::SoftLight:   return u"softLight"_s;
+    case QPsdBlend::HardLight:   return u"hardLight"_s;
+    case QPsdBlend::VividLight:  return u"vividLight"_s;
+    case QPsdBlend::LinearLight: return u"linearLight"_s;
+    case QPsdBlend::PinLight:    return u"pinLight"_s;
+    case QPsdBlend::HardMix:     return u"hardMix"_s;
+    case QPsdBlend::Difference:  return u"difference"_s;
+    case QPsdBlend::Exclusion:   return u"exclusion"_s;
+    case QPsdBlend::Subtract:    return u"subtract"_s;
+    case QPsdBlend::Divide:      return u"divide"_s;
+    case QPsdBlend::Hue:         return u"hue"_s;
+    case QPsdBlend::Saturation:  return u"saturation"_s;
+    case QPsdBlend::Color:       return u"color"_s;
+    case QPsdBlend::Luminosity:  return u"luminosity"_s;
+    case QPsdBlend::PassThrough:
+    case QPsdBlend::Invalid:
+    default:                     return QString();
+    }
+}
 
 class QPsdExporterQtQuickPlugin : public QPsdExporterPlugin
 {
@@ -74,12 +111,12 @@ private:
     bool outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds = {}) const;
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
     bool outputPath(const QPainterPath &path, Element *element) const;
-    bool outputFolder(const QModelIndex &folderIndex, Element *element, ImportData *imports, ExportData *exports) const;
+    bool outputFolder(const QModelIndex &folderIndex, Element *element, ImportData *imports, ExportData *exports, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
     bool outputText(const QModelIndex &textIndex, Element *element, ImportData *imports) const;
     bool outputShape(const QModelIndex &shapeIndex, Element *element, ImportData *imports) const;
     bool outputImage(const QModelIndex &imageIndex, Element *element, ImportData *imports) const;
 
-    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const;
+    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
 
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
@@ -354,13 +391,25 @@ bool QPsdExporterQtQuickPlugin::outputPath(const QPainterPath &path, Element *el
     return true;
 }
 
-bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Element *element, ImportData *imports, ExportData *exports) const
+bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Element *element, ImportData *imports, ExportData *exports, QPsdBlend::Mode groupBlendMode) const
 {
     const QPsdAbstractLayerItem *item = model()->layerItem(folderIndex);
     const QPsdFolderLayerItem *folder = dynamic_cast<const QPsdFolderLayerItem *>(item);
     element->type = "Item";
     if (!outputBase(folderIndex, element, imports))
         return false;
+
+    // Determine the blend mode to propagate to children
+    const auto folderBlendMode = item->record().blendMode();
+    QPsdBlend::Mode nextGroupBlendMode = groupBlendMode;
+    if (folderBlendMode != QPsdBlend::PassThrough && folderBlendMode != QPsdBlend::Normal && folderBlendMode != QPsdBlend::Invalid) {
+        nextGroupBlendMode = folderBlendMode;
+        // Enable layer compositing so the group renders as a unit
+        element->properties.insert("layer.enabled", true);
+        const auto modeStr = blendModeString(folderBlendMode);
+        if (!modeStr.isEmpty())
+            element->properties.insert("property string blendMode", u"\"%1\""_s.arg(modeStr));
+    }
 
     if (folder->artboardRect().isValid() && folder->artboardBackground() != Qt::transparent) {
         Element artboard;
@@ -371,7 +420,7 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     }
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
-        if (!traverseTree(childIndex, element, imports, exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, element, imports, exports, QPsdExporterTreeItemModel::ExportHint::None, nextGroupBlendMode))
             return false;
     }
     return true;
@@ -1040,7 +1089,7 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     return true;
 }
 
-bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const
+bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload, QPsdBlend::Mode groupBlendMode) const
 {
     const QPsdAbstractLayerItem *item = model()->layerItem(index);
     const auto hint = model()->layerHint(index);;
@@ -1060,7 +1109,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             exports->insert(id);
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
-            outputFolder(index, &element, imports, exports);
+            outputFolder(index, &element, imports, exports, groupBlendMode);
             break; }
         case QPsdAbstractLayerItem::Text: {
             outputText(index, &element, imports);
@@ -1073,6 +1122,15 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             break; }
         default:
             break;
+        }
+
+        // Propagate inherited group blend mode to leaf items
+        if (item->type() != QPsdAbstractLayerItem::Folder
+            && groupBlendMode != QPsdBlend::PassThrough
+            && groupBlendMode != QPsdBlend::Invalid) {
+            const auto modeStr = blendModeString(groupBlendMode);
+            if (!modeStr.isEmpty())
+                element.properties.insert("property string blendMode", u"\"%1\""_s.arg(modeStr));
         }
 
         if (indexMergeMap.contains(index)) {
@@ -1161,7 +1219,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
 
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
-            outputFolder(index, &component, &i, &x);
+            outputFolder(index, &component, &i, &x, groupBlendMode);
             break; }
         case QPsdAbstractLayerItem::Text: {
             outputText(index, &component, &i);
