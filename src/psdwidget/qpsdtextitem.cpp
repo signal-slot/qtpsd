@@ -29,8 +29,6 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     QRect rect;
 
     if (layer->textType() != QPsdTextLayerItem::TextType::ParagraphText) {
-        // Use PSD bounds directly instead of recalculated fontAdjustedBounds
-        // fontAdjustedBounds depends on Qt font metrics which vary by font
         rect = layer->bounds().toRect();
     } else {
         rect = layer->rect();

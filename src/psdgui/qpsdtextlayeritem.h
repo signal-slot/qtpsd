@@ -33,7 +33,6 @@ public:
 
     QList<Run> runs() const;
     QRectF bounds() const;
-    QRectF fontAdjustedBounds() const;
     TextType textType() const;
 
     // Returns the text origin point (tx, ty from the transform)

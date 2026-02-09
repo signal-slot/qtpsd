@@ -7,7 +7,6 @@
 #include <QtCore/QCborMap>
 #include <QtGui/QFontInfo>
 #include <QtGui/QFontDatabase>
-#include <QtGui/QFontMetrics>
 
 #include <QtPsdCore/QPsdTypeToolObjectSetting>
 #include <QtPsdCore/QPsdEngineDataParser>
@@ -24,7 +23,6 @@ class QPsdTextLayerItem::Private
 public:
     QList<Run> runs;
     QRectF bounds;
-    QRectF fontAdjustedBounds;
     TextType textType;
     QPointF textOrigin;  // Text baseline anchor (tx, ty from transform)
 };
@@ -197,30 +195,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         d->runs = runs;
     }
 
-    qreal contentHeight = 0;
-    qreal lineHeight = -1;
-    qreal lineLeading = -1;
-    for (int i = 0; i < d->runs.length(); i++) {
-        // Scale font for Qt metrics calculation (PSD stores original size)
-        QFont scaledFont = d->runs.at(i).font;
-        scaledFont.setPointSizeF(scaledFont.pointSizeF() / 1.5);
-        QFontMetrics fontMetrics(scaledFont);
-        if (lineHeight < fontMetrics.height()) {
-            lineHeight = fontMetrics.height();
-            lineLeading = fontMetrics.leading();
-        }
-
-        const auto texts = d->runs.at(i).text.trimmed().split("\n");
-        if (texts.size() > 1) {
-            contentHeight += lineHeight + lineLeading + (fontMetrics.height() + fontMetrics.leading()) * (texts.size() - 2);
-        }
-    }
-    contentHeight += lineHeight * 1.1;   // 1.1 is ad-hoc param
-
     d->bounds = tysh.bounds();
-
-    d->fontAdjustedBounds = d->bounds;
-    d->fontAdjustedBounds.setHeight(contentHeight);
 
     const auto rendered = engineDict.value("Rendered"_L1).toMap();
     const auto shapes = rendered.value("Shapes"_L1).toMap();
@@ -245,10 +220,6 @@ QList<QPsdTextLayerItem::Run> QPsdTextLayerItem::runs() const
 
 QRectF QPsdTextLayerItem::bounds() const {
     return d->bounds;
-}
-
-QRectF QPsdTextLayerItem::fontAdjustedBounds() const {
-    return d->fontAdjustedBounds;
 }
 
 QPsdTextLayerItem::TextType QPsdTextLayerItem::textType() const {
