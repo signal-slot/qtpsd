@@ -10,6 +10,7 @@
 #include <QtPsdCore/QPsdOglwEffect>
 #include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdCore/QPsdShadowEffect>
+#include <QtPsdGui/QPsdBorder>
 
 QT_BEGIN_NAMESPACE
 
@@ -52,6 +53,69 @@ static void boxBlurAlpha(QImage &img, int radius)
             sum += qAlpha(reinterpret_cast<const QRgb *>(temp.constScanLine(qBound(0, y + radius + 1, h - 1)))[x]);
         }
     }
+}
+
+// Dilate the alpha channel of an image using separable max filter
+// Returns an image expanded by 'radius' pixels on each side
+static QImage dilateAlpha(const QImage &source, int radius)
+{
+    const QImage img = source.convertToFormat(QImage::Format_ARGB32);
+    const int srcW = img.width();
+    const int srcH = img.height();
+    const int outW = srcW + 2 * radius;
+    const int outH = srcH + 2 * radius;
+
+    // Extract alpha channel into a padded buffer
+    QVector<uchar> alpha(outW * outH, 0);
+    for (int y = 0; y < srcH; ++y) {
+        const QRgb *scanLine = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+        for (int x = 0; x < srcW; ++x) {
+            alpha[(y + radius) * outW + (x + radius)] = qAlpha(scanLine[x]);
+        }
+    }
+
+    // Horizontal max pass
+    QVector<uchar> hMax(outW * outH, 0);
+    for (int y = 0; y < outH; ++y) {
+        for (int x = 0; x < outW; ++x) {
+            uchar maxVal = 0;
+            const int x0 = qMax(0, x - radius);
+            const int x1 = qMin(outW - 1, x + radius);
+            for (int dx = x0; dx <= x1; ++dx) {
+                maxVal = qMax(maxVal, alpha[y * outW + dx]);
+            }
+            hMax[y * outW + x] = maxVal;
+        }
+    }
+
+    // Vertical max pass
+    QVector<uchar> dilated(outW * outH, 0);
+    for (int x = 0; x < outW; ++x) {
+        for (int y = 0; y < outH; ++y) {
+            uchar maxVal = 0;
+            const int y0 = qMax(0, y - radius);
+            const int y1 = qMin(outH - 1, y + radius);
+            for (int dy = y0; dy <= y1; ++dy) {
+                maxVal = qMax(maxVal, hMax[dy * outW + x]);
+            }
+            dilated[y * outW + x] = maxVal;
+        }
+    }
+
+    // Create result image with dilated alpha
+    QImage result(outW, outH, QImage::Format_ARGB32);
+    result.fill(Qt::transparent);
+    for (int y = 0; y < outH; ++y) {
+        QRgb *scanLine = reinterpret_cast<QRgb *>(result.scanLine(y));
+        for (int x = 0; x < outW; ++x) {
+            const uchar a = dilated[y * outW + x];
+            if (a > 0) {
+                scanLine[x] = qRgba(255, 255, 255, a);
+            }
+        }
+    }
+
+    return result;
 }
 
 QPsdImageItem::QPsdImageItem(const QModelIndex &index, const QPsdImageLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
@@ -221,6 +285,39 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         }
     }
 
+    // Border/stroke effect (FrFX)
+    const auto *border = layer->border();
+    if (border && border->isEnable()) {
+        const int strokeSize = border->size();
+        const QColor strokeColor = border->color();
+        const qreal strokeOpacity = border->opacity();
+        const auto position = border->position();
+
+        if (position == QPsdBorder::Outer || position == QPsdBorder::Center) {
+            const int effectiveSize = (position == QPsdBorder::Center) ? (strokeSize + 1) / 2 : strokeSize;
+            QImage dilated = dilateAlpha(image, effectiveSize);
+
+            // Fill dilated alpha with stroke color
+            for (int y = 0; y < dilated.height(); ++y) {
+                QRgb *scanLine = reinterpret_cast<QRgb *>(dilated.scanLine(y));
+                for (int x = 0; x < dilated.width(); ++x) {
+                    const int a = qAlpha(scanLine[x]);
+                    if (a > 0) {
+                        scanLine[x] = qRgba(strokeColor.red(), strokeColor.green(), strokeColor.blue(), a);
+                    }
+                }
+            }
+
+            // Draw dilated shape behind the layer image
+            // The original image drawn on top will naturally cover the interior,
+            // leaving only the outer stroke band visible
+            painter->save();
+            painter->setOpacity(layer->opacity() * strokeOpacity);
+            painter->drawImage(r.topLeft() - QPoint(effectiveSize, effectiveSize), dilated);
+            painter->restore();
+        }
+    }
+
     // Second pass: Apply other effects to the image
     for (const auto &effect : effects) {
         if (effect.canConvert<QPsdSofiEffect>() && !effect.canConvert<QPsdOglwEffect>()) {
@@ -249,6 +346,88 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     painter->setOpacity(layer->opacity() * layer->fillOpacity());
     // Finally, draw the layer itself
     painter->drawImage(r, image);
+
+    // Border/stroke effect (FrFX) - inner strokes go on top of the layer
+    if (border && border->isEnable() && border->position() == QPsdBorder::Inner) {
+        const int strokeSize = border->size();
+        const QColor strokeColor = border->color();
+        const qreal strokeOpacity = border->opacity();
+
+        // Dilate the image, then subtract the dilated version from the original
+        // to find boundary pixels, then restrict to original alpha
+        QImage dilated = dilateAlpha(image, strokeSize);
+
+        // Fill dilated with stroke color
+        for (int y = 0; y < dilated.height(); ++y) {
+            QRgb *scanLine = reinterpret_cast<QRgb *>(dilated.scanLine(y));
+            for (int x = 0; x < dilated.width(); ++x) {
+                const int a = qAlpha(scanLine[x]);
+                if (a > 0) {
+                    scanLine[x] = qRgba(strokeColor.red(), strokeColor.green(), strokeColor.blue(), a);
+                }
+            }
+        }
+
+        // Create stroke mask: original alpha minus eroded alpha
+        // Eroding = inverting alpha, dilating, inverting back
+        // Simpler: create a stroke image by XOR-ing dilated with original
+        QImage strokeImage(image.size(), QImage::Format_ARGB32);
+        strokeImage.fill(Qt::transparent);
+        {
+            QPainter sp(&strokeImage);
+            // Fill with stroke color using original alpha
+            sp.drawImage(0, 0, image);
+            sp.setCompositionMode(QPainter::CompositionMode_SourceIn);
+            sp.fillRect(strokeImage.rect(), strokeColor);
+            sp.end();
+        }
+
+        // Erase the interior (pixels that are far from the boundary)
+        // We need to erode the alpha mask by strokeSize pixels
+        // Erosion = complement of dilation of complement
+        QImage eroded(image.size(), QImage::Format_ARGB32);
+        eroded.fill(Qt::transparent);
+        {
+            // Create inverted alpha
+            QImage invAlpha(image.size(), QImage::Format_ARGB32);
+            invAlpha.fill(Qt::transparent);
+            QImage srcImg = image.convertToFormat(QImage::Format_ARGB32);
+            for (int y = 0; y < srcImg.height(); ++y) {
+                const QRgb *srcLine = reinterpret_cast<const QRgb *>(srcImg.constScanLine(y));
+                QRgb *dstLine = reinterpret_cast<QRgb *>(invAlpha.scanLine(y));
+                for (int x = 0; x < srcImg.width(); ++x) {
+                    dstLine[x] = qRgba(255, 255, 255, 255 - qAlpha(srcLine[x]));
+                }
+            }
+
+            // Dilate the inverted alpha
+            QImage dilatedInv = dilateAlpha(invAlpha, strokeSize);
+
+            // Invert back to get eroded alpha, extract the center region
+            for (int y = 0; y < image.height(); ++y) {
+                QRgb *erodedLine = reinterpret_cast<QRgb *>(eroded.scanLine(y));
+                const QRgb *dilInvLine = reinterpret_cast<const QRgb *>(dilatedInv.constScanLine(y + strokeSize));
+                for (int x = 0; x < image.width(); ++x) {
+                    const int a = 255 - qAlpha(dilInvLine[x + strokeSize]);
+                    erodedLine[x] = qRgba(255, 255, 255, qMax(0, a));
+                }
+            }
+        }
+
+        // Stroke region = original alpha - eroded alpha
+        // Remove the eroded interior from the stroke
+        {
+            QPainter sp(&strokeImage);
+            sp.setCompositionMode(QPainter::CompositionMode_DestinationOut);
+            sp.drawImage(0, 0, eroded);
+            sp.end();
+        }
+
+        painter->save();
+        painter->setOpacity(layer->opacity() * strokeOpacity);
+        painter->drawImage(r, strokeImage);
+        painter->restore();
+    }
 
     const auto *gradient = layer->gradient();
     if (gradient) {
