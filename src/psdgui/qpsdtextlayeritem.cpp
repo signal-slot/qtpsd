@@ -23,6 +23,7 @@ class QPsdTextLayerItem::Private
 public:
     QList<Run> runs;
     QRectF bounds;
+    QRectF textFrame;
     TextType textType;
     QPointF textOrigin;  // Text baseline anchor (tx, ty from transform)
 };
@@ -204,6 +205,25 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto shapeType = child.value("ShapeType"_L1).toInteger();
 
     d->textType = shapeType == 1 ? TextType::ParagraphText : TextType::PointText;
+
+    // Parse text frame from BoxBounds for ParagraphText
+    if (d->textType == TextType::ParagraphText) {
+        const auto cookie = child.value("Cookie"_L1).toMap();
+        const auto photoshop = cookie.value("Photoshop"_L1).toMap();
+        const auto boxBounds = photoshop.value("BoxBounds"_L1).toArray();
+        if (boxBounds.size() == 4) {
+            const auto left = boxBounds.at(0).toDouble();
+            const auto top = boxBounds.at(1).toDouble();
+            const auto right = boxBounds.at(2).toDouble();
+            const auto bottom = boxBounds.at(3).toDouble();
+            // Transform from local to document coordinates using the TySh transform
+            const auto docLeft = transform.map(QPointF(left, top)).x();
+            const auto docTop = transform.map(QPointF(left, top)).y();
+            const auto docRight = transform.map(QPointF(right, bottom)).x();
+            const auto docBottom = transform.map(QPointF(right, bottom)).y();
+            d->textFrame = QRectF(docLeft, docTop, docRight - docLeft, docBottom - docTop);
+        }
+    }
 }
 
 QPsdTextLayerItem::QPsdTextLayerItem()
@@ -228,6 +248,10 @@ QPsdTextLayerItem::TextType QPsdTextLayerItem::textType() const {
 
 QPointF QPsdTextLayerItem::textOrigin() const {
     return d->textOrigin;
+}
+
+QRectF QPsdTextLayerItem::textFrame() const {
+    return d->textFrame;
 }
 
 void QPsdTextLayerItem::setCurrentPsdPath(const QString &path)

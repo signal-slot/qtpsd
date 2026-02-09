@@ -39,6 +39,11 @@ public:
     // For point text, this is the baseline anchor position
     QPointF textOrigin() const;
 
+    // Returns the text frame rectangle in document coordinates
+    // For ParagraphText, this is the box that defines wrapping area
+    // For PointText, returns an empty rect
+    QRectF textFrame() const;
+
     // Set the current PSD path context for font resolution (thread-local)
     static void setCurrentPsdPath(const QString &path);
     static QString currentPsdPath();
