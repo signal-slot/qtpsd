@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="240" scrollbar_mode="off" style_pad_all="0" width="320" x="0" y="0">
+    <lv_obj height="240" style_bg_color="0x8fc5f3" style_bg_opa="255" width="320" x="0" y="0"/>
+    <lv_image height="96" src="0f4b3809aab3e0478f19718ca7dcf081ab0a2f88672b2fd7b1371a355949f916" style_opa="94" width="134" x="64" y="74"/>
+  </view>
+</component>

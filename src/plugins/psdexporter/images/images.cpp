@@ -51,6 +51,7 @@ bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, c
                         QImage qimage = imageItem->linkedImage();
                         if (!qimage.isNull()) {
                             qimage = qimage.scaled(item->rect().size(), Qt::KeepAspectRatio);
+                            qimage = imageItem->applyGradient(qimage);
                             if (!qimage.save(directory->filePath(linkedFile.name))) {
                                 // Write-unsupported format (e.g. PDF) -> PNG fallback
                                 const QString name = item->name() + ".png"_L1;
@@ -59,19 +60,30 @@ bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, c
                         } else {
                             // linkedImage() failed -> baked raster + PNG
                             QImage fallback = item->image().scaled(item->rect().size(), Qt::KeepAspectRatio);
+                            fallback = imageItem->applyGradient(fallback);
                             fallback.save(directory->filePath(item->name() + ".png"_L1));
                         }
                     } else {
                         // No scaling -> write raw linked file data directly
-                        QFile f(directory->filePath(linkedFile.name));
-                        if (f.open(QIODevice::WriteOnly))
-                            f.write(linkedFile.data);
+                        if (imageItem->gradient()) {
+                            // Has gradient -> must rasterize with gradient applied
+                            QImage qimage = imageItem->linkedImage();
+                            if (qimage.isNull())
+                                qimage = item->image();
+                            qimage = imageItem->applyGradient(qimage);
+                            qimage.save(directory->filePath(item->name() + ".png"_L1));
+                        } else {
+                            QFile f(directory->filePath(linkedFile.name));
+                            if (f.open(QIODevice::WriteOnly))
+                                f.write(linkedFile.data);
+                        }
                     }
                 } else {
                     // No linked data -> baked raster + PNG
                     QImage image = item->image();
                     if (imageScaling)
                         image = image.scaled(item->rect().size(), Qt::KeepAspectRatio);
+                    image = imageItem->applyGradient(image);
                     image.save(directory->filePath(item->name() + ".png"_L1));
                 }
                 break; }

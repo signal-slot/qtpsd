@@ -104,6 +104,21 @@ bool QPsdExporterJsonPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
         object.insert("visible", hint.visible);
         object.insert("opacity", item->opacity());
         object.insert("fillOpacity", item->fillOpacity());
+        const auto *g = item->gradient();
+        if (g) {
+            QJsonObject gradientObj;
+            gradientObj.insert("type", g->type() == QGradient::LinearGradient ? "Linear" : "Radial");
+            gradientObj.insert("opacity", item->gradientOpacity());
+            QJsonArray stops;
+            for (const auto &stop : g->stops()) {
+                stops.append(QJsonObject{
+                    {"position", stop.first},
+                    {"color", stop.second.name(QColor::HexArgb)}
+                });
+            }
+            gradientObj.insert("stops", stops);
+            object.insert("gradient", gradientObj);
+        }
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder:
             break;

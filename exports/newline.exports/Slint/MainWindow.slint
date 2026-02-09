@@ -1,0 +1,108 @@
+export component MainWindow inherits Window {
+    height: 240px;
+    title: "";
+    width: 320px;
+    x: 0px;
+    y: 0px;
+    Rectangle {
+        color: #012401;
+        height: 240px;
+        width: 320px;
+        x: 0px;
+        y: 0px;
+    }
+    Text {
+        color: #eac3c3;
+        font-family: "Source Han Sans";
+        font-size: 50px;
+        horizontal-alignment: center;
+        text: "";
+        x: 0px;
+        y: 0px;
+    }
+    Text {
+        color: #eac3c3;
+        font-family: "Source Han Sans";
+        font-size: 30px;
+        height: 63px;
+        horizontal-alignment: center;
+        text: "文字列中に\n改行";
+        width: 160px;
+        x: 2px;
+        y: 10px;
+    }
+    Rectangle {
+        height: 63px;
+        width: 144px;
+        x: 169px;
+        y: 10px;
+        VerticalLayout {
+            padding: 0;
+            HorizontalLayout {
+                padding: 0;
+                spacing: 0;
+                Text {
+                    color: #eac3c3;
+                    font-family: "Koz Go Pr6N";
+                    font-size: 30px;
+                    horizontal-alignment: center;
+                    text: "文字列";
+                }
+                Text {
+                    color: #eac3c3;
+                    font-family: "Koz Go Pr6N";
+                    font-size: 16px;
+                    horizontal-alignment: center;
+                    text: "中";
+                }
+                Text {
+                    color: #eac3c3;
+                    font-family: "Koz Go Pr6N";
+                    font-size: 30px;
+                    horizontal-alignment: center;
+                    text: "に";
+                }
+            }
+            HorizontalLayout {
+                padding: 0;
+                spacing: 0;
+                Text {
+                    color: #eac3c3;
+                    font-family: "Koz Go Pr6N";
+                    font-size: 30px;
+                    horizontal-alignment: center;
+                    text: "別";
+                }
+                Text {
+                    color: #eac3c3;
+                    font-family: "Source Han Sans";
+                    font-size: 18px;
+                    horizontal-alignment: center;
+                    text: "フォント";
+                }
+            }
+        }
+    }
+    Text {
+        color: #eac3c3;
+        font-family: "Koz Go Pr6N";
+        font-size: 30px;
+        height: 63px;
+        horizontal-alignment: center;
+        text: "Shift\n+改行";
+        width: 86px;
+        x: 25px;
+        y: 110px;
+    }
+    Text {
+        color: #eac3c3;
+        font-family: "Koz Go Pr6N";
+        font-size: 24px;
+        height: 116px;
+        horizontal-alignment: center;
+        text: "段落テキストは折り返される";
+        width: 158px;
+        x: 160px;
+        y: 110px;
+    }
+}

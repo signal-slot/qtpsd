@@ -365,6 +365,7 @@ bool QPsdExporterLvglPlugin::outputImage(const QModelIndex &imageIndex, Element 
     if (!linkedFile.type.isEmpty()) {
         QImage qimage = image->linkedImage();
         if (!qimage.isNull()) {
+            qimage = image->applyGradient(qimage);
             QByteArray format = linkedFile.type.trimmed();
             name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData())), qimage, format.constData());
             done = !name.isEmpty();
@@ -372,6 +373,7 @@ bool QPsdExporterLvglPlugin::outputImage(const QModelIndex &imageIndex, Element 
     }
     if (!done) {
         QImage qimage = image->image();
+        qimage = image->applyGradient(qimage);
         name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
     }
 

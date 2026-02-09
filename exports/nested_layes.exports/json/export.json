@@ -1,0 +1,1027 @@
+{
+    "layers": [
+        {
+            "children": [
+                {
+                    "children": [
+                        {
+                            "fillOpacity": 1,
+                            "id": "21",
+                            "name": "Example1",
+                            "opacity": 1,
+                            "rect": {
+                                "height": 32,
+                                "width": 155,
+                                "x": 53,
+                                "y": 144
+                            },
+                            "runs": [
+                                {
+                                    "alignment": 132,
+                                    "color": "#000000",
+                                    "font": "Source Han Sans,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
+                                    "text": "Example1\n"
+                                }
+                            ],
+                            "type": "Text",
+                            "typeToolObjectSetting": {
+                                "textData": {
+                                    "engineDict": {
+                                        "AntiAlias": 4,
+                                        "Editor": {
+                                            "Text": "Example1\r"
+                                        },
+                                        "GridInfo": {
+                                            "AlignLineHeightToGridFlags": false,
+                                            "GridColor": {
+                                                "Type": 1,
+                                                "Values": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    1
+                                                ]
+                                            },
+                                            "GridIsOn": false,
+                                            "GridLeading": 22,
+                                            "GridLeadingFillColor": {
+                                                "Type": 1,
+                                                "Values": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    1
+                                                ]
+                                            },
+                                            "GridSize": 18,
+                                            "ShowGrid": false
+                                        },
+                                        "ParagraphRun": {
+                                            "DefaultRunData": {
+                                                "Adjustments": {
+                                                    "Axis": [
+                                                        1,
+                                                        0,
+                                                        1
+                                                    ],
+                                                    "XY": [
+                                                        0,
+                                                        0
+                                                    ]
+                                                },
+                                                "ParagraphSheet": {
+                                                    "DefaultStyleSheet": 0,
+                                                    "Properties": {
+                                                    }
+                                                }
+                                            },
+                                            "IsJoinable": 1,
+                                            "RunArray": [
+                                                {
+                                                    "Adjustments": {
+                                                        "Axis": [
+                                                            1,
+                                                            0,
+                                                            1
+                                                        ],
+                                                        "XY": [
+                                                            0,
+                                                            0
+                                                        ]
+                                                    },
+                                                    "ParagraphSheet": {
+                                                        "DefaultStyleSheet": 0,
+                                                        "Properties": {
+                                                            "AutoHyphenate": false,
+                                                            "AutoLeading": 1.75,
+                                                            "Burasagari": false,
+                                                            "ConsecutiveHyphens": 8,
+                                                            "EndIndent": 0,
+                                                            "EveryLineComposer": false,
+                                                            "FirstLineIndent": 0,
+                                                            "GlyphSpacing": [
+                                                                1,
+                                                                1,
+                                                                1
+                                                            ],
+                                                            "Hanging": false,
+                                                            "HyphenatedWordSize": 6,
+                                                            "Justification": 2,
+                                                            "KinsokuOrder": 0,
+                                                            "LeadingType": 1,
+                                                            "LetterSpacing": [
+                                                                0,
+                                                                0,
+                                                                0
+                                                            ],
+                                                            "PostHyphen": 2,
+                                                            "PreHyphen": 2,
+                                                            "SpaceAfter": 0,
+                                                            "SpaceBefore": 0,
+                                                            "StartIndent": 0,
+                                                            "WordSpacing": [
+                                                                0.8,
+                                                                1,
+                                                                1.33
+                                                            ],
+                                                            "Zone": 36
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "RunLengthArray": [
+                                                9
+                                            ]
+                                        },
+                                        "Rendered": {
+                                            "Shapes": {
+                                                "Children": [
+                                                    {
+                                                        "Cookie": {
+                                                            "Photoshop": {
+                                                                "Base": {
+                                                                    "ShapeType": 0,
+                                                                    "TransformPoint0": [
+                                                                        1,
+                                                                        0
+                                                                    ],
+                                                                    "TransformPoint1": [
+                                                                        0,
+                                                                        1
+                                                                    ],
+                                                                    "TransformPoint2": [
+                                                                        0,
+                                                                        0
+                                                                    ]
+                                                                },
+                                                                "PointBase": [
+                                                                    0,
+                                                                    0
+                                                                ],
+                                                                "ShapeType": 0
+                                                            }
+                                                        },
+                                                        "Lines": {
+                                                            "Children": [
+                                                            ],
+                                                            "WritingDirection": 0
+                                                        },
+                                                        "Procession": 0,
+                                                        "ShapeType": 0
+                                                    }
+                                                ],
+                                                "WritingDirection": 0
+                                            },
+                                            "Version": 1
+                                        },
+                                        "StyleRun": {
+                                            "DefaultRunData": {
+                                                "StyleSheet": {
+                                                    "StyleSheetData": {
+                                                    }
+                                                }
+                                            },
+                                            "IsJoinable": 2,
+                                            "RunArray": [
+                                                {
+                                                    "StyleSheet": {
+                                                        "StyleSheetData": {
+                                                            "AutoKerning": true,
+                                                            "Font": 0,
+                                                            "FontSize": 30,
+                                                            "HindiNumbers": false,
+                                                            "Kerning": 0,
+                                                            "StyleRunAlignment": 3,
+                                                            "Tracking": 100
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "RunLengthArray": [
+                                                9
+                                            ]
+                                        },
+                                        "UseFractionalGlyphWidths": true
+                                    }
+                                }
+                            },
+                            "visible": true
+                        },
+                        {
+                            "children": [
+                                {
+                                    "fillOpacity": 1,
+                                    "id": "19",
+                                    "name": "長方形 3",
+                                    "opacity": 1,
+                                    "path": [
+                                        {
+                                            "type": "MoveTo",
+                                            "x": 1,
+                                            "y": 0.9999980926513672
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 23.99999237060547,
+                                                "y": 0.9999980926513672
+                                            },
+                                            "c2": {
+                                                "x": 23.99999237060547,
+                                                "y": 0.9999980926513672
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 1,
+                                            "y": 0.9999980926513672
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 23.99999237060547,
+                                                "y": 13.000000953674316
+                                            },
+                                            "c2": {
+                                                "x": 23.99999237060547,
+                                                "y": 13.000000953674316
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 23.99999237060547,
+                                            "y": 0.9999980926513672
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 1,
+                                                "y": 13.000000953674316
+                                            },
+                                            "c2": {
+                                                "x": 1,
+                                                "y": 13.000000953674316
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 23.99999237060547,
+                                            "y": 13.000000953674316
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 1,
+                                                "y": 0.9999980926513672
+                                            },
+                                            "c2": {
+                                                "x": 1,
+                                                "y": 0.9999980926513672
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 1,
+                                            "y": 13.000000953674316
+                                        }
+                                    ],
+                                    "rect": {
+                                        "height": 14,
+                                        "width": 25,
+                                        "x": 179,
+                                        "y": 166
+                                    },
+                                    "type": "Shape",
+                                    "visible": true
+                                },
+                                {
+                                    "fillOpacity": 1,
+                                    "id": "18",
+                                    "name": "長方形 2",
+                                    "opacity": 1,
+                                    "path": [
+                                        {
+                                            "type": "MoveTo",
+                                            "x": 0.9999923706054688,
+                                            "y": 10.999995231628418
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 138,
+                                                "y": 10.999995231628418
+                                            },
+                                            "c2": {
+                                                "x": 138,
+                                                "y": 10.999995231628418
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 0.9999923706054688,
+                                            "y": 10.999995231628418
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 138,
+                                                "y": 1.000004768371582
+                                            },
+                                            "c2": {
+                                                "x": 138,
+                                                "y": 1.000004768371582
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 138,
+                                            "y": 10.999995231628418
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 0.9999923706054688,
+                                                "y": 1.000004768371582
+                                            },
+                                            "c2": {
+                                                "x": 0.9999923706054688,
+                                                "y": 1.000004768371582
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 138,
+                                            "y": 1.000004768371582
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 0.9999923706054688,
+                                                "y": 10.999995231628418
+                                            },
+                                            "c2": {
+                                                "x": 0.9999923706054688,
+                                                "y": 10.999995231628418
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 0.9999923706054688,
+                                            "y": 1.000004768371582
+                                        }
+                                    ],
+                                    "rect": {
+                                        "height": 12,
+                                        "width": 139,
+                                        "x": 72,
+                                        "y": 174
+                                    },
+                                    "type": "Shape",
+                                    "visible": true
+                                }
+                            ],
+                            "fillOpacity": 1,
+                            "id": "20",
+                            "name": "グループ 1b",
+                            "opacity": 1,
+                            "rect": {
+                                "height": 0,
+                                "width": 0,
+                                "x": 0,
+                                "y": 0
+                            },
+                            "visible": true
+                        },
+                        {
+                            "fillOpacity": 1,
+                            "id": "16",
+                            "name": "長方形 1",
+                            "opacity": 1,
+                            "path": [
+                                {
+                                    "type": "MoveTo",
+                                    "x": 21,
+                                    "y": 1
+                                },
+                                {
+                                    "c1": {
+                                        "x": 161,
+                                        "y": 1
+                                    },
+                                    "c2": {
+                                        "x": 161,
+                                        "y": 1
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 21,
+                                    "y": 1
+                                },
+                                {
+                                    "c1": {
+                                        "x": 181,
+                                        "y": 9.954300880432129
+                                    },
+                                    "c2": {
+                                        "x": 181,
+                                        "y": 20.999995231628418
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 172.04568481445312,
+                                    "y": 1
+                                },
+                                {
+                                    "c1": {
+                                        "x": 181,
+                                        "y": 31
+                                    },
+                                    "c2": {
+                                        "x": 181,
+                                        "y": 31
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 181,
+                                    "y": 20.999995231628418
+                                },
+                                {
+                                    "c1": {
+                                        "x": 172.04568481445312,
+                                        "y": 50.99999523162842
+                                    },
+                                    "c2": {
+                                        "x": 161,
+                                        "y": 50.99999523162842
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 181,
+                                    "y": 42.04569435119629
+                                },
+                                {
+                                    "c1": {
+                                        "x": 21,
+                                        "y": 50.99999523162842
+                                    },
+                                    "c2": {
+                                        "x": 21,
+                                        "y": 50.99999523162842
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 161,
+                                    "y": 50.99999523162842
+                                },
+                                {
+                                    "c1": {
+                                        "x": 1,
+                                        "y": 42.04569435119629
+                                    },
+                                    "c2": {
+                                        "x": 1,
+                                        "y": 31
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 9.954315185546875,
+                                    "y": 50.99999523162842
+                                },
+                                {
+                                    "c1": {
+                                        "x": 1,
+                                        "y": 20.999995231628418
+                                    },
+                                    "c2": {
+                                        "x": 1,
+                                        "y": 20.999995231628418
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 1,
+                                    "y": 31
+                                },
+                                {
+                                    "c1": {
+                                        "x": 9.954315185546875,
+                                        "y": 1
+                                    },
+                                    "c2": {
+                                        "x": 21,
+                                        "y": 1
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 1,
+                                    "y": 9.954300880432129
+                                }
+                            ],
+                            "rect": {
+                                "height": 52,
+                                "width": 182,
+                                "x": 39,
+                                "y": 134
+                            },
+                            "type": "Shape",
+                            "visible": true
+                        }
+                    ],
+                    "fillOpacity": 1,
+                    "id": "22",
+                    "name": "グループ 2b",
+                    "opacity": 1,
+                    "rect": {
+                        "height": 0,
+                        "width": 0,
+                        "x": 0,
+                        "y": 0
+                    },
+                    "visible": true
+                },
+                {
+                    "children": [
+                        {
+                            "fillOpacity": 1,
+                            "id": "5",
+                            "name": "Example1",
+                            "opacity": 1,
+                            "rect": {
+                                "height": 32,
+                                "width": 155,
+                                "x": 53,
+                                "y": 64
+                            },
+                            "runs": [
+                                {
+                                    "alignment": 132,
+                                    "color": "#000000",
+                                    "font": "Source Han Sans,30,-1,5,400,0,0,0,0,0,0,0,0,0,0,1,Medium",
+                                    "text": "Example1\n"
+                                }
+                            ],
+                            "type": "Text",
+                            "typeToolObjectSetting": {
+                                "textData": {
+                                    "engineDict": {
+                                        "AntiAlias": 4,
+                                        "Editor": {
+                                            "Text": "Example1\r"
+                                        },
+                                        "GridInfo": {
+                                            "AlignLineHeightToGridFlags": false,
+                                            "GridColor": {
+                                                "Type": 1,
+                                                "Values": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    1
+                                                ]
+                                            },
+                                            "GridIsOn": false,
+                                            "GridLeading": 22,
+                                            "GridLeadingFillColor": {
+                                                "Type": 1,
+                                                "Values": [
+                                                    0,
+                                                    0,
+                                                    0,
+                                                    1
+                                                ]
+                                            },
+                                            "GridSize": 18,
+                                            "ShowGrid": false
+                                        },
+                                        "ParagraphRun": {
+                                            "DefaultRunData": {
+                                                "Adjustments": {
+                                                    "Axis": [
+                                                        1,
+                                                        0,
+                                                        1
+                                                    ],
+                                                    "XY": [
+                                                        0,
+                                                        0
+                                                    ]
+                                                },
+                                                "ParagraphSheet": {
+                                                    "DefaultStyleSheet": 0,
+                                                    "Properties": {
+                                                    }
+                                                }
+                                            },
+                                            "IsJoinable": 1,
+                                            "RunArray": [
+                                                {
+                                                    "Adjustments": {
+                                                        "Axis": [
+                                                            1,
+                                                            0,
+                                                            1
+                                                        ],
+                                                        "XY": [
+                                                            0,
+                                                            0
+                                                        ]
+                                                    },
+                                                    "ParagraphSheet": {
+                                                        "DefaultStyleSheet": 0,
+                                                        "Properties": {
+                                                            "AutoHyphenate": false,
+                                                            "AutoLeading": 1.75,
+                                                            "Burasagari": false,
+                                                            "ConsecutiveHyphens": 8,
+                                                            "EndIndent": 0,
+                                                            "EveryLineComposer": false,
+                                                            "FirstLineIndent": 0,
+                                                            "GlyphSpacing": [
+                                                                1,
+                                                                1,
+                                                                1
+                                                            ],
+                                                            "Hanging": false,
+                                                            "HyphenatedWordSize": 6,
+                                                            "Justification": 2,
+                                                            "KinsokuOrder": 0,
+                                                            "LeadingType": 1,
+                                                            "LetterSpacing": [
+                                                                0,
+                                                                0,
+                                                                0
+                                                            ],
+                                                            "PostHyphen": 2,
+                                                            "PreHyphen": 2,
+                                                            "SpaceAfter": 0,
+                                                            "SpaceBefore": 0,
+                                                            "StartIndent": 0,
+                                                            "WordSpacing": [
+                                                                0.8,
+                                                                1,
+                                                                1.33
+                                                            ],
+                                                            "Zone": 36
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "RunLengthArray": [
+                                                9
+                                            ]
+                                        },
+                                        "Rendered": {
+                                            "Shapes": {
+                                                "Children": [
+                                                    {
+                                                        "Cookie": {
+                                                            "Photoshop": {
+                                                                "Base": {
+                                                                    "ShapeType": 0,
+                                                                    "TransformPoint0": [
+                                                                        1,
+                                                                        0
+                                                                    ],
+                                                                    "TransformPoint1": [
+                                                                        0,
+                                                                        1
+                                                                    ],
+                                                                    "TransformPoint2": [
+                                                                        0,
+                                                                        0
+                                                                    ]
+                                                                },
+                                                                "PointBase": [
+                                                                    0,
+                                                                    0
+                                                                ],
+                                                                "ShapeType": 0
+                                                            }
+                                                        },
+                                                        "Lines": {
+                                                            "Children": [
+                                                            ],
+                                                            "WritingDirection": 0
+                                                        },
+                                                        "Procession": 0,
+                                                        "ShapeType": 0
+                                                    }
+                                                ],
+                                                "WritingDirection": 0
+                                            },
+                                            "Version": 1
+                                        },
+                                        "StyleRun": {
+                                            "DefaultRunData": {
+                                                "StyleSheet": {
+                                                    "StyleSheetData": {
+                                                    }
+                                                }
+                                            },
+                                            "IsJoinable": 2,
+                                            "RunArray": [
+                                                {
+                                                    "StyleSheet": {
+                                                        "StyleSheetData": {
+                                                            "AutoKerning": true,
+                                                            "Font": 0,
+                                                            "FontSize": 30,
+                                                            "HindiNumbers": false,
+                                                            "Kerning": 0,
+                                                            "StyleRunAlignment": 3,
+                                                            "Tracking": 100
+                                                        }
+                                                    }
+                                                }
+                                            ],
+                                            "RunLengthArray": [
+                                                9
+                                            ]
+                                        },
+                                        "UseFractionalGlyphWidths": true
+                                    }
+                                }
+                            },
+                            "visible": true
+                        },
+                        {
+                            "children": [
+                                {
+                                    "fillOpacity": 1,
+                                    "id": "12",
+                                    "name": "長方形 3",
+                                    "opacity": 1,
+                                    "path": [
+                                        {
+                                            "type": "MoveTo",
+                                            "x": 1,
+                                            "y": 0.9999933242797852
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 23.99999237060547,
+                                                "y": 0.9999933242797852
+                                            },
+                                            "c2": {
+                                                "x": 23.99999237060547,
+                                                "y": 0.9999933242797852
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 1,
+                                            "y": 0.9999933242797852
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 23.99999237060547,
+                                                "y": 12.999996185302734
+                                            },
+                                            "c2": {
+                                                "x": 23.99999237060547,
+                                                "y": 12.999996185302734
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 23.99999237060547,
+                                            "y": 0.9999933242797852
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 1,
+                                                "y": 12.999996185302734
+                                            },
+                                            "c2": {
+                                                "x": 1,
+                                                "y": 12.999996185302734
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 23.99999237060547,
+                                            "y": 12.999996185302734
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 1,
+                                                "y": 0.9999933242797852
+                                            },
+                                            "c2": {
+                                                "x": 1,
+                                                "y": 0.9999933242797852
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 1,
+                                            "y": 12.999996185302734
+                                        }
+                                    ],
+                                    "rect": {
+                                        "height": 14,
+                                        "width": 25,
+                                        "x": 79,
+                                        "y": 81
+                                    },
+                                    "type": "Shape",
+                                    "visible": true
+                                },
+                                {
+                                    "fillOpacity": 1,
+                                    "id": "9",
+                                    "name": "長方形 2",
+                                    "opacity": 1,
+                                    "path": [
+                                        {
+                                            "type": "MoveTo",
+                                            "x": 0.9999923706054688,
+                                            "y": 11.000004768371582
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 138,
+                                                "y": 11.000004768371582
+                                            },
+                                            "c2": {
+                                                "x": 138,
+                                                "y": 11.000004768371582
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 0.9999923706054688,
+                                            "y": 11.000004768371582
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 138,
+                                                "y": 1
+                                            },
+                                            "c2": {
+                                                "x": 138,
+                                                "y": 1
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 138,
+                                            "y": 11.000004768371582
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 0.9999923706054688,
+                                                "y": 1
+                                            },
+                                            "c2": {
+                                                "x": 0.9999923706054688,
+                                                "y": 1
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 138,
+                                            "y": 1
+                                        },
+                                        {
+                                            "c1": {
+                                                "x": 0.9999923706054688,
+                                                "y": 11.000004768371582
+                                            },
+                                            "c2": {
+                                                "x": 0.9999923706054688,
+                                                "y": 11.000004768371582
+                                            },
+                                            "type": "CurveTo",
+                                            "x": 0.9999923706054688,
+                                            "y": 1
+                                        }
+                                    ],
+                                    "rect": {
+                                        "height": 13,
+                                        "width": 139,
+                                        "x": 72,
+                                        "y": 89
+                                    },
+                                    "type": "Shape",
+                                    "visible": true
+                                }
+                            ],
+                            "fillOpacity": 1,
+                            "id": "10",
+                            "name": "グループ 1a",
+                            "opacity": 1,
+                            "rect": {
+                                "height": 0,
+                                "width": 0,
+                                "x": 0,
+                                "y": 0
+                            },
+                            "visible": true
+                        },
+                        {
+                            "fillOpacity": 1,
+                            "id": "8",
+                            "name": "長方形 1",
+                            "opacity": 1,
+                            "path": [
+                                {
+                                    "type": "MoveTo",
+                                    "x": 21,
+                                    "y": 0.999995231628418
+                                },
+                                {
+                                    "c1": {
+                                        "x": 161,
+                                        "y": 0.999995231628418
+                                    },
+                                    "c2": {
+                                        "x": 161,
+                                        "y": 0.999995231628418
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 21,
+                                    "y": 0.999995231628418
+                                },
+                                {
+                                    "c1": {
+                                        "x": 181,
+                                        "y": 9.954310417175293
+                                    },
+                                    "c2": {
+                                        "x": 181,
+                                        "y": 21.000004768371582
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 172.04568481445312,
+                                    "y": 0.999995231628418
+                                },
+                                {
+                                    "c1": {
+                                        "x": 181,
+                                        "y": 30.999995231628418
+                                    },
+                                    "c2": {
+                                        "x": 181,
+                                        "y": 30.999995231628418
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 181,
+                                    "y": 21.000004768371582
+                                },
+                                {
+                                    "c1": {
+                                        "x": 172.04568481445312,
+                                        "y": 51.00000476837158
+                                    },
+                                    "c2": {
+                                        "x": 161,
+                                        "y": 51.00000476837158
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 181,
+                                    "y": 42.04568958282471
+                                },
+                                {
+                                    "c1": {
+                                        "x": 21,
+                                        "y": 51.00000476837158
+                                    },
+                                    "c2": {
+                                        "x": 21,
+                                        "y": 51.00000476837158
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 161,
+                                    "y": 51.00000476837158
+                                },
+                                {
+                                    "c1": {
+                                        "x": 1,
+                                        "y": 42.04568958282471
+                                    },
+                                    "c2": {
+                                        "x": 1,
+                                        "y": 30.999995231628418
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 9.954315185546875,
+                                    "y": 51.00000476837158
+                                },
+                                {
+                                    "c1": {
+                                        "x": 1,
+                                        "y": 21.000004768371582
+                                    },
+                                    "c2": {
+                                        "x": 1,
+                                        "y": 21.000004768371582
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 1,
+                                    "y": 30.999995231628418
+                                },
+                                {
+                                    "c1": {
+                                        "x": 9.954315185546875,
+                                        "y": 0.999995231628418
+                                    },
+                                    "c2": {
+                                        "x": 21,
+                                        "y": 0.999995231628418
+                                    },
+                                    "type": "CurveTo",
+                                    "x": 1,
+                                    "y": 9.954310417175293
+                                }
+                            ],
+                            "rect": {
+                                "height": 52,
+                                "width": 182,
+                                "x": 39,
+                                "y": 49
+                            },
+                            "type": "Shape",
+                            "visible": true
+                        }
+                    ],
+                    "fillOpacity": 1,
+                    "id": "13",
+                    "name": "グループ 2a",
+                    "opacity": 1,
+                    "rect": {
+                        "height": 0,
+                        "width": 0,
+                        "x": 0,
+                        "y": 0
+                    },
+                    "visible": true
+                }
+            ],
+            "fillOpacity": 1,
+            "id": "3",
+            "name": "アートボード 1",
+            "opacity": 1,
+            "rect": {
+                "height": 0,
+                "width": 0,
+                "x": 0,
+                "y": 0
+            },
+            "visible": true
+        }
+    ]
+}

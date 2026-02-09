@@ -10,6 +10,7 @@
 #include <QtCore/QCborMap>
 
 #include <QtGui/QLinearGradient>
+#include <QtGui/QPainter>
 
 #include <QtPsdCore/QPsdEffectsLayer>
 #include <QtPsdCore/QPsdEnum>
@@ -596,6 +597,30 @@ QPsdAbstractLayerItem::PathInfo QPsdAbstractLayerItem::parseShape(const QPsdVect
     }
 
     return ret;
+}
+
+QImage QPsdAbstractLayerItem::applyGradient(const QImage &image) const
+{
+    const auto *g = gradient();
+    if (!g || image.isNull())
+        return image;
+    QImage result = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+    QImage gradientImage(result.size(), QImage::Format_ARGB32_Premultiplied);
+    gradientImage.fill(Qt::transparent);
+    QPainter gp(&gradientImage);
+    gp.setPen(Qt::NoPen);
+    gp.setBrush(QBrush(*g));
+    gp.drawRect(gradientImage.rect());
+    if (result.hasAlphaChannel()) {
+        gp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+        gp.drawImage(0, 0, result);
+    }
+    gp.end();
+    QPainter p(&result);
+    p.setOpacity(d->gradientOpacity);
+    p.drawImage(0, 0, gradientImage);
+    p.end();
+    return result;
 }
 
 QVariantList QPsdAbstractLayerItem::effects() const

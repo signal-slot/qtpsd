@@ -622,6 +622,7 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
             if (needsFillOpacity) {
                 applyFillOpacity(qimage);
             }
+            qimage = image->applyGradient(qimage);
             name = sanitizeImageName(QFileInfo(linkedFile.name).baseName());
             done = saveImageAsset(name, qimage);
         }
@@ -634,6 +635,7 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
         if (needsFillOpacity) {
             applyFillOpacity(qimage);
         }
+        qimage = image->applyGradient(qimage);
         name = sanitizeImageName(image->name());
         saveImageAsset(name, qimage);
     }

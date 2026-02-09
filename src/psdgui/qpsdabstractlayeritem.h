@@ -64,6 +64,7 @@ public:
     };
     PathInfo vectorMask() const;
     QImage image() const;
+    QImage applyGradient(const QImage &image) const;
     QImage transparencyMask() const;
     QImage layerMask() const;
     QRect layerMaskRect() const;
