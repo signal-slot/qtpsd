@@ -46,6 +46,7 @@ public:
     qreal fillOpacity() const;
     QRect rect() const;
     QGradient *gradient() const;
+    qreal gradientOpacity() const;
     QCborMap dropShadow() const;
     QPsdBorder *border() const;
     QPsdPatternFill *patternFill() const;

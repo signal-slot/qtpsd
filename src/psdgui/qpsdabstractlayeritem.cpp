@@ -31,6 +31,7 @@ public:
     QRect rect;
     QSize documentSize;
     QScopedPointer<QGradient> gradient;
+    qreal gradientOpacity = 1.0;
     QCborMap dropShadow;
     QScopedPointer<QPsdBorder> border;
     QScopedPointer<QPsdPatternFill> patternFill;
@@ -159,6 +160,7 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
                 \
                     const auto opct = grfl.value("Opct").value<QPsdUnitFloat>();
                 Q_ASSERT(opct.unit() == QPsdUnitFloat::Percent);
+                d->gradientOpacity = opct.value() / 100.0;
 
                 const auto type = grfl.value("Type").value<QPsdEnum>();
                 Q_ASSERT(type.type() == "GrdT");
@@ -434,6 +436,11 @@ QRect QPsdAbstractLayerItem::rect() const
 QGradient *QPsdAbstractLayerItem::gradient() const
 {
     return d->gradient.data();
+}
+
+qreal QPsdAbstractLayerItem::gradientOpacity() const
+{
+    return d->gradientOpacity;
 }
 
 QCborMap QPsdAbstractLayerItem::dropShadow() const

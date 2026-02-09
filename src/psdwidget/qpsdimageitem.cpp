@@ -434,10 +434,25 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 
     const auto *gradient = layer->gradient();
     if (gradient) {
-        painter->setOpacity(0.71);
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(*gradient));
-        painter->drawRect(r);
+        painter->setOpacity(layer->opacity() * layer->gradientOpacity());
+        if (!image.isNull() && image.hasAlphaChannel()) {
+            // Clip gradient to the layer image's alpha channel
+            QImage gradientImage(image.size(), QImage::Format_ARGB32_Premultiplied);
+            gradientImage.fill(Qt::transparent);
+            QPainter gp(&gradientImage);
+            gp.setPen(Qt::NoPen);
+            gp.setBrush(QBrush(*gradient));
+            gp.drawRect(gradientImage.rect());
+            gp.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+            gp.drawImage(0, 0, image);
+            gp.end();
+            painter->drawImage(r.topLeft(), gradientImage);
+        } else {
+            // No alpha clipping available - draw gradient on full rect
+            painter->setPen(Qt::NoPen);
+            painter->setBrush(QBrush(*gradient));
+            painter->drawRect(r);
+        }
     }
 }
 
