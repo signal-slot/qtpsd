@@ -7,6 +7,8 @@
 
 #include <QtCore/QJsonDocument>
 
+#include <QtPsdGui/QPsdBorder>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdExporterJsonPlugin : public QPsdExporterPlugin
@@ -146,6 +148,20 @@ bool QPsdExporterJsonPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
         default:
             break;
         }
+
+        const auto *border = item->border();
+        if (border && border->isEnable()) {
+            QJsonObject borderObject;
+            borderObject.insert("size", border->size());
+            borderObject.insert("color", border->color().name());
+            borderObject.insert("opacity", border->opacity());
+            borderObject.insert("position", border->position() == QPsdBorder::Outer ? "outer"
+                               : border->position() == QPsdBorder::Inner ? "inner" : "center");
+            borderObject.insert("fillType", border->fillType() == QPsdBorder::Solid ? "solid"
+                               : border->fillType() == QPsdBorder::Gradient ? "gradient" : "pattern");
+            object.insert("border", borderObject);
+        }
+
         key = item->name();
         
         QJsonArray children;

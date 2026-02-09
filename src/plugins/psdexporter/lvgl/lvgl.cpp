@@ -10,6 +10,8 @@
 #include <QtGui/QBrush>
 #include <QtGui/QPen>
 
+#include <QtPsdGui/QPsdBorder>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdExporterLvglPlugin : public QPsdExporterPlugin
@@ -381,6 +383,15 @@ bool QPsdExporterLvglPlugin::outputImage(const QModelIndex &imageIndex, Element 
     if (!outputBase(imageIndex, element))
         return false;
     element->attributes.insert("src", imageName);
+
+    const auto *border = image->border();
+    if (border && border->isEnable()) {
+        QColor color = border->color();
+        element->attributes.insert("style_border_width", QString::number(border->size()));
+        element->attributes.insert("style_border_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+        element->attributes.insert("style_border_opa", QString::number(qRound(border->opacity() * 255)));
+    }
+
     return true;
 }
 

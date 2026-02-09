@@ -13,6 +13,8 @@
 #include <QtGui/QBrush>
 #include <QtGui/QPen>
 
+#include <QtPsdGui/QPsdBorder>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdExporterSwiftUIPlugin : public QPsdExporterPlugin
@@ -589,7 +591,7 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
 
     // Check if we need to apply fillOpacity to image content
     const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty();
+    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
     const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
 
     auto applyFillOpacity = [fillOpacity](QImage &img) {
@@ -649,6 +651,14 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
         .arg(rect.width() * horizontalScale, 0, 'f', 1)
         .arg(rect.height() * verticalScale, 0, 'f', 1));
     element->modifiers.append(u".position(x: %1, y: %2)"_s.arg(centerX, 0, 'f', 1).arg(centerY, 0, 'f', 1));
+
+    const auto *border = image->border();
+    if (border && border->isEnable()) {
+        qreal strokeWidth = border->size() * unitScale;
+        element->modifiers.append(u".overlay(Rectangle().stroke(%1, lineWidth: %2))"_s
+            .arg(colorValue(border->color()))
+            .arg(strokeWidth, 0, 'f', 1));
+    }
 
     if (!outputBase(imageIndex, element, imports))
         return false;

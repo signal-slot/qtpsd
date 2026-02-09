@@ -12,6 +12,7 @@
 #include <QtGui/QPen>
 
 #include <QtPsdCore/QPsdSofiEffect>
+#include <QtPsdGui/QPsdBorder>
 
 QT_BEGIN_NAMESPACE
 
@@ -385,7 +386,7 @@ bool QPsdExporterReactNativePlugin::outputImage(const QModelIndex &imageIndex, E
 
     // Check if we need to apply fillOpacity to image content
     const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty();
+    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
     const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
 
     auto applyFillOpacity = [fillOpacity](QImage &img) {
@@ -437,6 +438,12 @@ bool QPsdExporterReactNativePlugin::outputImage(const QModelIndex &imageIndex, E
         return false;
     element->props.insert("source"_L1, imagePath(name));
     element->props.insert("resizeMode"_L1, "'contain'"_L1);
+
+    const auto *border = image->border();
+    if (border && border->isEnable()) {
+        element->styles.append({"borderWidth"_L1, qRound(border->size() * unitScale)});
+        element->styles.append({"borderColor"_L1, colorValue(border->color())});
+    }
 
     return true;
 }

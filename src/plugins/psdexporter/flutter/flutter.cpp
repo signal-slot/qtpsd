@@ -12,6 +12,7 @@
 #include <QtGui/QPen>
 
 #include <QtPsdCore/QPsdSofiEffect>
+#include <QtPsdGui/QPsdBorder>
 
 QT_BEGIN_NAMESPACE
 
@@ -767,7 +768,7 @@ bool QPsdExporterFlutterPlugin::outputImage(const QModelIndex &imageIndex, Eleme
 
     // Check if we need to apply fillOpacity to image content
     const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty();
+    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
     const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
 
     auto applyFillOpacity = [fillOpacity](QImage &img) {
@@ -818,6 +819,24 @@ bool QPsdExporterFlutterPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     element->noNamedParam = u"\"%1\""_s.arg(imagePath(name));
     outputRectProp(image->rect(), element);
     element->properties.insert("fit", "BoxFit.contain");
+
+    const auto *border = image->border();
+    if (border && border->isEnable()) {
+        Element containerElement;
+        containerElement.type = "Container";
+        outputRectProp(image->rect(), &containerElement);
+
+        Element decorationElement;
+        decorationElement.type = "BoxDecoration";
+        Element borderElement;
+        borderElement.type = "Border.all";
+        borderElement.properties.insert("width", border->size() * unitScale);
+        borderElement.properties.insert("color", colorValue(border->color()));
+        decorationElement.properties.insert("border", QVariant::fromValue(borderElement));
+        containerElement.properties.insert("decoration", QVariant::fromValue(decorationElement));
+        containerElement.properties.insert("child", QVariant::fromValue(*element));
+        *element = containerElement;
+    }
 
     return true;
 }

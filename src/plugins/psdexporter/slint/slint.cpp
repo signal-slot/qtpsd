@@ -9,6 +9,8 @@
 #include <QtGui/QBrush>
 #include <QtGui/QPen>
 
+#include <QtPsdGui/QPsdBorder>
+
 QT_BEGIN_NAMESPACE
 
 #define ARGF(x) arg(qRound(x))
@@ -745,7 +747,7 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
 
     // Check if we need to apply fillOpacity to image content
     const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty();
+    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
     const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
 
     auto applyFillOpacity = [fillOpacity](QImage &img) {
@@ -797,6 +799,22 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
         return false;
     element->properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
     element->properties.insert("image-fit", "contain");
+
+    const auto *border = image->border();
+    if (border && border->isEnable()) {
+        Element wrapper;
+        wrapper.type = "Rectangle";
+        if (!outputBase(imageIndex, &wrapper, imports))
+            return false;
+        wrapper.properties.insert("border-width", u"%1px"_s.ARGF(border->size() * unitScale));
+        wrapper.properties.insert("border-color", border->color().name());
+        wrapper.properties.insert("background", "transparent");
+        element->properties.remove("x");
+        element->properties.remove("y");
+        wrapper.children.append(*element);
+        *element = wrapper;
+    }
+
     return true;
 };
 
