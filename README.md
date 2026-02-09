@@ -1,21 +1,24 @@
 # PSD Parser Module for Qt 6
 
-This module provides comprehensive functionality for parsing, displaying, and exporting Adobe Photoshop PSD files. It includes a core parsing library, GUI components, and a standalone exporter application.
+A Qt 6 module for parsing, rendering, and exporting Adobe Photoshop PSD files. Provides a core parsing library, rendering components, and a plugin-based exporter with support for multiple UI frameworks.
 
 ## Features
 
-### Core Features
-- **Layer Parsing**: Extracts and organizes layers, including text, shapes, and image layers, in a tree structure
-- **Layer Metadata**: Access additional layer information, such as blending modes, opacity, and linking relationships
-- **Effects Support**: Handle layer effects including shadows, bevels, glows, and more
-- **Plugin Architecture**: Extensible system for handling additional layer information and effects
-- **Cross-Platform**: Fully compatible with any Qt 6-supported platform
+- **Layer Parsing**: Extracts layers (text, shapes, images, folders, adjustment layers) in a tree structure
+- **Effects Support**: Layer effects including shadows, bevels, glows, and more
+- **Color Modes**: Bitmap, Grayscale, Indexed, RGB, CMYK, Lab, Multichannel, and Duotone (8/16/32-bit depths)
+- **Rendering**: QGraphicsView-based rendering with 74% visual similarity to Photoshop ([similarity report](docs/similarity_report.md))
+- **Export**: Plugin-based export to Flutter, Qt Quick, Slint, SwiftUI, React Native, LVGL, images, JSON, and custom templates
+- **Plugin Architecture**: Extensible system for layer information, effects, descriptors, and exporters
 
-### Components
-- **PsdCore**: Core library for parsing and handling PSD files
-- **PsdGui**: Qt widgets for displaying PSD layer trees and content
-- **PsdExporter**: Standalone application and library for exporting PSD files
-- **Plugins**: Various plugins for handling additional layer information, effects, and descriptors
+## Modules
+
+| Module | Description |
+|--------|-------------|
+| **PsdCore** | Core library for parsing PSD file structure |
+| **PsdGui** | Rendering layer: converts parsed data to QImage, layer item hierarchy |
+| **PsdWidget** | QGraphicsView-based scene for PSD visualization |
+| **PsdExporter** | Export library with plugin infrastructure |
 
 ## Requirements
 
@@ -23,23 +26,11 @@ This module provides comprehensive functionality for parsing, displaying, and ex
 
 ## Installation
 
-### Clone the repository:
-
 ```console
 $ git clone https://github.com/signal-slot/qtpsd.git
 $ cd qtpsd
-```
-
-### Create a build directory and configure the project:
-
-```console
 $ mkdir build && cd build
 $ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/qt/project
-```
-
-### Build and install the module:
-
-```console
 $ cmake --build .
 $ cmake --install .
 ```
@@ -47,7 +38,8 @@ $ cmake --install .
 ## Applications
 
 ### PSD Exporter
-A GUI application for viewing and exporting PSD files is included. Build with:
+
+A GUI application for viewing and exporting PSD files:
 
 ```console
 $ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/qt/project -DQT_BUILD_EXAMPLES=ON
@@ -55,45 +47,34 @@ $ cmake --build .
 $ ./src/apps/psdexporter/psdexporter
 ```
 
-### Demo Application
-A simple demo application showing core functionality:
+### psd2png
+
+Command-line tool for rendering PSD files to PNG:
 
 ```console
-$ cmake .. -DCMAKE_INSTALL_PREFIX=/path/to/your/qt/project -DQT_BUILD_EXAMPLES=ON
-$ cmake --build .
-$ ./examples/psdcore/psdinfo/psdinfo
+$ ./examples/psdwidget/psd2png/psd2png input.psd -o output.png
+$ ./examples/psdwidget/psd2png/psd2png input.psd --image-data  # use baked image data
+$ ./examples/psdwidget/psd2png/psd2png input.psd --layers       # print layer info
+```
+
+### psdinfo
+
+Command-line utility to display PSD file metadata (dimensions, color mode, bit depth, channels):
+
+```console
+$ ./examples/psdcore/psdinfo/psdinfo input.psd
 ```
 
 ## Using QtPsd in Your Project
 
-### Link the modules to your Qt project:
-
 ```cmake
-find_package(Qt6 COMPONENTS PsdCore PsdGui PsdExporter REQUIRED)
+find_package(Qt6 COMPONENTS PsdCore PsdGui PsdWidget PsdExporter REQUIRED)
 target_link_libraries(your_app PRIVATE
     Qt::PsdCore
     Qt::PsdGui
+    Qt::PsdWidget
     Qt::PsdExporter
 )
-```
-
-### Basic Usage Example:
-
-```cpp
-#include <QtPsdCore>
-#include <QtPsdGui>
-
-// Parse a PSD file
-QPsdParser parser;
-if (parser.parse("input.psd")) {
-    // Access the layer tree
-    auto model = parser.layerTreeModel();
-    
-    // Display in a Qt widget
-    QPsdLayerTree view;
-    view.setModel(model);
-    view.show();
-}
 ```
 
 ## License
