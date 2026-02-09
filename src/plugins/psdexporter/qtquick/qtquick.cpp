@@ -740,7 +740,18 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             }
             if (shape->pen().style() != Qt::NoPen) {
                 qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &rectElement);
+                // QtQuick Rectangle border draws inside the rect bounds
+                switch (shape->strokeAlignment()) {
+                case QPsdShapeLayerItem::StrokeInside:
+                    // No rect adjustment needed - platform border is already inside
+                    break;
+                case QPsdShapeLayerItem::StrokeCenter:
+                    outputRect(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &rectElement);
+                    break;
+                case QPsdShapeLayerItem::StrokeOutside:
+                    outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &rectElement);
+                    break;
+                }
                 rectElement.properties.insert("border.width", dw);
                 rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
             }
@@ -926,7 +937,18 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         } else {
             if (shape->pen().style() != Qt::NoPen) {
                 qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &rectElement);
+                // QtQuick Rectangle border draws inside the rect bounds
+                switch (shape->strokeAlignment()) {
+                case QPsdShapeLayerItem::StrokeInside:
+                    // No rect adjustment needed - platform border is already inside
+                    break;
+                case QPsdShapeLayerItem::StrokeCenter:
+                    outputRect(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &rectElement);
+                    break;
+                case QPsdShapeLayerItem::StrokeOutside:
+                    outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &rectElement);
+                    break;
+                }
                 rectElement.properties.insert("border.width", dw);
                 rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
             }

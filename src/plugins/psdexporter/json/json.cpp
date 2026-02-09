@@ -156,6 +156,23 @@ bool QPsdExporterJsonPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
             object.insert("type", "Shape");
             const auto shape = dynamic_cast<const QPsdShapeLayerItem *>(item);
             object.insert("path", toJson(shape->pathInfo().path));
+            switch (shape->strokeAlignment()) {
+            case QPsdShapeLayerItem::StrokeInside:
+                object.insert("strokeAlignment", "inside");
+                break;
+            case QPsdShapeLayerItem::StrokeCenter:
+                object.insert("strokeAlignment", "center");
+                break;
+            case QPsdShapeLayerItem::StrokeOutside:
+                object.insert("strokeAlignment", "outside");
+                break;
+            }
+            if (shape->pen().style() != Qt::NoPen) {
+                QJsonObject penObject;
+                penObject.insert("color", shape->pen().color().name());
+                penObject.insert("width", shape->pen().width());
+                object.insert("pen", penObject);
+            }
             break; }
         case QPsdAbstractLayerItem::Image:
             object.insert("type", "Image");

@@ -295,7 +295,28 @@ bool QPsdExporterReactNativePlugin::outputShape(const QModelIndex &shapeIndex, E
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
         element->type = "View"_L1;
-        if (!outputBase(shapeIndex, element))
+
+        // Compute adjusted bounds for stroke alignment
+        // React Native borderWidth draws inside the element bounds
+        QRect rectBounds;
+        if (shape->pen().style() != Qt::NoPen) {
+            qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+            int roundedDw = qRound(dw);
+            switch (shape->strokeAlignment()) {
+            case QPsdShapeLayerItem::StrokeInside:
+                // No adjustment needed - platform border is already inside
+                break;
+            case QPsdShapeLayerItem::StrokeCenter: {
+                int halfDw = qRound(dw / 2);
+                rectBounds = shape->rect().adjusted(-halfDw, -halfDw, halfDw, halfDw);
+                break;
+            }
+            case QPsdShapeLayerItem::StrokeOutside:
+                rectBounds = shape->rect().adjusted(-roundedDw, -roundedDw, roundedDw, roundedDw);
+                break;
+            }
+        }
+        if (!outputBase(shapeIndex, element, rectBounds))
             return false;
 
         // Background color

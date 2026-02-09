@@ -511,9 +511,24 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         // Stroke
         if (shape->pen().style() != Qt::NoPen) {
             qreal strokeWidth = std::max(1.0, shape->pen().width() * unitScale);
-            element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
-                .arg(colorValue(shape->pen().color()))
-                .arg(strokeWidth, 0, 'f', 1));
+            switch (shape->strokeAlignment()) {
+            case QPsdShapeLayerItem::StrokeInside:
+                // SwiftUI InsettableShape has .strokeBorder which draws inside
+                element->modifiers.append(u".strokeBorder(%1, lineWidth: %2)"_s
+                    .arg(colorValue(shape->pen().color()))
+                    .arg(strokeWidth, 0, 'f', 1));
+                break;
+            case QPsdShapeLayerItem::StrokeCenter:
+                element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
+                    .arg(colorValue(shape->pen().color()))
+                    .arg(strokeWidth, 0, 'f', 1));
+                break;
+            case QPsdShapeLayerItem::StrokeOutside:
+                element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
+                    .arg(colorValue(shape->pen().color()))
+                    .arg(strokeWidth, 0, 'f', 1));
+                break;
+            }
         }
 
         element->modifiers.append(u".frame(width: %1, height: %2)"_s
@@ -541,9 +556,24 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         // Stroke
         if (shape->pen().style() != Qt::NoPen) {
             qreal strokeWidth = std::max(1.0, shape->pen().width() * unitScale);
-            element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
-                .arg(colorValue(shape->pen().color()))
-                .arg(strokeWidth, 0, 'f', 1));
+            switch (shape->strokeAlignment()) {
+            case QPsdShapeLayerItem::StrokeInside:
+                // SwiftUI InsettableShape has .strokeBorder which draws inside
+                element->modifiers.append(u".strokeBorder(%1, lineWidth: %2)"_s
+                    .arg(colorValue(shape->pen().color()))
+                    .arg(strokeWidth, 0, 'f', 1));
+                break;
+            case QPsdShapeLayerItem::StrokeCenter:
+                element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
+                    .arg(colorValue(shape->pen().color()))
+                    .arg(strokeWidth, 0, 'f', 1));
+                break;
+            case QPsdShapeLayerItem::StrokeOutside:
+                element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
+                    .arg(colorValue(shape->pen().color()))
+                    .arg(strokeWidth, 0, 'f', 1));
+                break;
+            }
         }
 
         element->modifiers.append(u".frame(width: %1, height: %2)"_s

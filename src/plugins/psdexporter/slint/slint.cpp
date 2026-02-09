@@ -650,7 +650,18 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
         } else {
             if (shape->pen().style() != Qt::NoPen) {
                 qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &element2);
+                // Slint Rectangle border draws inside the rect bounds
+                switch (shape->strokeAlignment()) {
+                case QPsdShapeLayerItem::StrokeInside:
+                    // No rect adjustment needed - platform border is already inside
+                    break;
+                case QPsdShapeLayerItem::StrokeCenter:
+                    outputRect(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &element2);
+                    break;
+                case QPsdShapeLayerItem::StrokeOutside:
+                    outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &element2);
+                    break;
+                }
                 element2.properties.insert("border-width", u"%1px"_s.ARGF(dw));
                 element2.properties.insert("border-color", shape->pen().color().name());
             }

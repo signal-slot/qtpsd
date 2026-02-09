@@ -652,7 +652,18 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         decorationElement.type = "BoxDecoration"_L1;
         if (shape->pen().style() != Qt::NoPen) {
             qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-            outputRectProp(path.rect.adjusted(-dw, -dw, dw, dw), &containerElement);
+            // Flutter BoxDecoration Border draws inside the container bounds
+            switch (shape->strokeAlignment()) {
+            case QPsdShapeLayerItem::StrokeInside:
+                // No rect adjustment needed - platform border is already inside
+                break;
+            case QPsdShapeLayerItem::StrokeCenter:
+                outputRectProp(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &containerElement);
+                break;
+            case QPsdShapeLayerItem::StrokeOutside:
+                outputRectProp(path.rect.adjusted(-dw, -dw, dw, dw), &containerElement);
+                break;
+            }
             Element borderElement;
             borderElement.type = "Border.all"_L1;
             borderElement.properties.insert("width"_L1, dw);
