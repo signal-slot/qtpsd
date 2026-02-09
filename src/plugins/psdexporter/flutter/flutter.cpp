@@ -9,6 +9,7 @@
 #include <QtCore/QQueue>
 
 #include <QtGui/QBrush>
+#include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
 
 #include <QtPsdCore/QPsdSofiEffect>
@@ -388,7 +389,18 @@ bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QModelIndex &in
     if (item->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
         rect = item->bounds().toRect();
     } else {
-        rect = item->bounds().toRect();
+        const auto runs = item->runs();
+        if (!runs.isEmpty()) {
+            QFont metricsFont = runs.first().font;
+            metricsFont.setPixelSize(qRound(runs.first().font.pointSizeF()));
+            QFontMetrics fm(metricsFont);
+            QRectF adjustedBounds = item->bounds();
+            adjustedBounds.setY(item->textOrigin().y() - fm.ascent());
+            adjustedBounds.setHeight(fm.height());
+            rect = adjustedBounds.toRect();
+        } else {
+            rect = item->bounds().toRect();
+        }
     }
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
         auto parentIndex = indexMergeMap.key(index);

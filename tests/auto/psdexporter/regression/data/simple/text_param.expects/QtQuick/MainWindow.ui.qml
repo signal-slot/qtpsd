@@ -50,7 +50,7 @@ Item {
             color: "#000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
-            height: 54
+            height: 96
             horizontalAlignment: Text.AlignHCenter
             text: "shooting"
             width: 239

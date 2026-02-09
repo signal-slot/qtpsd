@@ -9,6 +9,7 @@
 #include <QtCore/QQueue>
 
 #include <QtGui/QBrush>
+#include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
 
 #include <QtPsdCore/qpsdblend.h>
@@ -438,7 +439,13 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             rect = text->bounds().toRect();
             element->properties.insert("wrapMode"_L1, "Text.Wrap"_L1);
         } else {
-            rect = text->bounds().toRect();
+            QFont metricsFont = run.font;
+            metricsFont.setPixelSize(qRound(run.font.pointSizeF()));
+            QFontMetrics fm(metricsFont);
+            QRectF adjustedBounds = text->bounds();
+            adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
+            adjustedBounds.setHeight(fm.height());
+            rect = adjustedBounds.toRect();
         }
     
         if (!outputBase(textIndex, element, imports, rect))
@@ -483,7 +490,19 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         }
     } else {
         element->type = "Item";
-        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+        QRect multiRect;
+        if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
+            multiRect = text->bounds().toRect();
+        } else {
+            QFont metricsFont = runs.first().font;
+            metricsFont.setPixelSize(qRound(runs.first().font.pointSizeF()));
+            QFontMetrics fm(metricsFont);
+            QRectF adjustedBounds = text->bounds();
+            adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
+            adjustedBounds.setHeight(fm.height());
+            multiRect = adjustedBounds.toRect();
+        }
+        if (!outputBase(textIndex, element, imports, multiRect))
             return false;
 
         Element column;

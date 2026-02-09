@@ -12,6 +12,7 @@
 #include <QtCore/QJsonArray>
 
 #include <QtGui/QBrush>
+#include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
 
 #include <QtPsdGui/QPsdBorder>
@@ -262,7 +263,14 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
     if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
         rect = text->bounds().toRect();
     } else {
-        rect = text->bounds().toRect();
+        const auto &firstRun = runs.first();
+        QFont metricsFont = firstRun.font;
+        metricsFont.setPixelSize(qRound(firstRun.font.pointSizeF()));
+        QFontMetrics fm(metricsFont);
+        QRectF adjustedBounds = text->bounds();
+        adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
+        adjustedBounds.setHeight(fm.height());
+        rect = adjustedBounds.toRect();
     }
 
     if (runs.size() == 1) {

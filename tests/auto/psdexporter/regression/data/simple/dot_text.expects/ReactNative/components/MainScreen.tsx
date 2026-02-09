@@ -29,7 +29,7 @@ const styles = StyleSheet.create({
     left: 125,
     top: 80,
     width: 9,
-    height: 33,
+    height: 58,
     fontFamily: 'Source Han Sans',
     fontSize: 30,
     color: '#000000',

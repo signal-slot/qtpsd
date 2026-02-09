@@ -16,7 +16,7 @@ Item {
             color: "#000000"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 33
+            height: 58
             horizontalAlignment: Text.AlignHCenter
             text: "."
             width: 9

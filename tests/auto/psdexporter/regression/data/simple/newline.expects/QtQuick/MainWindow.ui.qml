@@ -25,7 +25,7 @@ Item {
             color: "#eac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 63
+            height: 110
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
             width: 160
@@ -33,7 +33,7 @@ Item {
             y: 10
         }
         Item {
-            height: 63
+            height: 98
             width: 144
             x: 169
             y: 10
@@ -88,7 +88,7 @@ Item {
             color: "#eac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 30
-            height: 63
+            height: 89
             horizontalAlignment: Text.AlignHCenter
             text: "Shift\n+改行"
             width: 86

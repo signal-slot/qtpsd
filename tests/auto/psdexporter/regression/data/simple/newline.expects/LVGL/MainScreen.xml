@@ -3,9 +3,9 @@
   <view extends="lv_obj" height="240" scrollbar_mode="off" style_pad_all="0" width="320" x="0" y="0">
     <lv_obj height="240" style_bg_color="0x012401" style_bg_opa="255" width="320" x="0" y="0"/>
     <lv_label height="0" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 50" text="" width="0" x="0" y="0"/>
-    <lv_label height="63" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 30" text="文字列中に&#10;改行" width="160" x="2" y="10"/>
-    <lv_label height="63" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 30" text="文字列中に&#10;別フォント" width="144" x="169" y="10"/>
-    <lv_label height="63" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 30" text="Shift&#10;+改行" width="86" x="25" y="110"/>
+    <lv_label height="110" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 30" text="文字列中に&#10;改行" width="160" x="2" y="10"/>
+    <lv_label height="98" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 30" text="文字列中に&#10;別フォント" width="144" x="169" y="10"/>
+    <lv_label height="89" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 30" text="Shift&#10;+改行" width="86" x="25" y="110"/>
     <lv_label height="116" style_text_align="center" style_text_color="0xeac3c3" style_text_font="montserrat 24" text="段落テキストは折り返される" width="158" x="160" y="110"/>
   </view>
 </component>

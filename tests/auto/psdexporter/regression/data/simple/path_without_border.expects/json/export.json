@@ -111,6 +111,7 @@
                         "x": 64,
                         "y": 74
                     },
+                    "strokeAlignment": "center",
                     "type": "Shape",
                     "visible": true
                 }
