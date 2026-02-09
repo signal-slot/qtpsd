@@ -6,12 +6,11 @@
 
 #include <QtPsdGui/QPsdAbstractLayerItem>
 
+#include <QtGui/QPainter>
 #include <QtWidgets/QGraphicsItem>
 #include <QtCore/QPersistentModelIndex>
 
 QT_BEGIN_NAMESPACE
-
-class QPainter;
 
 class QPsdAbstractItem : public QGraphicsItem
 {
@@ -26,6 +25,9 @@ public:
     QModelIndex modelIndex() const;
 
     QRectF boundingRect() const override;
+
+    void setGroupCompositionMode(QPainter::CompositionMode mode);
+    QPainter::CompositionMode groupCompositionMode() const;
 
 protected:
     void setMask(QPainter *painter) const;

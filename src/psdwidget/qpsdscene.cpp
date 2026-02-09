@@ -147,7 +147,7 @@ void QPsdScene::reset()
         return;
     }
 
-    std::function<void(const QModelIndex, QGraphicsItem *)> traverseTree = [&](const QModelIndex index, QGraphicsItem *parent) {
+    std::function<void(const QModelIndex, QGraphicsItem *, QPainter::CompositionMode)> traverseTree = [&](const QModelIndex index, QGraphicsItem *parent, QPainter::CompositionMode groupMode) {
         if (index.isValid()) {
             const QPsdAbstractLayerItem *layer = d->model->layerItem(index);
             const QModelIndex maskIndex = d->model->clippingMaskIndex(index);
@@ -165,6 +165,7 @@ void QPsdScene::reset()
 
             QPsdAbstractItem *item = nullptr;
             QGraphicsItem *nextParent = parent;
+            QPainter::CompositionMode nextGroupMode = groupMode;
             switch (layer->type()) {
             case QPsdAbstractLayerItem::Text: {
                 item = new QPsdTextItem(index, reinterpret_cast<const QPsdTextLayerItem *>(layer), mask, groupMap, parent);
@@ -178,9 +179,17 @@ void QPsdScene::reset()
             case QPsdAbstractLayerItem::Folder: {
                 item = new QPsdFolderItem(index, reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, groupMap, parent);
                 nextParent = item;
+                const auto blendMode = layer->record().blendMode();
+                if (blendMode != QPsdBlend::PassThrough && blendMode != QPsdBlend::Invalid) {
+                    nextGroupMode = QtPsdGui::compositionMode(blendMode);
+                }
                 break; }
             default:
                 return;
+            }
+
+            if (groupMode != QPainter::CompositionMode_SourceOver) {
+                item->setGroupCompositionMode(groupMode);
             }
 
             if (parent == nullptr) {
@@ -188,14 +197,15 @@ void QPsdScene::reset()
             }
 
             parent = nextParent;
+            groupMode = nextGroupMode;
         }
 
         for (int r = d->model->rowCount(index) - 1; r >= 0; r--) {
-            traverseTree(d->model->index(r, 0, index), parent);
+            traverseTree(d->model->index(r, 0, index), parent, groupMode);
         }
     };
 
-    traverseTree(QModelIndex(), nullptr);
+    traverseTree(QModelIndex(), nullptr, QPainter::CompositionMode_SourceOver);
 
     // If no layers were added (e.g., bitmap mode PSD with no layer records),
     // fall back to rendering the merged image from the Image Data section

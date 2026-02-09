@@ -21,6 +21,7 @@ public:
     const QPsdAbstractLayerItem *maskItem = nullptr;
     const QMap<quint32, QString> group;
     const QModelIndex index;
+    QPainter::CompositionMode groupCompositionMode = QPainter::CompositionMode_SourceOver;
 };
 
 QPsdAbstractItem::Private::Private(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QPsdAbstractItem *parent)
@@ -142,6 +143,16 @@ QModelIndex QPsdAbstractItem::modelIndex() const
 QRectF QPsdAbstractItem::boundingRect() const
 {
     return QRectF{QPointF { 0, 0 }, d->layer->rect().size()};
+}
+
+void QPsdAbstractItem::setGroupCompositionMode(QPainter::CompositionMode mode)
+{
+    d->groupCompositionMode = mode;
+}
+
+QPainter::CompositionMode QPsdAbstractItem::groupCompositionMode() const
+{
+    return d->groupCompositionMode;
 }
 
 QT_END_NAMESPACE

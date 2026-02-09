@@ -339,7 +339,10 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         }
     }
 
-    painter->setCompositionMode(QtPsdGui::compositionMode(layer->record().blendMode()));
+    const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+        ? groupCompositionMode()
+        : QtPsdGui::compositionMode(layer->record().blendMode());
+    painter->setCompositionMode(compositionMode);
     // Apply both opacity and fill opacity to the layer content
     // In Photoshop: opacity affects everything, fill opacity affects only layer pixels (not effects)
     // Effects (drop shadow etc.) were already drawn above with just opacity
