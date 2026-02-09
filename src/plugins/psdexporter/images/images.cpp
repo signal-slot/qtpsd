@@ -47,14 +47,16 @@ bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, c
                 const auto *imageItem = dynamic_cast<const QPsdImageLayerItem *>(item);
                 const auto linkedFile = imageItem->linkedFile();
                 if (!linkedFile.data.isEmpty()) {
+                    const QFileInfo fi(linkedFile.name);
+                    const QString uniqueName = imageFileName(linkedFile.name, fi.suffix(), linkedFile.uniqueId);
                     if (imageScaling) {
                         QImage qimage = imageItem->linkedImage();
                         if (!qimage.isNull()) {
                             qimage = qimage.scaled(item->rect().size(), Qt::KeepAspectRatio);
                             qimage = imageItem->applyGradient(qimage);
-                            if (!qimage.save(directory->filePath(linkedFile.name))) {
+                            if (!qimage.save(directory->filePath(uniqueName))) {
                                 // Write-unsupported format (e.g. PDF) -> PNG fallback
-                                const QString name = item->name() + ".png"_L1;
+                                const QString name = imageFileName(linkedFile.name, "png"_L1, linkedFile.uniqueId);
                                 qimage.save(directory->filePath(name));
                             }
                         } else {
@@ -73,7 +75,7 @@ bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, c
                             qimage = imageItem->applyGradient(qimage);
                             qimage.save(directory->filePath(item->name() + ".png"_L1));
                         } else {
-                            QFile f(directory->filePath(linkedFile.name));
+                            QFile f(directory->filePath(uniqueName));
                             if (f.open(QIODevice::WriteOnly))
                                 f.write(linkedFile.data);
                         }

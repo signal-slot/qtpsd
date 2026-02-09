@@ -5,6 +5,7 @@
 #include <QtPsdExporter/qpsdimagestore.h>
 
 #include <QtCore/QCborMap>
+#include <QtCore/QCryptographicHash>
 #include <QtCore/QDir>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
@@ -57,7 +58,7 @@ private:
 
     static QByteArray indentString(int level);
     static QString colorValue(const QColor &color);
-    static QString sanitizeImageName(const QString &name);
+    static QString sanitizeImageName(const QString &name, const QByteArray &uniqueId = {});
 
     bool saveImageAsset(const QString &name, const QImage &image) const;
 
@@ -97,12 +98,18 @@ QString QPsdExporterSwiftUIPlugin::colorValue(const QColor &color)
     }
 }
 
-QString QPsdExporterSwiftUIPlugin::sanitizeImageName(const QString &name)
+QString QPsdExporterSwiftUIPlugin::sanitizeImageName(const QString &name, const QByteArray &uniqueId)
 {
     QString sanitized = name;
     sanitized.replace(QRegularExpression("[^a-zA-Z0-9_]"), "_");
     if (!sanitized.isEmpty() && sanitized[0].isDigit()) {
         sanitized.prepend('_');
+    }
+    if (sanitized != name) {
+        QByteArray hashInput = name.toUtf8();
+        if (!uniqueId.isEmpty())
+            hashInput += uniqueId;
+        sanitized = QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Sha256).toHex());
     }
     return sanitized;
 }
@@ -623,7 +630,7 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
                 applyFillOpacity(qimage);
             }
             qimage = image->applyGradient(qimage);
-            name = sanitizeImageName(QFileInfo(linkedFile.name).baseName());
+            name = sanitizeImageName(QFileInfo(linkedFile.name).baseName(), linkedFile.uniqueId);
             done = saveImageAsset(name, qimage);
         }
     }
