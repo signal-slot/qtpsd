@@ -142,15 +142,18 @@ QString QPsdExporterPlugin::toKebabCase(const QString &str)
     return parts.join("-"_L1).toLower();
 }
 
-QString QPsdExporterPlugin::imageFileName(const QString &name, const QString &format)
+QString QPsdExporterPlugin::imageFileName(const QString &name, const QString &format, const QByteArray &uniqueId)
 {
     QFileInfo fileInfo(name);
     QString suffix = fileInfo.suffix();
     QString basename = fileInfo.completeBaseName();
-    
+
     QString snakeName = toSnakeCase(basename);
     if (snakeName.length() < basename.length()) {
-        basename = QString::fromLatin1(QCryptographicHash::hash(basename.toUtf8(), QCryptographicHash::Sha256).toHex());
+        QByteArray hashInput = basename.toUtf8();
+        if (!uniqueId.isEmpty())
+            hashInput += uniqueId;
+        basename = QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Sha256).toHex());
     } else {
         if (suffix.isEmpty()) {
             return u"%1.%2"_s.arg(snakeName, format.toLower());

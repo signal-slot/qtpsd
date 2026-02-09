@@ -55,7 +55,7 @@ protected:
     static QString toSnakeCase(const QString &str);
     static QString toKebabCase(const QString &str);
 
-    static QString imageFileName(const QString &name, const QString &format);
+    static QString imageFileName(const QString &name, const QString &format, const QByteArray &uniqueId = {});
     bool generateMaps() const;
 
 protected:
