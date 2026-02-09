@@ -42,7 +42,7 @@ void tst_ImageFileName::nonAsciiNameHashed()
 {
     const QString result = ImageFileNameTestHelper::imageFileName(u"ベクトルスマートオブジェクト.ai"_s, "PNG"_L1);
     QVERIFY(result.endsWith(".png"_L1));
-    QCOMPARE(result.length(), 64 + 4); // 64 hex chars + ".png"
+    QCOMPARE(result.length(), 16 + 4); // 16 hex chars + ".png"
 }
 
 void tst_ImageFileName::uniqueIdDifferentiatesHash()

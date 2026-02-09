@@ -109,7 +109,7 @@ QString QPsdExporterSwiftUIPlugin::sanitizeImageName(const QString &name, const 
         QByteArray hashInput = name.toUtf8();
         if (!uniqueId.isEmpty())
             hashInput += uniqueId;
-        sanitized = QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Sha256).toHex());
+        sanitized = QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Sha256).toHex().left(16));
     }
     return sanitized;
 }

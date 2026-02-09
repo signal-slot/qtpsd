@@ -153,7 +153,7 @@ QString QPsdExporterPlugin::imageFileName(const QString &name, const QString &fo
         QByteArray hashInput = basename.toUtf8();
         if (!uniqueId.isEmpty())
             hashInput += uniqueId;
-        basename = QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Sha256).toHex());
+        basename = QString::fromLatin1(QCryptographicHash::hash(hashInput, QCryptographicHash::Sha256).toHex().left(16));
     } else {
         if (suffix.isEmpty()) {
             return u"%1.%2"_s.arg(snakeName, format.toLower());
