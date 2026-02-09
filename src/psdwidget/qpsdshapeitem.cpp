@@ -19,7 +19,7 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 {
     Q_UNUSED(option);
     Q_UNUSED(widget);
-    
+
     const auto *layer = this->layer<QPsdShapeLayerItem>();
 
     setMask(painter);
@@ -32,19 +32,35 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     painter->setOpacity(abstractLayer()->opacity() * abstractLayer()->fillOpacity());
     painter->setRenderHint(QPainter::Antialiasing);
 
-    // painter.drawImage(0, 0, layer->image());
-    // painter.setOpacity(0.5);
+    // Check for raster layer mask - if present, render shape into a temp image
+    // so we can apply per-pixel alpha masking (same technique as QPsdImageItem)
+    const QImage layerMask = layer->layerMask();
+    const bool hasMask = !layerMask.isNull();
+
+    QImage tempImage;
+    QPainter tempPainterObj;
+    QPainter *p = painter;
+
+    if (hasMask) {
+        tempImage = QImage(layer->rect().size(), QImage::Format_ARGB32);
+        tempImage.fill(Qt::transparent);
+        tempPainterObj.begin(&tempImage);
+        tempPainterObj.setRenderHint(QPainter::Antialiasing);
+        p = &tempPainterObj;
+    }
 
     const auto *gradient = layer->gradient();
     const auto *border = layer->border();
     const auto *patternFill = layer->patternFill();
     const auto pathInfo = layer->pathInfo();
     if (gradient) {
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(QBrush(*gradient));
+        p->setPen(Qt::NoPen);
+        p->setBrush(QBrush(*gradient));
     } else if (border) {
-        painter->setPen(QPen(border->color(), border->size()));
+        p->setPen(QPen(border->color(), border->size()));
     } else if (patternFill) {
+        if (hasMask)
+            tempPainterObj.end();
         const auto record = layer->record();
         const auto patt = record.additionalLayerInformation().value("Patt");
         // TODO: find the pattern from below
@@ -52,48 +68,48 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         // parser.layerAndMaskInformation().additionalLayerInformation().value("Patt");
         return;
     } else {
-        painter->setPen(layer->pen());
-        painter->setBrush(layer->brush());
+        p->setPen(layer->pen());
+        p->setBrush(layer->brush());
     }
 
     const auto strokeAlignment = layer->strokeAlignment();
-    if (strokeAlignment == QPsdShapeLayerItem::StrokeInside && painter->pen().style() != Qt::NoPen) {
+    if (strokeAlignment == QPsdShapeLayerItem::StrokeInside && p->pen().style() != Qt::NoPen) {
         // For "inside" stroke: draw fill first, then clip to path and draw stroke with 2x width
-        QPen strokePen = painter->pen();
-        QBrush fillBrush = painter->brush();
+        QPen strokePen = p->pen();
+        QBrush fillBrush = p->brush();
 
         // Draw fill without stroke
-        painter->setPen(Qt::NoPen);
-        painter->setBrush(fillBrush);
+        p->setPen(Qt::NoPen);
+        p->setBrush(fillBrush);
         switch (pathInfo.type) {
         case QPsdAbstractLayerItem::PathInfo::Rectangle:
-            painter->drawRect(pathInfo.rect);
+            p->drawRect(pathInfo.rect);
             break;
         case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-            painter->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            p->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
             break;
         default:
-            painter->drawPath(pathInfo.path);
+            p->drawPath(pathInfo.path);
             break;
         }
 
         // Draw stroke clipped to inside of the path
-        painter->save();
+        p->save();
         switch (pathInfo.type) {
         case QPsdAbstractLayerItem::PathInfo::Rectangle: {
             QPainterPath clipPath;
             clipPath.addRect(pathInfo.rect);
-            painter->setClipPath(clipPath, Qt::IntersectClip);
+            p->setClipPath(clipPath, Qt::IntersectClip);
             break;
         }
         case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
             QPainterPath clipPath;
             clipPath.addRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
-            painter->setClipPath(clipPath, Qt::IntersectClip);
+            p->setClipPath(clipPath, Qt::IntersectClip);
             break;
         }
         default:
-            painter->setClipPath(pathInfo.path, Qt::IntersectClip);
+            p->setClipPath(pathInfo.path, Qt::IntersectClip);
             break;
         }
         strokePen.setWidthF(strokePen.widthF() * 2.0);
@@ -105,34 +121,63 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             strokePen.setDashPattern(pattern);
             strokePen.setDashOffset(strokePen.dashOffset() / 2.0);
         }
-        painter->setPen(strokePen);
-        painter->setBrush(Qt::NoBrush);
+        p->setPen(strokePen);
+        p->setBrush(Qt::NoBrush);
         switch (pathInfo.type) {
         case QPsdAbstractLayerItem::PathInfo::Rectangle:
-            painter->drawRect(pathInfo.rect);
+            p->drawRect(pathInfo.rect);
             break;
         case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-            painter->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            p->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
             break;
         default:
-            painter->drawPath(pathInfo.path);
+            p->drawPath(pathInfo.path);
             break;
         }
-        painter->restore();
+        p->restore();
     } else {
         // For "center" or "outside" stroke (or no stroke): draw as-is
-        const auto dw = painter->pen().widthF() / 2.0;
+        const auto dw = p->pen().widthF() / 2.0;
         switch (pathInfo.type) {
         case QPsdAbstractLayerItem::PathInfo::Rectangle:
-            painter->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
+            p->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
             break;
         case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-            painter->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
+            p->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
             break;
         default:
-            painter->drawPath(pathInfo.path);
+            p->drawPath(pathInfo.path);
             break;
         }
+    }
+
+    // Apply raster layer mask and draw result
+    if (hasMask) {
+        tempPainterObj.end();
+
+        const QRect maskRect = layer->layerMaskRect();
+        const QRect layerRect = layer->rect();
+        const int defaultColor = layer->layerMaskDefaultColor();
+
+        for (int y = 0; y < tempImage.height(); ++y) {
+            QRgb *scanLine = reinterpret_cast<QRgb *>(tempImage.scanLine(y));
+            for (int x = 0; x < tempImage.width(); ++x) {
+                const int maskX = (layerRect.x() + x) - maskRect.x();
+                const int maskY = (layerRect.y() + y) - maskRect.y();
+
+                int maskValue = defaultColor;
+                if (maskX >= 0 && maskX < layerMask.width()
+                    && maskY >= 0 && maskY < layerMask.height()) {
+                    maskValue = qGray(layerMask.pixel(maskX, maskY));
+                }
+
+                const int alpha = qAlpha(scanLine[x]);
+                const int newAlpha = (alpha * maskValue) / 255;
+                scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
+            }
+        }
+
+        painter->drawImage(0, 0, tempImage);
     }
 }
 
