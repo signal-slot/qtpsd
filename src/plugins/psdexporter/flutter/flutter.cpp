@@ -388,7 +388,7 @@ bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QModelIndex &in
     if (item->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
         rect = item->bounds().toRect();
     } else {
-        rect = item->fontAdjustedBounds().toRect();
+        rect = item->bounds().toRect();
     }
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
         auto parentIndex = indexMergeMap.key(index);

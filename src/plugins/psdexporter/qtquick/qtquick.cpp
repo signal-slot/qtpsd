@@ -438,7 +438,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             rect = text->bounds().toRect();
             element->properties.insert("wrapMode"_L1, "Text.Wrap"_L1);
         } else {
-            rect = text->fontAdjustedBounds().toRect();
+            rect = text->bounds().toRect();
         }
     
         if (!outputBase(textIndex, element, imports, rect))
@@ -483,7 +483,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         }
     } else {
         element->type = "Item";
-        if (!outputBase(textIndex, element, imports, text->fontAdjustedBounds().toRect()))
+        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
             return false;
 
         Element column;

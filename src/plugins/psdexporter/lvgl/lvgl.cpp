@@ -274,7 +274,7 @@ bool QPsdExporterLvglPlugin::outputText(const QModelIndex &textIndex, Element *e
     if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
         rect = text->bounds().toRect();
     } else {
-        rect = text->fontAdjustedBounds().toRect();
+        rect = text->bounds().toRect();
     }
     if (!outputBase(textIndex, element, rect))
         return false;

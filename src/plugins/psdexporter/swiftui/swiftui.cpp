@@ -262,7 +262,7 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
     if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
         rect = text->bounds().toRect();
     } else {
-        rect = text->fontAdjustedBounds().toRect();
+        rect = text->bounds().toRect();
     }
 
     if (runs.size() == 1) {

@@ -181,7 +181,7 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
         if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
             rect = text->bounds().toRect();
         } else {
-            rect = text->fontAdjustedBounds().toRect();
+            rect = text->bounds().toRect();
         }
         if (!outputBase(textIndex, element, rect))
             return false;
@@ -220,7 +220,7 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
     } else {
         // Multiple runs - wrap in View with nested Text elements
         element->type = "View"_L1;
-        if (!outputBase(textIndex, element, text->fontAdjustedBounds().toRect()))
+        if (!outputBase(textIndex, element, text->bounds().toRect()))
             return false;
 
         for (const auto &run : runs) {
