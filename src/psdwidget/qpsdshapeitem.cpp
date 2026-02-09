@@ -97,6 +97,14 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             break;
         }
         strokePen.setWidthF(strokePen.widthF() * 2.0);
+        if (strokePen.style() == Qt::CustomDashLine) {
+            QVector<qreal> pattern = strokePen.dashPattern();
+            for (int i = 0; i < pattern.size(); ++i) {
+                pattern[i] /= 2.0;
+            }
+            strokePen.setDashPattern(pattern);
+            strokePen.setDashOffset(strokePen.dashOffset() / 2.0);
+        }
         painter->setPen(strokePen);
         painter->setBrush(Qt::NoBrush);
         switch (pathInfo.type) {
