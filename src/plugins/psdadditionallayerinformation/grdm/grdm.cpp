@@ -14,7 +14,8 @@ public:
     // Gradient Map
     QVariant parse(QIODevice *source , quint32 length) const override {
         auto cleanup = qScopeGuard([&] {
-            Q_ASSERT(length <= 3);
+            if (length > 0)
+                skip(source, length, &length);
         });
 
         const auto version = readU16(source, &length);
