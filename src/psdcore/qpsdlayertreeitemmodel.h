@@ -70,6 +70,7 @@ public:
     QString fileName() const;
     QString errorMessage() const;
 
+    QPsdFileHeader::ColorMode colorMode() const;
     QPsdResolutionInfo resolutionInfo() const;
     QPsdFilterMask filterMask() const;
 

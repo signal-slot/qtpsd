@@ -135,9 +135,10 @@ void QPsdScene::reset()
     };
     scanForAdjustments(QModelIndex());
 
-    if (hasAdjustmentLayers) {
+    if (hasAdjustmentLayers || d->model->colorMode() == QPsdFileHeader::CMYK) {
         // Use the merged image from the Image Data section
         // This image is pre-composited by Photoshop and includes all adjustment effects
+        // For CMYK documents, this ensures correct color compositing in CMYK space
         QImage mergedImage = d->model->mergedImage();
         if (!mergedImage.isNull()) {
             QGraphicsPixmapItem *pixmapItem = new QGraphicsPixmapItem(QPixmap::fromImage(mergedImage));

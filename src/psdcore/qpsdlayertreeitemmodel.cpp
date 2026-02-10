@@ -468,6 +468,11 @@ QString QPsdLayerTreeItemModel::errorMessage() const
     return d->errorMessage;
 }
 
+QPsdFileHeader::ColorMode QPsdLayerTreeItemModel::colorMode() const
+{
+    return d->fileHeader.colorMode();
+}
+
 QPsdResolutionInfo QPsdLayerTreeItemModel::resolutionInfo() const
 {
     return d->resolutionInfo;
