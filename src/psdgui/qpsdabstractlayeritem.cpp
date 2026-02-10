@@ -189,13 +189,21 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
                     const auto type = clrt.value("Type").value<QPsdEnum>();
                     Q_ASSERT(type.type() == "Clry");
                     const auto lctn = clrt.value("Lctn").toInt();
-                    const auto clr_ = clrt.value("Clr ").value<QPsdDescriptor>().data();
-                    const auto rd__ = clr_.value("Rd  ").toInt();
-                    const auto grn_ = clr_.value("Grn ").toInt();
-                    const auto bl__ = clr_.value("Bl  ").toInt();
+                    const auto clrDescriptor = clrt.value("Clr ").value<QPsdDescriptor>();
+                    const auto clr_ = clrDescriptor.data();
+                    QColor color;
+                    if (clrDescriptor.classID() == "CMYC") {
+                        const double c = clr_.value("Cyn ").toDouble() / 100.0;
+                        const double m = clr_.value("Mgnt").toDouble() / 100.0;
+                        const double y = clr_.value("Ylw ").toDouble() / 100.0;
+                        const double k = clr_.value("Blck").toDouble() / 100.0;
+                        color = QColor::fromCmykF(c, m, y, k);
+                    } else {
+                        color = QColor::fromRgb(clr_.value("Rd  ").toInt(), clr_.value("Grn ").toInt(), clr_.value("Bl  ").toInt());
+                    }
                     const auto mdpn = clrt.value("Mdpn").toInt();
                     Q_UNUSED(mdpn);
-                    colors.append({ lctn, QColor::fromRgb(rd__, grn_, bl__) });
+                    colors.append({ lctn, color });
                 }
 
                 const auto rvrs = grfl.value("Rvrs").toBool();
@@ -497,6 +505,17 @@ QPsdLinkedLayer::LinkedFile QPsdAbstractLayerItem::linkedFile() const
 void QPsdAbstractLayerItem::setLinkedFile(const QPsdLinkedLayer::LinkedFile &linkedFile)
 {
     d->linkedFile = linkedFile;
+}
+
+void QPsdAbstractLayerItem::setIccProfile(const QByteArray &iccProfile)
+{
+    if (d->image.format() == QImage::Format_CMYK8888 && !iccProfile.isEmpty()) {
+        QColorSpace cmykColorSpace = QColorSpace::fromIccProfile(iccProfile);
+        if (cmykColorSpace.isValid()) {
+            d->image.setColorSpace(cmykColorSpace);
+            d->image = d->image.convertedToColorSpace(QColorSpace(QColorSpace::SRgb));
+        }
+    }
 }
 
 QPsdAbstractLayerItem::PathInfo QPsdAbstractLayerItem::parseShape(const QPsdVectorMaskSetting &vms) const

@@ -134,6 +134,19 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     QRect r = QRect{{0, 0}, layer->rect().size()};
     QImage image = layer->image();
 
+    // Apply transparency mask for layers without built-in alpha (e.g., CMYK-converted images)
+    const QImage transMask = layer->transparencyMask();
+    if (!transMask.isNull() && !image.hasAlphaChannel()) {
+        image = image.convertToFormat(QImage::Format_ARGB32);
+        for (int y = 0; y < qMin(image.height(), transMask.height()); ++y) {
+            QRgb *imgLine = reinterpret_cast<QRgb *>(image.scanLine(y));
+            const uchar *maskLine = transMask.constScanLine(y);
+            for (int x = 0; x < qMin(image.width(), transMask.width()); ++x) {
+                imgLine[x] = qRgba(qRed(imgLine[x]), qGreen(imgLine[x]), qBlue(imgLine[x]), maskLine[x]);
+            }
+        }
+    }
+
     QImage linkedImage = layer->linkedImage();
     if (!linkedImage.isNull()) {
         image = linkedImage.scaled(r.width(), r.height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);

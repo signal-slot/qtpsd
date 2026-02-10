@@ -195,24 +195,11 @@ QByteArray QPsdAbstractImage::toImage(QPsdFileHeader::ColorMode colorMode) const
         break; }
     case QPsdFileHeader::CMYK: {
         if (bytesPerChannel == 1) {
-            const auto data = imageData();
-            if (data.size() == static_cast<qsizetype>(size)) {
-                // Data is already unpacked to 1 byte per pixel
-                for (quint32 i = 0; i < size; i++) {
-                    quint8 value = static_cast<quint8>(data[i]);
-                    // For 1-bit CMYK, treat as grayscale and convert to CMYK
-                    // Black (0) -> full CMYK, White (1) -> no CMYK
-                    quint8 cmykValue = value ? 0 : 255;
-                    ret.append(cmykValue);  // C
-                    ret.append(cmykValue);  // M
-                    ret.append(cmykValue);  // Y
-                    ret.append(cmykValue);  // K
-                }
-            } else {
-                auto pc = c();  // Channel 0 = Cyan
+            auto pc = c();  // Channel 0 = Cyan
+            if (pc) {
                 auto pm = m();  // Channel 1 = Magenta
                 auto py = y();  // Channel 2 = Yellow
-                auto pk = k();  // Channel 3 = Black (K) - might be null
+                auto pk = k();  // Channel 3 = Black (K)
 
                 const auto size = width() * height();
                 for (quint32 i = 0; i < size; i++) {
@@ -221,6 +208,17 @@ QByteArray QPsdAbstractImage::toImage(QPsdFileHeader::ColorMode colorMode) const
                     ret.append(255 - *pm++);  // M
                     ret.append(255 - *py++);  // Y
                     ret.append(255 - *pk++);  // K
+                }
+            } else {
+                // Fallback: single-channel data treated as grayscale CMYK
+                const auto data = imageData();
+                for (quint32 i = 0; i < size; i++) {
+                    quint8 value = static_cast<quint8>(data[i]);
+                    quint8 cmykValue = value ? 0 : 255;
+                    ret.append(cmykValue);  // C
+                    ret.append(cmykValue);  // M
+                    ret.append(cmykValue);  // Y
+                    ret.append(cmykValue);  // K
                 }
             }
         } else if (bytesPerChannel == 2) {

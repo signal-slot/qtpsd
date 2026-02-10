@@ -30,6 +30,7 @@ public:
 
     QMap<const QPsdLayerRecord *, QPsdAbstractLayerItem *> mapLayerItemObjects;
     QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
+    QByteArray iccProfile;
     QImage mergedImage;
 };
 
@@ -116,6 +117,7 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
         } // switch
 
         if (item) {
+            item->setIccProfile(iccProfile);
             mapLayerItemObjects.insert(layerRecord, item);
         }
     }
@@ -176,6 +178,7 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto imageData = parser.imageData();
     const auto colorModeData = parser.colorModeData();
     const auto iccProfile = parser.iccProfile();
+    d->iccProfile = iccProfile;
     d->mergedImage = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
 }
 

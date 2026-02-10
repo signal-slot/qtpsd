@@ -4,14 +4,32 @@
 #include "qpsdshapelayeritem.h"
 #include "qpsdvectorstrokecontentsetting.h"
 
+#include <QtGui/QColor>
 #include <QtGui/QPen>
 #include <QtGui/QRadialGradient>
 
+#include <QtPsdCore/QPsdDescriptor>
 #include <QtPsdCore/QPsdVectorStrokeData>
 
 QT_BEGIN_NAMESPACE
 
 namespace {
+QColor colorFromDescriptor(const QPsdDescriptor &clrDescriptor)
+{
+    const auto clr_ = clrDescriptor.data();
+    if (clrDescriptor.classID() == "CMYC") {
+        const double c = clr_.value("Cyn ").toDouble() / 100.0;
+        const double m = clr_.value("Mgnt").toDouble() / 100.0;
+        const double y = clr_.value("Ylw ").toDouble() / 100.0;
+        const double k = clr_.value("Blck").toDouble() / 100.0;
+        return QColor::fromCmykF(c, m, y, k);
+    } else {
+        const int r = clr_.value("Rd  ").toDouble();
+        const int g = clr_.value("Grn ").toDouble();
+        const int b = clr_.value("Bl  ").toDouble();
+        return QColor(r, g, b);
+    }
+}
 Qt::PenCapStyle strokeStyleLineCapTypeToQt(const QPsdEnum &data)
 {
     const auto type = data.type();
@@ -146,21 +164,13 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                 }
             } else if (additionalLayerInformation.contains("SoCo")) {
                 const auto soco = additionalLayerInformation.value("SoCo").value<QPsdDescriptor>().data();
-                const auto clr_ = soco.value("Clr ").value<QPsdDescriptor>().data();
-                const int rd__ = clr_.value("Rd  ").toDouble();
-                const int grn_ = clr_.value("Grn ").toDouble();
-                const int bl__ = clr_.value("Bl  ").toDouble();
-                d->brush = QBrush(QColor(rd__, grn_, bl__));
+                d->brush = QBrush(colorFromDescriptor(soco.value("Clr ").value<QPsdDescriptor>()));
             }
         }
     } else {
         if (additionalLayerInformation.contains("SoCo")) {
             const auto soco = additionalLayerInformation.value("SoCo").value<QPsdDescriptor>().data();
-            const auto clr_ = soco.value("Clr ").value<QPsdDescriptor>().data();
-            const int rd__ = clr_.value("Rd  ").toDouble();
-            const int grn_ = clr_.value("Grn ").toDouble();
-            const int bl__ = clr_.value("Bl  ").toDouble();
-            d->brush = QBrush(QColor(rd__, grn_, bl__));
+            d->brush = QBrush(colorFromDescriptor(soco.value("Clr ").value<QPsdDescriptor>()));
         }
     }
 }

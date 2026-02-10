@@ -153,4 +153,24 @@ const unsigned char *QPsdChannelImageData::a() const
     return alpha;
 }
 
+const unsigned char *QPsdChannelImageData::c() const
+{
+    return d->data(QPsdChannelInfo::Red);    // Channel 0 = Cyan in CMYK
+}
+
+const unsigned char *QPsdChannelImageData::m() const
+{
+    return d->data(QPsdChannelInfo::Green);  // Channel 1 = Magenta in CMYK
+}
+
+const unsigned char *QPsdChannelImageData::y() const
+{
+    return d->data(QPsdChannelInfo::Blue);   // Channel 2 = Yellow in CMYK
+}
+
+const unsigned char *QPsdChannelImageData::k() const
+{
+    return d->data(QPsdChannelInfo::Alpha);  // Channel 3 = Key (Black) in CMYK
+}
+
 QT_END_NAMESPACE

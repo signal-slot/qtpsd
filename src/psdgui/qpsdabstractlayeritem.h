@@ -73,6 +73,8 @@ public:
     QPsdLinkedLayer::LinkedFile linkedFile() const;
     void setLinkedFile(const QPsdLinkedLayer::LinkedFile &linkedFile);
 
+    void setIccProfile(const QByteArray &iccProfile);
+
     QVariantList effects() const;
 
 protected:

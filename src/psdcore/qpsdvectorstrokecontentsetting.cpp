@@ -53,11 +53,23 @@ QPsdVectorStrokeContentSetting::QPsdVectorStrokeContentSetting(QIODevice *source
 
     if (key == "SoCo") {
         d->type = SolidColor;
-        const auto clr_ = descriptor.data().value("Clr ").value<QPsdDescriptor>().data();
-        const int rd__ = clr_.value("Rd  ").toDouble();
-        const int grn_ = clr_.value("Grn ").toDouble();
-        const int bl__ = clr_.value("Bl  ").toDouble();
-        d->solidColor = QString("#%1%2%3"_L1).arg(rd__, 2, 16, '0'_L1).arg(grn_, 2, 16, '0'_L1).arg(bl__, 2, 16, '0'_L1);
+        const auto clrDescriptor = descriptor.data().value("Clr ").value<QPsdDescriptor>();
+        const auto clr_ = clrDescriptor.data();
+        int r, g, b;
+        if (clrDescriptor.classID() == "CMYC") {
+            const double c = clr_.value("Cyn ").toDouble() / 100.0;
+            const double m = clr_.value("Mgnt").toDouble() / 100.0;
+            const double y = clr_.value("Ylw ").toDouble() / 100.0;
+            const double k = clr_.value("Blck").toDouble() / 100.0;
+            r = qRound(255.0 * (1.0 - c) * (1.0 - k));
+            g = qRound(255.0 * (1.0 - m) * (1.0 - k));
+            b = qRound(255.0 * (1.0 - y) * (1.0 - k));
+        } else {
+            r = clr_.value("Rd  ").toDouble();
+            g = clr_.value("Grn ").toDouble();
+            b = clr_.value("Bl  ").toDouble();
+        }
+        d->solidColor = QString("#%1%2%3"_L1).arg(r, 2, 16, '0'_L1).arg(g, 2, 16, '0'_L1).arg(b, 2, 16, '0'_L1);
     } else if (key == "GdFl") {
         d->type = GradientFill;
         const auto grad = descriptor.data().value("Grad").value<QPsdDescriptor>().data();
@@ -79,11 +91,23 @@ QPsdVectorStrokeContentSetting::QPsdVectorStrokeContentSetting(QIODevice *source
             const auto type = clr.value("Type").value<QPsdEnum>();
             Q_ASSERT(type.type() == "Clry" && type.value() == "UsrS");
 
-            const auto clr_ = clr.value("Clr ").value<QPsdDescriptor>().data();
-            const int rd__ = clr_.value("Rd  ").toDouble();
-            const int grn_ = clr_.value("Grn ").toDouble();
-            const int bl__ = clr_.value("Bl  ").toDouble();
-            const auto color = QString("#%1%2%3"_L1).arg(rd__, 2, 16, '0'_L1).arg(grn_, 2, 16, '0'_L1).arg(bl__, 2, 16, '0'_L1);
+            const auto clrDescriptor = clr.value("Clr ").value<QPsdDescriptor>();
+            const auto clr_ = clrDescriptor.data();
+            int r, g, b;
+            if (clrDescriptor.classID() == "CMYC") {
+                const double c = clr_.value("Cyn ").toDouble() / 100.0;
+                const double m = clr_.value("Mgnt").toDouble() / 100.0;
+                const double y = clr_.value("Ylw ").toDouble() / 100.0;
+                const double k = clr_.value("Blck").toDouble() / 100.0;
+                r = qRound(255.0 * (1.0 - c) * (1.0 - k));
+                g = qRound(255.0 * (1.0 - m) * (1.0 - k));
+                b = qRound(255.0 * (1.0 - y) * (1.0 - k));
+            } else {
+                r = clr_.value("Rd  ").toDouble();
+                g = clr_.value("Grn ").toDouble();
+                b = clr_.value("Bl  ").toDouble();
+            }
+            const auto color = QString("#%1%2%3"_L1).arg(r, 2, 16, '0'_L1).arg(g, 2, 16, '0'_L1).arg(b, 2, 16, '0'_L1);
             d->colors.append(qMakePair(lctn / 4096, color));
         }
 
