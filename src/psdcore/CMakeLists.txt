@@ -61,7 +61,6 @@ qt_internal_add_module(PsdCore
         Qt::CorePrivate
     PUBLIC_LIBRARIES
         Qt::Core
-        Qt::Gui
     PRIVATE_MODULE_INTERFACE
         Qt::CorePrivate
 )
