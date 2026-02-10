@@ -15,7 +15,8 @@ public:
     // Patterns (Photoshop 6.0 and CS (8.0))
     QVariant parse(QIODevice *source , quint32 length) const override {
         auto cleanup = qScopeGuard([&] {
-            Q_ASSERT(length <= 3);
+            if (length > 3)
+                qWarning("patt: %u bytes remaining after parse", length);
         });
 
         // The following is repeated for each pattern.
@@ -31,7 +32,10 @@ public:
 
             // Version ( =1)
             auto version = readU32(source, &length);
-            Q_ASSERT(version == 1);
+            if (version != 1) {
+                qWarning("patt: unsupported pattern version %u", version);
+                return {};
+            }
 
             // The image mode of the file. Supported values are: Bitmap = 0; Grayscale = 1; Indexed = 2; RGB = 3; CMYK = 4; Multichannel = 7; Duotone = 8; Lab = 9.
             auto imageMode = readU32(source, &length);
@@ -64,7 +68,10 @@ public:
 
                 // Version ( =3)
                 auto version = readU32(source, &length);
-                Q_ASSERT(version == 3);
+                if (version != 3) {
+                    qWarning("patt: unsupported Virtual Memory Array List version %u", version);
+                    return {};
+                }
 
                 // Length
                 auto size = readU32(source, &length);

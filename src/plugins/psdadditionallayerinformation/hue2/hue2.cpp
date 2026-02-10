@@ -13,7 +13,8 @@ public:
     // New Hue/saturation, Photoshop 5.0
     QVariant parse(QIODevice *source , quint32 length) const override {
         auto cleanup = qScopeGuard([&] {
-            Q_ASSERT(length <= 3);
+            if (length > 3)
+                qWarning("hue2: %u bytes remaining after parse", length);
         });
 
        const auto version = readU16(source, &length);

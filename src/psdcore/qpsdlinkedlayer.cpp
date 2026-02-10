@@ -46,12 +46,18 @@ QPsdLinkedLayer::QPsdLinkedLayer(QIODevice *source, quint32 length)
 
         // Type ( = 'liFD' linked file data, 'liFE' linked file external or 'liFA' linked file alias )
         const auto type = readByteArray(source, 4, &length);
-        Q_ASSERT(type == "liFD");
+        if (type != "liFD" && type != "liFE" && type != "liFA") {
+            qWarning("QPsdLinkedLayer: unsupported linked file type '%s'", type.constData());
+            return;
+        }
 
         // Version ( = 1 to 7 )
         const auto version = readU32(source, &length);
         qCDebug(lcQPsdLinkedLayer) << "version" << version;
-        Q_ASSERT(version >= 1 && version <= 7);
+        if (version < 1 || version > 7) {
+            qWarning("QPsdLinkedLayer: unsupported version %u", version);
+            return;
+        }
 
         // Pascal string. Unique ID.
         file.uniqueId = readPascalString(source, 1, &length);

@@ -4,3 +4,6 @@
 [submodule "tests/auto/3rdparty/psd-tools"]
 	path = tests/auto/3rdparty/psd-tools
 	url = https://github.com/psd-tools/psd-tools.git
+[submodule "tests/auto/3rdparty/psd-zoo"]
+	path = tests/auto/3rdparty/psd-zoo
+	url = https://github.com/signal-slot/psd-zoo.git
