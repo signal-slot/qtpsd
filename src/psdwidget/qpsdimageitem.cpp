@@ -135,6 +135,7 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     QImage image = layer->image();
 
     // Apply transparency mask for layers without built-in alpha (e.g., CMYK-converted images)
+    // For RGB images with alpha, the transparency data is already incorporated via imageDataToImage()
     const QImage transMask = layer->transparencyMask();
     if (!transMask.isNull() && !image.hasAlphaChannel()) {
         image = image.convertToFormat(QImage::Format_ARGB32);
@@ -148,7 +149,10 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     }
 
     QImage linkedImage = layer->linkedImage();
-    if (!linkedImage.isNull()) {
+    if (!linkedImage.isNull() && transMask.isNull()) {
+        // Only use linked image when there's no transparency mask
+        // When a transparency mask exists, the layer image already contains the
+        // correctly rasterized content (e.g., warp-transformed smart objects)
         image = linkedImage.scaled(r.width(), r.height(), Qt::KeepAspectRatio, Qt::SmoothTransformation);
         r = QRect((r.width() - image.width()) / 2, (r.height() - image.height()) / 2, image.width(), image.height());
     }

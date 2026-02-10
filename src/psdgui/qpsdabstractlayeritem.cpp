@@ -354,7 +354,10 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
         // Create QImage that owns its data
         QImage image(w, h, QImage::Format_Grayscale8);
         if (!image.isNull() && static_cast<size_t>(transparencyMaskData.size()) >= static_cast<size_t>(w) * h) {
-            memcpy(image.bits(), transparencyMaskData.constData(), w * h);
+            // Row-by-row copy to handle QImage row alignment (bytesPerLine may differ from width)
+            for (quint32 y = 0; y < h; ++y) {
+                memcpy(image.scanLine(y), transparencyMaskData.constData() + y * w, w);
+            }
             d->transparencyMask = image;
         }
     }
