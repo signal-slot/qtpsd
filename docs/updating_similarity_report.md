@@ -1,30 +1,59 @@
-# Updating the Similarity Report
+# Updating the Similarity Report (psd-zoo)
 
-The similarity report compares QPsdView rendering output against Photoshop reference images.
+## Policy
 
-## Prerequisites
+- Host: generate `Image Data`, `QPsdView`, and exporter outputs (`QtQuick`, `Slint`).
+- Docker: convert exported `MainWindow.ui.qml` / `MainWindow.slint` to PNG screenshots only.
+- Host: calculate similarity and regenerate `docs/similarity_report_psd-zoo.md`.
 
-From the build directory:
-
-```bash
-export LD_LIBRARY_PATH=~/io/qt/release/6/gcc_64/lib:$(pwd)/lib:$LD_LIBRARY_PATH
-export QT_QPA_PLATFORM=offscreen
-```
-
-## Generate Report
+## 1) Host: refresh Image Data / QPsdView images
 
 ```bash
-QTPSD_SIMILARITY_SUMMARY_PATH=../docs ./tests/auto/psdwidget/tst_qpsdview
+QTPSD_IMAGE_OUTPUT_PATH=docs \
+QTPSD_IMAGE_SOURCES=psd-zoo \
+./build/Qt_6-Debug/tests/auto/psdgui/image_data_to_image/tst_image_data_to_image generateImages
+
+QTPSD_VIEW_OUTPUT_PATH=docs \
+QTPSD_VIEW_SOURCES=psd-zoo \
+QT_QPA_PLATFORM=offscreen \
+./build/Qt_6-Debug/tests/auto/psdwidget/tst_qpsdview
 ```
 
-## Output Files
+## 2) Host: export QtQuick/Slint sources
 
-- `docs/similarity_report.md` - Comparison table with similarity percentages
-- `docs/images/psdview/` - QPsdView rendered images
-- `docs/images/imagedata/` - Image data rendered images
-- `docs/images/psd2png/` - Reference images from Photoshop
+```bash
+./scripts/export_qtquick_slint_exports.sh ./build/Qt_6-Debug
+```
 
-## Notes
+This fills:
+- `docs/exports/psd-zoo/**/QtQuick/MainWindow.ui.qml`
+- `docs/exports/psd-zoo/**/Slint/MainWindow.slint`
 
-- Text rendering results may vary depending on installed system fonts
-- Run from the build directory (e.g., `qtpsd/build`)
+## 3) Docker: capture exported UI to PNG
+
+```bash
+docker build -t qtpsd-sim -f docker/similarity/Dockerfile .
+docker run --rm -v "$PWD":/workspace qtpsd-sim \
+  /workspace/docker/similarity/run_similarity.sh psd-zoo
+```
+
+This fills:
+- `docs/images/qtquick/psd-zoo/**/*.png`
+- `docs/images/slint/psd-zoo/**/*.png`
+
+## 4) Host: regenerate similarity report
+
+```bash
+QT_QPA_PLATFORM=offscreen \
+QTPSD_SIMILARITY_OUTPUT_PATH=docs \
+QTPSD_SIMILARITY_SOURCE=psd-zoo \
+QTPSD_SIMILARITY_RUN_EXPORT=0 \
+QTPSD_SIMILARITY_EXPORTERS=qtquick,slint \
+./build/Qt_6-Debug/tests/auto/psdexporter/similarity/tst_psdexporter_similarity generateReport
+```
+
+## Sanity check
+
+- `find docs/images/qtquick/psd-zoo -type f | wc -l`
+- `find docs/images/slint/psd-zoo -type f | wc -l`
+- Confirm `docs/similarity_report_psd-zoo.md` has no `MISSING` for QtQuick/Slint rows.

@@ -1,0 +1,28 @@
+export component MainWindow inherits Window {
+    height: 200px;
+    title: "";
+    width: 200px;
+    x: 0px;
+    y: 0px;
+    Image {
+        height: 200px;
+        image-fit: contain;
+        source: @image-url("images/background.png");
+        width: 200px;
+        x: 0px;
+        y: 0px;
+    }
+    Rectangle {
+        height: 42px;
+        width: 42px;
+        x: 79px;
+        y: 79px;
+        Rectangle {
+            background: #000000;
+            height: 40px;
+            width: 40px;
+            x: 1px;
+            y: 1px;
+        }
+    }
+}

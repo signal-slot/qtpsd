@@ -24,8 +24,8 @@ public:
     QList<Run> runs;
     QRectF bounds;
     QRectF textFrame;
-    TextType textType;
-    QPointF textOrigin;  // Text baseline anchor (tx, ty from transform)
+    TextType textType = TextType::PointText;
+    QPointF textOrigin; // Text baseline anchor (tx, ty from transform)
 };
 
 QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
@@ -50,7 +50,13 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     }
 
     const auto engineDataData = textData.data().value("EngineData").toByteArray();
-    const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData);
+    QPsdEngineDataParser::ParseError parseError;
+    const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData, &parseError);
+    if (parseError) {
+        qWarning() << "QPsdTextLayerItem: failed to parse EngineData:" << parseError.errorMessage;
+        d->bounds = tysh.bounds();
+        return;
+    }
     // qDebug().noquote() << QJsonDocument(engineData.toJsonObject()).toJson();
 
     const auto documentResources = engineData.value("DocumentResources"_L1).toMap();
@@ -96,14 +102,20 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         }
     }
 
+    const QCborMap baseStyleSheetData =
+        styleSheetSet.isEmpty()
+            ? QCborMap()
+            : styleSheetSet.first().toMap().value("StyleSheetData"_L1).toMap();
+
     int start = 0;
-    for (int i = 0; i < runLengthArray.size(); i++) {
+    const int runCount = qMin(runLengthArray.size(), runArray.size());
+    for (int i = 0; i < runCount; i++) {
         Run run;
         const auto map = runArray.at(i).toMap();
         const auto styleSheet = map.value("StyleSheet"_L1).toMap();
         const auto styleSheetDataOverride = styleSheet.value("StyleSheetData"_L1).toMap();
 
-        auto styleSheetData = styleSheetSet.first().toMap().value("StyleSheetData"_L1).toMap();
+        auto styleSheetData = baseStyleSheetData;
         // override base values with styleSheetData
         for (const auto &key : styleSheetDataOverride.keys()) {
             styleSheetData[key] = styleSheetDataOverride[key];
@@ -115,16 +127,26 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         switch (colorType) {
         case 1: { // ARGB probably
             const auto values = fillColor.value("Values"_L1).toArray();
-            run.color.setRgbF(values.at(1).toDouble(), values.at(2).toDouble(), values.at(3).toDouble(), values.at(0).toDouble());
+            if (values.size() >= 4) {
+                run.color.setRgbF(values.at(1).toDouble(), values.at(2).toDouble(), values.at(3).toDouble(), values.at(0).toDouble());
+            } else {
+                qWarning() << "QPsdTextLayerItem: invalid FillColor.Values size" << values.size();
+                run.color = Qt::black;
+            }
             break; }
         default:
             qWarning() << "Unknown color type" << colorType;
             break;
         }
         const auto fontIndex = styleSheetData.value("Font"_L1).toInteger();
-        const auto fontInfo = fontSet.at(fontIndex).toMap();
-        run.originalFontName = fontInfo.value("Name"_L1).toString();
-        run.font = QPsdFontMapper::instance()->resolveFont(run.originalFontName, s_currentPsdPath);
+        if (fontIndex >= 0 && fontIndex < fontSet.size()) {
+            const auto fontInfo = fontSet.at(fontIndex).toMap();
+            run.originalFontName = fontInfo.value("Name"_L1).toString();
+            run.font = QPsdFontMapper::instance()->resolveFont(run.originalFontName, s_currentPsdPath);
+        } else {
+            qWarning() << "QPsdTextLayerItem: invalid font index" << fontIndex << "fontSet.size=" << fontSet.size();
+            run.font = QFont();
+        }
         run.font.setKerning(autoKerning);
         const auto ligatures = styleSheetData.value("Ligatures"_L1).toBool();
         if (!ligatures && styleSheetData.contains("Tracking"_L1)) {
@@ -133,7 +155,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         }
         const auto fontSize = styleSheetData.value("FontSize"_L1).toDouble();
         run.font.setPointSizeF(transform.m22() * fontSize);
-        const auto runLength = runLengthArray.at(i).toInteger();
+        const auto runLength = qMax(0, runLengthArray.at(i).toInteger());
         // replace 0x03 (ETX) to newline for Shift+Enter in Photoshop
         // https://community.adobe.com/t5/photoshop-ecosystem-discussions/replacing-quot-shift-enter-quot-aka-etx-aka-lt-0x03-gt-aka-end-of-transmission-character-within-text/td-p/12517124
         run.text = text.mid(start, runLength).replace('\x03'_L1, '\n'_L1);
@@ -174,6 +196,15 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         d->runs.append(run);
     }
 
+    if (d->runs.isEmpty() && !text.isEmpty()) {
+        Run run;
+        run.text = text;
+        run.font = QFont();
+        run.color = Qt::black;
+        run.alignment = defaultHorizontalAlignment | Qt::AlignVCenter;
+        d->runs.append(run);
+    }
+
     if (d->runs.length() > 1) {
         // merge runs with the same font and color
         QList<Run> runs;
@@ -201,27 +232,28 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto rendered = engineDict.value("Rendered"_L1).toMap();
     const auto shapes = rendered.value("Shapes"_L1).toMap();
     const auto childrenArray = shapes.value("Children"_L1).toArray();
-    const auto child = childrenArray.at(0).toMap();
-    const auto shapeType = child.value("ShapeType"_L1).toInteger();
+    if (!childrenArray.isEmpty()) {
+        const auto child = childrenArray.at(0).toMap();
+        const auto shapeType = child.value("ShapeType"_L1).toInteger();
+        d->textType = shapeType == 1 ? TextType::ParagraphText : TextType::PointText;
 
-    d->textType = shapeType == 1 ? TextType::ParagraphText : TextType::PointText;
-
-    // Parse text frame from BoxBounds for ParagraphText
-    if (d->textType == TextType::ParagraphText) {
-        const auto cookie = child.value("Cookie"_L1).toMap();
-        const auto photoshop = cookie.value("Photoshop"_L1).toMap();
-        const auto boxBounds = photoshop.value("BoxBounds"_L1).toArray();
-        if (boxBounds.size() == 4) {
-            const auto left = boxBounds.at(0).toDouble();
-            const auto top = boxBounds.at(1).toDouble();
-            const auto right = boxBounds.at(2).toDouble();
-            const auto bottom = boxBounds.at(3).toDouble();
-            // Transform from local to document coordinates using the TySh transform
-            const auto docLeft = transform.map(QPointF(left, top)).x();
-            const auto docTop = transform.map(QPointF(left, top)).y();
-            const auto docRight = transform.map(QPointF(right, bottom)).x();
-            const auto docBottom = transform.map(QPointF(right, bottom)).y();
-            d->textFrame = QRectF(docLeft, docTop, docRight - docLeft, docBottom - docTop);
+        // Parse text frame from BoxBounds for ParagraphText
+        if (d->textType == TextType::ParagraphText) {
+            const auto cookie = child.value("Cookie"_L1).toMap();
+            const auto photoshop = cookie.value("Photoshop"_L1).toMap();
+            const auto boxBounds = photoshop.value("BoxBounds"_L1).toArray();
+            if (boxBounds.size() == 4) {
+                const auto left = boxBounds.at(0).toDouble();
+                const auto top = boxBounds.at(1).toDouble();
+                const auto right = boxBounds.at(2).toDouble();
+                const auto bottom = boxBounds.at(3).toDouble();
+                // Transform from local to document coordinates using the TySh transform
+                const auto docLeft = transform.map(QPointF(left, top)).x();
+                const auto docTop = transform.map(QPointF(left, top)).y();
+                const auto docRight = transform.map(QPointF(right, bottom)).x();
+                const auto docBottom = transform.map(QPointF(right, bottom)).y();
+                d->textFrame = QRectF(docLeft, docTop, docRight - docLeft, docBottom - docTop);
+            }
         }
     }
 }

@@ -1,0 +1,23 @@
+export component MainWindow inherits Window {
+    height: 200px;
+    title: "";
+    width: 200px;
+    x: 0px;
+    y: 0px;
+    Image {
+        height: 200px;
+        image-fit: contain;
+        source: @image-url("images/background.png");
+        width: 200px;
+        x: 0px;
+        y: 0px;
+    }
+    Image {
+        height: 200px;
+        image-fit: contain;
+        source: @image-url("images/this_is_a_very_long_layer_name_that_tests_the_maximum_length_handling_of_layer_names_in_the_psd_file_format_specification_which_should_support_quite_long_names_via_the_luni_additional_layer_information_block.png");
+        width: 200px;
+        x: 0px;
+        y: 0px;
+    }
+}

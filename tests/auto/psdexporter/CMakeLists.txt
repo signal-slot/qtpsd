@@ -3,3 +3,4 @@
 
 add_subdirectory(image_file_name)
 add_subdirectory(regression)
+add_subdirectory(similarity)

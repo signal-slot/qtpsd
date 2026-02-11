@@ -1,0 +1,21 @@
+export component MainWindow inherits Window {
+    height: 200px;
+    title: "";
+    width: 200px;
+    x: 0px;
+    y: 0px;
+    Image {
+        image-fit: contain;
+        source: @image-url("images/");
+        x: 0px;
+        y: 0px;
+    }
+    Image {
+        height: 100px;
+        image-fit: contain;
+        source: @image-url("images/floating_square.png");
+        width: 100px;
+        x: 50px;
+        y: 50px;
+    }
+}

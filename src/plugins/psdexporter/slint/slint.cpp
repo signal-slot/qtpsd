@@ -199,34 +199,44 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
         Element element;
         element.id = id;
         outputBase(index, &element, imports);
+        bool generated = false;
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
             if (!id.isEmpty()) {
-                outputFolder(index, &element, imports, exports);
+                generated = outputFolder(index, &element, imports, exports);
             } else {
-                outputFolder(index, parent, imports, exports);
+                if (!outputFolder(index, parent, imports, exports))
+                    return false;
                 return true;
             }
             break; }
         case QPsdAbstractLayerItem::Text: {
-            outputText(index, &element, imports);
+            generated = outputText(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Shape: {
-            outputShape(index, &element, imports);
+            generated = outputShape(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Image: {
-            outputImage(index, &element, imports);
+            generated = outputImage(index, &element, imports);
             break; }
         default:
-            break;
+            return true;
         }
+        if (!generated)
+            return false;
 
         if (indexMergeMap.contains(index)) {
             const auto &list = indexMergeMap.values(index);
             for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
+                if (!traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed))
+                    return false;
             }
         }
+
+        const bool hasRenderableContent = !element.type.isEmpty()
+                                          || !element.children.isEmpty();
+        if (!hasRenderableContent)
+            return true;
 
         if (!hint.visible)
             element.properties.insert("visible", "false");
@@ -338,9 +348,10 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
         ImportData i;
         ExportData x;
         Element component;
+        bool generated = false;
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
-            outputFolder(index, &component, &i, &x);
+            generated = outputFolder(index, &component, &i, &x);
             switch (hint.baseElement) {
             case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
                 component.type = "";
@@ -376,7 +387,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
             }
             break; }
         case QPsdAbstractLayerItem::Text: {
-            outputText(index, &component, &i);
+            generated = outputText(index, &component, &i);
             if (!id.isEmpty() && hint.properties.contains("text"))
                 exports->append({"string", id, "text", component.properties.value("text")});
             if (!id.isEmpty() && hint.properties.contains("color"))
@@ -385,18 +396,18 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
         case QPsdAbstractLayerItem::Shape: {
             switch (hint.baseElement) {
             case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
-                outputShape(index, &component, &i);
+                generated = outputShape(index, &component, &i);
                 break;
             case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
-                outputShape(index, &component, &i, "TouchArea");
+                generated = outputShape(index, &component, &i, "TouchArea");
                 break;
             case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
             case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
                 i["std-widgets.slint"].insert("Button");
-                outputShape(index, &component, &i, "Button");
+                generated = outputShape(index, &component, &i, "Button");
                 break;
             default:
-                break;
+                return true;
             }
 
             if (!id.isEmpty()) {
@@ -414,7 +425,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
 
             break; }
         case QPsdAbstractLayerItem::Image: {
-            outputImage(index, &component, &i);
+            generated = outputImage(index, &component, &i);
             if (!id.isEmpty()) {
                 switch (hint.baseElement) {
                 case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
@@ -432,8 +443,13 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
                 }
             }
             break; }
+        default:
+            return true;
         }
-        saveTo(hint.componentName, &component, i, x);
+        if (!generated)
+            return false;
+        if (!saveTo(hint.componentName, &component, i, x))
+            return false;
 
         for (auto v = x.cbegin(), end = x.cend(); v != end; ++v) {
             const auto entry = *v;
@@ -459,8 +475,20 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
 bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *element, ImportData *imports) const
 {
     const auto *text = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(textIndex));
+    if (!text) {
+        qWarning() << "Invalid text layer item for index" << textIndex;
+        return false;
+    }
     const auto dropShadow = text->dropShadow();
     const auto runs = text->runs();
+    if (runs.isEmpty()) {
+        element->type = "Text";
+        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+            return false;
+        element->properties.insert("text", "\"\"");
+        element->properties.insert("color", "#000000");
+        return true;
+    }
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";

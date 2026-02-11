@@ -1,0 +1,97 @@
+export component MainWindow inherits Window {
+    height: 200px;
+    title: "";
+    width: 300px;
+    x: 0px;
+    y: 0px;
+    Image {
+        height: 200px;
+        image-fit: contain;
+        source: @image-url("images/background.png");
+        width: 300px;
+        x: 0px;
+        y: 0px;
+    }
+    Path {
+        fill: #000000;
+        fill-rule: evenodd;
+        height: 142px;
+        stroke: transparent;
+        stroke-width: 1px;
+        width: 262px;
+        x: 19px;
+        y: 29px;
+        MoveTo {
+            x: 1;
+            y: 1;
+        }
+        CubicTo {
+            control-1-x: 1;
+            control-1-y: 1;
+            control-2-x: 121;
+            control-2-y: 1;
+            x: 121;
+            y: 1;
+        }
+        CubicTo {
+            control-1-x: 121;
+            control-1-y: 1;
+            control-2-x: 121;
+            control-2-y: 141;
+            x: 121;
+            y: 141;
+        }
+        CubicTo {
+            control-1-x: 121;
+            control-1-y: 141;
+            control-2-x: 1;
+            control-2-y: 141;
+            x: 1;
+            y: 141;
+        }
+        CubicTo {
+            control-1-x: 1;
+            control-1-y: 141;
+            control-2-x: 1;
+            control-2-y: 1;
+            x: 1;
+            y: 1;
+        }
+        MoveTo {
+            x: 141;
+            y: 21;
+        }
+        CubicTo {
+            control-1-x: 141;
+            control-1-y: 21;
+            control-2-x: 261;
+            control-2-y: 21;
+            x: 261;
+            y: 21;
+        }
+        CubicTo {
+            control-1-x: 261;
+            control-1-y: 21;
+            control-2-x: 261;
+            control-2-y: 121;
+            x: 261;
+            y: 121;
+        }
+        CubicTo {
+            control-1-x: 261;
+            control-1-y: 121;
+            control-2-x: 141;
+            control-2-y: 121;
+            x: 141;
+            y: 121;
+        }
+        CubicTo {
+            control-1-x: 141;
+            control-1-y: 121;
+            control-2-x: 141;
+            control-2-y: 21;
+            x: 141;
+            y: 21;
+        }
+    }
+}

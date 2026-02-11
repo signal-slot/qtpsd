@@ -430,7 +430,19 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
 bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element *element, ImportData *imports) const
 {
     const QPsdTextLayerItem *text = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(textIndex));
+    if (!text) {
+        qWarning() << "Invalid text layer item for index" << textIndex;
+        return false;
+    }
     const auto runs = text->runs();
+    if (runs.isEmpty()) {
+        element->type = "Text";
+        if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
+            return false;
+        element->properties.insert("text", "\"\"");
+        element->properties.insert("color", "\"#000000\"");
+        return true;
+    }
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
@@ -1150,22 +1162,25 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             element.properties.insert("visible", false);
         if (!id.isEmpty())
             exports->insert(id);
+        bool generated = false;
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
-            outputFolder(index, &element, imports, exports, groupBlendMode);
+            generated = outputFolder(index, &element, imports, exports, groupBlendMode);
             break; }
         case QPsdAbstractLayerItem::Text: {
-            outputText(index, &element, imports);
+            generated = outputText(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Shape: {
-            outputShape(index, &element, imports);
+            generated = outputShape(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Image: {
-            outputImage(index, &element, imports);
+            generated = outputImage(index, &element, imports);
             break; }
         default:
-            break;
+            return true;
         }
+        if (!generated)
+            return false;
 
         // Propagate inherited group blend mode to leaf items
         if (item->type() != QPsdAbstractLayerItem::Folder
@@ -1179,9 +1194,16 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         if (indexMergeMap.contains(index)) {
             const auto &list = indexMergeMap.values(index);
             for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
+                if (!traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed))
+                    return false;
             }
         }
+
+        const bool hasRenderableContent = !element.type.isEmpty()
+                                          || !element.children.isEmpty()
+                                          || !element.layers.isEmpty();
+        if (!hasRenderableContent)
+            return true;
 
         if (!id.isEmpty()) {
             if (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea) {
@@ -1259,21 +1281,26 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         ExportData x;
 
         Element component;
+        bool generated = false;
 
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
-            outputFolder(index, &component, &i, &x, groupBlendMode);
+            generated = outputFolder(index, &component, &i, &x, groupBlendMode);
             break; }
         case QPsdAbstractLayerItem::Text: {
-            outputText(index, &component, &i);
+            generated = outputText(index, &component, &i);
             break; }
         case QPsdAbstractLayerItem::Shape: {
-            outputShape(index, &component, &i);
+            generated = outputShape(index, &component, &i);
             break; }
         case QPsdAbstractLayerItem::Image: {
-            outputImage(index, &component, &i);
+            generated = outputImage(index, &component, &i);
             break; }
+        default:
+            return true;
         }
+        if (!generated)
+            return false;
         switch (hint.baseElement) {
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             component.type = "Item";
@@ -1291,7 +1318,8 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         // Component files have their own coordinate space; x/y belong on the instance side only
         component.properties.remove("x");
         component.properties.remove("y");
-        saveTo(hint.componentName + ".ui", &component, i, x);
+        if (!saveTo(hint.componentName + ".ui", &component, i, x))
+            return false;
 
         Element element;
         element.type = hint.componentName;

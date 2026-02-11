@@ -15,6 +15,5 @@ qt_internal_add_test(tst_qpsdview
         Qt::Gui
         Qt::Widgets
         Qt::PsdCore
-        Qt::PsdGui
         Qt::PsdWidget
 )

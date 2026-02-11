@@ -1,0 +1,39 @@
+export component MainWindow inherits Window {
+    height: 200px;
+    title: "";
+    width: 200px;
+    x: 0px;
+    y: 0px;
+    Image {
+        height: 200px;
+        image-fit: contain;
+        source: @image-url("images/background.png");
+        width: 200px;
+        x: 0px;
+        y: 0px;
+    }
+    Image {
+        height: 100px;
+        image-fit: contain;
+        source: @image-url("images/red_bottom.png");
+        width: 100px;
+        x: 20px;
+        y: 20px;
+    }
+    Image {
+        height: 100px;
+        image-fit: contain;
+        source: @image-url("images/green_middle.png");
+        width: 100px;
+        x: 50px;
+        y: 50px;
+    }
+    Image {
+        height: 100px;
+        image-fit: contain;
+        source: @image-url("images/blue_top.png");
+        width: 100px;
+        x: 80px;
+        y: 80px;
+    }
+}
