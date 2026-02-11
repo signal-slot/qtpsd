@@ -8,6 +8,7 @@
 #include <QtPsdCore/QPsdVectorMaskSetting>
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdPatternFill>
+#include <QtPsdWidget/QPsdScene>
 
 QT_BEGIN_NAMESPACE
 
@@ -59,14 +60,60 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     } else if (border) {
         p->setPen(QPen(border->color(), border->size()));
     } else if (patternFill) {
-        if (hasMask)
-            tempPainterObj.end();
-        const auto record = layer->record();
-        const auto patt = record.additionalLayerInformation().value("Patt");
-        // TODO: find the pattern from below
-        // However, there is no way to access it from here yet
-        // parser.layerAndMaskInformation().additionalLayerInformation().value("Patt");
-        return;
+        auto *psdScene = qobject_cast<QPsdScene *>(scene());
+        if (psdScene) {
+            QImage patternImage = psdScene->patternImage(patternFill->patternID());
+            if (!patternImage.isNull()) {
+                qreal sc = patternFill->scale() / 100.0;
+                if (sc != 1.0 && sc > 0) {
+                    patternImage = patternImage.scaled(
+                        qRound(patternImage.width() * sc),
+                        qRound(patternImage.height() * sc),
+                        Qt::IgnoreAspectRatio,
+                        Qt::SmoothTransformation);
+                }
+
+                QBrush brush(patternImage);
+
+                QTransform transform;
+                if (patternFill->angle() != 0)
+                    transform.rotate(patternFill->angle());
+                const QPointF phase = patternFill->phase();
+                if (!phase.isNull())
+                    transform.translate(phase.x(), phase.y());
+                if (!transform.isIdentity())
+                    brush.setTransform(transform);
+
+                p->setPen(Qt::NoPen);
+                p->setBrush(brush);
+            }
+        }
+    } else if (!layer->vscgPatternId().isEmpty()) {
+        auto *psdScene = qobject_cast<QPsdScene *>(scene());
+        if (psdScene) {
+            QImage patternImage = psdScene->patternImage(layer->vscgPatternId());
+            if (!patternImage.isNull()) {
+                qreal sc = layer->vscgPatternScale();
+                if (sc != 1.0 && sc > 0) {
+                    patternImage = patternImage.scaled(
+                        qRound(patternImage.width() * sc),
+                        qRound(patternImage.height() * sc),
+                        Qt::IgnoreAspectRatio,
+                        Qt::SmoothTransformation);
+                }
+
+                QBrush brush(patternImage);
+
+                QTransform transform;
+                if (layer->vscgPatternAngle() != 0)
+                    transform.rotate(layer->vscgPatternAngle());
+                if (!transform.isIdentity())
+                    brush.setTransform(transform);
+
+                p->setPen(Qt::NoPen);
+                p->setBrush(brush);
+            }
+        }
     } else {
         p->setPen(layer->pen());
         p->setBrush(layer->brush());

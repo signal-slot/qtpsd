@@ -7,6 +7,7 @@
 #include <QtPsdWidget/qpsdwidgetglobal.h>
 
 #include <QtCore/QModelIndex>
+#include <QtGui/QImage>
 #include <QtWidgets/QGraphicsScene>
 
 QT_BEGIN_NAMESPACE
@@ -22,6 +23,7 @@ public:
     virtual ~QPsdScene();
 
     QPsdWidgetTreeItemModel *model() const;
+    QImage patternImage(const QString &patternId) const;
     bool showChecker() const;
 
 public slots:

@@ -11,6 +11,8 @@
 #include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdCore/QPsdShadowEffect>
 #include <QtPsdGui/QPsdBorder>
+#include <QtPsdGui/QPsdPatternFill>
+#include <QtPsdWidget/QPsdScene>
 
 QT_BEGIN_NAMESPACE
 
@@ -352,6 +354,78 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             default:
                 qWarning() << sofi.blendMode() << "not supported blend mode";
                 break;
+            }
+        }
+    }
+
+    // Pattern fill overlay (from lfx2 patternFill effect)
+    const auto *patternFillData = layer->patternFill();
+    if (patternFillData) {
+        auto *psdScene = qobject_cast<QPsdScene *>(scene());
+        if (psdScene) {
+            QImage patternImage = psdScene->patternImage(patternFillData->patternID());
+            if (!patternImage.isNull()) {
+                qreal sc = patternFillData->scale() / 100.0;
+                if (sc != 1.0 && sc > 0) {
+                    patternImage = patternImage.scaled(
+                        qRound(patternImage.width() * sc),
+                        qRound(patternImage.height() * sc),
+                        Qt::IgnoreAspectRatio,
+                        Qt::SmoothTransformation);
+                }
+
+                // Build the tiled pattern: align to document origin
+                QBrush brush(patternImage);
+                QTransform transform;
+                // Offset so pattern tiles from document origin, not layer origin
+                const QPoint layerPos = layer->rect().topLeft();
+                transform.translate(-layerPos.x(), -layerPos.y());
+                if (patternFillData->angle() != 0)
+                    transform.rotate(patternFillData->angle());
+                const QPointF phase = patternFillData->phase();
+                if (!phase.isNull())
+                    transform.translate(phase.x(), phase.y());
+                brush.setTransform(transform);
+
+                // Render pattern with the original layer's alpha mask
+                // Use explicit pixel manipulation to avoid premultiplication artifacts
+                QImage patternSrc(image.size(), QImage::Format_ARGB32);
+                patternSrc.fill(Qt::transparent);
+                {
+                    QPainter pp(&patternSrc);
+                    pp.setCompositionMode(QPainter::CompositionMode_Source);
+                    pp.fillRect(patternSrc.rect(), brush);
+                    pp.end();
+                }
+
+                image = image.convertToFormat(QImage::Format_ARGB32);
+                const qreal patternOpacity = patternFillData->opacity();
+                for (int y = 0; y < image.height(); ++y) {
+                    const QRgb *origLine = reinterpret_cast<const QRgb *>(image.constScanLine(y));
+                    const QRgb *patLine = reinterpret_cast<const QRgb *>(patternSrc.constScanLine(y));
+                    QRgb *resultLine = reinterpret_cast<QRgb *>(image.scanLine(y));
+                    for (int x = 0; x < image.width(); ++x) {
+                        const int a = qAlpha(origLine[x]);
+                        if (a > 0) {
+                            const int pr = qRed(patLine[x]);
+                            const int pg = qGreen(patLine[x]);
+                            const int pb = qBlue(patLine[x]);
+                            if (patternOpacity >= 1.0) {
+                                resultLine[x] = qRgba(pr, pg, pb, a);
+                            } else {
+                                // Blend pattern over original at given opacity
+                                const int or_ = qRed(origLine[x]);
+                                const int og = qGreen(origLine[x]);
+                                const int ob = qBlue(origLine[x]);
+                                resultLine[x] = qRgba(
+                                    qRound(pr * patternOpacity + or_ * (1.0 - patternOpacity)),
+                                    qRound(pg * patternOpacity + og * (1.0 - patternOpacity)),
+                                    qRound(pb * patternOpacity + ob * (1.0 - patternOpacity)),
+                                    a);
+                            }
+                        }
+                    }
+                }
             }
         }
     }

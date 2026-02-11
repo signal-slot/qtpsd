@@ -41,6 +41,11 @@ public:
     qreal angle() const;
     bool isDither() const;
 
+    QString patternId() const;
+    QString patternName() const;
+    qreal patternScale() const;
+    qreal patternOpacity() const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

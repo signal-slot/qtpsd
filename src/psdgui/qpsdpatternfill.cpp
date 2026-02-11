@@ -26,8 +26,6 @@ public:
         // Pattern
         if (descriptor.contains("Ptrn")) {
             const auto patn = descriptor.value("Ptrn").value<QPsdDescriptor>().data();
-            const auto nm__ = patn.value("Nm  ").toString();
-            qDebug() << "nm__" << nm__;
             const auto idnt = patn.value("Idnt").toString();
             patternID = idnt;
         }

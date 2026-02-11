@@ -79,6 +79,13 @@ void QPsdScene::setModel(QPsdWidgetTreeItemModel *model)
     emit modelChanged(model);
 }
 
+QImage QPsdScene::patternImage(const QString &patternId) const
+{
+    if (d->model)
+        return d->model->patternImage(patternId);
+    return QImage();
+}
+
 bool QPsdScene::showChecker() const
 {
     return d->showChecker;

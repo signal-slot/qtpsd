@@ -32,6 +32,7 @@ public:
     QList<QPsdLinkedLayer::LinkedFile> linkedFiles;
     QByteArray iccProfile;
     QImage mergedImage;
+    QHash<QString, QImage> patterns;
 };
 
 QPsdGuiLayerTreeItemModel::Private::Private(const QPsdGuiLayerTreeItemModel *model) : q(model)
@@ -70,7 +71,7 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
 
             if (additionalLayerInformation.contains("TySh")) {
                 item = new QPsdTextLayerItem(*layerRecord);
-            } else if (additionalLayerInformation.contains("vscg") || additionalLayerInformation.contains("SoCo")) {
+            } else if (additionalLayerInformation.contains("vscg") || additionalLayerInformation.contains("SoCo") || additionalLayerInformation.contains("PtFl")) {
                 item = new QPsdShapeLayerItem(*layerRecord);
             } else {
                 // Check for adjustment layer keys
@@ -180,6 +181,16 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto iccProfile = parser.iccProfile();
     d->iccProfile = iccProfile;
     d->mergedImage = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
+
+    // Store pattern images for pattern fill rendering
+    for (const auto &key : {"Patt", "Pat2", "Pat3"}) {
+        if (additionalLayerInformation.contains(key)) {
+            const auto patternMap = additionalLayerInformation.value(key).value<QVariantHash>();
+            for (auto it = patternMap.begin(); it != patternMap.end(); ++it) {
+                d->patterns.insert(it.key(), it.value().value<QImage>());
+            }
+        }
+    }
 }
 
 const QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::layerItem(const QModelIndex &index) const
@@ -190,6 +201,11 @@ const QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::layerItem(const QModelIn
 QImage QPsdGuiLayerTreeItemModel::mergedImage() const
 {
     return d->mergedImage;
+}
+
+QImage QPsdGuiLayerTreeItemModel::patternImage(const QString &patternId) const
+{
+    return d->patterns.value(patternId);
 }
 
 QT_END_NAMESPACE

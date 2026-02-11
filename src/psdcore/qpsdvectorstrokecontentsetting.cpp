@@ -224,4 +224,24 @@ bool QPsdVectorStrokeContentSetting::isDither() const
     return d->dither;
 }
 
+QString QPsdVectorStrokeContentSetting::patternId() const
+{
+    return d->patternId;
+}
+
+QString QPsdVectorStrokeContentSetting::patternName() const
+{
+    return d->patternName;
+}
+
+qreal QPsdVectorStrokeContentSetting::patternScale() const
+{
+    return d->scale;
+}
+
+qreal QPsdVectorStrokeContentSetting::patternOpacity() const
+{
+    return d->opacity;
+}
+
 QT_END_NAMESPACE

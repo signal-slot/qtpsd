@@ -9,6 +9,7 @@
 #include <QtGui/QRadialGradient>
 
 #include <QtPsdCore/QPsdDescriptor>
+#include <QtPsdCore/QPsdUnitFloat>
 #include <QtPsdCore/QPsdVectorStrokeData>
 
 QT_BEGIN_NAMESPACE
@@ -54,6 +55,9 @@ public:
     QBrush brush = Qt::NoBrush;
     QPsdShapeLayerItem::StrokeAlignment strokeAlignment = QPsdShapeLayerItem::StrokeCenter;
     QPsdAbstractLayerItem::PathInfo path;
+    QString vscgPatternId;
+    qreal vscgPatternScale = 1.0;
+    qreal vscgPatternAngle = 0;
 };
 
 QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
@@ -161,16 +165,48 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                         qFatal() << vscg.gradientType() << "not implemented";
                     }
                     break; }
+                case QPsdVectorStrokeContentSetting::PatternFill:
+                    d->vscgPatternId = vscg.patternId();
+                    d->vscgPatternScale = vscg.patternScale();
+                    d->vscgPatternAngle = vscg.angle();
+                    d->brush = Qt::NoBrush;
+                    break;
                 }
             } else if (additionalLayerInformation.contains("SoCo")) {
                 const auto soco = additionalLayerInformation.value("SoCo").value<QPsdDescriptor>().data();
                 d->brush = QBrush(colorFromDescriptor(soco.value("Clr ").value<QPsdDescriptor>()));
+            } else if (additionalLayerInformation.contains("PtFl")) {
+                const auto ptfl = additionalLayerInformation.value("PtFl").value<QPsdDescriptor>().data();
+                const auto ptrn = ptfl.value("Ptrn").value<QPsdDescriptor>().data();
+                d->vscgPatternId = ptrn.value("Idnt").toString();
+                const auto scl = ptfl.value("Scl ").value<QPsdUnitFloat>();
+                if (scl.unit() == QPsdUnitFloat::Percent) {
+                    d->vscgPatternScale = scl.value() / 100;
+                }
+                const auto angl = ptfl.value("Angl").value<QPsdUnitFloat>();
+                if (angl.unit() == QPsdUnitFloat::Angle) {
+                    d->vscgPatternAngle = angl.value();
+                }
+                d->brush = Qt::NoBrush;
             }
         }
     } else {
         if (additionalLayerInformation.contains("SoCo")) {
             const auto soco = additionalLayerInformation.value("SoCo").value<QPsdDescriptor>().data();
             d->brush = QBrush(colorFromDescriptor(soco.value("Clr ").value<QPsdDescriptor>()));
+        } else if (additionalLayerInformation.contains("PtFl")) {
+            const auto ptfl = additionalLayerInformation.value("PtFl").value<QPsdDescriptor>().data();
+            const auto ptrn = ptfl.value("Ptrn").value<QPsdDescriptor>().data();
+            d->vscgPatternId = ptrn.value("Idnt").toString();
+            const auto scl = ptfl.value("Scl ").value<QPsdUnitFloat>();
+            if (scl.unit() == QPsdUnitFloat::Percent) {
+                d->vscgPatternScale = scl.value() / 100;
+            }
+            const auto angl = ptfl.value("Angl").value<QPsdUnitFloat>();
+            if (angl.unit() == QPsdUnitFloat::Angle) {
+                d->vscgPatternAngle = angl.value();
+            }
+            d->brush = Qt::NoBrush;
         }
     }
 }
@@ -200,6 +236,21 @@ QPsdShapeLayerItem::StrokeAlignment QPsdShapeLayerItem::strokeAlignment() const
 QPsdAbstractLayerItem::PathInfo QPsdShapeLayerItem::pathInfo() const
 {
     return d->path;
+}
+
+QString QPsdShapeLayerItem::vscgPatternId() const
+{
+    return d->vscgPatternId;
+}
+
+qreal QPsdShapeLayerItem::vscgPatternScale() const
+{
+    return d->vscgPatternScale;
+}
+
+qreal QPsdShapeLayerItem::vscgPatternAngle() const
+{
+    return d->vscgPatternAngle;
 }
 
 QT_END_NAMESPACE

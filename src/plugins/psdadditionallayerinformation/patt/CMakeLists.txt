@@ -8,5 +8,6 @@ qt_internal_add_plugin(QPsdAdditionalLayerInformationPattPlugin
         patt.cpp
     LIBRARIES
         Qt::Core
+        Qt::Gui
         Qt::PsdCore
 )

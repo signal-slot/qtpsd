@@ -32,6 +32,8 @@ public:
 
     QImage mergedImage() const;
 
+    QImage patternImage(const QString &patternId) const;
+
 private:
     class Private;
     QScopedPointer<Private> d;

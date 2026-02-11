@@ -23,6 +23,10 @@ public:
     StrokeAlignment strokeAlignment() const;
     QPsdAbstractLayerItem::PathInfo pathInfo() const;
 
+    QString vscgPatternId() const;
+    qreal vscgPatternScale() const;
+    qreal vscgPatternAngle() const;
+
 private:
     class Private;
     QScopedPointer<Private> d;
