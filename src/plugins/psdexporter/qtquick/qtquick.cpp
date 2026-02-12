@@ -173,8 +173,10 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
         rect = rectBounds;
         if (makeCompact) {
             // makeCompact の場合、位置は indexRectMap から取得（親に対する相対座標）
+            // rectBounds の位置補正（テキストの baseline-ascent 等）を保持する
             QRect compactRect = indexRectMap.value(index);
-            rect.moveTopLeft(compactRect.topLeft());
+            QPoint delta = rectBounds.topLeft() - item->rect().topLeft();
+            rect.moveTopLeft(compactRect.topLeft() + delta);
         }
     }
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {

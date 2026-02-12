@@ -41,7 +41,7 @@ static QSize parseResolution(const QString &resolution, const QSize &originalSiz
     return QSize(); // Invalid
 }
 
-static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs)
+static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs, bool makeCompact)
 {
     QFileInfo inputInfo(input);
     if (!inputInfo.exists()) {
@@ -129,7 +129,7 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     hint.insert("height", outputSize.height());
     hint.insert("fontScaleFactor", 1.0);
     hint.insert("imageScaling", false);
-    hint.insert("makeCompact", false);
+    hint.insert("makeCompact", makeCompact);
 
     qInfo() << "Exporting" << input << "to" << outdir << "using" << type << "at" << outputSize;
     if (!plugin->exportTo(&model, outdir, hint)) {
@@ -182,6 +182,10 @@ int main(int argc, char *argv[])
                                         "mode");
     parser.addOption(effectModeOption);
 
+    QCommandLineOption makeCompactOption(QStringList() << "make-compact",
+                                         "Enable compact layout");
+    parser.addOption(makeCompactOption);
+
     QCommandLineOption listOption(QStringList() << "list",
                                   "List available exporter types");
     parser.addOption(listOption);
@@ -214,7 +218,8 @@ int main(int argc, char *argv[])
                              parser.value(typeOption),
                              parser.value(outdirOption),
                              parser.value(resolutionOption),
-                             propertyArgs);
+                             propertyArgs,
+                             parser.isSet(makeCompactOption));
     }
 
     MainWindow window;
