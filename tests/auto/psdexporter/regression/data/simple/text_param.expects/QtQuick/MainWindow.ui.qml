@@ -55,7 +55,7 @@ Item {
             text: "shooting"
             width: 239
             x: 30
-            y: 20
+            y: 19
         }
     }
 }

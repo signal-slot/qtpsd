@@ -25,18 +25,18 @@ Item {
             color: "#eac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 110
+            height: 111
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
             width: 160
             x: 2
-            y: 10
+            y: 9
         }
         Item {
             height: 98
             width: 144
             x: 169
-            y: 10
+            y: 9
             Column {
                 anchors.centerIn: parent
                 RowLayout {
@@ -93,7 +93,7 @@ Item {
             text: "Shift\n+改行"
             width: 86
             x: 25
-            y: 110
+            y: 109
         }
         Text {
             color: "#eac3c3"

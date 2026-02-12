@@ -455,11 +455,10 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             metricsFont.setPixelSize(qRound(run.font.pointSizeF()));
             QFontMetrics fm(metricsFont);
             QRectF adjustedBounds = text->bounds();
-            adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-            adjustedBounds.setHeight(fm.height());
+            adjustedBounds.moveTop(text->textOrigin().y() - fm.ascent());
             rect = adjustedBounds.toRect();
         }
-    
+
         if (!outputBase(textIndex, element, imports, rect))
             return false;
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
@@ -510,8 +509,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             metricsFont.setPixelSize(qRound(runs.first().font.pointSizeF()));
             QFontMetrics fm(metricsFont);
             QRectF adjustedBounds = text->bounds();
-            adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-            adjustedBounds.setHeight(fm.height());
+            adjustedBounds.moveTop(text->textOrigin().y() - fm.ascent());
             multiRect = adjustedBounds.toRect();
         }
         if (!outputBase(textIndex, element, imports, multiRect))

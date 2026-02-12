@@ -66,7 +66,7 @@ Item {
                 text: "Example1"
                 width: 160
                 x: 50
-                y: 63
+                y: 62
             }
         }
         Item {
@@ -123,7 +123,7 @@ Item {
                 text: "Example1"
                 width: 160
                 x: 50
-                y: 143
+                y: 142
             }
         }
     }

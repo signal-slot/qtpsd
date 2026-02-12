@@ -42,9 +42,9 @@ class MainWindow extends StatelessWidget {
                         ),
                       ),
                       Positioned(
-                        height: 58,
+                        height: 33,
                         left: 50,
-                        top: 80,
+                        top: 79,
                         width: 160,
                         child: Text(
                           "Example1", 

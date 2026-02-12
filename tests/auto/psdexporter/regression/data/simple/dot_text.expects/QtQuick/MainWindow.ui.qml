@@ -21,7 +21,7 @@ Item {
             text: "."
             width: 9
             x: 125
-            y: 80
+            y: 79
         }
     }
 }

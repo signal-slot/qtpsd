@@ -21,7 +21,7 @@ Item {
             text: "Example1"
             width: 160
             x: 50
-            y: 80
+            y: 79
         }
     }
 }

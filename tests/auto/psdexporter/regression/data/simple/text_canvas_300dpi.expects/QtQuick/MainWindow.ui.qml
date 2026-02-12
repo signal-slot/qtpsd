@@ -21,7 +21,7 @@ Item {
             text: "12pt"
             width: 120
             x: 30
-            y: 30
+            y: 29
         }
         Text {
             color: "#ffffff"
@@ -32,7 +32,7 @@ Item {
             text: "150px"
             width: 478
             x: 150
-            y: 60
+            y: 56
         }
     }
 }

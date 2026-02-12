@@ -12,8 +12,8 @@ struct MainView: View {
                     .font(.custom("Source Han Sans", size: 50))
                     .foregroundStyle(Color(red: 0.000, green: 0.000, blue: 0.000))
                     .multilineTextAlignment(.center)
-                    .frame(width: 0.0, height: 97.0)
-                    .position(x: 145.0, y: 68.5)
+                    .frame(width: 0.0, height: 56.0)
+                    .position(x: 145.0, y: 48.0)
                 Rectangle
                     .fill(Color(red: 0.659, green: 0.965, blue: 0.929))
                     .frame(width: 240.0, height: 97.0)
@@ -26,8 +26,8 @@ struct MainView: View {
                     .font(.custom("Source Han Sans", size: 50))
                     .foregroundStyle(Color(red: 0.000, green: 0.000, blue: 0.000))
                     .multilineTextAlignment(.center)
-                    .frame(width: 239.0, height: 96.0)
-                    .position(x: 149.5, y: 68.0)
+                    .frame(width: 239.0, height: 56.0)
+                    .position(x: 149.5, y: 47.0)
             }
         }
         .frame(width: 320.0, height: 240.0)
