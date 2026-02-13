@@ -56,8 +56,14 @@ QByteArray QPsdSection::readPascalString(QIODevice *source, int padding, quint32
 
 QByteArray QPsdSection::readByteArray(QIODevice *source, quint32 size, quint32 *length)
 {
-    if (length)
+    if (length) {
+        if (size > *length) {
+            qWarning("readByteArray: requested %u bytes with only %u bytes remaining; clamping",
+                     size, *length);
+            size = *length;
+        }
         *length -= size;
+    }
     return source->read(size);
 }
 
@@ -67,9 +73,26 @@ QString QPsdSection::readString(QIODevice *source, quint32 *length)
     // All values defined as Unicode string consist of:
     // A 4-byte length field, representing the number of UTF-16 code units in the string (not bytes).
     // The string of Unicode values, two bytes per character and a two byte null for the end of the string.
-    const auto size = readS32(source, length);
-    Q_ASSERT(size < 1024);
-    const auto data = readByteArray(source, size * 2, length);
+    const qint32 size = readS32(source, length);
+    if (size <= 0) {
+        if (size < 0)
+            qWarning("readString: negative UTF-16 unit size %d; returning empty string", size);
+        return {};
+    }
+
+    constexpr qint32 kMaxCodeUnits = 1024 * 1024;
+    qint32 safeSize = size;
+    if (safeSize > kMaxCodeUnits) {
+        qWarning("readString: too large UTF-16 unit size %d; clamping to %d", safeSize, kMaxCodeUnits);
+        safeSize = kMaxCodeUnits;
+    }
+    quint32 byteSize = static_cast<quint32>(safeSize) * 2;
+    if (length && byteSize > *length) {
+        qWarning("readString: requested %u bytes with only %u bytes remaining; clamping", byteSize, *length);
+        byteSize = *length - (*length % 2);
+    }
+
+    const auto data = readByteArray(source, byteSize, length);
     QStringDecoder decoder(QStringDecoder::Utf16BE);
     QString ret = decoder.decode(data);
     if (ret.endsWith(QChar::Null))
@@ -81,9 +104,23 @@ QString QPsdSection::readString(QIODevice *source, quint32 *length)
 
 QString QPsdSection::readStringLE(QIODevice *source, quint32 *length)
 {
-    const auto size = readU32LE(source, length);
-    Q_ASSERT(size < 1024);
-    const auto data = readByteArray(source, size * 2, length);
+    const quint32 size = readU32LE(source, length);
+    if (size == 0)
+        return {};
+
+    constexpr quint32 kMaxCodeUnits = 1024 * 1024;
+    quint32 safeSize = size;
+    if (safeSize > kMaxCodeUnits) {
+        qWarning("readStringLE: too large UTF-16 unit size %u; clamping to %u", safeSize, kMaxCodeUnits);
+        safeSize = kMaxCodeUnits;
+    }
+    quint32 byteSize = safeSize * 2;
+    if (length && byteSize > *length) {
+        qWarning("readStringLE: requested %u bytes with only %u bytes remaining; clamping", byteSize, *length);
+        byteSize = *length - (*length % 2);
+    }
+
+    const auto data = readByteArray(source, byteSize, length);
     QStringDecoder decoder(QStringDecoder::Utf16LE);
     QString ret = decoder.decode(data);
     if (ret.endsWith(QChar::Null))
