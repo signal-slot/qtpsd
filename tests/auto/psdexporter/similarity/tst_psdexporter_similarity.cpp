@@ -44,6 +44,10 @@ private:
         bool hasSlint = false;
         bool hasFlutter = false;
         bool hasLvgl = false;
+        bool hasQtQuickSource = false;
+        bool hasSlintSource = false;
+        bool hasFlutterSource = false;
+        bool hasLvglSource = false;
 
         QString imageDataRel;
         QString psdViewRel;
@@ -109,6 +113,8 @@ private:
     QString metricTargetImage(const Result &result, Metric metric) const;
     QString metricDiffImage(const Result &result, Metric metric) const;
     QString metricStatus(const Result &result, Metric metric) const;
+    bool metricSourceExists(const Result &result, Metric metric) const;
+    bool metricOutputExists(const Result &result, Metric metric) const;
 
     void writeSection(QTextStream &stream,
                       const QList<Result> &results,
@@ -662,20 +668,11 @@ QString tst_PsdExporterSimilarity::metricStatus(const Result &result, Metric met
     const double similarity = metricSimilarity(result, metric);
     const bool passed = metricPassed(result, metric);
 
-    if (metric == Metric::ImageDataVsPsdView && (!result.hasImageData || !result.hasPsdView)) {
+    if (!result.hasImageData || !metricSourceExists(result, metric)) {
         return QStringLiteral("MISSING");
     }
-    if (metric == Metric::ImageDataVsQtQuick && (!result.hasImageData || !result.hasQtQuick)) {
-        return QStringLiteral("MISSING");
-    }
-    if (metric == Metric::ImageDataVsSlint && (!result.hasImageData || !result.hasSlint)) {
-        return QStringLiteral("MISSING");
-    }
-    if (metric == Metric::ImageDataVsFlutter && (!result.hasImageData || !result.hasFlutter)) {
-        return QStringLiteral("MISSING");
-    }
-    if (metric == Metric::ImageDataVsLvgl && (!result.hasImageData || !result.hasLvgl)) {
-        return QStringLiteral("MISSING");
+    if (!metricOutputExists(result, metric)) {
+        return QStringLiteral("FAILED");
     }
 
     if (!passed) {
@@ -688,6 +685,40 @@ QString tst_PsdExporterSimilarity::metricStatus(const Result &result, Metric met
         return QStringLiteral("GOOD");
     }
     return QStringLiteral("LOW");
+}
+
+bool tst_PsdExporterSimilarity::metricSourceExists(const Result &result, Metric metric) const
+{
+    switch (metric) {
+    case Metric::ImageDataVsPsdView:
+        return result.hasPsdView;
+    case Metric::ImageDataVsQtQuick:
+        return result.hasQtQuickSource;
+    case Metric::ImageDataVsSlint:
+        return result.hasSlintSource;
+    case Metric::ImageDataVsFlutter:
+        return result.hasFlutterSource;
+    case Metric::ImageDataVsLvgl:
+        return result.hasLvglSource;
+    }
+    return false;
+}
+
+bool tst_PsdExporterSimilarity::metricOutputExists(const Result &result, Metric metric) const
+{
+    switch (metric) {
+    case Metric::ImageDataVsPsdView:
+        return result.hasPsdView;
+    case Metric::ImageDataVsQtQuick:
+        return result.hasQtQuick;
+    case Metric::ImageDataVsSlint:
+        return result.hasSlint;
+    case Metric::ImageDataVsFlutter:
+        return result.hasFlutter;
+    case Metric::ImageDataVsLvgl:
+        return result.hasLvgl;
+    }
+    return false;
 }
 
 void tst_PsdExporterSimilarity::writeSection(QTextStream &stream,
@@ -769,20 +800,14 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         double max = 0.0;
 
         for (const auto &r : results) {
-            const bool available =
-                (metric == Metric::ImageDataVsPsdView && r.hasImageData && r.hasPsdView) ||
-                (metric == Metric::ImageDataVsQtQuick && r.hasImageData && r.hasQtQuick) ||
-                (metric == Metric::ImageDataVsSlint && r.hasImageData && r.hasSlint) ||
-                (metric == Metric::ImageDataVsFlutter && r.hasImageData && r.hasFlutter) ||
-                (metric == Metric::ImageDataVsLvgl && r.hasImageData && r.hasLvgl);
-
-            if (!available) {
+            if (!r.hasImageData || !metricSourceExists(r, metric)) {
                 continue;
             }
 
-            const double value = metricSimilarity(r, metric);
+            const bool hasOutput = metricOutputExists(r, metric);
+            const double value = hasOutput ? metricSimilarity(r, metric) : 0.0;
             ++total;
-            if (metricPassed(r, metric)) {
+            if (hasOutput && metricPassed(r, metric)) {
                 ++passed;
             }
             sum += value;
@@ -841,22 +866,6 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         return path.replace(" ", "%20");
     };
 
-    auto availableForMetric = [](const Result &r, Metric metric) {
-        if (metric == Metric::ImageDataVsPsdView) {
-            return r.hasImageData && r.hasPsdView;
-        }
-        if (metric == Metric::ImageDataVsQtQuick) {
-            return r.hasImageData && r.hasQtQuick;
-        }
-        if (metric == Metric::ImageDataVsSlint) {
-            return r.hasImageData && r.hasSlint;
-        }
-        if (metric == Metric::ImageDataVsFlutter) {
-            return r.hasImageData && r.hasFlutter;
-        }
-        return r.hasImageData && r.hasLvgl;
-    };
-
     auto exportDirForMetric = [&](const Result &r, Metric metric) -> QString {
         const int dotPos = r.fileName.lastIndexOf('.');
         const QString relNoExt = dotPos >= 0 ? r.fileName.left(dotPos) : r.fileName;
@@ -876,11 +885,18 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
     };
 
     auto similarityCell = [&](const Result &r, Metric metric) {
-        if (!availableForMetric(r, metric)) {
+        if (!r.hasImageData || !metricSourceExists(r, metric)) {
             return QStringLiteral("MISSING");
         }
-        const QString value = QString::number(metricSimilarity(r, metric), 'f', 2) + QStringLiteral("%");
         const QString exportDir = exportDirForMetric(r, metric);
+        if (!metricOutputExists(r, metric)) {
+            if (exportDir.isEmpty()) {
+                return QStringLiteral("FAILED");
+            }
+            const QString path = encoded(exportDir);
+            return QStringLiteral("[FAILED](%1/)").arg(path);
+        }
+        const QString value = QString::number(metricSimilarity(r, metric), 'f', 2) + QStringLiteral("%");
         if (exportDir.isEmpty()) {
             return value;
         }
@@ -1082,6 +1098,15 @@ void tst_PsdExporterSimilarity::generateReport()
         const QString flutterDiffAbs = m_outputBaseDir + "/" + flutterDiffRel;
         const QString lvglAbs = m_outputBaseDir + "/" + lvglRel;
         const QString lvglDiffAbs = m_outputBaseDir + "/" + lvglDiffRel;
+        const QString qtQuickSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/QtQuick/MainWindow.ui.qml";
+        const QString slintSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/Slint/MainWindow.slint";
+        const QString flutterSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/Flutter/main_window.dart";
+        const QString lvglSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/LVGL/MainScreen.xml";
+
+        result.hasQtQuickSource = QFileInfo::exists(qtQuickSourceAbs);
+        result.hasSlintSource = QFileInfo::exists(slintSourceAbs);
+        result.hasFlutterSource = QFileInfo::exists(flutterSourceAbs);
+        result.hasLvglSource = QFileInfo::exists(lvglSourceAbs);
 
         QImage imageDataImage(imageDataAbs);
         QImage psdViewImage(psdViewAbs);
@@ -1107,6 +1132,7 @@ void tst_PsdExporterSimilarity::generateReport()
                     qWarning().noquote() << "QtQuick export failed:" << relPsdPath << "\n" << errorMessage;
                 } else {
                     const QString qmlPath = exportDir + "/MainWindow.ui.qml";
+                    result.hasQtQuickSource = QFileInfo::exists(qmlPath);
                     if (QFileInfo::exists(qmlPath)) {
                         qtQuickImage = renderQtQuick(qmlPath, qtQuickAbs, &errorMessage);
                         if (qtQuickImage.isNull()) {
@@ -1148,6 +1174,7 @@ void tst_PsdExporterSimilarity::generateReport()
                     qWarning().noquote() << "Slint export failed:" << relPsdPath << "\n" << errorMessage;
                 } else {
                     const QString slintPath = exportDir + "/MainWindow.slint";
+                    result.hasSlintSource = QFileInfo::exists(slintPath);
                     if (QFileInfo::exists(slintPath)) {
                         slintImage = renderSlint(slintPath, slintAbs, &errorMessage);
                         if (slintImage.isNull()) {
@@ -1184,6 +1211,7 @@ void tst_PsdExporterSimilarity::generateReport()
                     qWarning().noquote() << "Flutter export failed:" << relPsdPath << "\n" << errorMessage;
                 } else {
                     const QString dartPath = exportDir + "/main_window.dart";
+                    result.hasFlutterSource = QFileInfo::exists(dartPath);
                     if (QFileInfo::exists(dartPath)) {
                         flutterImage = renderFlutter(dartPath, flutterAbs, &errorMessage);
                         if (flutterImage.isNull()) {
@@ -1220,6 +1248,7 @@ void tst_PsdExporterSimilarity::generateReport()
                     qWarning().noquote() << "LVGL export failed:" << relPsdPath << "\n" << errorMessage;
                 } else {
                     const QString lvglPath = exportDir + "/MainScreen.xml";
+                    result.hasLvglSource = QFileInfo::exists(lvglPath);
                     if (QFileInfo::exists(lvglPath)) {
                         lvglImage = renderLvgl(lvglPath, lvglAbs, &errorMessage);
                         if (lvglImage.isNull()) {
