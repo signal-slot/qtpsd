@@ -237,6 +237,11 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
                                           || !element.children.isEmpty();
         if (!hasRenderableContent)
             return true;
+        if (element.type.isEmpty()) {
+            if (element.children.isEmpty())
+                return true;
+            element.type = "Rectangle";
+        }
 
         if (!hint.visible)
             element.properties.insert("visible", "false");
@@ -329,6 +334,8 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
 
         if (!hint.visible)
             element.properties.insert("visible", "false");
+        if (element.type.isEmpty())
+            return true;
         if (!id.isEmpty()) {
             if (element.type == "Button" || element.type == "TouchArea") {
                 exports->append({"callback", element.id, "clicked", {}});
