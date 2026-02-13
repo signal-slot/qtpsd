@@ -7,6 +7,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     jq \
+    python3 \
+    python3-pil \
+    fonts-dejavu-core \
     git \
     xz-utils \
     cmake \

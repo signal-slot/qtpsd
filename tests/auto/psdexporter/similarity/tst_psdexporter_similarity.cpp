@@ -30,17 +30,20 @@ private:
         double similarityImageDataVsQtQuick = 0.0;
         double similarityImageDataVsSlint = 0.0;
         double similarityImageDataVsFlutter = 0.0;
+        double similarityImageDataVsLvgl = 0.0;
 
         bool passedImageDataVsPsdView = false;
         bool passedImageDataVsQtQuick = false;
         bool passedImageDataVsSlint = false;
         bool passedImageDataVsFlutter = false;
+        bool passedImageDataVsLvgl = false;
 
         bool hasImageData = false;
         bool hasPsdView = false;
         bool hasQtQuick = false;
         bool hasSlint = false;
         bool hasFlutter = false;
+        bool hasLvgl = false;
 
         QString imageDataRel;
         QString psdViewRel;
@@ -51,6 +54,8 @@ private:
         QString slintDiffRel;
         QString flutterRel;
         QString flutterDiffRel;
+        QString lvglRel;
+        QString lvglDiffRel;
     };
 
     enum class Metric {
@@ -58,14 +63,17 @@ private:
         ImageDataVsQtQuick,
         ImageDataVsSlint,
         ImageDataVsFlutter,
+        ImageDataVsLvgl,
     };
 
     QString findProjectRoot() const;
     QString sourcePathFor(const QString &sourceId) const;
+    QString sourceRepositoryBaseUrl() const;
     QString findPsdExporterBin() const;
     QString findQmlCaptureScript() const;
     QString findSlintCaptureScript() const;
     QString findFlutterCaptureScript() const;
+    QString findLvglCaptureScript() const;
 
     QString formatFileSize(qint64 fileSize) const;
     double compareImages(const QImage &img1, const QImage &img2) const;
@@ -92,6 +100,9 @@ private:
     QImage renderFlutter(const QString &dartPath,
                          const QString &outPngPath,
                          QString *errorMessage) const;
+    QImage renderLvgl(const QString &lvglPath,
+                      const QString &outPngPath,
+                      QString *errorMessage) const;
 
     double metricSimilarity(const Result &result, Metric metric) const;
     bool metricPassed(const Result &result, Metric metric) const;
@@ -117,12 +128,14 @@ private:
     QString m_qmlCaptureScript;
     QString m_slintCaptureScript;
     QString m_flutterCaptureScript;
+    QString m_lvglCaptureScript;
 
     bool m_runExport = true;
     bool m_exportOnly = false;
     bool m_renderQtQuick = true;
     bool m_renderSlint = true;
     bool m_renderFlutter = true;
+    bool m_renderLvgl = true;
     int m_limit = 0;
 };
 
@@ -147,6 +160,18 @@ QString tst_PsdExporterSimilarity::sourcePathFor(const QString &sourceId) const
         return QFINDTESTDATA("../../3rdparty/psd-tools/tests/psd_files/");
     }
     return QString();
+}
+
+QString tst_PsdExporterSimilarity::sourceRepositoryBaseUrl() const
+{
+    if (m_sourceId == QStringLiteral("psd-zoo")) {
+        return QStringLiteral("https://github.com/signal-slot/psd-zoo/tree/main/");
+    }
+    QString fromEnv = qEnvironmentVariable("QTPSD_SIMILARITY_SOURCE_REPO");
+    if (!fromEnv.isEmpty() && !fromEnv.endsWith('/')) {
+        fromEnv += '/';
+    }
+    return fromEnv;
 }
 
 QString tst_PsdExporterSimilarity::findPsdExporterBin() const
@@ -212,6 +237,21 @@ QString tst_PsdExporterSimilarity::findFlutterCaptureScript() const
     }
 
     const QString scriptPath = m_projectRoot + "/scripts/flutter2png.sh";
+    if (QFileInfo::exists(scriptPath)) {
+        return scriptPath;
+    }
+
+    return QString();
+}
+
+QString tst_PsdExporterSimilarity::findLvglCaptureScript() const
+{
+    const QString fromEnv = qEnvironmentVariable("QTPSD_LVGL_CAPTURE_SCRIPT");
+    if (!fromEnv.isEmpty() && QFileInfo::exists(fromEnv)) {
+        return fromEnv;
+    }
+
+    const QString scriptPath = m_projectRoot + "/scripts/lvgl2png.sh";
     if (QFileInfo::exists(scriptPath)) {
         return scriptPath;
     }
@@ -524,6 +564,31 @@ QImage tst_PsdExporterSimilarity::renderFlutter(const QString &dartPath,
     return image;
 }
 
+QImage tst_PsdExporterSimilarity::renderLvgl(const QString &lvglPath,
+                                             const QString &outPngPath,
+                                             QString *errorMessage) const
+{
+    if (m_lvglCaptureScript.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("lvgl capture script is not found");
+        }
+        return QImage();
+    }
+
+    QDir().mkpath(QFileInfo(outPngPath).absolutePath());
+    QFile::remove(outPngPath);
+
+    if (!runProcess(m_lvglCaptureScript, {lvglPath, outPngPath}, QString(), 120000, errorMessage)) {
+        return QImage();
+    }
+
+    QImage image(outPngPath);
+    if (image.isNull() && errorMessage) {
+        *errorMessage = QString("Failed to load captured LVGL image: %1").arg(outPngPath);
+    }
+    return image;
+}
+
 double tst_PsdExporterSimilarity::metricSimilarity(const Result &result, Metric metric) const
 {
     switch (metric) {
@@ -535,6 +600,8 @@ double tst_PsdExporterSimilarity::metricSimilarity(const Result &result, Metric 
         return result.similarityImageDataVsSlint;
     case Metric::ImageDataVsFlutter:
         return result.similarityImageDataVsFlutter;
+    case Metric::ImageDataVsLvgl:
+        return result.similarityImageDataVsLvgl;
     }
     return 0.0;
 }
@@ -550,6 +617,8 @@ bool tst_PsdExporterSimilarity::metricPassed(const Result &result, Metric metric
         return result.passedImageDataVsSlint;
     case Metric::ImageDataVsFlutter:
         return result.passedImageDataVsFlutter;
+    case Metric::ImageDataVsLvgl:
+        return result.passedImageDataVsLvgl;
     }
     return false;
 }
@@ -565,6 +634,8 @@ QString tst_PsdExporterSimilarity::metricTargetImage(const Result &result, Metri
         return result.slintRel;
     case Metric::ImageDataVsFlutter:
         return result.flutterRel;
+    case Metric::ImageDataVsLvgl:
+        return result.lvglRel;
     }
     return QString();
 }
@@ -580,6 +651,8 @@ QString tst_PsdExporterSimilarity::metricDiffImage(const Result &result, Metric 
         return result.slintDiffRel;
     case Metric::ImageDataVsFlutter:
         return result.flutterDiffRel;
+    case Metric::ImageDataVsLvgl:
+        return result.lvglDiffRel;
     }
     return QString();
 }
@@ -599,6 +672,9 @@ QString tst_PsdExporterSimilarity::metricStatus(const Result &result, Metric met
         return QStringLiteral("MISSING");
     }
     if (metric == Metric::ImageDataVsFlutter && (!result.hasImageData || !result.hasFlutter)) {
+        return QStringLiteral("MISSING");
+    }
+    if (metric == Metric::ImageDataVsLvgl && (!result.hasImageData || !result.hasLvgl)) {
         return QStringLiteral("MISSING");
     }
 
@@ -628,18 +704,24 @@ void tst_PsdExporterSimilarity::writeSection(QTextStream &stream,
         return path.replace(" ", "%20");
     };
 
-    const QString githubBase = QStringLiteral("https://github.com/signal-slot/psd-zoo/tree/main/");
+    const QString sourceRepoBase = sourceRepositoryBaseUrl();
 
     for (const auto &result : results) {
         const QString relForLink = encoded(result.fileName);
-        const QString githubUrl = githubBase + relForLink;
+        const QString sourceUrl =
+            sourceRepoBase.isEmpty() ? QString() : sourceRepoBase + relForLink;
         const double similarity = metricSimilarity(result, metric);
         const QString status = metricStatus(result, metric);
         const QString targetRel = metricTargetImage(result, metric);
         const QString diffRel = metricDiffImage(result, metric);
 
-        stream << "| [" << result.fileName << "](" << githubUrl << ")"
-               << " | " << formatFileSize(result.fileSize)
+        stream << "| ";
+        if (sourceUrl.isEmpty()) {
+            stream << result.fileName;
+        } else {
+            stream << "[" << result.fileName << "](" << sourceUrl << ")";
+        }
+        stream << " | " << formatFileSize(result.fileSize)
                << " | " << QString::number(similarity, 'f', 2) << "%"
                << " | " << status;
 
@@ -691,7 +773,8 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
                 (metric == Metric::ImageDataVsPsdView && r.hasImageData && r.hasPsdView) ||
                 (metric == Metric::ImageDataVsQtQuick && r.hasImageData && r.hasQtQuick) ||
                 (metric == Metric::ImageDataVsSlint && r.hasImageData && r.hasSlint) ||
-                (metric == Metric::ImageDataVsFlutter && r.hasImageData && r.hasFlutter);
+                (metric == Metric::ImageDataVsFlutter && r.hasImageData && r.hasFlutter) ||
+                (metric == Metric::ImageDataVsLvgl && r.hasImageData && r.hasLvgl);
 
             if (!available) {
                 continue;
@@ -718,11 +801,12 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
     const auto [qtTotal, qtPassed, qtAvg, qtMin, qtMax] = accumulate(Metric::ImageDataVsQtQuick);
     const auto [slTotal, slPassed, slAvg, slMin, slMax] = accumulate(Metric::ImageDataVsSlint);
     const auto [flTotal, flPassed, flAvg, flMin, flMax] = accumulate(Metric::ImageDataVsFlutter);
+    const auto [lvTotal, lvPassed, lvAvg, lvMin, lvMax] = accumulate(Metric::ImageDataVsLvgl);
 
     stream << "## Summary Statistics\n\n";
-    stream << "| Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export | Image Data vs Flutter Export |\n";
-    stream << "|--------|------------------------|------------------------------|----------------------------|------------------------------|\n";
-    stream << "| Total Tests | " << pvTotal << " | " << qtTotal << " | " << slTotal << " | " << flTotal << " |\n";
+    stream << "| Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export | Image Data vs Flutter Export | Image Data vs LVGL Export |\n";
+    stream << "|--------|------------------------|------------------------------|----------------------------|------------------------------|---------------------------|\n";
+    stream << "| Total Tests | " << pvTotal << " | " << qtTotal << " | " << slTotal << " | " << flTotal << " | " << lvTotal << " |\n";
     stream << "| Passed Tests (>50%) | " << pvPassed << " ("
            << QString::number(pvTotal > 0 ? 100.0 * pvPassed / pvTotal : 0.0, 'f', 1)
            << "%) | " << qtPassed << " ("
@@ -731,22 +815,27 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
            << QString::number(slTotal > 0 ? 100.0 * slPassed / slTotal : 0.0, 'f', 1)
            << "%) | " << flPassed << " ("
            << QString::number(flTotal > 0 ? 100.0 * flPassed / flTotal : 0.0, 'f', 1)
+           << "%) | " << lvPassed << " ("
+           << QString::number(lvTotal > 0 ? 100.0 * lvPassed / lvTotal : 0.0, 'f', 1)
            << "%) |\n";
     stream << "| Average Similarity | "
            << QString::number(pvAvg, 'f', 2) << "% | "
            << QString::number(qtAvg, 'f', 2) << "% | "
            << QString::number(slAvg, 'f', 2) << "% | "
-           << QString::number(flAvg, 'f', 2) << "% |\n";
+           << QString::number(flAvg, 'f', 2) << "% | "
+           << QString::number(lvAvg, 'f', 2) << "% |\n";
     stream << "| Minimum Similarity | "
            << QString::number(pvMin, 'f', 2) << "% | "
            << QString::number(qtMin, 'f', 2) << "% | "
            << QString::number(slMin, 'f', 2) << "% | "
-           << QString::number(flMin, 'f', 2) << "% |\n";
+           << QString::number(flMin, 'f', 2) << "% | "
+           << QString::number(lvMin, 'f', 2) << "% |\n";
     stream << "| Maximum Similarity | "
            << QString::number(pvMax, 'f', 2) << "% | "
            << QString::number(qtMax, 'f', 2) << "% | "
            << QString::number(slMax, 'f', 2) << "% | "
-           << QString::number(flMax, 'f', 2) << "% |\n\n";
+           << QString::number(flMax, 'f', 2) << "% | "
+           << QString::number(lvMax, 'f', 2) << "% |\n\n";
 
     auto encoded = [](QString path) {
         return path.replace(" ", "%20");
@@ -762,7 +851,10 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         if (metric == Metric::ImageDataVsSlint) {
             return r.hasImageData && r.hasSlint;
         }
-        return r.hasImageData && r.hasFlutter;
+        if (metric == Metric::ImageDataVsFlutter) {
+            return r.hasImageData && r.hasFlutter;
+        }
+        return r.hasImageData && r.hasLvgl;
     };
 
     auto exportDirForMetric = [&](const Result &r, Metric metric) -> QString {
@@ -775,6 +867,8 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
             return QString("exports/%1/%2/Slint").arg(m_sourceId, relNoExt);
         case Metric::ImageDataVsFlutter:
             return QString("exports/%1/%2/Flutter").arg(m_sourceId, relNoExt);
+        case Metric::ImageDataVsLvgl:
+            return QString("exports/%1/%2/LVGL").arg(m_sourceId, relNoExt);
         case Metric::ImageDataVsPsdView:
             break;
         }
@@ -802,10 +896,10 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         return QStringLiteral("[<img src=\"%1\" width=\"140\">](%1)").arg(path);
     };
 
-    const QString githubBase = QStringLiteral("https://github.com/signal-slot/psd-zoo/tree/main/");
+    const QString sourceRepoBase = sourceRepositoryBaseUrl();
     const QString tableHeader =
-        "| Image Data | QPsdView | QtQuick | Slint | Flutter |\n"
-        "|---:|---:|---:|---:|---:|\n";
+        "| Image Data | QPsdView | QtQuick | Slint | Flutter | LVGL |\n"
+        "|---:|---:|---:|---:|---:|---:|\n";
 
     QString currentCategory;
     bool firstCategory = true;
@@ -815,7 +909,8 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         const QString category = slashPos >= 0 ? result.fileName.left(slashPos) : QStringLiteral("uncategorized");
         const QString displayName = slashPos >= 0 ? result.fileName.mid(slashPos + 1) : result.fileName;
         const QString relForLink = encoded(result.fileName);
-        const QString githubUrl = githubBase + relForLink;
+        const QString sourceUrl =
+            sourceRepoBase.isEmpty() ? QString() : sourceRepoBase + relForLink;
 
         if (category != currentCategory) {
             if (!firstCategory) {
@@ -827,17 +922,25 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
             firstCategory = false;
         }
 
-        stream << "| [" << displayName << "](" << githubUrl << ") | "
+        stream << "| ";
+        if (sourceUrl.isEmpty()) {
+            stream << displayName;
+        } else {
+            stream << "[" << displayName << "](" << sourceUrl << ")";
+        }
+        stream << " | "
                << similarityCell(result, Metric::ImageDataVsPsdView) << " | "
                << similarityCell(result, Metric::ImageDataVsQtQuick) << " | "
                << similarityCell(result, Metric::ImageDataVsSlint) << " | "
-               << similarityCell(result, Metric::ImageDataVsFlutter) << " |\n";
+               << similarityCell(result, Metric::ImageDataVsFlutter) << " | "
+               << similarityCell(result, Metric::ImageDataVsLvgl) << " |\n";
         stream << "| "
                << imageCell(result.imageDataRel, result.hasImageData) << " | "
                << imageCell(result.psdViewRel, result.hasPsdView) << " | "
                << imageCell(result.qtQuickRel, result.hasQtQuick) << " | "
                << imageCell(result.slintRel, result.hasSlint) << " | "
-               << imageCell(result.flutterRel, result.hasFlutter) << " |\n";
+               << imageCell(result.flutterRel, result.hasFlutter) << " | "
+               << imageCell(result.lvglRel, result.hasLvgl) << " |\n";
     }
     stream << "\n";
 }
@@ -869,17 +972,18 @@ void tst_PsdExporterSimilarity::initTestCase()
         m_runExport = true;
     }
 
-    const QString exporterList = qEnvironmentVariable("QTPSD_SIMILARITY_EXPORTERS", "qtquick,slint,flutter").toLower();
+    const QString exporterList = qEnvironmentVariable("QTPSD_SIMILARITY_EXPORTERS", "qtquick,slint,flutter,lvgl").toLower();
     m_renderQtQuick = exporterList.contains("qtquick");
     m_renderSlint = exporterList.contains("slint");
     m_renderFlutter = exporterList.contains("flutter");
+    m_renderLvgl = exporterList.contains("lvgl");
 
     bool limitOk = false;
     const int limit = qEnvironmentVariable("QTPSD_SIMILARITY_LIMIT").toInt(&limitOk);
     m_limit = (limitOk && limit > 0) ? limit : 0;
 
     m_psdExporterBin = findPsdExporterBin();
-    if ((m_renderQtQuick || m_renderSlint || m_renderFlutter) && m_runExport) {
+    if ((m_renderQtQuick || m_renderSlint || m_renderFlutter || m_renderLvgl) && m_runExport) {
         QVERIFY2(!m_psdExporterBin.isEmpty(), "psdexporter binary not found. Set QTPSD_PSDEXPORTER_BIN or add it to PATH.");
     }
 
@@ -899,15 +1003,22 @@ void tst_PsdExporterSimilarity::initTestCase()
         QVERIFY2(!m_flutterCaptureScript.isEmpty(), "Flutter capture script not found. Expected scripts/flutter2png.sh or set QTPSD_FLUTTER_CAPTURE_SCRIPT.");
     }
 
+    m_lvglCaptureScript = findLvglCaptureScript();
+    if (m_renderLvgl) {
+        QVERIFY2(!m_lvglCaptureScript.isEmpty(), "LVGL capture script not found. Expected scripts/lvgl2png.sh or set QTPSD_LVGL_CAPTURE_SCRIPT.");
+    }
+
     QDir().mkpath(m_outputBaseDir + "/images/qtquick/" + m_sourceId);
     QDir().mkpath(m_outputBaseDir + "/images/slint/" + m_sourceId);
     QDir().mkpath(m_outputBaseDir + "/images/flutter/" + m_sourceId);
+    QDir().mkpath(m_outputBaseDir + "/images/lvgl/" + m_sourceId);
     QDir().mkpath(m_outputBaseDir + "/exports/" + m_sourceId);
 
     qInfo() << "Source:" << m_sourceId;
     qInfo() << "PSD root:" << m_psdRoot;
     qInfo() << "Output directory:" << m_outputBaseDir;
     qInfo() << "Run export:" << m_runExport << "QtQuick:" << m_renderQtQuick << "Slint:" << m_renderSlint << "Flutter:" << m_renderFlutter
+            << "LVGL:" << m_renderLvgl
             << "Export-only:" << m_exportOnly;
 }
 
@@ -945,6 +1056,8 @@ void tst_PsdExporterSimilarity::generateReport()
         const QString slintDiffRel = "images/slint/" + m_sourceId + "/" + relNoExt + "_diff.png";
         const QString flutterRel = "images/flutter/" + m_sourceId + "/" + relNoExt + ".png";
         const QString flutterDiffRel = "images/flutter/" + m_sourceId + "/" + relNoExt + "_diff.png";
+        const QString lvglRel = "images/lvgl/" + m_sourceId + "/" + relNoExt + ".png";
+        const QString lvglDiffRel = "images/lvgl/" + m_sourceId + "/" + relNoExt + "_diff.png";
 
         result.imageDataRel = imageDataRel;
         result.psdViewRel = psdViewRel;
@@ -955,6 +1068,8 @@ void tst_PsdExporterSimilarity::generateReport()
         result.slintDiffRel = slintDiffRel;
         result.flutterRel = flutterRel;
         result.flutterDiffRel = flutterDiffRel;
+        result.lvglRel = lvglRel;
+        result.lvglDiffRel = lvglDiffRel;
 
         const QString imageDataAbs = m_outputBaseDir + "/" + imageDataRel;
         const QString psdViewAbs = m_outputBaseDir + "/" + psdViewRel;
@@ -965,6 +1080,8 @@ void tst_PsdExporterSimilarity::generateReport()
         const QString slintDiffAbs = m_outputBaseDir + "/" + slintDiffRel;
         const QString flutterAbs = m_outputBaseDir + "/" + flutterRel;
         const QString flutterDiffAbs = m_outputBaseDir + "/" + flutterDiffRel;
+        const QString lvglAbs = m_outputBaseDir + "/" + lvglRel;
+        const QString lvglDiffAbs = m_outputBaseDir + "/" + lvglDiffRel;
 
         QImage imageDataImage(imageDataAbs);
         QImage psdViewImage(psdViewAbs);
@@ -1090,6 +1207,42 @@ void tst_PsdExporterSimilarity::generateReport()
                 result.passedImageDataVsFlutter = result.similarityImageDataVsFlutter > 50.0;
                 QDir().mkpath(QFileInfo(flutterDiffAbs).absolutePath());
                 createDiffImage(imageDataImage, flutterImage).save(flutterDiffAbs);
+            }
+        }
+
+        if (m_renderLvgl) {
+            QImage lvglImage;
+
+            if (m_runExport) {
+                const QString exportDir = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/LVGL";
+                QString errorMessage;
+                if (!exportPsd(psdPath, QStringLiteral("LVGL"), exportDir, &errorMessage)) {
+                    qWarning().noquote() << "LVGL export failed:" << relPsdPath << "\n" << errorMessage;
+                } else {
+                    const QString lvglPath = exportDir + "/MainScreen.xml";
+                    if (QFileInfo::exists(lvglPath)) {
+                        lvglImage = renderLvgl(lvglPath, lvglAbs, &errorMessage);
+                        if (lvglImage.isNull()) {
+                            qWarning().noquote() << "LVGL render failed:" << relPsdPath << "\n" << errorMessage;
+                        }
+                    } else {
+                        qWarning() << "LVGL output is missing MainScreen.xml:" << relPsdPath;
+                    }
+                }
+            } else {
+                lvglImage.load(lvglAbs);
+            }
+
+            if (lvglImage.isNull()) {
+                lvglImage.load(lvglAbs);
+            }
+
+            result.hasLvgl = !lvglImage.isNull();
+            if (!m_exportOnly && result.hasImageData && result.hasLvgl && imageDataImage.size() == lvglImage.size()) {
+                result.similarityImageDataVsLvgl = compareImages(imageDataImage, lvglImage);
+                result.passedImageDataVsLvgl = result.similarityImageDataVsLvgl > 50.0;
+                QDir().mkpath(QFileInfo(lvglDiffAbs).absolutePath());
+                createDiffImage(imageDataImage, lvglImage).save(lvglDiffAbs);
             }
         }
 

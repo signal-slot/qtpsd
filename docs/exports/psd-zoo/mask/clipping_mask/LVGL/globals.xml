@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="" src_path="A:images/"/>
+    <file name="base_layer" src_path="A:images/base_layer.png"/>
+    <file name="clipped_layer" src_path="A:images/clipped_layer.png"/>
+  </images>
+</globals>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="d002afde4b1f5710" src_path="A:images/d002afde4b1f5710.png"/>
+    <file name="8ecc52d841cb1fcf" src_path="A:images/8ecc52d841cb1fcf.png"/>
+    <file name="4bbbc83c0c2897a9" src_path="A:images/4bbbc83c0c2897a9.png"/>
+    <file name="08dd8a50bb4e0e66" src_path="A:images/08dd8a50bb4e0e66.png"/>
+    <file name="d3d4e660567819cb" src_path="A:images/d3d4e660567819cb.png"/>
+  </images>
+</globals>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">
+    <lv_image height="200" src="background" width="200" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="184" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="204" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="125" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="26" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="150" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="33" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="107" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="189" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="71" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="51" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="105" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="217" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="59" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="135" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="161" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="196" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="94" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="135" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="38" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="204" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="94" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="102" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="224" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="171" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="97" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="207" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="122" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="26" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="89" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="209" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="145" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="168" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="191" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="186" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="82" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="59" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="105" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="171" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="74" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="28" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="115" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="212" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="212" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="79" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="176" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="105" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="184" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="99" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="156" width="0" x="0" y="0"/>
+    <lv_image height="0" src="" style_opa="117" width="0" x="0" y="0"/>
+  </view>
+</component>

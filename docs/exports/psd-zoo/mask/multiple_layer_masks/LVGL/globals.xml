@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="red_masked" src_path="A:images/red_masked.png"/>
+    <file name="blue_masked" src_path="A:images/blue_masked.png"/>
+  </images>
+</globals>

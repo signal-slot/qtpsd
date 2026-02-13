@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="hard_mix_layer" src_path="A:images/hard_mix_layer.png"/>
+  </images>
+</globals>

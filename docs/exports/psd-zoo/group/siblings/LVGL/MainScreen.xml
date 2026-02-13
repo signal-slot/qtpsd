@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">
+    <lv_image height="200" src="background" width="200" x="0" y="0"/>
+    <lv_image height="40" src="layer_1" width="40" x="0" y="0"/>
+    <lv_image height="40" src="layer_2" width="40" x="30" y="30"/>
+    <lv_image height="40" src="layer_3" width="40" x="60" y="60"/>
+    <lv_image height="40" src="layer_4" width="40" x="90" y="90"/>
+    <lv_image height="40" src="layer_5" width="40" x="120" y="120"/>
+  </view>
+</component>

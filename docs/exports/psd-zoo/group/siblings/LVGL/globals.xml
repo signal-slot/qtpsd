@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="layer_1" src_path="A:images/layer_1.png"/>
+    <file name="layer_2" src_path="A:images/layer_2.png"/>
+    <file name="layer_3" src_path="A:images/layer_3.png"/>
+    <file name="layer_4" src_path="A:images/layer_4.png"/>
+    <file name="layer_5" src_path="A:images/layer_5.png"/>
+  </images>
+</globals>

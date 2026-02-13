@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
+    <lv_image height="200" src="background" width="300" x="0" y="0"/>
+    <lv_image height="200" src="d002afde4b1f5710" width="60" x="0" y="0"/>
+    <lv_image height="200" src="8ecc52d841cb1fcf" style_opa="191" width="60" x="60" y="0"/>
+    <lv_image height="200" src="4bbbc83c0c2897a9" style_opa="128" width="60" x="120" y="0"/>
+    <lv_image height="200" src="08dd8a50bb4e0e66" style_opa="64" width="60" x="180" y="0"/>
+    <lv_image height="200" src="d3d4e660567819cb" style_opa="26" width="60" x="240" y="0"/>
+  </view>
+</component>

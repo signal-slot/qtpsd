@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="400" scrollbar_mode="off" style_pad_all="0" width="400" x="0" y="0">
+    <lv_image height="400" src="layer_0" width="400" x="0" y="0"/>
+  </view>
+</component>

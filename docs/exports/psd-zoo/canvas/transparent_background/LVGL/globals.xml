@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="" src_path="A:images/"/>
+    <file name="floating_square" src_path="A:images/floating_square.png"/>
+  </images>
+</globals>

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="" src_path="A:images/"/>
+    <file name="base" src_path="A:images/base.png"/>
+    <file name="clip_1" src_path="A:images/clip_1.png"/>
+    <file name="clip_2" src_path="A:images/clip_2.png"/>
+  </images>
+</globals>

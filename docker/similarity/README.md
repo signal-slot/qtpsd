@@ -1,8 +1,8 @@
 # Similarity Docker Environment
 
 This image is used only for screenshot capture:
-- Input: host-exported QtQuick/Slint/Flutter files under `docs/exports/<source-id>/`
-- Output: PNG captures under `docs/images/{qtquick,slint,flutter}/<source-id>/`
+- Input: host-exported QtQuick/Slint/Flutter/LVGL files under `docs/exports/<source-id>/`
+- Output: PNG captures under `docs/images/{qtquick,slint,flutter,lvgl}/<source-id>/`
 - QtQuick capture uses `qml` (not `qmlscene`)
 
 `run_similarity.sh` does not run comparison and does not run `psdexporter`.
@@ -31,3 +31,4 @@ The script expects these files to exist first:
 - `docs/exports/psd-zoo/**/QtQuick/MainWindow.ui.qml`
 - `docs/exports/psd-zoo/**/Slint/MainWindow.slint`
 - `docs/exports/psd-zoo/**/Flutter/main_window.dart`
+- `docs/exports/psd-zoo/**/LVGL/MainScreen.xml`

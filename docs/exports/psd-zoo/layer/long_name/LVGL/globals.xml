@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="this_is_a_very_long_layer_name_that_tests_the_maximum_length_handling_of_layer_names_in_the_psd_file_format_specification_which_should_support_quite_long_names_via_the_luni_additional_layer_information_block" src_path="A:images/this_is_a_very_long_layer_name_that_tests_the_maximum_length_handling_of_layer_names_in_the_psd_file_format_specification_which_should_support_quite_long_names_via_the_luni_additional_layer_information_block.png"/>
+  </images>
+</globals>

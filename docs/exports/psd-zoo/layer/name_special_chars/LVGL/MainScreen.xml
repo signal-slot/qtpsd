@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">
+    <lv_image height="200" src="background" width="200" x="0" y="0"/>
+    <lv_image height="50" src="d953ee13be5cbb46" width="200" x="0" y="0"/>
+    <lv_image height="50" src="471b942182a4e41b" width="200" x="0" y="50"/>
+    <lv_image height="50" src="4b3d9f4f6e50544b" width="200" x="0" y="100"/>
+    <lv_image height="50" src="668aa0e7340f06f7" width="200" x="0" y="150"/>
+  </view>
+</component>

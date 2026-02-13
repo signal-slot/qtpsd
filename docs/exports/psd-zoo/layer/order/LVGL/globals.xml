@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="bottom_red" src_path="A:images/bottom_red.png"/>
+    <file name="middle_green" src_path="A:images/middle_green.png"/>
+    <file name="top_blue" src_path="A:images/top_blue.png"/>
+  </images>
+</globals>

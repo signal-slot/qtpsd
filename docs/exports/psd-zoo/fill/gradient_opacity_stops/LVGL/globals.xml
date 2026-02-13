@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="opacity_gradient" src_path="A:images/opacity_gradient.png"/>
+  </images>
+</globals>
