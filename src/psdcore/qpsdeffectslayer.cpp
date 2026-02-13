@@ -58,7 +58,10 @@ QPsdEffectsLayer::QPsdEffectsLayer(QIODevice *source, quint32 *length)
             qCDebug(lcQPsdEffectsLayer) << value;
         } else {
             qCWarning(lcQPsdEffectsLayer) << osType << "not supported";
-            continue;
+            // Each effect entry stores a size-prefixed payload.
+            // Skip unsupported entries so the stream stays aligned.
+            const auto size = readU32(source, length);
+            skip(source, size, length);
         }
     }
 }
