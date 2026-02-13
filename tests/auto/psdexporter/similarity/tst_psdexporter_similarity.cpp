@@ -29,15 +29,18 @@ private:
         double similarityImageDataVsPsdView = 0.0;
         double similarityImageDataVsQtQuick = 0.0;
         double similarityImageDataVsSlint = 0.0;
+        double similarityImageDataVsFlutter = 0.0;
 
         bool passedImageDataVsPsdView = false;
         bool passedImageDataVsQtQuick = false;
         bool passedImageDataVsSlint = false;
+        bool passedImageDataVsFlutter = false;
 
         bool hasImageData = false;
         bool hasPsdView = false;
         bool hasQtQuick = false;
         bool hasSlint = false;
+        bool hasFlutter = false;
 
         QString imageDataRel;
         QString psdViewRel;
@@ -46,12 +49,15 @@ private:
         QString qtQuickDiffRel;
         QString slintRel;
         QString slintDiffRel;
+        QString flutterRel;
+        QString flutterDiffRel;
     };
 
     enum class Metric {
         ImageDataVsPsdView,
         ImageDataVsQtQuick,
         ImageDataVsSlint,
+        ImageDataVsFlutter,
     };
 
     QString findProjectRoot() const;
@@ -59,6 +65,7 @@ private:
     QString findPsdExporterBin() const;
     QString findQmlCaptureScript() const;
     QString findSlintCaptureScript() const;
+    QString findFlutterCaptureScript() const;
 
     QString formatFileSize(qint64 fileSize) const;
     double compareImages(const QImage &img1, const QImage &img2) const;
@@ -82,6 +89,9 @@ private:
     QImage renderSlint(const QString &slintPath,
                        const QString &outPngPath,
                        QString *errorMessage) const;
+    QImage renderFlutter(const QString &dartPath,
+                         const QString &outPngPath,
+                         QString *errorMessage) const;
 
     double metricSimilarity(const Result &result, Metric metric) const;
     bool metricPassed(const Result &result, Metric metric) const;
@@ -106,11 +116,13 @@ private:
     QString m_psdExporterBin;
     QString m_qmlCaptureScript;
     QString m_slintCaptureScript;
+    QString m_flutterCaptureScript;
 
     bool m_runExport = true;
     bool m_exportOnly = false;
     bool m_renderQtQuick = true;
     bool m_renderSlint = true;
+    bool m_renderFlutter = true;
     int m_limit = 0;
 };
 
@@ -185,6 +197,21 @@ QString tst_PsdExporterSimilarity::findSlintCaptureScript() const
     }
 
     const QString scriptPath = m_projectRoot + "/scripts/slint2png.sh";
+    if (QFileInfo::exists(scriptPath)) {
+        return scriptPath;
+    }
+
+    return QString();
+}
+
+QString tst_PsdExporterSimilarity::findFlutterCaptureScript() const
+{
+    const QString fromEnv = qEnvironmentVariable("QTPSD_FLUTTER_CAPTURE_SCRIPT");
+    if (!fromEnv.isEmpty() && QFileInfo::exists(fromEnv)) {
+        return fromEnv;
+    }
+
+    const QString scriptPath = m_projectRoot + "/scripts/flutter2png.sh";
     if (QFileInfo::exists(scriptPath)) {
         return scriptPath;
     }
@@ -472,6 +499,31 @@ QImage tst_PsdExporterSimilarity::renderSlint(const QString &slintPath,
     return image;
 }
 
+QImage tst_PsdExporterSimilarity::renderFlutter(const QString &dartPath,
+                                                const QString &outPngPath,
+                                                QString *errorMessage) const
+{
+    if (m_flutterCaptureScript.isEmpty()) {
+        if (errorMessage) {
+            *errorMessage = QStringLiteral("flutter capture script is not found");
+        }
+        return QImage();
+    }
+
+    QDir().mkpath(QFileInfo(outPngPath).absolutePath());
+    QFile::remove(outPngPath);
+
+    if (!runProcess(m_flutterCaptureScript, {dartPath, outPngPath}, QString(), 300000, errorMessage)) {
+        return QImage();
+    }
+
+    QImage image(outPngPath);
+    if (image.isNull() && errorMessage) {
+        *errorMessage = QString("Failed to load captured Flutter image: %1").arg(outPngPath);
+    }
+    return image;
+}
+
 double tst_PsdExporterSimilarity::metricSimilarity(const Result &result, Metric metric) const
 {
     switch (metric) {
@@ -481,6 +533,8 @@ double tst_PsdExporterSimilarity::metricSimilarity(const Result &result, Metric 
         return result.similarityImageDataVsQtQuick;
     case Metric::ImageDataVsSlint:
         return result.similarityImageDataVsSlint;
+    case Metric::ImageDataVsFlutter:
+        return result.similarityImageDataVsFlutter;
     }
     return 0.0;
 }
@@ -494,6 +548,8 @@ bool tst_PsdExporterSimilarity::metricPassed(const Result &result, Metric metric
         return result.passedImageDataVsQtQuick;
     case Metric::ImageDataVsSlint:
         return result.passedImageDataVsSlint;
+    case Metric::ImageDataVsFlutter:
+        return result.passedImageDataVsFlutter;
     }
     return false;
 }
@@ -507,6 +563,8 @@ QString tst_PsdExporterSimilarity::metricTargetImage(const Result &result, Metri
         return result.qtQuickRel;
     case Metric::ImageDataVsSlint:
         return result.slintRel;
+    case Metric::ImageDataVsFlutter:
+        return result.flutterRel;
     }
     return QString();
 }
@@ -520,6 +578,8 @@ QString tst_PsdExporterSimilarity::metricDiffImage(const Result &result, Metric 
         return result.qtQuickDiffRel;
     case Metric::ImageDataVsSlint:
         return result.slintDiffRel;
+    case Metric::ImageDataVsFlutter:
+        return result.flutterDiffRel;
     }
     return QString();
 }
@@ -536,6 +596,9 @@ QString tst_PsdExporterSimilarity::metricStatus(const Result &result, Metric met
         return QStringLiteral("MISSING");
     }
     if (metric == Metric::ImageDataVsSlint && (!result.hasImageData || !result.hasSlint)) {
+        return QStringLiteral("MISSING");
+    }
+    if (metric == Metric::ImageDataVsFlutter && (!result.hasImageData || !result.hasFlutter)) {
         return QStringLiteral("MISSING");
     }
 
@@ -627,7 +690,8 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
             const bool available =
                 (metric == Metric::ImageDataVsPsdView && r.hasImageData && r.hasPsdView) ||
                 (metric == Metric::ImageDataVsQtQuick && r.hasImageData && r.hasQtQuick) ||
-                (metric == Metric::ImageDataVsSlint && r.hasImageData && r.hasSlint);
+                (metric == Metric::ImageDataVsSlint && r.hasImageData && r.hasSlint) ||
+                (metric == Metric::ImageDataVsFlutter && r.hasImageData && r.hasFlutter);
 
             if (!available) {
                 continue;
@@ -653,30 +717,36 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
     const auto [pvTotal, pvPassed, pvAvg, pvMin, pvMax] = accumulate(Metric::ImageDataVsPsdView);
     const auto [qtTotal, qtPassed, qtAvg, qtMin, qtMax] = accumulate(Metric::ImageDataVsQtQuick);
     const auto [slTotal, slPassed, slAvg, slMin, slMax] = accumulate(Metric::ImageDataVsSlint);
+    const auto [flTotal, flPassed, flAvg, flMin, flMax] = accumulate(Metric::ImageDataVsFlutter);
 
     stream << "## Summary Statistics\n\n";
-    stream << "| Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export |\n";
-    stream << "|--------|------------------------|------------------------------|----------------------------|\n";
-    stream << "| Total Tests | " << pvTotal << " | " << qtTotal << " | " << slTotal << " |\n";
+    stream << "| Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export | Image Data vs Flutter Export |\n";
+    stream << "|--------|------------------------|------------------------------|----------------------------|------------------------------|\n";
+    stream << "| Total Tests | " << pvTotal << " | " << qtTotal << " | " << slTotal << " | " << flTotal << " |\n";
     stream << "| Passed Tests (>50%) | " << pvPassed << " ("
            << QString::number(pvTotal > 0 ? 100.0 * pvPassed / pvTotal : 0.0, 'f', 1)
            << "%) | " << qtPassed << " ("
            << QString::number(qtTotal > 0 ? 100.0 * qtPassed / qtTotal : 0.0, 'f', 1)
            << "%) | " << slPassed << " ("
            << QString::number(slTotal > 0 ? 100.0 * slPassed / slTotal : 0.0, 'f', 1)
+           << "%) | " << flPassed << " ("
+           << QString::number(flTotal > 0 ? 100.0 * flPassed / flTotal : 0.0, 'f', 1)
            << "%) |\n";
     stream << "| Average Similarity | "
            << QString::number(pvAvg, 'f', 2) << "% | "
            << QString::number(qtAvg, 'f', 2) << "% | "
-           << QString::number(slAvg, 'f', 2) << "% |\n";
+           << QString::number(slAvg, 'f', 2) << "% | "
+           << QString::number(flAvg, 'f', 2) << "% |\n";
     stream << "| Minimum Similarity | "
            << QString::number(pvMin, 'f', 2) << "% | "
            << QString::number(qtMin, 'f', 2) << "% | "
-           << QString::number(slMin, 'f', 2) << "% |\n";
+           << QString::number(slMin, 'f', 2) << "% | "
+           << QString::number(flMin, 'f', 2) << "% |\n";
     stream << "| Maximum Similarity | "
            << QString::number(pvMax, 'f', 2) << "% | "
            << QString::number(qtMax, 'f', 2) << "% | "
-           << QString::number(slMax, 'f', 2) << "% |\n\n";
+           << QString::number(slMax, 'f', 2) << "% | "
+           << QString::number(flMax, 'f', 2) << "% |\n\n";
 
     auto encoded = [](QString path) {
         return path.replace(" ", "%20");
@@ -689,14 +759,39 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         if (metric == Metric::ImageDataVsQtQuick) {
             return r.hasImageData && r.hasQtQuick;
         }
-        return r.hasImageData && r.hasSlint;
+        if (metric == Metric::ImageDataVsSlint) {
+            return r.hasImageData && r.hasSlint;
+        }
+        return r.hasImageData && r.hasFlutter;
+    };
+
+    auto exportDirForMetric = [&](const Result &r, Metric metric) -> QString {
+        const int dotPos = r.fileName.lastIndexOf('.');
+        const QString relNoExt = dotPos >= 0 ? r.fileName.left(dotPos) : r.fileName;
+        switch (metric) {
+        case Metric::ImageDataVsQtQuick:
+            return QString("exports/%1/%2/QtQuick").arg(m_sourceId, relNoExt);
+        case Metric::ImageDataVsSlint:
+            return QString("exports/%1/%2/Slint").arg(m_sourceId, relNoExt);
+        case Metric::ImageDataVsFlutter:
+            return QString("exports/%1/%2/Flutter").arg(m_sourceId, relNoExt);
+        case Metric::ImageDataVsPsdView:
+            break;
+        }
+        return QString();
     };
 
     auto similarityCell = [&](const Result &r, Metric metric) {
         if (!availableForMetric(r, metric)) {
             return QStringLiteral("MISSING");
         }
-        return QString::number(metricSimilarity(r, metric), 'f', 2) + QStringLiteral("%");
+        const QString value = QString::number(metricSimilarity(r, metric), 'f', 2) + QStringLiteral("%");
+        const QString exportDir = exportDirForMetric(r, metric);
+        if (exportDir.isEmpty()) {
+            return value;
+        }
+        const QString path = encoded(exportDir);
+        return QStringLiteral("[%1](%2/)").arg(value, path);
     };
 
     auto imageCell = [&](const QString &relPath, bool available) {
@@ -709,8 +804,8 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
 
     const QString githubBase = QStringLiteral("https://github.com/signal-slot/psd-zoo/tree/main/");
     const QString tableHeader =
-        "| Image Data(png) | QPsdView(png) | QtQuick(png) | Slint(png) |\n"
-        "|---:|---:|---:|---:|\n";
+        "| Image Data | QPsdView | QtQuick | Slint | Flutter |\n"
+        "|---:|---:|---:|---:|---:|\n";
 
     QString currentCategory;
     bool firstCategory = true;
@@ -735,12 +830,14 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         stream << "| [" << displayName << "](" << githubUrl << ") | "
                << similarityCell(result, Metric::ImageDataVsPsdView) << " | "
                << similarityCell(result, Metric::ImageDataVsQtQuick) << " | "
-               << similarityCell(result, Metric::ImageDataVsSlint) << " |\n";
+               << similarityCell(result, Metric::ImageDataVsSlint) << " | "
+               << similarityCell(result, Metric::ImageDataVsFlutter) << " |\n";
         stream << "| "
                << imageCell(result.imageDataRel, result.hasImageData) << " | "
                << imageCell(result.psdViewRel, result.hasPsdView) << " | "
                << imageCell(result.qtQuickRel, result.hasQtQuick) << " | "
-               << imageCell(result.slintRel, result.hasSlint) << " |\n";
+               << imageCell(result.slintRel, result.hasSlint) << " | "
+               << imageCell(result.flutterRel, result.hasFlutter) << " |\n";
     }
     stream << "\n";
 }
@@ -772,16 +869,17 @@ void tst_PsdExporterSimilarity::initTestCase()
         m_runExport = true;
     }
 
-    const QString exporterList = qEnvironmentVariable("QTPSD_SIMILARITY_EXPORTERS", "qtquick,slint").toLower();
+    const QString exporterList = qEnvironmentVariable("QTPSD_SIMILARITY_EXPORTERS", "qtquick,slint,flutter").toLower();
     m_renderQtQuick = exporterList.contains("qtquick");
     m_renderSlint = exporterList.contains("slint");
+    m_renderFlutter = exporterList.contains("flutter");
 
     bool limitOk = false;
     const int limit = qEnvironmentVariable("QTPSD_SIMILARITY_LIMIT").toInt(&limitOk);
     m_limit = (limitOk && limit > 0) ? limit : 0;
 
     m_psdExporterBin = findPsdExporterBin();
-    if ((m_renderQtQuick || m_renderSlint) && m_runExport) {
+    if ((m_renderQtQuick || m_renderSlint || m_renderFlutter) && m_runExport) {
         QVERIFY2(!m_psdExporterBin.isEmpty(), "psdexporter binary not found. Set QTPSD_PSDEXPORTER_BIN or add it to PATH.");
     }
 
@@ -796,14 +894,20 @@ void tst_PsdExporterSimilarity::initTestCase()
         QVERIFY2(!m_slintCaptureScript.isEmpty(), "Slint capture script not found. Expected scripts/slint2png.sh or set QTPSD_SLINT_CAPTURE_SCRIPT.");
     }
 
+    m_flutterCaptureScript = findFlutterCaptureScript();
+    if (m_renderFlutter) {
+        QVERIFY2(!m_flutterCaptureScript.isEmpty(), "Flutter capture script not found. Expected scripts/flutter2png.sh or set QTPSD_FLUTTER_CAPTURE_SCRIPT.");
+    }
+
     QDir().mkpath(m_outputBaseDir + "/images/qtquick/" + m_sourceId);
     QDir().mkpath(m_outputBaseDir + "/images/slint/" + m_sourceId);
+    QDir().mkpath(m_outputBaseDir + "/images/flutter/" + m_sourceId);
     QDir().mkpath(m_outputBaseDir + "/exports/" + m_sourceId);
 
     qInfo() << "Source:" << m_sourceId;
     qInfo() << "PSD root:" << m_psdRoot;
     qInfo() << "Output directory:" << m_outputBaseDir;
-    qInfo() << "Run export:" << m_runExport << "QtQuick:" << m_renderQtQuick << "Slint:" << m_renderSlint
+    qInfo() << "Run export:" << m_runExport << "QtQuick:" << m_renderQtQuick << "Slint:" << m_renderSlint << "Flutter:" << m_renderFlutter
             << "Export-only:" << m_exportOnly;
 }
 
@@ -839,6 +943,8 @@ void tst_PsdExporterSimilarity::generateReport()
         const QString qtQuickDiffRel = "images/qtquick/" + m_sourceId + "/" + relNoExt + "_diff.png";
         const QString slintRel = "images/slint/" + m_sourceId + "/" + relNoExt + ".png";
         const QString slintDiffRel = "images/slint/" + m_sourceId + "/" + relNoExt + "_diff.png";
+        const QString flutterRel = "images/flutter/" + m_sourceId + "/" + relNoExt + ".png";
+        const QString flutterDiffRel = "images/flutter/" + m_sourceId + "/" + relNoExt + "_diff.png";
 
         result.imageDataRel = imageDataRel;
         result.psdViewRel = psdViewRel;
@@ -847,6 +953,8 @@ void tst_PsdExporterSimilarity::generateReport()
         result.qtQuickDiffRel = qtQuickDiffRel;
         result.slintRel = slintRel;
         result.slintDiffRel = slintDiffRel;
+        result.flutterRel = flutterRel;
+        result.flutterDiffRel = flutterDiffRel;
 
         const QString imageDataAbs = m_outputBaseDir + "/" + imageDataRel;
         const QString psdViewAbs = m_outputBaseDir + "/" + psdViewRel;
@@ -855,6 +963,8 @@ void tst_PsdExporterSimilarity::generateReport()
         const QString qtQuickDiffAbs = m_outputBaseDir + "/" + qtQuickDiffRel;
         const QString slintAbs = m_outputBaseDir + "/" + slintRel;
         const QString slintDiffAbs = m_outputBaseDir + "/" + slintDiffRel;
+        const QString flutterAbs = m_outputBaseDir + "/" + flutterRel;
+        const QString flutterDiffAbs = m_outputBaseDir + "/" + flutterDiffRel;
 
         QImage imageDataImage(imageDataAbs);
         QImage psdViewImage(psdViewAbs);
@@ -944,6 +1054,42 @@ void tst_PsdExporterSimilarity::generateReport()
                 result.passedImageDataVsSlint = result.similarityImageDataVsSlint > 50.0;
                 QDir().mkpath(QFileInfo(slintDiffAbs).absolutePath());
                 createDiffImage(imageDataImage, slintImage).save(slintDiffAbs);
+            }
+        }
+
+        if (m_renderFlutter) {
+            QImage flutterImage;
+
+            if (m_runExport) {
+                const QString exportDir = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/Flutter";
+                QString errorMessage;
+                if (!exportPsd(psdPath, QStringLiteral("Flutter"), exportDir, &errorMessage)) {
+                    qWarning().noquote() << "Flutter export failed:" << relPsdPath << "\n" << errorMessage;
+                } else {
+                    const QString dartPath = exportDir + "/main_window.dart";
+                    if (QFileInfo::exists(dartPath)) {
+                        flutterImage = renderFlutter(dartPath, flutterAbs, &errorMessage);
+                        if (flutterImage.isNull()) {
+                            qWarning().noquote() << "Flutter render failed:" << relPsdPath << "\n" << errorMessage;
+                        }
+                    } else {
+                        qWarning() << "Flutter output is missing main_window.dart:" << relPsdPath;
+                    }
+                }
+            } else {
+                flutterImage.load(flutterAbs);
+            }
+
+            if (flutterImage.isNull()) {
+                flutterImage.load(flutterAbs);
+            }
+
+            result.hasFlutter = !flutterImage.isNull();
+            if (!m_exportOnly && result.hasImageData && result.hasFlutter && imageDataImage.size() == flutterImage.size()) {
+                result.similarityImageDataVsFlutter = compareImages(imageDataImage, flutterImage);
+                result.passedImageDataVsFlutter = result.similarityImageDataVsFlutter > 50.0;
+                QDir().mkpath(QFileInfo(flutterDiffAbs).absolutePath());
+                createDiffImage(imageDataImage, flutterImage).save(flutterDiffAbs);
             }
         }
 

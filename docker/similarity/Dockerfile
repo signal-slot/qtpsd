@@ -6,7 +6,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     bash \
     ca-certificates \
     curl \
+    jq \
     git \
+    xz-utils \
     cmake \
     ninja-build \
     build-essential \
@@ -33,8 +35,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     xauth \
     && rm -rf /var/lib/apt/lists/*
 
+ARG FLUTTER_VERSION=""
+RUN set -eux; \
+    if [ -z "${FLUTTER_VERSION}" ]; then \
+      curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/releases_linux.json" -o /tmp/flutter_releases.json; \
+      FLUTTER_VERSION="$(jq -r '.current_release.stable as $h | .releases[] | select(.hash == $h) | .version' /tmp/flutter_releases.json)"; \
+    fi; \
+    curl -fsSL "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_${FLUTTER_VERSION}-stable.tar.xz" -o /tmp/flutter.tar.xz \
+    && mkdir -p /opt \
+    && tar -xJf /tmp/flutter.tar.xz -C /opt \
+    && rm -f /tmp/flutter.tar.xz /tmp/flutter_releases.json
+
 RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/root/.cargo/bin:${PATH}"
+ENV PATH="/opt/flutter/bin:/root/.cargo/bin:${PATH}"
+RUN git config --global --add safe.directory /opt/flutter \
+    && flutter config --no-analytics \
+    && flutter precache
 RUN cargo install slint-viewer --locked
 
 WORKDIR /workspace

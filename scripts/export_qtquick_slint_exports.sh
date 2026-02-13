@@ -73,15 +73,19 @@ for psd_path in "${psd_files[@]}"; do
 
   qtquick_out="${export_root}/${rel_no_ext}/QtQuick"
   slint_out="${export_root}/${rel_no_ext}/Slint"
+  flutter_out="${export_root}/${rel_no_ext}/Flutter"
 
-  rm -rf "${qtquick_out}" "${slint_out}"
-  mkdir -p "${qtquick_out}" "${slint_out}"
+  rm -rf "${qtquick_out}" "${slint_out}" "${flutter_out}"
+  mkdir -p "${qtquick_out}" "${slint_out}" "${flutter_out}"
 
   echo "[QtQuick] ${rel_path}"
   run_export "QtQuick" "${psd_path}" "${qtquick_out}"
 
   echo "[Slint]   ${rel_path}"
   run_export "Slint" "${psd_path}" "${slint_out}"
+
+  echo "[Flutter] ${rel_path}"
+  run_export "Flutter" "${psd_path}" "${flutter_out}"
 done
 
 if [[ "${fail_count}" -gt 0 ]]; then

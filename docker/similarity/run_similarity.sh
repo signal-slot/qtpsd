@@ -6,8 +6,10 @@ workspace_root="${2:-/workspace}"
 export_root="${workspace_root}/docs/exports/${source_id}"
 qtquick_output_root="${workspace_root}/docs/images/qtquick/${source_id}"
 slint_output_root="${workspace_root}/docs/images/slint/${source_id}"
+flutter_output_root="${workspace_root}/docs/images/flutter/${source_id}"
 qml_capture_script="${workspace_root}/scripts/qml2png.sh"
 slint_capture_script="${workspace_root}/scripts/slint2png.sh"
+flutter_capture_script="${workspace_root}/scripts/flutter2png.sh"
 managed_xvfb=0
 xvfb_display=""
 xvfb_num=""
@@ -31,6 +33,11 @@ fi
 
 if [[ ! -x "${slint_capture_script}" ]]; then
   echo "Missing script: ${slint_capture_script}" >&2
+  exit 1
+fi
+
+if [[ ! -x "${flutter_capture_script}" ]]; then
+  echo "Missing script: ${flutter_capture_script}" >&2
   exit 1
 fi
 
@@ -124,8 +131,10 @@ capture_all() {
 echo "Export root: ${export_root}"
 echo "QtQuick png output: ${qtquick_output_root}"
 echo "Slint png output: ${slint_output_root}"
+echo "Flutter png output: ${flutter_output_root}"
 
 export QT_QPA_PLATFORM=xcb
 export QML_VIEWER_BIN="${QML_VIEWER_BIN:-qml}"
 capture_all "QtQuick" "MainWindow.ui.qml" "${qtquick_output_root}" "${qml_capture_script}"
 capture_all "Slint" "MainWindow.slint" "${slint_output_root}" "${slint_capture_script}"
+capture_all "Flutter" "main_window.dart" "${flutter_output_root}" "${flutter_capture_script}"
