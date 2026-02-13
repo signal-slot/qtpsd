@@ -1371,6 +1371,14 @@ bool QPsdExporterQtQuickPlugin::saveTo(const QString &baseName, Element *element
 
     std::function<bool(Element *, int)> traverseElement;
     traverseElement = [&](Element *element, int level) -> bool {
+        if (element->type.trimmed().isEmpty()) {
+            for (auto &child : element->children) {
+                if (!traverseElement(&child, level))
+                    return false;
+            }
+            return true;
+        }
+
         // apply layers recursively
         auto layers = element->layers;
         std::function<void(Element *)> apply;
@@ -1378,6 +1386,10 @@ bool QPsdExporterQtQuickPlugin::saveTo(const QString &baseName, Element *element
             if (layers.isEmpty())
                 return;
             auto layer = layers.takeFirst();
+            if (layer.type.trimmed().isEmpty()) {
+                apply(parent);
+                return;
+            }
             layer.type = "layer.effect: " + layer.type;
             parent->properties.insert("layer.enabled", true);
             apply(&layer);
@@ -1439,7 +1451,8 @@ bool QPsdExporterQtQuickPlugin::saveTo(const QString &baseName, Element *element
         }
 
         for (auto &child : element->children) {
-            traverseElement(&child, level);
+            if (!traverseElement(&child, level))
+                return false;
         }
         level--;
         out << QByteArray(level * 4, ' ') << "}\n";
