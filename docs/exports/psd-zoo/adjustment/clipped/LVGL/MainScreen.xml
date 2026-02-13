@@ -4,6 +4,5 @@
     <lv_image height="200" src="background" width="200" x="0" y="0"/>
     <lv_image height="200" src="base" width="200" x="0" y="0"/>
     <lv_image height="100" src="top_content" width="100" x="50" y="50"/>
-    < height="0" width="0" x="0" y="0"/>
   </view>
 </component>

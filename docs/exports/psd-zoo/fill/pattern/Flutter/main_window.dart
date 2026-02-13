@@ -27,11 +27,10 @@ class MainWindow extends StatelessWidget {
             left: 0,
             top: 0,
             width: 200,
-            child: Image.asset(
-              "assets/images/pattern_fill.png", 
-              fit: BoxFit.contain,
-              height: 200,
-              width: 200,
+            child: Container(
+              decoration: (
+                color: Color.fromARGB(255, 0, 0, 0),
+              ),
             ),
           ),
         ],

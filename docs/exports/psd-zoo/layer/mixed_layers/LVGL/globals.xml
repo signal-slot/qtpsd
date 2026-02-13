@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background_fill" src_path="A:images/background_fill.png"/>
+  </images>
+</globals>

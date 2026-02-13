@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<globals>
+  <images>
+    <file name="background" src_path="A:images/background.png"/>
+    <file name="multi_effect" src_path="A:images/multi_effect.png"/>
+  </images>
+</globals>

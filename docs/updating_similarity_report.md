@@ -6,55 +6,47 @@
 - Docker: convert exported `MainWindow.ui.qml` / `MainWindow.slint` / `main_window.dart` / `MainScreen.xml` to PNG screenshots only.
 - Host: calculate similarity and regenerate `docs/similarity_report_psd-zoo.md`.
 
-## 1) Host: refresh Image Data / QPsdView images
+## One-command update
 
 ```bash
-QTPSD_IMAGE_OUTPUT_PATH=docs \
-QTPSD_IMAGE_SOURCES=psd-zoo \
-./build/Qt_6-Debug/tests/auto/psdgui/image_data_to_image/tst_image_data_to_image generateImages
-
-QTPSD_VIEW_OUTPUT_PATH=docs \
-QTPSD_VIEW_SOURCES=psd-zoo \
-QT_QPA_PLATFORM=offscreen \
-./build/Qt_6-Debug/tests/auto/psdwidget/tst_qpsdview
+./scripts/update_similarity_report.sh
 ```
 
-## 2) Host: export QtQuick/Slint/Flutter/LVGL sources
+This script runs:
+1. `tst_image_data_to_image generateImages`
+2. `tst_qpsdview`
+3. `scripts/export_qtquick_slint_exports.sh`
+4. `docker/similarity/run_similarity.sh` (inside `qtpsd-sim`)
+5. `tst_psdexporter_similarity generateReport`
+
+Report only (reuse existing PNG/export artifacts):
 
 ```bash
-./scripts/export_qtquick_slint_exports.sh ./build/Qt_6-Debug
+./scripts/update_similarity_report.sh --report-only
 ```
 
-This fills:
-- `docs/exports/psd-zoo/**/QtQuick/MainWindow.ui.qml`
-- `docs/exports/psd-zoo/**/Slint/MainWindow.slint`
-- `docs/exports/psd-zoo/**/Flutter/main_window.dart`
-- `docs/exports/psd-zoo/**/LVGL/MainScreen.xml`
-
-## 3) Docker: capture exported UI to PNG
+## Common options
 
 ```bash
-docker build -t qtpsd-sim -f docker/similarity/Dockerfile .
-docker run --rm -v "$PWD":/workspace qtpsd-sim \
-  /workspace/docker/similarity/run_similarity.sh psd-zoo
+# Rebuild Docker image before capture
+./scripts/update_similarity_report.sh --rebuild-docker
+
+# Use a different build directory
+./scripts/update_similarity_report.sh --build-dir ./build/Qt_6-Release
+
+# Limit number of PSDs processed
+QTPSD_SIMILARITY_LIMIT=20 ./scripts/update_similarity_report.sh
 ```
 
-This fills:
-- `docs/images/qtquick/psd-zoo/**/*.png`
-- `docs/images/slint/psd-zoo/**/*.png`
-- `docs/images/flutter/psd-zoo/**/*.png`
-- `docs/images/lvgl/psd-zoo/**/*.png`
+## Outputs
 
-## 4) Host: regenerate similarity report
-
-```bash
-QT_QPA_PLATFORM=offscreen \
-QTPSD_SIMILARITY_OUTPUT_PATH=docs \
-QTPSD_SIMILARITY_SOURCE=psd-zoo \
-QTPSD_SIMILARITY_RUN_EXPORT=0 \
-QTPSD_SIMILARITY_EXPORTERS=qtquick,slint,flutter,lvgl \
-./build/Qt_6-Debug/tests/auto/psdexporter/similarity/tst_psdexporter_similarity generateReport
-```
+- Exported UI sources: `docs/exports/psd-zoo/**/{QtQuick,Slint,Flutter,LVGL}/...`
+- Captured PNGs:
+  - `docs/images/qtquick/psd-zoo/**/*.png`
+  - `docs/images/slint/psd-zoo/**/*.png`
+  - `docs/images/flutter/psd-zoo/**/*.png`
+  - `docs/images/lvgl/psd-zoo/**/*.png`
+- Report: `docs/similarity_report_psd-zoo.md`
 
 ## Sanity check
 
@@ -62,4 +54,4 @@ QTPSD_SIMILARITY_EXPORTERS=qtquick,slint,flutter,lvgl \
 - `find docs/images/slint/psd-zoo -type f | wc -l`
 - `find docs/images/flutter/psd-zoo -type f | wc -l`
 - `find docs/images/lvgl/psd-zoo -type f | wc -l`
-- Confirm `docs/similarity_report_psd-zoo.md` has expected links in QtQuick/Slint/Flutter/LVGL columns.
+- Confirm `docs/similarity_report_psd-zoo.md` has links and percentages for `QPsdView`, `QtQuick`, `Slint`, `Flutter`, `LVGL`.

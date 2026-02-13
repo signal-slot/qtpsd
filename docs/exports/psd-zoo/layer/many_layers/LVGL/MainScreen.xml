@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="300" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
+    <lv_image height="300" src="background" width="300" x="0" y="0"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="42" x="11" y="10"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="35"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="60"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="85"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="110"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="135"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="160"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="185"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="210"/>
+    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="51" x="11" y="235"/>
+  </view>
+</component>

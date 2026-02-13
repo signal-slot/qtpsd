@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component>
+  <view extends="lv_obj" height="300" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
+    <lv_image height="300" src="background" width="300" x="0" y="0"/>
+    <lv_label height="22" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="40" x="100" y="33"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="70" x="102" y="132"/>
+    <lv_label height="18" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="76" x="102" y="233"/>
+  </view>
+</component>
