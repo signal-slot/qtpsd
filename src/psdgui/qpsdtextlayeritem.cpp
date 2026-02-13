@@ -32,6 +32,15 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     : QPsdAbstractLayerItem(record)
     , d(new Private)
 {
+    auto appendFallbackRun = [&](const QString &text = QString()) {
+        Run run;
+        run.text = text;
+        run.font = QFont();
+        run.color = Qt::black;
+        run.alignment = Qt::AlignLeft | Qt::AlignVCenter;
+        d->runs.append(run);
+    };
+
     const auto additionalLayerInformation = record.additionalLayerInformation();
     const auto tysh = additionalLayerInformation.value("TySh").value<QPsdTypeToolObjectSetting>();
     const auto textData = tysh.textData();
@@ -54,6 +63,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData, &parseError);
     if (parseError) {
         qWarning() << "QPsdTextLayerItem: failed to parse EngineData:" << parseError.errorMessage;
+        appendFallbackRun();
         d->bounds = tysh.bounds();
         return;
     }
@@ -197,13 +207,12 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     }
 
     if (d->runs.isEmpty() && !text.isEmpty()) {
-        Run run;
-        run.text = text;
-        run.font = QFont();
-        run.color = Qt::black;
-        run.alignment = defaultHorizontalAlignment | Qt::AlignVCenter;
-        d->runs.append(run);
+        appendFallbackRun(text);
+        d->runs.last().alignment = defaultHorizontalAlignment | Qt::AlignVCenter;
     }
+
+    if (d->runs.isEmpty())
+        appendFallbackRun();
 
     if (d->runs.length() > 1) {
         // merge runs with the same font and color
