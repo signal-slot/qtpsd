@@ -24,9 +24,16 @@ QPsdTypeToolObjectSetting::QPsdTypeToolObjectSetting()
 QPsdTypeToolObjectSetting::QPsdTypeToolObjectSetting(QIODevice *source, quint32 *length)
     : QPsdTypeToolObjectSetting()
 {
+    auto warnUnexpected = [](const char *field, quint32 actual, quint32 expected) {
+        if (actual != expected) {
+            qWarning("TypeToolObjectSetting: unexpected %s value %u (expected %u)",
+                     field, actual, expected);
+        }
+    };
+
     // Version ( =1 for Photoshop 6.0)
     auto version = readU16(source, length);
-    Q_ASSERT(version == 1);
+    warnUnexpected("version", version, 1u);
 
     // Transform: xx, xy, yx, yy, tx, and ty respectively.
     auto xx = readDouble(source, length);
@@ -39,11 +46,11 @@ QPsdTypeToolObjectSetting::QPsdTypeToolObjectSetting(QIODevice *source, quint32 
  
     // Text version ( = 50 for Photoshop 6.0)
     auto textVersion = readU16(source, length);
-    Q_ASSERT(textVersion == 50);
+    warnUnexpected("textVersion", textVersion, 50u);
 
     // Descriptor version ( = 16 for Photoshop 6.0)
     auto descriptorVersion = readU32(source, length);
-    Q_ASSERT(descriptorVersion == 16);
+    warnUnexpected("textDescriptorVersion", descriptorVersion, 16u);
 
     // Text data (see See Descriptor structure)
     d->textData = QPsdDescriptor(source, length);
@@ -66,11 +73,11 @@ QPsdTypeToolObjectSetting::QPsdTypeToolObjectSetting(QIODevice *source, quint32 
 
     // Warp version ( = 1 for Photoshop 6.0)
     auto warpVersion = readU16(source, length);
-    Q_ASSERT(warpVersion == 1);
+    warnUnexpected("warpVersion", warpVersion, 1u);
 
     // Descriptor version ( = 16 for Photoshop 6.0)
     descriptorVersion = readU32(source, length);
-    Q_ASSERT(descriptorVersion == 16);
+    warnUnexpected("warpDescriptorVersion", descriptorVersion, 16u);
 
     // Warp data (see See Descriptor structure)
     d->warpData = QPsdDescriptor(source, length);
