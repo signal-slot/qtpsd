@@ -187,12 +187,17 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
             break;
         }
 
+        const bool hasRenderableElement = !element.type.isEmpty();
+        Element *mergeParent = hasRenderableElement ? &element : parent;
         if (indexMergeMap.contains(index)) {
             const auto &list = indexMergeMap.values(index);
             for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, &element, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
+                traverseTree(*it, mergeParent, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
             }
         }
+
+        if (!hasRenderableElement)
+            return true;
 
         if (!hint.visible)
             element.attributes.insert("hidden", "true");
@@ -248,6 +253,9 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
         default:
             break;
         }
+
+        if (element.type.isEmpty())
+            return true;
 
         if (!hint.visible)
             element.attributes.insert("hidden", "true");
