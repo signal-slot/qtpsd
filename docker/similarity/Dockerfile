@@ -10,6 +10,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     python3-pil \
     fonts-dejavu-core \
+    fonts-roboto \
+    fonts-noto-core \
+    fonts-noto-color-emoji \
     git \
     xz-utils \
     cmake \
