@@ -171,7 +171,7 @@ if [[ "${report_only}" -eq 0 ]]; then
 
   echo "== Step 4/5: Docker capture to PNG (QtQuick/Slint/Flutter/LVGL) =="
   ensure_docker_image
-  run_cmd docker run --rm -v "${repo_root}:/workspace" "${docker_image}" \
+  run_cmd docker run --rm --user "$(id -u):$(id -g)" -v "${repo_root}:/workspace" "${docker_image}" \
     /workspace/docker/similarity/run_similarity.sh "${source_id}" /workspace
 fi
 
