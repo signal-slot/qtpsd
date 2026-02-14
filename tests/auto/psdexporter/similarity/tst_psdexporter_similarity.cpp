@@ -796,8 +796,6 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
         int total = 0;
         int passed = 0;
         double sum = 0.0;
-        double min = 100.0;
-        double max = 0.0;
 
         for (const auto &r : results) {
             if (!r.hasImageData || !metricSourceExists(r, metric)) {
@@ -811,22 +809,17 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
                 ++passed;
             }
             sum += value;
-            min = qMin(min, value);
-            max = qMax(max, value);
         }
 
         const double avg = total > 0 ? sum / total : 0.0;
-        if (total == 0) {
-            min = 0.0;
-        }
-        return std::tuple<int, int, double, double, double>(total, passed, avg, min, max);
+        return std::tuple<int, int, double>(total, passed, avg);
     };
 
-    const auto [pvTotal, pvPassed, pvAvg, pvMin, pvMax] = accumulate(Metric::ImageDataVsPsdView);
-    const auto [qtTotal, qtPassed, qtAvg, qtMin, qtMax] = accumulate(Metric::ImageDataVsQtQuick);
-    const auto [slTotal, slPassed, slAvg, slMin, slMax] = accumulate(Metric::ImageDataVsSlint);
-    const auto [flTotal, flPassed, flAvg, flMin, flMax] = accumulate(Metric::ImageDataVsFlutter);
-    const auto [lvTotal, lvPassed, lvAvg, lvMin, lvMax] = accumulate(Metric::ImageDataVsLvgl);
+    const auto [pvTotal, pvPassed, pvAvg] = accumulate(Metric::ImageDataVsPsdView);
+    const auto [qtTotal, qtPassed, qtAvg] = accumulate(Metric::ImageDataVsQtQuick);
+    const auto [slTotal, slPassed, slAvg] = accumulate(Metric::ImageDataVsSlint);
+    const auto [flTotal, flPassed, flAvg] = accumulate(Metric::ImageDataVsFlutter);
+    const auto [lvTotal, lvPassed, lvAvg] = accumulate(Metric::ImageDataVsLvgl);
 
     stream << "## Summary Statistics\n\n";
     stream << "| Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export | Image Data vs Flutter Export | Image Data vs LVGL Export |\n";
@@ -848,19 +841,7 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
            << QString::number(qtAvg, 'f', 2) << "% | "
            << QString::number(slAvg, 'f', 2) << "% | "
            << QString::number(flAvg, 'f', 2) << "% | "
-           << QString::number(lvAvg, 'f', 2) << "% |\n";
-    stream << "| Minimum Similarity | "
-           << QString::number(pvMin, 'f', 2) << "% | "
-           << QString::number(qtMin, 'f', 2) << "% | "
-           << QString::number(slMin, 'f', 2) << "% | "
-           << QString::number(flMin, 'f', 2) << "% | "
-           << QString::number(lvMin, 'f', 2) << "% |\n";
-    stream << "| Maximum Similarity | "
-           << QString::number(pvMax, 'f', 2) << "% | "
-           << QString::number(qtMax, 'f', 2) << "% | "
-           << QString::number(slMax, 'f', 2) << "% | "
-           << QString::number(flMax, 'f', 2) << "% | "
-           << QString::number(lvMax, 'f', 2) << "% |\n\n";
+           << QString::number(lvAvg, 'f', 2) << "% |\n\n";
 
     auto encoded = [](QString path) {
         return path.replace(" ", "%20");

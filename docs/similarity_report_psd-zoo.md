@@ -1,6 +1,6 @@
 # QtPsd Similarity Test Results (psd-zoo)
 
-Generated on: 2026-02-14T21:48:16
+Generated on: 2026-02-15T00:43:15
 
 ## Summary Statistics
 
@@ -9,8 +9,6 @@ Generated on: 2026-02-14T21:48:16
 | Total Tests | 337 | 337 | 337 | 337 | 337 |
 | Passed Tests (>50%) | 240 (71.2%) | 207 (61.4%) | 201 (59.6%) | 200 (59.3%) | 194 (57.6%) |
 | Average Similarity | 75.69% | 63.34% | 61.89% | 63.60% | 61.53% |
-| Minimum Similarity | 0.00% | 0.00% | 0.00% | 0.00% | 0.00% |
-| Maximum Similarity | 100.00% | 100.00% | 100.00% | 100.00% | 100.00% |
 
 ## adjustment
 
