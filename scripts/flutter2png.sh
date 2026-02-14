@@ -72,11 +72,39 @@ YAML
 
 cat >"${work_dir}/test_capture.dart" <<DART
 import 'dart:io';
+import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:qtpsd_capture/export/${entry_file}' as exported;
+
+Future<void> _loadFonts() async {
+  final fontFiles = [
+    '/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Regular.ttf',
+    '/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Bold.ttf',
+    '/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Italic.ttf',
+    '/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-BoldItalic.ttf',
+    '/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Light.ttf',
+    '/usr/share/fonts/truetype/roboto/unhinted/RobotoTTF/Roboto-Medium.ttf',
+    '/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf',
+    '/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf',
+    '/usr/share/fonts/truetype/noto/NotoSans-Italic.ttf',
+    '/usr/share/fonts/truetype/noto/NotoSans-BoldItalic.ttf',
+    '/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf',
+    '/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf',
+  ];
+  for (final path in fontFiles) {
+    final file = File(path);
+    if (await file.exists()) {
+      try {
+        final bytes = await file.readAsBytes();
+        await ui.loadFontFromList(Uint8List.fromList(bytes));
+      } catch (_) {}
+    }
+  }
+}
 
 Future<void> _flushFrames() async {
   final binding = WidgetsBinding.instance;
@@ -91,6 +119,8 @@ void main() {
   WidgetsFlutterBinding.ensureInitialized();
 
   test('capture exported MainWindow', () async {
+    await _loadFonts();
+
     final boundaryKey = GlobalKey();
 
     runApp(
