@@ -13,35 +13,35 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 22
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 27
         horizontalAlignment: Text.AlignLeft
-        text: ""
+        text: "Top"
         width: 40
         x: 100
-        y: 33
+        y: 25
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 19
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 27
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 70
-        x: 102
-        y: 132
+        text: "Middle"
+        width: 72
+        x: 100
+        y: 125
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 18
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 27
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 76
-        x: 102
-        y: 233
+        text: "Bottom"
+        width: 79
+        x: 100
+        y: 225
     }
 }

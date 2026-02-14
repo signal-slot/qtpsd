@@ -2,6 +2,6 @@
 <component>
   <view extends="lv_obj" height="300" scrollbar_mode="off" style_pad_all="0" width="400" x="0" y="0">
     <lv_image height="300" src="background" width="400" x="0" y="0"/>
-    <lv_label height="87" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="338" x="20" y="20"/>
+    <lv_label height="261" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 14" text="First paragraph with indent. This is a longer text to test paragraph formatting.&#10;&#10;Second paragraph." width="360" x="20" y="19"/>
   </view>
 </component>

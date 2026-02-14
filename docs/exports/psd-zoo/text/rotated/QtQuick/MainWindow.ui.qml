@@ -13,11 +13,11 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
+        font.family: "Roboto"
+        font.pixelSize: 21
         height: 88
         horizontalAlignment: Text.AlignLeft
-        text: ""
+        text: "Rotated"
         width: 89
         x: 90
         y: 96

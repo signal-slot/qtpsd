@@ -13,13 +13,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 69
+        font.family: "Roboto"
+        font.pixelSize: 16
+        height: 252
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 350
+        text: "Paragraph text in a bounding box. This text wraps automatically when it reaches the edge of the box."
+        width: 354
+        wrapMode: Text.Wrap
         x: 25
-        y: 25
+        y: 23
     }
 }

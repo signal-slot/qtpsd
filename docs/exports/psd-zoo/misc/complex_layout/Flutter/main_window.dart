@@ -50,32 +50,44 @@ class MainWindow extends StatelessWidget {
                   width: 302,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: Color.fromARGB(255, 0, 0, 0),
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                 ),
-                Text(
-                  "", 
-                  textAlign: TextAlign.left,
-                  textScaler: TextScaler.linear(1),
-                  style: TextStyle(
-                    color: Color.fromARGB(255, 0, 0, 0),
-                    fontFamily: "Sans Serif",
-                    fontSize: 9,
-                    fontVariations: [FontVariation.weight(600)],
-                    height: 1,
+                Positioned(
+                  height: 26,
+                  left: 80,
+                  top: 59,
+                  width: 87,
+                  child: Text(
+                    "Card Title", 
+                    textAlign: TextAlign.left,
+                    textScaler: TextScaler.linear(1),
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 30, 30, 30),
+                      fontFamily: "Roboto",
+                      fontSize: 20,
+                      fontVariations: [FontVariation.weight(600)],
+                      height: 1,
+                    ),
                   ),
                 ),
-                Text(
-                  "", 
-                  textAlign: TextAlign.left,
-                  textScaler: TextScaler.linear(1),
-                  style: TextStyle(
-                    color: Color.fromARGB(255, 0, 0, 0),
-                    fontFamily: "Sans Serif",
-                    fontSize: 9,
-                    fontVariations: [FontVariation.weight(600)],
-                    height: 1,
+                Positioned(
+                  height: 121,
+                  left: 80,
+                  top: 109,
+                  width: 250,
+                  child: Text(
+                    "This is body text in a card layout with multiple layers and groups.", 
+                    textAlign: TextAlign.left,
+                    textScaler: TextScaler.linear(1),
+                    style: TextStyle(
+                      color: Color.fromARGB(255, 80, 80, 80),
+                      fontFamily: "Roboto",
+                      fontSize: 12,
+                      fontVariations: [FontVariation.weight(600)],
+                      height: 1,
+                    ),
                   ),
                 ),
               ],

@@ -128,8 +128,11 @@ capture_all() {
     local output_path="${output_root}/${rel_no_ext}.png"
 
     echo "[${kind}] ${rel_no_ext}"
-    capture_one "${input_path}" "${output_path}" "${script}"
-    count=$((count + 1))
+    if capture_one "${input_path}" "${output_path}" "${script}"; then
+      count=$((count + 1))
+    else
+      echo "FAILED: [${kind}] ${rel_no_ext}" >&2
+    fi
   done < <(find "${export_root}" -type f -path "*/${kind}/${input_name}" | sort)
 
   echo "Captured ${count} ${kind} screenshots."

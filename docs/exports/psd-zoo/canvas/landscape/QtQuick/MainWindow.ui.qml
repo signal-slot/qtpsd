@@ -13,13 +13,13 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 46
+        font.family: "Roboto"
+        font.pixelSize: 48
+        height: 54
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 229
-        x: 804
-        y: 504
+        text: "Landscape"
+        width: 234
+        x: 800
+        y: 490
     }
 }

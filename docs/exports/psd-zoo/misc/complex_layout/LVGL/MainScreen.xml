@@ -3,8 +3,8 @@
   <view extends="lv_obj" height="300" scrollbar_mode="off" style_pad_all="0" width="400" x="0" y="0">
     <lv_image height="300" src="background" width="400" x="0" y="0"/>
     <lv_image height="300" src="bg_color" width="400" x="0" y="0"/>
-    <lv_obj height="242" style_bg_color="0x000000" style_bg_opa="255" width="302" x="49" y="29"/>
-    <lv_label height="16" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="87" x="80" y="65"/>
-    <lv_label height="33" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="242" x="80" y="110"/>
+    <lv_obj height="242" style_bg_color="0xffffff" style_bg_opa="255" width="302" x="49" y="29"/>
+    <lv_label height="26" style_text_align="left" style_text_color="0x1e1e1e" style_text_font="montserrat 20" text="Card Title" width="87" x="80" y="59"/>
+    <lv_label height="121" style_text_align="left" style_text_color="0x505050" style_text_font="montserrat 12" text="This is body text in a card layout with multiple layers and groups." width="250" x="80" y="109"/>
   </view>
 </component>

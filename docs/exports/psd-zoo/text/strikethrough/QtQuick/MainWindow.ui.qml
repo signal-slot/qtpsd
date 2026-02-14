@@ -13,13 +13,13 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 30
+        font.family: "Roboto"
+        font.pixelSize: 30
+        height: 34
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 180
+        text: "Strikethrough"
+        width: 179
         x: 20
-        y: 77
+        y: 69
     }
 }

@@ -17,10 +17,13 @@ Item {
         x: 26
         y: 26
         Rectangle {
-            height: 140
-            width: 140
-            x: 4
-            y: 4
+            border.color: "#000000"
+            border.width: 5
+            color: "#e6e6e6"
+            height: 145
+            width: 145
+            x: 1.5
+            y: 1.5
         }
     }
 }

@@ -22,16 +22,22 @@ class MainWindow extends StatelessWidget {
               width: 200,
             ),
           ),
-          Text(
-            "", 
-            textAlign: TextAlign.left,
-            textScaler: TextScaler.linear(1),
-            style: TextStyle(
-              color: Color.fromARGB(255, 0, 0, 0),
-              fontFamily: "Sans Serif",
-              fontSize: 9,
-              fontVariations: [FontVariation.weight(600)],
-              height: 1,
+          Positioned(
+            height: 10,
+            left: 10,
+            top: 42,
+            width: 53,
+            child: Text(
+              "Tiny text at 8pt", 
+              textAlign: TextAlign.left,
+              textScaler: TextScaler.linear(1),
+              style: TextStyle(
+                color: Color.fromARGB(255, 0, 0, 0),
+                fontFamily: "Roboto",
+                fontSize: 8,
+                fontVariations: [FontVariation.weight(600)],
+                height: 1,
+              ),
             ),
           ),
         ],

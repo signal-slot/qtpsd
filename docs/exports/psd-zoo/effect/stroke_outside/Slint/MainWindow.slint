@@ -12,12 +12,19 @@ export component MainWindow inherits Window {
         x: 0px;
         y: 0px;
     }
-    Image {
+    Rectangle {
+        background: transparent;
+        border-color: #000000;
+        border-width: 4px;
         height: 120px;
-        image-fit: contain;
-        source: @image-url("images/stroke_outside.png");
         width: 120px;
         x: 40px;
         y: 40px;
+        Image {
+            height: 120px;
+            image-fit: contain;
+            source: @image-url("images/stroke_outside.png");
+            width: 120px;
+        }
     }
 }

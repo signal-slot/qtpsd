@@ -11,12 +11,20 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
+    Rectangle {
+        border.color: "#ffff00"
+        border.width: 2
+        color: "transparent"
         height: 100
-        source: "images/multi_effect.png"
         width: 200
         x: 50
         y: 50
+        Image {
+            anchors.fill: parent
+            fillMode: Image.PreserveAspectFit
+            height: 100
+            source: "images/multi_effect.png"
+            width: 200
+        }
     }
 }

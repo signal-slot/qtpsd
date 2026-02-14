@@ -30,7 +30,7 @@ class MainWindow extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(50),
-                color: Color.fromARGB(255, 0, 0, 0),
+                color: Color.fromARGB(255, 0, 200, 128),
               ),
             ),
           ),

@@ -12,14 +12,14 @@ Item {
         y: 0
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 19
+        color: "#ff0000"
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 27
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 90
-        x: 52
-        y: 82
+        text: "Red Text"
+        width: 92
+        x: 50
+        y: 75
     }
 }

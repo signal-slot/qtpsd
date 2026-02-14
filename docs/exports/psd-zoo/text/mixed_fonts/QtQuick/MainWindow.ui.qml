@@ -13,24 +13,24 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 23
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 27
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 79
-        x: 22
-        y: 82
+        text: "Regular"
+        width: 87
+        x: 20
+        y: 75
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 19
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 27
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 47
-        x: 146
-        y: 82
+        text: "Bold"
+        width: 55
+        x: 145
+        y: 75
     }
 }

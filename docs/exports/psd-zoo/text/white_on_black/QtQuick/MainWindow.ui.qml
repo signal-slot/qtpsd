@@ -4,14 +4,14 @@ Item {
     height: 200
     width: 300
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 28
+        color: "#ffffff"
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 41
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 166
-        x: 51
-        y: 93
+        text: "White Text"
+        width: 168
+        x: 50
+        y: 82
     }
 }

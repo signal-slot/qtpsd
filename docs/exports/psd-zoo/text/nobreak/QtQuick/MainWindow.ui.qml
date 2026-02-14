@@ -12,11 +12,15 @@ Item {
         y: 0
     }
     Text {
-        anchors.fill: parent
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 180
         horizontalAlignment: Text.AlignLeft
         text: ""
+        width: 180
+        wrapMode: Text.Wrap
+        x: 10
+        y: 10
     }
 }

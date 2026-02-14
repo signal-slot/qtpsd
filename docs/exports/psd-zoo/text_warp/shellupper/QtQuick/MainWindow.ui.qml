@@ -13,13 +13,13 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 58
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 41
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 258
-        x: 31
-        y: 64
+        text: "SHELLUPPER"
+        width: 220
+        x: 50
+        y: 82
     }
 }

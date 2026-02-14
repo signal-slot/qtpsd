@@ -27,6 +27,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qml6-module-qtqml-workerscript \
     qml6-module-qtquick \
     qml6-module-qtquick-window \
+    qml6-module-qtquick-layouts \
     qml6-module-qtquick-shapes \
     libgl1-mesa-dev \
     libegl1-mesa-dev \

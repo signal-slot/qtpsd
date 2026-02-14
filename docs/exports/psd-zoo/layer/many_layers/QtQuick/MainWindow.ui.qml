@@ -12,113 +12,113 @@ Item {
         y: 0
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#ff0000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 42
-        x: 11
-        y: 10
+        text: "Layer 1"
+        width: 45
+        x: 10
+        y: 5
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#00ff00"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 35
+        text: "Layer 2"
+        width: 45
+        x: 10
+        y: 30
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#0000ff"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 60
+        text: "Layer 3"
+        width: 45
+        x: 10
+        y: 55
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#ff8000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 85
+        text: "Layer 4"
+        width: 45
+        x: 10
+        y: 80
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#8000ff"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 110
+        text: "Layer 5"
+        width: 45
+        x: 10
+        y: 105
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#008080"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 135
+        text: "Layer 6"
+        width: 45
+        x: 10
+        y: 130
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#808000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 160
+        text: "Layer 7"
+        width: 45
+        x: 10
+        y: 155
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#404040"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 185
+        text: "Layer 8"
+        width: 45
+        x: 10
+        y: 180
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#c000c0"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 44
-        x: 11
-        y: 210
+        text: "Layer 9"
+        width: 45
+        x: 10
+        y: 205
     }
     Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 13
+        color: "#00c000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 16
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 51
-        x: 11
-        y: 235
+        text: "Layer 10"
+        width: 53
+        x: 10
+        y: 230
     }
 }

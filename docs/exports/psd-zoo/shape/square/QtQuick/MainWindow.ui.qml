@@ -17,7 +17,7 @@ Item {
         x: 24
         y: 24
         Rectangle {
-            color: "#000000"
+            color: "#00b400"
             height: 150
             width: 150
             x: 1

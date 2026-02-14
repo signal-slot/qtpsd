@@ -13,13 +13,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 112
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 261
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 116
+        text: "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
+        width: 360
+        wrapMode: Text.Wrap
         x: 20
-        y: 20
+        y: 19
     }
 }

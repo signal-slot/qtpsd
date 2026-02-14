@@ -11,6 +11,9 @@ class MainWindow extends StatelessWidget {
       child: Stack(
         children: [
           Container(
+            color: Color.fromARGB(255, 255, 255, 255),
+            height: 400,
+            width: 400,
             child: Stack(
               children: [
                 Positioned(
@@ -20,7 +23,7 @@ class MainWindow extends StatelessWidget {
                   width: 400,
                   child: Container(
                     decoration: (
-                      color: Color.fromARGB(255, 0, 0, 0),
+                      color: Color.fromARGB(255, 255, 255, 255),
                     ),
                   ),
                 ),

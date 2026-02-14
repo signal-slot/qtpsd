@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Layouts
 
 Item {
     height: 200
@@ -11,15 +12,66 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 41
-        horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 198
-        x: 33
-        y: 68
+    Item {
+        height: 72
+        width: 203
+        x: 30
+        y: 72
+        Column {
+            anchors.centerIn: parent
+            RowLayout {
+                anchors.horizontalCenter: parent.horizontalCenter
+                spacing: 0
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Color Emoji"
+                    font.pixelSize: 36
+                    text: "😀"
+                }
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Sans"
+                    font.pixelSize: 36
+                    text: ""
+                }
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Color Emoji"
+                    font.pixelSize: 36
+                    text: "🚀"
+                }
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Sans"
+                    font.pixelSize: 36
+                    text: ""
+                }
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Color Emoji"
+                    font.pixelSize: 36
+                    text: "❤"
+                }
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Sans"
+                    font.pixelSize: 36
+                    text: ""
+                }
+                Text {
+                    Layout.fillHeight: true
+                    color: "#000000"
+                    font.family: "Noto Color Emoji"
+                    font.pixelSize: 36
+                    text: "🌟"
+                }
+            }
+        }
     }
 }

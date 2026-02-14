@@ -13,13 +13,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 38
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 181
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 280
+        text: "This text is fully justified including the last line of each paragraph."
+        width: 283
+        wrapMode: Text.Wrap
         x: 10
-        y: 10
+        y: 9
     }
 }

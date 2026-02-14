@@ -30,7 +30,7 @@ class MainWindow extends StatelessWidget {
             width: 262,
             child: Container(
               decoration: ShapeDecoration(
-                color: Color.fromARGB(255, 0, 0, 0),
+                color: Color.fromARGB(255, 255, 128, 0),
                 shape: QtPsdPathBorder(
                   path: Path()
                   ..fillType = PathFillType.evenOdd

@@ -17,7 +17,7 @@ Item {
         x: 49
         y: 19
         Rectangle {
-            color: "#000000"
+            color: "#00c880"
             height: 260
             radius: 50
             width: 100

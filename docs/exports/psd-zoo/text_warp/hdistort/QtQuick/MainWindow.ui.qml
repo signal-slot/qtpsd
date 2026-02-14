@@ -13,13 +13,13 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 37
+        font.family: "Roboto"
+        font.pixelSize: 28
+        height: 32
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 137
-        x: 42
-        y: 85
+        text: "DISTORT"
+        width: 114
+        x: 50
+        y: 91
     }
 }

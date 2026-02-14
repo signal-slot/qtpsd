@@ -34,16 +34,22 @@ class MainWindow extends StatelessWidget {
               width: 100,
             ),
           ),
-          Text(
-            "", 
-            textAlign: TextAlign.left,
-            textScaler: TextScaler.linear(1),
-            style: TextStyle(
-              color: Color.fromARGB(255, 0, 0, 0),
-              fontFamily: "Sans Serif",
-              fontSize: 9,
-              fontVariations: [FontVariation.weight(600)],
-              height: 1,
+          Positioned(
+            height: 37,
+            left: 50,
+            top: 221,
+            width: 183,
+            child: Text(
+              "Mixed Content", 
+              textAlign: TextAlign.left,
+              textScaler: TextScaler.linear(1),
+              style: TextStyle(
+                color: Color.fromARGB(255, 0, 0, 0),
+                fontFamily: "Roboto",
+                fontSize: 28,
+                fontVariations: [FontVariation.weight(600)],
+                height: 1,
+              ),
             ),
           ),
           Positioned(
@@ -53,7 +59,7 @@ class MainWindow extends StatelessWidget {
             width: 172,
             child: Container(
               decoration: BoxDecoration(
-                color: Color.fromARGB(255, 0, 0, 0),
+                color: Color.fromARGB(255, 0, 100, 200),
               ),
             ),
           ),

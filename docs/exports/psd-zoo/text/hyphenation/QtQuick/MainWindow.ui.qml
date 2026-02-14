@@ -13,13 +13,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 87
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 161
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 119
+        text: "Internationalization implementation characterization extraordinarily"
+        width: 160
+        wrapMode: Text.Wrap
         x: 20
-        y: 20
+        y: 19
     }
 }

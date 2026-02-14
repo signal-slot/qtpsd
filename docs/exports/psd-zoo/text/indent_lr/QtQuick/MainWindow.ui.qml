@@ -13,13 +13,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 33
+        font.family: "Roboto"
+        font.pixelSize: 12
+        height: 181
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 277
+        text: "This paragraph has left and right indentation applied for testing margin parameters."
+        width: 281
+        wrapMode: Text.Wrap
         x: 10
-        y: 10
+        y: 9
     }
 }

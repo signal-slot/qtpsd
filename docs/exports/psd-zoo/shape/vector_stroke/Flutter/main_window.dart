@@ -28,8 +28,14 @@ class MainWindow extends StatelessWidget {
             top: 27,
             width: 146,
             child: Container(
+              height: 143,
+              width: 143,
               decoration: BoxDecoration(
-                color: Color.fromARGB(255, 0, 0, 0),
+                color: Color.fromARGB(255, 100, 150, 200),
+                border: Border.all(
+                  color: Color.fromARGB(255, 255, 0, 0),
+                  width: 3,
+                ),
               ),
             ),
           ),

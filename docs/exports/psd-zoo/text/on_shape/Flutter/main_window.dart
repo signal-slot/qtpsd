@@ -29,20 +29,26 @@ class MainWindow extends StatelessWidget {
             width: 262,
             child: Container(
               decoration: BoxDecoration(
-                color: Color.fromARGB(255, 0, 0, 0),
+                color: Color.fromARGB(255, 0, 100, 200),
               ),
             ),
           ),
-          Text(
-            "", 
-            textAlign: TextAlign.left,
-            textScaler: TextScaler.linear(1),
-            style: TextStyle(
-              color: Color.fromARGB(255, 0, 0, 0),
-              fontFamily: "Sans Serif",
-              fontSize: 9,
-              fontVariations: [FontVariation.weight(600)],
-              height: 1,
+          Positioned(
+            height: 32,
+            left: 21,
+            top: 90,
+            width: 107,
+            child: Text(
+              "CLICK ME", 
+              textAlign: TextAlign.center,
+              textScaler: TextScaler.linear(1),
+              style: TextStyle(
+                color: Color.fromARGB(255, 255, 255, 255),
+                fontFamily: "Roboto",
+                fontSize: 24,
+                fontVariations: [FontVariation.weight(600)],
+                height: 1,
+              ),
             ),
           ),
         ],

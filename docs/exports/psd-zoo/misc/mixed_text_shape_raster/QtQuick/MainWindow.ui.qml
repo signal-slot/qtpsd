@@ -21,14 +21,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 22
+        font.family: "Roboto"
+        font.pixelSize: 28
+        height: 32
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 182
-        x: 51
-        y: 229
+        text: "Mixed Content"
+        width: 183
+        x: 50
+        y: 221
     }
     Item {
         height: 152
@@ -36,7 +36,7 @@ Item {
         x: 199
         y: 49
         Rectangle {
-            color: "#000000"
+            color: "#0064c8"
             height: 150
             width: 170
             x: 1

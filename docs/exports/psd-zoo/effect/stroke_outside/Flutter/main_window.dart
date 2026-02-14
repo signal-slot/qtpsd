@@ -27,11 +27,21 @@ class MainWindow extends StatelessWidget {
             left: 40,
             top: 40,
             width: 120,
-            child: Image.asset(
-              "assets/images/stroke_outside.png", 
-              fit: BoxFit.contain,
+            child: Container(
               height: 120,
               width: 120,
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: Color.fromARGB(255, 0, 0, 0),
+                  width: 4,
+                ),
+              ),
+              child: Image.asset(
+                "assets/images/stroke_outside.png", 
+                fit: BoxFit.contain,
+                height: 120,
+                width: 120,
+              ),
             ),
           ),
         ],

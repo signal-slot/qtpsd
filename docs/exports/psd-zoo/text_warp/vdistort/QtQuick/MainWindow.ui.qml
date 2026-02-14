@@ -13,13 +13,13 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 27
+        font.family: "Roboto"
+        font.pixelSize: 28
+        height: 32
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 155
-        x: 39
+        text: "VDISTORT"
+        width: 132
+        x: 50
         y: 91
     }
 }

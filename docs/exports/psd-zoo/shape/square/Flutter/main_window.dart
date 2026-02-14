@@ -29,7 +29,7 @@ class MainWindow extends StatelessWidget {
             width: 152,
             child: Container(
               decoration: BoxDecoration(
-                color: Color.fromARGB(255, 0, 0, 0),
+                color: Color.fromARGB(255, 0, 180, 0),
               ),
             ),
           ),

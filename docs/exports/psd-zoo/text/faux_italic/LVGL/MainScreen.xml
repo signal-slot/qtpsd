@@ -2,6 +2,6 @@
 <component>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
     <lv_image height="200" src="background" width="300" x="0" y="0"/>
-    <lv_label height="24" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="135" x="22" y="77"/>
+    <lv_label height="39" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 30" text="Faux Italic" width="137" x="20" y="69"/>
   </view>
 </component>

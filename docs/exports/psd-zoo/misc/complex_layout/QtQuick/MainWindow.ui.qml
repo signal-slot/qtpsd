@@ -30,7 +30,7 @@ Item {
             x: 49
             y: 29
             Rectangle {
-                color: "#000000"
+                color: "#ffffff"
                 height: 240
                 width: 300
                 x: 1
@@ -38,26 +38,27 @@ Item {
             }
         }
         Text {
-            color: "#000000"
-            font.family: "Sans Serif"
-            font.pixelSize: 9
-            height: 16
+            color: "#1e1e1e"
+            font.family: "Roboto"
+            font.pixelSize: 20
+            height: 23
             horizontalAlignment: Text.AlignLeft
-            text: ""
+            text: "Card Title"
             width: 87
             x: 80
-            y: 65
+            y: 59
         }
         Text {
-            color: "#000000"
-            font.family: "Sans Serif"
-            font.pixelSize: 9
-            height: 33
+            color: "#505050"
+            font.family: "Roboto"
+            font.pixelSize: 12
+            height: 121
             horizontalAlignment: Text.AlignLeft
-            text: ""
-            width: 242
+            text: "This is body text in a card layout with multiple layers and groups."
+            width: 250
+            wrapMode: Text.Wrap
             x: 80
-            y: 110
+            y: 109
         }
     }
 }

@@ -13,13 +13,14 @@ Item {
     }
     Text {
         color: "#000000"
-        font.family: "Sans Serif"
-        font.pixelSize: 9
-        height: 38
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 151
         horizontalAlignment: Text.AlignLeft
-        text: ""
-        width: 250
+        text: "This is justified text that should wrap across multiple lines in a text box."
+        width: 253
+        wrapMode: Text.Wrap
         x: 25
-        y: 25
+        y: 24
     }
 }

@@ -2,15 +2,15 @@
 <component>
   <view extends="lv_obj" height="300" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
     <lv_image height="300" src="background" width="300" x="0" y="0"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="42" x="11" y="10"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="35"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="60"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="85"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="110"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="135"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="160"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="185"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="44" x="11" y="210"/>
-    <lv_label height="13" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="51" x="11" y="235"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0xff0000" style_text_font="montserrat 14" text="Layer 1" width="45" x="10" y="5"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x00ff00" style_text_font="montserrat 14" text="Layer 2" width="45" x="10" y="30"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x0000ff" style_text_font="montserrat 14" text="Layer 3" width="45" x="10" y="55"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0xff8000" style_text_font="montserrat 14" text="Layer 4" width="45" x="10" y="80"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x8000ff" style_text_font="montserrat 14" text="Layer 5" width="45" x="10" y="105"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x008080" style_text_font="montserrat 14" text="Layer 6" width="45" x="10" y="130"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x808000" style_text_font="montserrat 14" text="Layer 7" width="45" x="10" y="155"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x404040" style_text_font="montserrat 14" text="Layer 8" width="45" x="10" y="180"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0xc000c0" style_text_font="montserrat 14" text="Layer 9" width="45" x="10" y="205"/>
+    <lv_label height="19" style_text_align="left" style_text_color="0x00c000" style_text_font="montserrat 14" text="Layer 10" width="53" x="10" y="230"/>
   </view>
 </component>

@@ -3,7 +3,7 @@
   <view extends="lv_obj" height="300" scrollbar_mode="off" style_pad_all="0" width="400" x="0" y="0">
     <lv_image height="300" src="background" width="400" x="0" y="0"/>
     <lv_image height="100" src="raster_circle" width="100" x="50" y="50"/>
-    <lv_label height="22" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 9" text="" width="182" x="51" y="229"/>
-    <lv_obj height="152" style_bg_color="0x000000" style_bg_opa="255" width="172" x="199" y="49"/>
+    <lv_label height="37" style_text_align="left" style_text_color="0x000000" style_text_font="montserrat 28" text="Mixed Content" width="183" x="50" y="221"/>
+    <lv_obj height="152" style_bg_color="0x0064c8" style_bg_opa="255" width="172" x="199" y="49"/>
   </view>
 </component>

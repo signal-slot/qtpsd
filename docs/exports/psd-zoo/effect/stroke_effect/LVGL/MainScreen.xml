@@ -2,6 +2,6 @@
 <component>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
     <lv_image height="200" src="background" width="300" x="0" y="0"/>
-    <lv_image height="100" src="stroke_layer" width="200" x="50" y="50"/>
+    <lv_image height="100" src="stroke_layer" style_border_color="0xff0000" style_border_opa="255" style_border_width="3" width="200" x="50" y="50"/>
   </view>
 </component>
