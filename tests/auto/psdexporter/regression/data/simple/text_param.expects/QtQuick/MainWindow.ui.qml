@@ -19,6 +19,7 @@ Item {
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
+            verticalAlignment: Text.AlignVCenter
         }
         Item {
             height: 100
@@ -53,6 +54,7 @@ Item {
             height: 56
             horizontalAlignment: Text.AlignHCenter
             text: "shooting"
+            verticalAlignment: Text.AlignVCenter
             width: 239
             x: 30
             y: 19

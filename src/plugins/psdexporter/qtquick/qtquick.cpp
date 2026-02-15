@@ -424,35 +424,12 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         if (run.font.italic())
             element->properties.insert("font.italic", true);
         element->properties.insert("color", u"\"%1\""_s.arg(run.color.name()));
-        // Use proper horizontal alignment from PSD
-        const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
-        switch (horizontalAlignment) {
-        case Qt::AlignLeft:
-            element->properties.insert("horizontalAlignment", "Text.AlignLeft");
-            break;
-        case Qt::AlignRight:
-            element->properties.insert("horizontalAlignment", "Text.AlignRight");
-            break;
-        case Qt::AlignHCenter:
-            element->properties.insert("horizontalAlignment", "Text.AlignHCenter");
-            break;
-        case Qt::AlignJustify:
-            element->properties.insert("horizontalAlignment", "Text.AlignJustify");
-            break;
-        default:
-            element->properties.insert("horizontalAlignment", "Text.AlignLeft");
-            break;
-        }
-        switch (run.alignment) {
-        case Qt::AlignTop:
-            element->properties.insert("verticalAlignment", "Text.AlignTop");
-            break;
-        case Qt::AlignBottom:
-            element->properties.insert("verticalAlignment", "Text.AlignBottom");
-            break;
-        case Qt::AlignVCenter:
-            element->properties.insert("verticalAlignment", "Text.AlignVCenter");
-            break;
+        element->properties.insert("horizontalAlignment",
+            horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
+        {
+            const auto vAlign = verticalAlignmentString(run.alignment, {"Text.AlignTop"_L1, "Text.AlignBottom"_L1, "Text.AlignVCenter"_L1});
+            if (!vAlign.isEmpty())
+                element->properties.insert("verticalAlignment", vAlign);
         }
     } else {
         element->type = "Item";
@@ -491,16 +468,10 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                     textElement.properties.insert("font.italic", true);
                 textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name()));
                 textElement.properties.insert("Layout.fillHeight", true);
-                switch (run.alignment) {
-                case Qt::AlignTop:
-                    textElement.properties.insert("verticalAlignment", "Text.AlignTop");
-                    break;
-                case Qt::AlignBottom:
-                    textElement.properties.insert("verticalAlignment", "Text.AlignBottom");
-                    break;
-                case Qt::AlignVCenter:
-                    textElement.properties.insert("verticalAlignment", "Text.AlignVCenter");
-                    break;
+                {
+                    const auto vAlign = verticalAlignmentString(run.alignment, {"Text.AlignTop"_L1, "Text.AlignBottom"_L1, "Text.AlignVCenter"_L1});
+                    if (!vAlign.isEmpty())
+                        textElement.properties.insert("verticalAlignment", vAlign);
                 }
                 rowLayout.children.append(textElement);
             }
@@ -714,18 +685,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             }
             if (shape->pen().style() != Qt::NoPen) {
                 qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                // QtQuick Rectangle border draws inside the rect bounds
-                switch (shape->strokeAlignment()) {
-                case QPsdShapeLayerItem::StrokeInside:
-                    // No rect adjustment needed - platform border is already inside
-                    break;
-                case QPsdShapeLayerItem::StrokeCenter:
-                    outputRect(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &rectElement);
-                    break;
-                case QPsdShapeLayerItem::StrokeOutside:
-                    outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &rectElement);
-                    break;
-                }
+                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
                 rectElement.properties.insert("border.width", dw);
                 rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
             }
@@ -911,18 +871,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         } else {
             if (shape->pen().style() != Qt::NoPen) {
                 qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                // QtQuick Rectangle border draws inside the rect bounds
-                switch (shape->strokeAlignment()) {
-                case QPsdShapeLayerItem::StrokeInside:
-                    // No rect adjustment needed - platform border is already inside
-                    break;
-                case QPsdShapeLayerItem::StrokeCenter:
-                    outputRect(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &rectElement);
-                    break;
-                case QPsdShapeLayerItem::StrokeOutside:
-                    outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &rectElement);
-                    break;
-                }
+                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
                 rectElement.properties.insert("border.width", dw);
                 rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
             }

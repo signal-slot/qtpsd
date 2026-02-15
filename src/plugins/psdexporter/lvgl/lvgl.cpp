@@ -292,22 +292,8 @@ bool QPsdExporterLvglPlugin::outputText(const QModelIndex &textIndex, Element *e
     int fontSize = qRound(firstRun.font.pointSizeF());
     element->attributes.insert("style_text_font", u"montserrat %1"_s.arg(fontSize));
 
-    // Horizontal alignment
-    const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(firstRun.alignment & Qt::AlignHorizontal_Mask);
-    switch (horizontalAlignment) {
-    case Qt::AlignLeft:
-        element->attributes.insert("style_text_align", "left");
-        break;
-    case Qt::AlignRight:
-        element->attributes.insert("style_text_align", "right");
-        break;
-    case Qt::AlignHCenter:
-        element->attributes.insert("style_text_align", "center");
-        break;
-    default:
-        element->attributes.insert("style_text_align", "left");
-        break;
-    }
+    element->attributes.insert("style_text_align",
+        horizontalAlignmentString(firstRun.alignment, {"left"_L1, "right"_L1, "center"_L1, {}}));
 
     return true;
 }

@@ -20,6 +20,7 @@ Item {
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
+            verticalAlignment: Text.AlignVCenter
         }
         Text {
             color: "#eac3c3"
@@ -28,6 +29,7 @@ Item {
             height: 33
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
+            verticalAlignment: Text.AlignVCenter
             width: 160
             x: 2
             y: 9
@@ -48,6 +50,7 @@ Item {
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
                         text: "文字列"
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Text {
                         Layout.fillHeight: true
@@ -55,6 +58,7 @@ Item {
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 16
                         text: "中"
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Text {
                         Layout.fillHeight: true
@@ -62,6 +66,7 @@ Item {
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
                         text: "に"
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
                 RowLayout {
@@ -73,6 +78,7 @@ Item {
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
                         text: "別"
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Text {
                         Layout.fillHeight: true
@@ -80,6 +86,7 @@ Item {
                         font.family: "Source Han Sans"
                         font.pixelSize: 18
                         text: "フォント"
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
@@ -91,6 +98,7 @@ Item {
             height: 33
             horizontalAlignment: Text.AlignHCenter
             text: "Shift\n+改行"
+            verticalAlignment: Text.AlignVCenter
             width: 86
             x: 25
             y: 109
@@ -102,6 +110,7 @@ Item {
             height: 116
             horizontalAlignment: Text.AlignHCenter
             text: "段落テキストは折り返される"
+            verticalAlignment: Text.AlignVCenter
             width: 158
             wrapMode: Text.Wrap
             x: 160

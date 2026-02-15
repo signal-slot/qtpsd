@@ -172,25 +172,8 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
             element->styles.append({"fontStyle"_L1, "'italic'"_L1});
         }
 
-        // Horizontal alignment
-        const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
-        switch (horizontalAlignment) {
-        case Qt::AlignLeft:
-            element->styles.append({"textAlign"_L1, "'left'"_L1});
-            break;
-        case Qt::AlignRight:
-            element->styles.append({"textAlign"_L1, "'right'"_L1});
-            break;
-        case Qt::AlignHCenter:
-            element->styles.append({"textAlign"_L1, "'center'"_L1});
-            break;
-        case Qt::AlignJustify:
-            element->styles.append({"textAlign"_L1, "'justify'"_L1});
-            break;
-        default:
-            element->styles.append({"textAlign"_L1, "'left'"_L1});
-            break;
-        }
+        element->styles.append({"textAlign"_L1,
+            horizontalAlignmentString(run.alignment, {"'left'"_L1, "'right'"_L1, "'center'"_L1, "'justify'"_L1})});
     } else {
         // Multiple runs - wrap in View with nested Text elements
         element->type = "View"_L1;
@@ -271,25 +254,10 @@ bool QPsdExporterReactNativePlugin::outputShape(const QModelIndex &shapeIndex, E
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
         element->type = "View"_L1;
 
-        // Compute adjusted bounds for stroke alignment
-        // React Native borderWidth draws inside the element bounds
         QRect rectBounds;
         if (shape->pen().style() != Qt::NoPen) {
             qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-            int roundedDw = qRound(dw);
-            switch (shape->strokeAlignment()) {
-            case QPsdShapeLayerItem::StrokeInside:
-                // No adjustment needed - platform border is already inside
-                break;
-            case QPsdShapeLayerItem::StrokeCenter: {
-                int halfDw = qRound(dw / 2);
-                rectBounds = shape->rect().adjusted(-halfDw, -halfDw, halfDw, halfDw);
-                break;
-            }
-            case QPsdShapeLayerItem::StrokeOutside:
-                rectBounds = shape->rect().adjusted(-roundedDw, -roundedDw, roundedDw, roundedDw);
-                break;
-            }
+            rectBounds = adjustRectForStroke(QRectF(shape->rect()), shape->strokeAlignment(), dw).toRect();
         }
         if (!outputBase(shapeIndex, element, rectBounds))
             return false;

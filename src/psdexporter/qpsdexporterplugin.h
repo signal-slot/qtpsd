@@ -79,6 +79,28 @@ protected:
 
     static QRect computeTextBounds(const QPsdTextLayerItem *text);
 
+    static QRectF adjustRectForStroke(const QRectF &rect,
+                                       QPsdShapeLayerItem::StrokeAlignment alignment,
+                                       qreal strokeWidth);
+
+    struct HAlignStrings {
+        QString left;
+        QString right;
+        QString center;
+        QString justify;
+    };
+
+    struct VAlignStrings {
+        QString top;
+        QString bottom;
+        QString center;
+    };
+
+    static QString horizontalAlignmentString(Qt::Alignment alignment,
+                                              const HAlignStrings &strings);
+    static QString verticalAlignmentString(Qt::Alignment alignment,
+                                            const VAlignStrings &strings);
+
     void writeLicenseHeader(QTextStream &out, const QString &commentPrefix = u"// "_s) const;
 
 protected:

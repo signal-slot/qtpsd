@@ -470,35 +470,12 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         element->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
         element->properties.insert("color", run.color.name());
-        // Use proper horizontal alignment from PSD
-        const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
-        switch (horizontalAlignment) {
-        case Qt::AlignLeft:
-            element->properties.insert("horizontal-alignment", "left");
-            break;
-        case Qt::AlignRight:
-            element->properties.insert("horizontal-alignment", "right");
-            break;
-        case Qt::AlignHCenter:
-            element->properties.insert("horizontal-alignment", "center");
-            break;
-        case Qt::AlignJustify:
-            element->properties.insert("horizontal-alignment", "left"); // Slint doesn't support justify
-            break;
-        default:
-            element->properties.insert("horizontal-alignment", "left");
-            break;
-        }
-        switch (run.alignment) {
-        case Qt::AlignTop:
-            element->properties.insert("vertical-alignment", "top");
-            break;
-        case Qt::AlignBottom:
-            element->properties.insert("vertical-alignment", "bottom");
-            break;
-        case Qt::AlignVCenter:
-            element->properties.insert("vertical-alignment", "center");
-            break;
+        element->properties.insert("horizontal-alignment",
+            horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));
+        {
+            const auto vAlign = verticalAlignmentString(run.alignment, {"top"_L1, "bottom"_L1, "center"_L1});
+            if (!vAlign.isEmpty())
+                element->properties.insert("vertical-alignment", vAlign);
         }
         if (!dropShadow.isEmpty()) {
             // slint doesn't support dropshadow for text
@@ -538,35 +515,12 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                 textElement.properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
                 textElement.properties.insert("color", run.color.name());
-                // Use proper horizontal alignment from PSD
-                const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
-                switch (horizontalAlignment) {
-                case Qt::AlignLeft:
-                    textElement.properties.insert("horizontal-alignment", "left");
-                    break;
-                case Qt::AlignRight:
-                    textElement.properties.insert("horizontal-alignment", "right");
-                    break;
-                case Qt::AlignHCenter:
-                    textElement.properties.insert("horizontal-alignment", "center");
-                    break;
-                case Qt::AlignJustify:
-                    textElement.properties.insert("horizontal-alignment", "left"); // Slint doesn't support justify
-                    break;
-                default:
-                    textElement.properties.insert("horizontal-alignment", "left");
-                    break;
-                }
-                switch (run.alignment) {
-                case Qt::AlignTop:
-                    textElement.properties.insert("vertical-alignment", "top");
-                    break;
-                case Qt::AlignBottom:
-                    textElement.properties.insert("vertical-alignment", "bottom");
-                    break;
-                case Qt::AlignVCenter:
-                    textElement.properties.insert("vertical-alignment", "center");
-                    break;
+                textElement.properties.insert("horizontal-alignment",
+                    horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));
+                {
+                    const auto vAlign = verticalAlignmentString(run.alignment, {"top"_L1, "bottom"_L1, "center"_L1});
+                    if (!vAlign.isEmpty())
+                        textElement.properties.insert("vertical-alignment", vAlign);
                 }
                 if (!dropShadow.isEmpty()) {
                     // slint doesn't support dropshadow for text
@@ -646,18 +600,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
         } else {
             if (shape->pen().style() != Qt::NoPen) {
                 qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                // Slint Rectangle border draws inside the rect bounds
-                switch (shape->strokeAlignment()) {
-                case QPsdShapeLayerItem::StrokeInside:
-                    // No rect adjustment needed - platform border is already inside
-                    break;
-                case QPsdShapeLayerItem::StrokeCenter:
-                    outputRect(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &element2);
-                    break;
-                case QPsdShapeLayerItem::StrokeOutside:
-                    outputRect(path.rect.adjusted(-dw, -dw, dw, dw), &element2);
-                    break;
-                }
+                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &element2);
                 element2.properties.insert("border-width", u"%1px"_s.ARGF(dw));
                 element2.properties.insert("border-color", shape->pen().color().name());
             }

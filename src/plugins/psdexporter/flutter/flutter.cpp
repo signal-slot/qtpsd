@@ -427,25 +427,8 @@ bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run r
     //TODO italic
     textStyleElement.properties.insert("color", colorValue(run.color));
     
-    // Use proper horizontal alignment from PSD
-    const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
-    switch (horizontalAlignment) {
-    case Qt::AlignLeft:
-        element->properties.insert("textAlign"_L1, "TextAlign.left"_L1);
-        break;
-    case Qt::AlignRight:
-        element->properties.insert("textAlign"_L1, "TextAlign.right"_L1);
-        break;
-    case Qt::AlignHCenter:
-        element->properties.insert("textAlign"_L1, "TextAlign.center"_L1);
-        break;
-    case Qt::AlignJustify:
-        element->properties.insert("textAlign"_L1, "TextAlign.justify"_L1);
-        break;
-    default:
-        element->properties.insert("textAlign"_L1, "TextAlign.left"_L1);
-        break;
-    }
+    element->properties.insert("textAlign"_L1,
+        horizontalAlignmentString(run.alignment, {"TextAlign.left"_L1, "TextAlign.right"_L1, "TextAlign.center"_L1, "TextAlign.justify"_L1}));
 
     //TODO alignment vertical
 
@@ -632,18 +615,7 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         decorationElement.type = "BoxDecoration"_L1;
         if (shape->pen().style() != Qt::NoPen) {
             qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-            // Flutter BoxDecoration Border draws inside the container bounds
-            switch (shape->strokeAlignment()) {
-            case QPsdShapeLayerItem::StrokeInside:
-                // No rect adjustment needed - platform border is already inside
-                break;
-            case QPsdShapeLayerItem::StrokeCenter:
-                outputRectProp(path.rect.adjusted(-dw / 2, -dw / 2, dw / 2, dw / 2), &containerElement);
-                break;
-            case QPsdShapeLayerItem::StrokeOutside:
-                outputRectProp(path.rect.adjusted(-dw, -dw, dw, dw), &containerElement);
-                break;
-            }
+            outputRectProp(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &containerElement);
             Element borderElement;
             borderElement.type = "Border.all"_L1;
             borderElement.properties.insert("width"_L1, dw);

@@ -309,6 +309,46 @@ QRect QPsdExporterPlugin::computeTextBounds(const QPsdTextLayerItem *text)
     return adjustedBounds.toRect();
 }
 
+QRectF QPsdExporterPlugin::adjustRectForStroke(const QRectF &rect,
+                                                QPsdShapeLayerItem::StrokeAlignment alignment,
+                                                qreal strokeWidth)
+{
+    switch (alignment) {
+    case QPsdShapeLayerItem::StrokeCenter:
+        return rect.adjusted(-strokeWidth / 2, -strokeWidth / 2,
+                              strokeWidth / 2, strokeWidth / 2);
+    case QPsdShapeLayerItem::StrokeOutside:
+        return rect.adjusted(-strokeWidth, -strokeWidth,
+                              strokeWidth, strokeWidth);
+    case QPsdShapeLayerItem::StrokeInside:
+    default:
+        return rect;
+    }
+}
+
+QString QPsdExporterPlugin::horizontalAlignmentString(Qt::Alignment alignment,
+                                                       const HAlignStrings &strings)
+{
+    switch (static_cast<Qt::Alignment>(alignment & Qt::AlignHorizontal_Mask)) {
+    case Qt::AlignRight:   return strings.right;
+    case Qt::AlignHCenter: return strings.center;
+    case Qt::AlignJustify:
+        return strings.justify.isEmpty() ? strings.left : strings.justify;
+    default:               return strings.left;
+    }
+}
+
+QString QPsdExporterPlugin::verticalAlignmentString(Qt::Alignment alignment,
+                                                     const VAlignStrings &strings)
+{
+    switch (static_cast<Qt::Alignment>(alignment & Qt::AlignVertical_Mask)) {
+    case Qt::AlignTop:     return strings.top;
+    case Qt::AlignBottom:  return strings.bottom;
+    case Qt::AlignVCenter: return strings.center;
+    default:               return {};
+    }
+}
+
 void QPsdExporterPlugin::writeLicenseHeader(QTextStream &out, const QString &commentPrefix) const
 {
     if (licenseText.isEmpty())

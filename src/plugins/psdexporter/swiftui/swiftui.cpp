@@ -253,20 +253,10 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
         // Color modifier
         element->modifiers.append(u".foregroundStyle(%1)"_s.arg(colorValue(run.color)));
 
-        // Alignment
-        const Qt::Alignment horizontalAlignment = static_cast<Qt::Alignment>(run.alignment & Qt::AlignHorizontal_Mask);
-        switch (horizontalAlignment) {
-        case Qt::AlignLeft:
-            element->modifiers.append(".multilineTextAlignment(.leading)");
-            break;
-        case Qt::AlignRight:
-            element->modifiers.append(".multilineTextAlignment(.trailing)");
-            break;
-        case Qt::AlignHCenter:
-            element->modifiers.append(".multilineTextAlignment(.center)");
-            break;
-        default:
-            break;
+        {
+            const auto hAlign = horizontalAlignmentString(run.alignment, {".leading"_L1, ".trailing"_L1, ".center"_L1, {}});
+            if (!hAlign.isEmpty())
+                element->modifiers.append(u".multilineTextAlignment(%1)"_s.arg(hAlign));
         }
 
         if (run.font.bold()) {
