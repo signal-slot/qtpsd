@@ -39,7 +39,6 @@ private:
         QList<Element> children;
     };
 
-    mutable QDir dir;
     mutable QList<QPair<QString, QString>> exportedImages; // name, filename
 
     using ExportData = QList<QPair<QString, QString>>; // id, type for API props
@@ -59,14 +58,11 @@ private:
 
 bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
 {
-    setModel(model);
-    dir = QDir(to);
+    if (!initializeExport(model, to, hint)) {
+        return false;
+    }
     exportedImages.clear();
-
-    const QSize originalSize = model->size();
-    const QSize targetSize = hint.value("resolution", originalSize).toSize();
-
-    generateMaps();
+    const QSize targetSize = hint.value("resolution", model->size()).toSize();
 
     ExportData exports;
 
@@ -279,19 +275,7 @@ bool QPsdExporterLvglPlugin::outputText(const QModelIndex &textIndex, Element *e
         return true;
 
     element->type = "lv_label";
-    QRect rect;
-    if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-        rect = text->bounds().toRect();
-    } else {
-        const auto &firstRun = runs.first();
-        QFont metricsFont = firstRun.font;
-        metricsFont.setPixelSize(qRound(firstRun.font.pointSizeF()));
-        QFontMetrics fm(metricsFont);
-        QRectF adjustedBounds = text->bounds();
-        adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-        adjustedBounds.setHeight(fm.height());
-        rect = adjustedBounds.toRect();
-    }
+    QRect rect = computeTextBounds(text);
     if (!outputBase(textIndex, element, rect))
         return false;
 

@@ -68,16 +68,6 @@ private:
     using ImportData = QSet<QString>;
     using ExportData = QHash<QString, PropertyInfo>;
 
-    mutable qreal horizontalScale = 1.0;
-    mutable qreal verticalScale = 1.0;
-    mutable qreal unitScale = 1.0;
-    mutable qreal fontScaleFactor = 1.0;
-    mutable bool makeCompact = false;
-    mutable bool imageScaling = false;
-    mutable QDir dir;
-    mutable QPsdImageStore imageStore;
-    mutable QString licenseText;
-
     static QByteArray indentString(int level);
     static QString valueAsText(QVariant value);
     static QString imagePath(const QString &name);
@@ -276,13 +266,7 @@ bool QPsdExporterFlutterPlugin::saveTo(const QString &baseName, Element *element
         return false;
     QTextStream out(&file);
 
-    if (!licenseText.isEmpty()) {
-        const QStringList lines = licenseText.split('\n');
-        for (const QString &line : lines) {
-            out << "// " << line << "\n";
-        }
-        out << "\n";
-    }
+    writeLicenseHeader(out);
 
     auto importValues = imports.values();
     std::sort(importValues.begin(), importValues.end(), std::less<QString>());
@@ -385,23 +369,7 @@ bool QPsdExporterFlutterPlugin::outputPositioned(const QModelIndex &index, Eleme
 bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QModelIndex &index, Element *element) const
 {
     const auto *item = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(index));
-    QRect rect;
-    if (item->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-        rect = item->bounds().toRect();
-    } else {
-        const auto runs = item->runs();
-        if (!runs.isEmpty()) {
-            QFont metricsFont = runs.first().font;
-            metricsFont.setPixelSize(qRound(runs.first().font.pointSizeF()));
-            QFontMetrics fm(metricsFont);
-            QRectF adjustedBounds = item->bounds();
-            adjustedBounds.setY(item->textOrigin().y() - fm.ascent());
-            adjustedBounds.setHeight(fm.height());
-            rect = adjustedBounds.toRect();
-        } else {
-            rect = item->bounds().toRect();
-        }
-    }
+    QRect rect = computeTextBounds(item);
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
         auto parentIndex = indexMergeMap.key(index);
         while (parentIndex.isValid()) {
@@ -789,56 +757,7 @@ bool QPsdExporterFlutterPlugin::outputImage(const QModelIndex &imageIndex, Eleme
 {
     const auto *image = dynamic_cast<const QPsdImageLayerItem *>(model()->layerItem(imageIndex));
 
-    // Check if we need to apply fillOpacity to image content
-    const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
-    const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
-
-    auto applyFillOpacity = [fillOpacity](QImage &img) {
-        if (fillOpacity >= 1.0)
-            return;
-        img = img.convertToFormat(QImage::Format_ARGB32);
-        for (int y = 0; y < img.height(); ++y) {
-            QRgb *scanLine = reinterpret_cast<QRgb *>(img.scanLine(y));
-            for (int x = 0; x < img.width(); ++x) {
-                const int alpha = qAlpha(scanLine[x]);
-                if (alpha > 0) {
-                    const int newAlpha = qRound(alpha * fillOpacity);
-                    scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
-                }
-            }
-        }
-    };
-
-    QString name;
-    bool done = false;
-    const auto linkedFile = image->linkedFile();
-    if (!linkedFile.type.isEmpty()) {
-        QImage qimage = image->linkedImage();
-        if (!qimage.isNull()) {
-            if (imageScaling) {
-                qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            }
-            if (needsFillOpacity) {
-                applyFillOpacity(qimage);
-            }
-            qimage = image->applyGradient(qimage);
-            QByteArray format = linkedFile.type.trimmed();
-            name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData()), linkedFile.uniqueId), qimage, format.constData());
-            done = !name.isEmpty();
-        }
-    }
-    if (!done) {
-        QImage qimage = image->image();
-        if (imageScaling) {
-            qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        }
-        if (needsFillOpacity) {
-            applyFillOpacity(qimage);
-        }
-        qimage = image->applyGradient(qimage);
-        name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
-    }
+    QString name = saveLayerImage(image);
 
     element->type = "Image.asset";
     element->noNamedParam = u"\"%1\""_s.arg(imagePath(name));
@@ -934,12 +853,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
             pElement = &visibilityElement;
         }
 
-        // Handle opacity and fillOpacity
-        // In Photoshop: opacity affects everything (including effects), fillOpacity affects only content
-        const qreal opacity = item->opacity();
-        const qreal fillOpacity = item->fillOpacity();
-        const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty();
-        qreal combinedOpacity = hasEffects ? opacity : (opacity * fillOpacity);
+        const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
 
         Element opacityElement;
         if (combinedOpacity < 1.0) {
@@ -1153,21 +1067,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
 
 bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
 {
-    setModel(model);
-    dir = { to };
-    imageStore = { dir, "assets/images"_L1 };
-
-    const QSize originalSize = model->size();
-    const QSize targetSize = hint.value("resolution", originalSize).toSize();
-    horizontalScale = targetSize.width() / qreal(originalSize.width());
-    verticalScale = targetSize.height() / qreal(originalSize.height());
-    unitScale = std::min(horizontalScale, verticalScale);
-    fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
-    makeCompact = hint.value("makeCompact", false).toBool();
-    imageScaling = hint.value("imageScaling", false).toBool();
-    licenseText = hint.value("licenseText").toString();
-
-    if (!generateMaps()) {
+    if (!initializeExport(model, to, hint, "assets/images"_L1)) {
         return false;
     }
 

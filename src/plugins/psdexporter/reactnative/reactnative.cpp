@@ -9,7 +9,6 @@
 #include <QtCore/QQueue>
 
 #include <QtGui/QBrush>
-#include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
 
 #include <QtPsdCore/QPsdSofiEffect>
@@ -56,15 +55,6 @@ private:
     };
     using ExportData = QList<Export>;
 
-    mutable qreal horizontalScale = 1.0;
-    mutable qreal verticalScale = 1.0;
-    mutable qreal unitScale = 1.0;
-    mutable qreal fontScaleFactor = 1.0;
-    mutable bool makeCompact = false;
-    mutable bool imageScaling = false;
-    mutable QDir dir;
-    mutable QPsdImageStore imageStore;
-    mutable QString licenseText;
     mutable bool needsSvg = false;
 
     static QString colorValue(const QColor &color);
@@ -119,29 +109,17 @@ bool QPsdExporterReactNativePlugin::outputBase(const QModelIndex &index, Element
     } else {
         rect = rectBounds;
     }
-    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
-        auto parentIndex = indexMergeMap.key(index);
-        while (parentIndex.isValid()) {
-            const auto *parent = model()->layerItem(parentIndex);
-            rect.translate(-parent->rect().topLeft());
-            parentIndex = model()->parent(parentIndex);
-        }
-    }
+    rect = adjustRectForMerge(index, rect);
 
     element->styles.append({"position"_L1, "'absolute'"_L1});
     outputRect(rect, element, true);
 
-    // Handle opacity and fillOpacity
-    const qreal opacity = item->opacity();
-    const qreal fillOpacity = item->fillOpacity();
-    const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty();
-
+    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
     if (hasEffects) {
-        if (opacity < 1.0) {
-            element->styles.append({"opacity"_L1, opacity});
+        if (item->opacity() < 1.0) {
+            element->styles.append({"opacity"_L1, item->opacity()});
         }
     } else {
-        const qreal combinedOpacity = opacity * fillOpacity;
         if (combinedOpacity < 1.0) {
             element->styles.append({"opacity"_L1, combinedOpacity});
         }
@@ -178,18 +156,7 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text"_L1;
-        QRect rect;
-        if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-            rect = text->bounds().toRect();
-        } else {
-            QFont metricsFont = run.font;
-            metricsFont.setPixelSize(qRound(run.font.pointSizeF()));
-            QFontMetrics fm(metricsFont);
-            QRectF adjustedBounds = text->bounds();
-            adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-            adjustedBounds.setHeight(fm.height());
-            rect = adjustedBounds.toRect();
-        }
+        QRect rect = computeTextBounds(text);
         if (!outputBase(textIndex, element, rect))
             return false;
 
@@ -227,18 +194,7 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
     } else {
         // Multiple runs - wrap in View with nested Text elements
         element->type = "View"_L1;
-        QRect multiRect;
-        if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-            multiRect = text->bounds().toRect();
-        } else {
-            QFont metricsFont = runs.first().font;
-            metricsFont.setPixelSize(qRound(runs.first().font.pointSizeF()));
-            QFontMetrics fm(metricsFont);
-            QRectF adjustedBounds = text->bounds();
-            adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-            adjustedBounds.setHeight(fm.height());
-            multiRect = adjustedBounds.toRect();
-        }
+        QRect multiRect = computeTextBounds(text);
         if (!outputBase(textIndex, element, multiRect))
             return false;
 
@@ -424,56 +380,7 @@ bool QPsdExporterReactNativePlugin::outputImage(const QModelIndex &imageIndex, E
     Q_UNUSED(imports);
     const auto *image = dynamic_cast<const QPsdImageLayerItem *>(model()->layerItem(imageIndex));
 
-    // Check if we need to apply fillOpacity to image content
-    const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
-    const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
-
-    auto applyFillOpacity = [fillOpacity](QImage &img) {
-        if (fillOpacity >= 1.0)
-            return;
-        img = img.convertToFormat(QImage::Format_ARGB32);
-        for (int y = 0; y < img.height(); ++y) {
-            QRgb *scanLine = reinterpret_cast<QRgb *>(img.scanLine(y));
-            for (int x = 0; x < img.width(); ++x) {
-                const int alpha = qAlpha(scanLine[x]);
-                if (alpha > 0) {
-                    const int newAlpha = qRound(alpha * fillOpacity);
-                    scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
-                }
-            }
-        }
-    };
-
-    QString name;
-    bool done = false;
-    const auto linkedFile = image->linkedFile();
-    if (!linkedFile.type.isEmpty()) {
-        QImage qimage = image->linkedImage();
-        if (!qimage.isNull()) {
-            if (imageScaling) {
-                qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            }
-            if (needsFillOpacity) {
-                applyFillOpacity(qimage);
-            }
-            qimage = image->applyGradient(qimage);
-            QByteArray format = linkedFile.type.trimmed();
-            name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData()), linkedFile.uniqueId), qimage, format.constData());
-            done = !name.isEmpty();
-        }
-    }
-    if (!done) {
-        QImage qimage = image->image();
-        if (imageScaling) {
-            qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        }
-        if (needsFillOpacity) {
-            applyFillOpacity(qimage);
-        }
-        qimage = image->applyGradient(qimage);
-        name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
-    }
+    QString name = saveLayerImage(image);
 
     element->type = "Image"_L1;
     if (!outputBase(imageIndex, element))
@@ -705,13 +612,7 @@ bool QPsdExporterReactNativePlugin::saveTo(const QString &baseName, Element *ele
     QTextStream out(&file);
 
     // License header
-    if (!licenseText.isEmpty()) {
-        const QStringList lines = licenseText.split('\n');
-        for (const QString &line : lines) {
-            out << "// " << line << "\n";
-        }
-        out << "\n";
-    }
+    writeLicenseHeader(out);
 
     // Imports
     out << "import React from 'react';\n";
@@ -946,24 +847,10 @@ bool QPsdExporterReactNativePlugin::saveTo(const QString &baseName, Element *ele
 
 bool QPsdExporterReactNativePlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
 {
-    setModel(model);
-    dir = { to };
-    imageStore = { dir, "assets/images"_L1 };
-
-    const QSize originalSize = model->size();
-    const QSize targetSize = hint.value("resolution", originalSize).toSize();
-    horizontalScale = targetSize.width() / qreal(originalSize.width());
-    verticalScale = targetSize.height() / qreal(originalSize.height());
-    unitScale = std::min(horizontalScale, verticalScale);
-    fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
-    makeCompact = hint.value("makeCompact", false).toBool();
-    imageScaling = hint.value("imageScaling", false).toBool();
-    licenseText = hint.value("licenseText").toString();
-    needsSvg = false;
-
-    if (!generateMaps()) {
+    if (!initializeExport(model, to, hint, "assets/images"_L1)) {
         return false;
     }
+    needsSvg = false;
 
     // Create directories
     QDir().mkpath(dir.absoluteFilePath("assets/images"_L1));

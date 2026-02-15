@@ -99,16 +99,6 @@ private:
 
     EffectMode m_effectMode = NoGPU;
 
-    mutable QDir dir;
-    mutable QPsdImageStore imageStore;
-    mutable qreal horizontalScale = 1.0;
-    mutable qreal verticalScale = 1.0;
-    mutable qreal unitScale = 1.0;
-    mutable qreal fontScaleFactor = 1.0;
-    mutable bool makeCompact = false;
-    mutable bool imageScaling = false;
-    mutable QString licenseText;
-
     bool outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds = {}) const;
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
     bool outputPath(const QPainterPath &path, Element *element) const;
@@ -124,21 +114,7 @@ private:
 
 bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,  const QString &to, const QVariantMap &hint) const
 {
-    setModel(model);
-    dir = { to };
-    imageStore = { dir, "images"_L1 };
-
-    const QSize originalSize = model->size();
-    const QSize targetSize = hint.value("resolution", originalSize).toSize();
-    horizontalScale = targetSize.width() / qreal(originalSize.width());
-    verticalScale = targetSize.height() / qreal(originalSize.height());
-    unitScale = std::min(horizontalScale, verticalScale);
-    fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
-    makeCompact = hint.value("makeCompact", false).toBool();
-    imageScaling = hint.value("imageScaling", false).toBool();
-    licenseText = hint.value("licenseText").toString();
-
-    if (!generateMaps()) {
+    if (!initializeExport(model, to, hint, "images"_L1)) {
         return false;
     }
 
@@ -179,35 +155,20 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
             rect.moveTopLeft(compactRect.topLeft() + delta);
         }
     }
-    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
-        auto parentIndex = indexMergeMap.key(index);
-        while (parentIndex.isValid()) {
-            const auto *parent = model()->layerItem(parentIndex);
-            rect.translate(-parent->rect().topLeft());
-            parentIndex = model()->parent(parentIndex);
-        }
-    }
+    rect = adjustRectForMerge(index, rect);
     if (rect.isEmpty()) {
         element->properties.insert("anchors.fill", "parent");
     } else {
         outputRect(rect, element);
     }
 
-    // Handle opacity and fillOpacity
-    // In Photoshop: opacity affects everything (including effects), fillOpacity affects only content
-    const qreal opacity = item->opacity();
-    const qreal fillOpacity = item->fillOpacity();
-    const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty();
+    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
 
     if (hasEffects) {
-        // When there are effects, apply opacity to the whole item
-        // fillOpacity will be applied to the content in outputImage/outputShape
-        if (opacity < 1.0) {
-            element->properties.insert("opacity", opacity);
+        if (item->opacity() < 1.0) {
+            element->properties.insert("opacity", item->opacity());
         }
     } else {
-        // When no effects, combine opacity and fillOpacity
-        const qreal combinedOpacity = opacity * fillOpacity;
         if (combinedOpacity < 1.0) {
             element->properties.insert("opacity", combinedOpacity);
         }
@@ -448,17 +409,9 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
-        QRect rect;
+        QRect rect = computeTextBounds(text);
         if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-            rect = text->bounds().toRect();
             element->properties.insert("wrapMode"_L1, "Text.Wrap"_L1);
-        } else {
-            QFont metricsFont = run.font;
-            metricsFont.setPixelSize(qRound(run.font.pointSizeF()));
-            QFontMetrics fm(metricsFont);
-            QRectF adjustedBounds = text->bounds();
-            adjustedBounds.moveTop(text->textOrigin().y() - fm.ascent());
-            rect = adjustedBounds.toRect();
         }
 
         if (!outputBase(textIndex, element, imports, rect))
@@ -503,17 +456,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         }
     } else {
         element->type = "Item";
-        QRect multiRect;
-        if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-            multiRect = text->bounds().toRect();
-        } else {
-            QFont metricsFont = runs.first().font;
-            metricsFont.setPixelSize(qRound(runs.first().font.pointSizeF()));
-            QFontMetrics fm(metricsFont);
-            QRectF adjustedBounds = text->bounds();
-            adjustedBounds.moveTop(text->textOrigin().y() - fm.ascent());
-            multiRect = adjustedBounds.toRect();
-        }
+        QRect multiRect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, multiRect))
             return false;
 
@@ -1068,56 +1011,7 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
 {
     const QPsdImageLayerItem *image = dynamic_cast<const QPsdImageLayerItem *>(model()->layerItem(imageIndex));
 
-    // Check if we need to apply fillOpacity to image content
-    const qreal fillOpacity = image->fillOpacity();
-    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
-    const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
-
-    auto applyFillOpacity = [fillOpacity](QImage &img) {
-        if (fillOpacity >= 1.0)
-            return;
-        img = img.convertToFormat(QImage::Format_ARGB32);
-        for (int y = 0; y < img.height(); ++y) {
-            QRgb *scanLine = reinterpret_cast<QRgb *>(img.scanLine(y));
-            for (int x = 0; x < img.width(); ++x) {
-                const int alpha = qAlpha(scanLine[x]);
-                if (alpha > 0) {
-                    const int newAlpha = qRound(alpha * fillOpacity);
-                    scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
-                }
-            }
-        }
-    };
-
-    QString name;
-    bool done = false;
-    const auto linkedFile = image->linkedFile();
-    if (!linkedFile.type.isEmpty()) {
-        QImage qimage = image->linkedImage();
-        if (!qimage.isNull()) {
-            if (imageScaling) {
-                qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-            }
-            if (needsFillOpacity) {
-                applyFillOpacity(qimage);
-            }
-            qimage = image->applyGradient(qimage);
-            QByteArray format = linkedFile.type.trimmed();
-            name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData()), linkedFile.uniqueId), qimage, format.constData());
-            done = !name.isEmpty();
-        }
-    }
-    if (!done) {
-        QImage qimage = image->image();
-        if (imageScaling) {
-            qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
-        }
-        if (needsFillOpacity) {
-            applyFillOpacity(qimage);
-        }
-        qimage = image->applyGradient(qimage);
-        name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
-    }
+    QString name = saveLayerImage(image);
 
     element->type = "Image";
     if (!outputBase(imageIndex, element, imports))
@@ -1347,13 +1241,7 @@ bool QPsdExporterQtQuickPlugin::saveTo(const QString &baseName, Element *element
         return false;
     QTextStream out(&file);
 
-    if (!licenseText.isEmpty()) {
-        const QStringList lines = licenseText.split('\n');
-        for (const QString &line : lines) {
-            out << "// " << line << "\n";
-        }
-        out << "\n";
-    }
+    writeLicenseHeader(out);
 
     auto imporList = QList<QString>(imports.begin(), imports.end());
     std::sort(imporList.begin(), imporList.end(), [](const QString &a, const QString &b) {

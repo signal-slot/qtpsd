@@ -6,6 +6,7 @@
 
 #include <QtPsdExporter/qpsdexporterglobal.h>
 #include <QtPsdExporter/qpsdexportertreeitemmodel.h>
+#include <QtPsdExporter/qpsdimagestore.h>
 
 #include <QtPsdCore/qpsdabstractplugin.h>
 #include <QtPsdGui/qpsdfolderlayeritem.h>
@@ -13,6 +14,7 @@
 #include <QtPsdGui/qpsdshapelayeritem.h>
 #include <QtPsdGui/qpsdimagelayeritem.h>
 
+#include <QtCore/QDir>
 #include <QtCore/QMimeDatabase>
 #include <QtGui/QIcon>
 
@@ -58,8 +60,39 @@ protected:
     static QString imageFileName(const QString &name, const QString &format, const QByteArray &uniqueId = {});
     bool generateMaps() const;
 
+    bool initializeExport(const QPsdExporterTreeItemModel *model,
+                          const QString &to,
+                          const QVariantMap &hint,
+                          const QString &imageSubDir = {}) const;
+
+    static void applyFillOpacity(QImage &image, qreal fillOpacity);
+
+    QString saveLayerImage(const QPsdImageLayerItem *image) const;
+
+    struct OpacityResult {
+        qreal opacity;
+        bool hasEffects;
+    };
+    static OpacityResult computeEffectiveOpacity(const QPsdAbstractLayerItem *item);
+
+    QRect adjustRectForMerge(const QModelIndex &index, QRect rect) const;
+
+    static QRect computeTextBounds(const QPsdTextLayerItem *text);
+
+    void writeLicenseHeader(QTextStream &out, const QString &commentPrefix = u"// "_s) const;
+
 protected:
     static QMimeDatabase mimeDatabase;
+
+    mutable QDir dir;
+    mutable QPsdImageStore imageStore;
+    mutable qreal horizontalScale = 1.0;
+    mutable qreal verticalScale = 1.0;
+    mutable qreal unitScale = 1.0;
+    mutable qreal fontScaleFactor = 1.0;
+    mutable bool makeCompact = false;
+    mutable bool imageScaling = false;
+    mutable QString licenseText;
 
     mutable QHash<const QPersistentModelIndex, QRect> childrenRectMap;
     mutable QHash<const QPersistentModelIndex, QRect> indexRectMap;

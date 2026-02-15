@@ -12,7 +12,6 @@
 #include <QtCore/QJsonArray>
 
 #include <QtGui/QBrush>
-#include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
 
 #include <QtPsdGui/QPsdBorder>
@@ -44,15 +43,7 @@ private:
         QStringList modifiers;
     };
 
-    mutable qreal horizontalScale = 1.0;
-    mutable qreal verticalScale = 1.0;
-    mutable qreal unitScale = 1.0;
-    mutable qreal fontScaleFactor = 1.0;
-    mutable bool makeCompact = false;
-    mutable bool imageScaling = false;
-    mutable QDir dir;
     mutable QDir assetsDir;
-    mutable QString licenseText;
 
     using ImportData = QSet<QString>;
     using ExportData = QSet<QString>;
@@ -191,28 +182,16 @@ bool QPsdExporterSwiftUIPlugin::outputBase(const QModelIndex &index, Element *el
     } else {
         rect = rectBounds;
     }
-    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
-        auto parentIndex = indexMergeMap.key(index);
-        while (parentIndex.isValid()) {
-            const auto *parent = model()->layerItem(parentIndex);
-            rect.translate(-parent->rect().topLeft());
-            parentIndex = model()->parent(parentIndex);
-        }
-    }
+    rect = adjustRectForMerge(index, rect);
 
     outputRect(rect, element, true);
 
-    // Handle opacity and fillOpacity
-    const qreal opacity = item->opacity();
-    const qreal fillOpacity = item->fillOpacity();
-    const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty();
-
+    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
     if (hasEffects) {
-        if (opacity < 1.0) {
-            element->modifiers.append(u".opacity(%1)"_s.arg(opacity, 0, 'f', 2));
+        if (item->opacity() < 1.0) {
+            element->modifiers.append(u".opacity(%1)"_s.arg(item->opacity(), 0, 'f', 2));
         }
     } else {
-        const qreal combinedOpacity = opacity * fillOpacity;
         if (combinedOpacity < 1.0) {
             element->modifiers.append(u".opacity(%1)"_s.arg(combinedOpacity, 0, 'f', 2));
         }
@@ -259,19 +238,7 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
     const auto *text = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(textIndex));
     const auto runs = text->runs();
 
-    QRect rect;
-    if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-        rect = text->bounds().toRect();
-    } else {
-        const auto &firstRun = runs.first();
-        QFont metricsFont = firstRun.font;
-        metricsFont.setPixelSize(qRound(firstRun.font.pointSizeF()));
-        QFontMetrics fm(metricsFont);
-        QRectF adjustedBounds = text->bounds();
-        adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-        adjustedBounds.setHeight(fm.height());
-        rect = adjustedBounds.toRect();
-    }
+    QRect rect = computeTextBounds(text);
 
     if (runs.size() == 1) {
         const auto run = runs.first();
@@ -639,22 +606,6 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
     const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
 
-    auto applyFillOpacity = [fillOpacity](QImage &img) {
-        if (fillOpacity >= 1.0)
-            return;
-        img = img.convertToFormat(QImage::Format_ARGB32);
-        for (int y = 0; y < img.height(); ++y) {
-            QRgb *scanLine = reinterpret_cast<QRgb *>(img.scanLine(y));
-            for (int x = 0; x < img.width(); ++x) {
-                const int alpha = qAlpha(scanLine[x]);
-                if (alpha > 0) {
-                    const int newAlpha = qRound(alpha * fillOpacity);
-                    scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
-                }
-            }
-        }
-    };
-
     QString name;
     bool done = false;
     const auto linkedFile = image->linkedFile();
@@ -665,7 +616,7 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
                 qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
             }
             if (needsFillOpacity) {
-                applyFillOpacity(qimage);
+                applyFillOpacity(qimage, fillOpacity);
             }
             qimage = image->applyGradient(qimage);
             name = sanitizeImageName(QFileInfo(linkedFile.name).baseName(), linkedFile.uniqueId);
@@ -678,7 +629,7 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
             qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
         }
         if (needsFillOpacity) {
-            applyFillOpacity(qimage);
+            applyFillOpacity(qimage, fillOpacity);
         }
         qimage = image->applyGradient(qimage);
         name = sanitizeImageName(image->name());
@@ -933,13 +884,7 @@ bool QPsdExporterSwiftUIPlugin::saveTo(const QString &baseName, Element *element
     QTextStream out(&file);
 
     // License text
-    if (!licenseText.isEmpty()) {
-        const QStringList lines = licenseText.split('\n');
-        for (const QString &line : lines) {
-            out << "// " << line << "\n";
-        }
-        out << "\n";
-    }
+    writeLicenseHeader(out);
 
     // Imports
     out << "import SwiftUI\n";
@@ -988,8 +933,9 @@ bool QPsdExporterSwiftUIPlugin::saveTo(const QString &baseName, Element *element
 
 bool QPsdExporterSwiftUIPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
 {
-    setModel(model);
-    dir = QDir(to);
+    if (!initializeExport(model, to, hint)) {
+        return false;
+    }
 
     // Create Assets.xcassets/Images directory
     QString assetsPath = dir.absoluteFilePath("Assets.xcassets/Images");
@@ -1023,20 +969,6 @@ bool QPsdExporterSwiftUIPlugin::exportTo(const QPsdExporterTreeItemModel *model,
         contents["properties"] = properties;
         imagesContents.write(QJsonDocument(contents).toJson());
         imagesContents.close();
-    }
-
-    const QSize originalSize = model->size();
-    const QSize targetSize = hint.value("resolution", originalSize).toSize();
-    horizontalScale = targetSize.width() / qreal(originalSize.width());
-    verticalScale = targetSize.height() / qreal(originalSize.height());
-    unitScale = std::min(horizontalScale, verticalScale);
-    fontScaleFactor = hint.value("fontScaleFactor", 1.0).toReal() * verticalScale;
-    makeCompact = hint.value("makeCompact", false).toBool();
-    imageScaling = hint.value("imageScaling", false).toBool();
-    licenseText = hint.value("licenseText").toString();
-
-    if (!generateMaps()) {
-        return false;
     }
 
     ImportData imports;

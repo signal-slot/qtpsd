@@ -4,6 +4,7 @@
 #include "qpsdexporterplugin.h"
 
 #include <QtCore/QCryptographicHash>
+#include <QtGui/QFontMetrics>
 
 QT_BEGIN_NAMESPACE
 
@@ -184,6 +185,139 @@ bool QPsdExporterPlugin::generateMaps() const
     d->generateIndexMap({}, QPoint(0, 0));
 
     return true;
+}
+
+bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model,
+                                          const QString &to,
+                                          const QVariantMap &hint,
+                                          const QString &imageSubDir) const
+{
+    setModel(model);
+    dir = QDir(to);
+
+    const QSize originalSize = model->size();
+    const QSize targetSize = hint.value("resolution"_L1, originalSize).toSize();
+    horizontalScale = targetSize.width() / qreal(originalSize.width());
+    verticalScale = targetSize.height() / qreal(originalSize.height());
+    unitScale = std::min(horizontalScale, verticalScale);
+    fontScaleFactor = hint.value("fontScaleFactor"_L1, 1.0).toReal() * verticalScale;
+    makeCompact = hint.value("makeCompact"_L1, false).toBool();
+    imageScaling = hint.value("imageScaling"_L1, false).toBool();
+    licenseText = hint.value("licenseText"_L1).toString();
+
+    if (!imageSubDir.isEmpty()) {
+        imageStore = QPsdImageStore(dir, imageSubDir);
+    }
+
+    return generateMaps();
+}
+
+void QPsdExporterPlugin::applyFillOpacity(QImage &image, qreal fillOpacity)
+{
+    if (fillOpacity >= 1.0)
+        return;
+    image = image.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb *scanLine = reinterpret_cast<QRgb *>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            const int alpha = qAlpha(scanLine[x]);
+            if (alpha > 0) {
+                const int newAlpha = qRound(alpha * fillOpacity);
+                scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
+            }
+        }
+    }
+}
+
+QString QPsdExporterPlugin::saveLayerImage(const QPsdImageLayerItem *image) const
+{
+    const qreal fillOpacity = image->fillOpacity();
+    const bool hasEffects = !image->dropShadow().isEmpty() || !image->effects().isEmpty() || image->border();
+    const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
+
+    QString name;
+    bool done = false;
+    const auto linkedFile = image->linkedFile();
+    if (!linkedFile.type.isEmpty()) {
+        QImage qimage = image->linkedImage();
+        if (!qimage.isNull()) {
+            if (imageScaling) {
+                qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            }
+            if (needsFillOpacity) {
+                applyFillOpacity(qimage, fillOpacity);
+            }
+            qimage = image->applyGradient(qimage);
+            QByteArray format = linkedFile.type.trimmed();
+            name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData()), linkedFile.uniqueId), qimage, format.constData());
+            done = !name.isEmpty();
+        }
+    }
+    if (!done) {
+        QImage qimage = image->image();
+        if (imageScaling) {
+            qimage = qimage.scaled(image->rect().width() * horizontalScale, image->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+        }
+        if (needsFillOpacity) {
+            applyFillOpacity(qimage, fillOpacity);
+        }
+        qimage = image->applyGradient(qimage);
+        name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
+    }
+
+    return name;
+}
+
+QPsdExporterPlugin::OpacityResult QPsdExporterPlugin::computeEffectiveOpacity(const QPsdAbstractLayerItem *item)
+{
+    const qreal opacity = item->opacity();
+    const qreal fillOpacity = item->fillOpacity();
+    const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty();
+    const qreal combinedOpacity = hasEffects ? opacity : (opacity * fillOpacity);
+    return { combinedOpacity, hasEffects };
+}
+
+QRect QPsdExporterPlugin::adjustRectForMerge(const QModelIndex &index, QRect rect) const
+{
+    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
+        auto parentIndex = indexMergeMap.key(index);
+        while (parentIndex.isValid()) {
+            const auto *parent = model()->layerItem(parentIndex);
+            rect.translate(-parent->rect().topLeft());
+            parentIndex = model()->parent(parentIndex);
+        }
+    }
+    return rect;
+}
+
+QRect QPsdExporterPlugin::computeTextBounds(const QPsdTextLayerItem *text)
+{
+    if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
+        return text->bounds().toRect();
+    }
+    const auto runs = text->runs();
+    if (runs.isEmpty()) {
+        return text->bounds().toRect();
+    }
+    const auto &firstRun = runs.first();
+    QFont metricsFont = firstRun.font;
+    metricsFont.setPixelSize(qRound(firstRun.font.pointSizeF()));
+    QFontMetrics fm(metricsFont);
+    QRectF adjustedBounds = text->bounds();
+    adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
+    adjustedBounds.setHeight(fm.height());
+    return adjustedBounds.toRect();
+}
+
+void QPsdExporterPlugin::writeLicenseHeader(QTextStream &out, const QString &commentPrefix) const
+{
+    if (licenseText.isEmpty())
+        return;
+    const QStringList lines = licenseText.split(u'\n');
+    for (const QString &line : lines) {
+        out << commentPrefix << line << "\n";
+    }
+    out << "\n";
 }
 
 QT_END_NAMESPACE
