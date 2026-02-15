@@ -278,6 +278,19 @@ QPsdExporterPlugin::OpacityResult QPsdExporterPlugin::computeEffectiveOpacity(co
     return { combinedOpacity, hasEffects };
 }
 
+std::optional<qreal> QPsdExporterPlugin::displayOpacity(const QPsdAbstractLayerItem *item)
+{
+    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
+    if (hasEffects) {
+        if (item->opacity() < 1.0)
+            return item->opacity();
+    } else {
+        if (combinedOpacity < 1.0)
+            return combinedOpacity;
+    }
+    return std::nullopt;
+}
+
 QRect QPsdExporterPlugin::adjustRectForMerge(const QModelIndex &index, QRect rect) const
 {
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
@@ -289,6 +302,21 @@ QRect QPsdExporterPlugin::adjustRectForMerge(const QModelIndex &index, QRect rec
         }
     }
     return rect;
+}
+
+QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBounds) const
+{
+    const auto *item = model()->layerItem(index);
+    QRect rect;
+    if (rectBounds.isEmpty()) {
+        rect = item->rect();
+        if (makeCompact) {
+            rect = indexRectMap.value(index);
+        }
+    } else {
+        rect = rectBounds;
+    }
+    return adjustRectForMerge(index, rect);
 }
 
 QRect QPsdExporterPlugin::computeTextBounds(const QPsdTextLayerItem *text)
@@ -378,6 +406,13 @@ std::optional<QPsdExporterPlugin::DropShadowInfo> QPsdExporterPlugin::parseDropS
     return info;
 }
 
+QPointF QPsdExporterPlugin::dropShadowOffset(const DropShadowInfo &shadow, bool flipAngle)
+{
+    const auto angle = flipAngle ? (M_PI - shadow.angleRad) : shadow.angleRad;
+    return QPointF(std::cos(angle) * shadow.distance,
+                   std::sin(angle) * shadow.distance);
+}
+
 QList<QPsdExporterPlugin::PathCommand> QPsdExporterPlugin::pathToCommands(
     const QPainterPath &path, qreal hScale, qreal vScale)
 {
@@ -417,6 +452,13 @@ QList<QPsdExporterPlugin::PathCommand> QPsdExporterPlugin::pathToCommands(
     }
     commands.append(PathCommand{PathCommand::Close});
     return commands;
+}
+
+bool QPsdExporterPlugin::isFilledRect(const QPsdAbstractLayerItem::PathInfo &path,
+                                       const QPsdShapeLayerItem *shape)
+{
+    return path.rect.topLeft() == QPointF(0, 0)
+        && path.rect.size() == shape->rect().size();
 }
 
 void QPsdExporterPlugin::writeLicenseHeader(QTextStream &out, const QString &commentPrefix) const

@@ -141,10 +141,7 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
     const QPsdAbstractLayerItem *item = model()->layerItem(index);
     QRect rect;
     if (rectBounds.isEmpty()) {
-        rect = item->rect();
-        if (makeCompact) {
-            rect = indexRectMap.value(index);
-        }
+        rect = computeBaseRect(index);
     } else {
         rect = rectBounds;
         if (makeCompact) {
@@ -154,25 +151,16 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
             QPoint delta = rectBounds.topLeft() - item->rect().topLeft();
             rect.moveTopLeft(compactRect.topLeft() + delta);
         }
+        rect = adjustRectForMerge(index, rect);
     }
-    rect = adjustRectForMerge(index, rect);
     if (rect.isEmpty()) {
         element->properties.insert("anchors.fill", "parent");
     } else {
         outputRect(rect, element);
     }
 
-    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
-
-    if (hasEffects) {
-        if (item->opacity() < 1.0) {
-            element->properties.insert("opacity", item->opacity());
-        }
-    } else {
-        if (combinedOpacity < 1.0) {
-            element->properties.insert("opacity", combinedOpacity);
-        }
-    }
+    if (auto opac = displayOpacity(item))
+        element->properties.insert("opacity", *opac);
 
     if (effectMode() != NoGPU) {
         for (const auto &effect : item->effects()) {
@@ -258,13 +246,13 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
         const auto shadow = parseDropShadow(item->dropShadow());
         if (shadow) {
             Element effect;
-            const auto distance = shadow->distance * unitScale;
+            const auto offset = dropShadowOffset(*shadow) * unitScale;
             if (effectMode() == Qt5Effects) {
                 imports->insert("Qt5Compat.GraphicalEffects as GE");
                 effect.type = "GE.DropShadow";
                 effect.properties.insert("color", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
-                effect.properties.insert("horizontalOffset", std::cos(shadow->angleRad) * distance);
-                effect.properties.insert("verticalOffset", std::sin(shadow->angleRad) * distance);
+                effect.properties.insert("horizontalOffset", offset.x());
+                effect.properties.insert("verticalOffset", offset.y());
                 effect.properties.insert("spread", shadow->spread * unitScale);
                 effect.properties.insert("radius", shadow->blur * unitScale);
             } else {
@@ -272,8 +260,8 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
                 effect.type = "MultiEffect";
                 effect.properties.insert("shadowEnabled", true);
                 effect.properties.insert("shadowColor", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
-                effect.properties.insert("shadowHorizontalOffset", std::cos(shadow->angleRad) * distance);
-                effect.properties.insert("shadowVerticalOffset", std::sin(shadow->angleRad) * distance);
+                effect.properties.insert("shadowHorizontalOffset", offset.x());
+                effect.properties.insert("shadowVerticalOffset", offset.y());
                 effect.properties.insert("shadowSpread", shadow->spread * unitScale);
                 effect.properties.insert("shadowBlur", shadow->blur * unitScale);
             }
@@ -474,7 +462,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
     const auto path = shape->pathInfo();
     switch (path.type) {
     case QPsdAbstractLayerItem::PathInfo::Rectangle: {
-        bool filled = (path.rect.topLeft() == QPointF(0, 0) && path.rect.size() == shape->rect().size());
+        bool filled = isFilledRect(path, shape);
         if (!filled) {
             element->type = "Item";
             if (!outputBase(shapeIndex, element, imports))
@@ -681,7 +669,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
-        bool filled = (path.rect.topLeft() == QPointF(0, 0) && path.rect.size() == shape->rect().size());
+        bool filled = isFilledRect(path, shape);
         Element rectElement;
         rectElement.type = "Rectangle";
         if (filled) {

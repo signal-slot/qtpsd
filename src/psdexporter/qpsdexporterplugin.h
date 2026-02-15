@@ -79,8 +79,10 @@ protected:
         bool hasEffects;
     };
     static OpacityResult computeEffectiveOpacity(const QPsdAbstractLayerItem *item);
+    static std::optional<qreal> displayOpacity(const QPsdAbstractLayerItem *item);
 
     QRect adjustRectForMerge(const QModelIndex &index, QRect rect) const;
+    QRect computeBaseRect(const QModelIndex &index, QRect rectBounds = {}) const;
 
     static QRect computeTextBounds(const QPsdTextLayerItem *text);
 
@@ -118,6 +120,7 @@ protected:
         qreal blur;         // raw pixels (not scaled)
     };
     static std::optional<DropShadowInfo> parseDropShadow(const QCborMap &dropShadow);
+    static QPointF dropShadowOffset(const DropShadowInfo &shadow, bool flipAngle = false);
 
     struct PathCommand {
         enum Type { MoveTo, LineTo, CubicTo, Close };
@@ -132,6 +135,9 @@ protected:
     static QList<PathCommand> pathToCommands(const QPainterPath &path,
                                               qreal hScale = 1.0,
                                               qreal vScale = 1.0);
+
+    static bool isFilledRect(const QPsdAbstractLayerItem::PathInfo &path,
+                              const QPsdShapeLayerItem *shape);
 
     void writeLicenseHeader(QTextStream &out, const QString &commentPrefix = u"// "_s) const;
 

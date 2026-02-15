@@ -88,27 +88,9 @@ bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, c
 bool QPsdExporterSlintPlugin::outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds) const
 {
     Q_UNUSED(imports);
-    const QPsdAbstractLayerItem *item = model()->layerItem(index);
-    QRect rect;
-    if (rectBounds.isEmpty()) {
-        rect = item->rect();
-        if (makeCompact) {
-            rect = indexRectMap.value(index);
-        }
-    } else {
-        rect = rectBounds;
-    }
-    rect = adjustRectForMerge(index, rect);
-    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
-    if (hasEffects) {
-        if (item->opacity() < 1.0) {
-            element->properties.insert("opacity", item->opacity());
-        }
-    } else {
-        if (combinedOpacity < 1.0) {
-            element->properties.insert("opacity", combinedOpacity);
-        }
-    }
+    QRect rect = computeBaseRect(index, rectBounds);
+    if (auto opac = displayOpacity(model()->layerItem(index)))
+        element->properties.insert("opacity", *opac);
     outputRect(rect, element, true);
     return true;
 };
@@ -541,7 +523,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
     switch (path.type) {
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
-        bool filled = (path.rect.topLeft() == QPointF(0, 0) && path.rect.size() == shape->rect().size());
+        bool filled = isFilledRect(path, shape);
         if (!filled || base != "Rectangle") {
             element->type = base;
             if (!outputBase(shapeIndex, element, imports))
@@ -559,9 +541,9 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
         const auto shapeShadow = parseDropShadow(shape->dropShadow());
         if (shapeShadow) {
             element2.properties.insert("drop-shadow-color", shapeShadow->color.name(QColor::HexArgb));
-            const auto angle = M_PI - shapeShadow->angleRad;
-            element2.properties.insert("drop-shadow-offset-x", u"%1px"_s.ARGF(std::cos(angle) * shapeShadow->distance));
-            element2.properties.insert("drop-shadow-offset-y", u"%1px"_s.ARGF(std::sin(angle) * shapeShadow->distance));
+            const auto offset = dropShadowOffset(*shapeShadow, true);
+            element2.properties.insert("drop-shadow-offset-x", u"%1px"_s.ARGF(offset.x()));
+            element2.properties.insert("drop-shadow-offset-y", u"%1px"_s.ARGF(offset.y()));
             element2.properties.insert("drop-shadow-blur", u"%1px"_s.ARGF(shapeShadow->blur));
         }
 

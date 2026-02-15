@@ -172,30 +172,12 @@ bool QPsdExporterSwiftUIPlugin::outputRect(const QRectF &rect, Element *element,
 bool QPsdExporterSwiftUIPlugin::outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds) const
 {
     Q_UNUSED(imports);
-    const QPsdAbstractLayerItem *item = model()->layerItem(index);
-    QRect rect;
-    if (rectBounds.isEmpty()) {
-        rect = item->rect();
-        if (makeCompact) {
-            rect = indexRectMap.value(index);
-        }
-    } else {
-        rect = rectBounds;
-    }
-    rect = adjustRectForMerge(index, rect);
+    QRect rect = computeBaseRect(index, rectBounds);
 
     outputRect(rect, element, true);
 
-    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
-    if (hasEffects) {
-        if (item->opacity() < 1.0) {
-            element->modifiers.append(u".opacity(%1)"_s.arg(item->opacity(), 0, 'f', 2));
-        }
-    } else {
-        if (combinedOpacity < 1.0) {
-            element->modifiers.append(u".opacity(%1)"_s.arg(combinedOpacity, 0, 'f', 2));
-        }
-    }
+    if (auto opac = displayOpacity(model()->layerItem(index)))
+        element->modifiers.append(u".opacity(%1)"_s.arg(*opac, 0, 'f', 2));
 
     return true;
 }

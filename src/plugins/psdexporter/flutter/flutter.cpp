@@ -804,12 +804,10 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
             pElement = &visibilityElement;
         }
 
-        const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
-
         Element opacityElement;
-        if (combinedOpacity < 1.0) {
+        if (auto opac = displayOpacity(item)) {
             opacityElement.type = "Opacity";
-            opacityElement.properties.insert("opacity", combinedOpacity);
+            opacityElement.properties.insert("opacity", *opac);
             opacityElement.properties.insert("child", QVariant::fromValue(*pElement));
             pElement = &opacityElement;
         }

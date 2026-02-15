@@ -99,31 +99,13 @@ bool QPsdExporterReactNativePlugin::outputRect(const QRectF &rect, Element *elem
 
 bool QPsdExporterReactNativePlugin::outputBase(const QModelIndex &index, Element *element, QRect rectBounds) const
 {
-    const auto *item = model()->layerItem(index);
-    QRect rect;
-    if (rectBounds.isEmpty()) {
-        rect = item->rect();
-        if (makeCompact) {
-            rect = indexRectMap.value(index);
-        }
-    } else {
-        rect = rectBounds;
-    }
-    rect = adjustRectForMerge(index, rect);
+    QRect rect = computeBaseRect(index, rectBounds);
 
     element->styles.append({"position"_L1, "'absolute'"_L1});
     outputRect(rect, element, true);
 
-    const auto [combinedOpacity, hasEffects] = computeEffectiveOpacity(item);
-    if (hasEffects) {
-        if (item->opacity() < 1.0) {
-            element->styles.append({"opacity"_L1, item->opacity()});
-        }
-    } else {
-        if (combinedOpacity < 1.0) {
-            element->styles.append({"opacity"_L1, combinedOpacity});
-        }
-    }
+    if (auto opac = displayOpacity(model()->layerItem(index)))
+        element->styles.append({"opacity"_L1, *opac});
 
     return true;
 }
