@@ -4,6 +4,7 @@
 #include "qpsdexporterplugin.h"
 
 #include <QtCore/QCryptographicHash>
+#include <QtCore/QtMath>
 #include <QtGui/QFontMetrics>
 
 QT_BEGIN_NAMESPACE
@@ -347,6 +348,75 @@ QString QPsdExporterPlugin::verticalAlignmentString(Qt::Alignment alignment,
     case Qt::AlignVCenter: return strings.center;
     default:               return {};
     }
+}
+
+const QGradient *QPsdExporterPlugin::effectiveGradient(const QPsdShapeLayerItem *item)
+{
+    if (item->gradient())
+        return item->gradient();
+    return item->brush().gradient();
+}
+
+qreal QPsdExporterPlugin::computeStrokeWidth(const QPen &pen, qreal unitScale)
+{
+    return std::max(1.0, pen.width() * unitScale);
+}
+
+std::optional<QPsdExporterPlugin::DropShadowInfo> QPsdExporterPlugin::parseDropShadow(
+    const QCborMap &dropShadow)
+{
+    if (dropShadow.isEmpty())
+        return std::nullopt;
+
+    DropShadowInfo info;
+    info.color = QColor(dropShadow.value("color"_L1).toString());
+    info.color.setAlphaF(dropShadow.value("opacity"_L1).toDouble());
+    info.angleRad = dropShadow.value("angle"_L1).toDouble() * M_PI / 180.0;
+    info.distance = dropShadow.value("distance"_L1).toDouble();
+    info.spread = dropShadow.value("spread"_L1).toDouble();
+    info.blur = dropShadow.value("size"_L1).toDouble();
+    return info;
+}
+
+QList<QPsdExporterPlugin::PathCommand> QPsdExporterPlugin::pathToCommands(
+    const QPainterPath &path, qreal hScale, qreal vScale)
+{
+    QList<PathCommand> commands;
+    qreal c1x, c1y, c2x, c2y;
+    int control = 1;
+
+    for (int i = 0; i < path.elementCount(); i++) {
+        const auto point = path.elementAt(i);
+        const auto x = point.x * hScale;
+        const auto y = point.y * vScale;
+        switch (point.type) {
+        case QPainterPath::MoveToElement:
+            commands.append({PathCommand::MoveTo, x, y});
+            break;
+        case QPainterPath::LineToElement:
+            commands.append({PathCommand::LineTo, x, y});
+            break;
+        case QPainterPath::CurveToElement:
+            c1x = x;
+            c1y = y;
+            control = 1;
+            break;
+        case QPainterPath::CurveToDataElement:
+            switch (control) {
+            case 1:
+                c2x = x;
+                c2y = y;
+                control--;
+                break;
+            case 0:
+                commands.append({PathCommand::CubicTo, x, y, c1x, c1y, c2x, c2y});
+                break;
+            }
+            break;
+        }
+    }
+    commands.append(PathCommand{PathCommand::Close});
+    return commands;
 }
 
 void QPsdExporterPlugin::writeLicenseHeader(QTextStream &out, const QString &commentPrefix) const

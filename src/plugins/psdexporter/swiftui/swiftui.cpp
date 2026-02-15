@@ -401,48 +401,28 @@ bool QPsdExporterSwiftUIPlugin::outputGradient(const QGradient *gradient, const 
 bool QPsdExporterSwiftUIPlugin::outputPath(const QPainterPath &path, Element *element) const
 {
     QStringList pathCommands;
-
-    qreal c1x, c1y, c2x, c2y;
-    int control = 1;
-
-    for (int i = 0; i < path.elementCount(); i++) {
-        const auto point = path.elementAt(i);
-        const auto x = point.x * horizontalScale;
-        const auto y = point.y * verticalScale;
-
-        switch (point.type) {
-        case QPainterPath::MoveToElement:
+    const auto commands = pathToCommands(path, horizontalScale, verticalScale);
+    for (const auto &cmd : commands) {
+        switch (cmd.type) {
+        case PathCommand::MoveTo:
             pathCommands.append(u"path.move(to: CGPoint(x: %1, y: %2))"_s
-                .arg(x, 0, 'f', 1).arg(y, 0, 'f', 1));
+                .arg(cmd.x, 0, 'f', 1).arg(cmd.y, 0, 'f', 1));
             break;
-        case QPainterPath::LineToElement:
+        case PathCommand::LineTo:
             pathCommands.append(u"path.addLine(to: CGPoint(x: %1, y: %2))"_s
-                .arg(x, 0, 'f', 1).arg(y, 0, 'f', 1));
+                .arg(cmd.x, 0, 'f', 1).arg(cmd.y, 0, 'f', 1));
             break;
-        case QPainterPath::CurveToElement:
-            c1x = x;
-            c1y = y;
-            control = 1;
+        case PathCommand::CubicTo:
+            pathCommands.append(u"path.addCurve(to: CGPoint(x: %1, y: %2), control1: CGPoint(x: %3, y: %4), control2: CGPoint(x: %5, y: %6))"_s
+                .arg(cmd.x, 0, 'f', 1).arg(cmd.y, 0, 'f', 1)
+                .arg(cmd.c1x, 0, 'f', 1).arg(cmd.c1y, 0, 'f', 1)
+                .arg(cmd.c2x, 0, 'f', 1).arg(cmd.c2y, 0, 'f', 1));
             break;
-        case QPainterPath::CurveToDataElement:
-            switch (control) {
-            case 1:
-                c2x = x;
-                c2y = y;
-                control--;
-                break;
-            case 0:
-                pathCommands.append(u"path.addCurve(to: CGPoint(x: %1, y: %2), control1: CGPoint(x: %3, y: %4), control2: CGPoint(x: %5, y: %6))"_s
-                    .arg(x, 0, 'f', 1).arg(y, 0, 'f', 1)
-                    .arg(c1x, 0, 'f', 1).arg(c1y, 0, 'f', 1)
-                    .arg(c2x, 0, 'f', 1).arg(c2y, 0, 'f', 1));
-                break;
-            }
+        case PathCommand::Close:
+            pathCommands.append("path.closeSubpath()");
             break;
         }
     }
-    pathCommands.append("path.closeSubpath()");
-
     element->properties.insert("pathCommands", pathCommands);
     return true;
 }
@@ -462,10 +442,7 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         element->type = "Rectangle";
 
         // Fill
-        const QGradient *g = shape->gradient();
-        if (!g && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
 
         if (g) {
             outputGradient(g, rect, element);
@@ -475,7 +452,7 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
 
         // Stroke
         if (shape->pen().style() != Qt::NoPen) {
-            qreal strokeWidth = std::max(1.0, shape->pen().width() * unitScale);
+            qreal strokeWidth = computeStrokeWidth(shape->pen(), unitScale);
             switch (shape->strokeAlignment()) {
             case QPsdShapeLayerItem::StrokeInside:
                 // SwiftUI InsettableShape has .strokeBorder which draws inside
@@ -507,10 +484,7 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         element->properties.insert("cornerRadius", pathInfo.radius * unitScale);
 
         // Fill
-        const QGradient *g = shape->gradient();
-        if (!g && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
 
         if (g) {
             outputGradient(g, rect, element);
@@ -520,7 +494,7 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
 
         // Stroke
         if (shape->pen().style() != Qt::NoPen) {
-            qreal strokeWidth = std::max(1.0, shape->pen().width() * unitScale);
+            qreal strokeWidth = computeStrokeWidth(shape->pen(), unitScale);
             switch (shape->strokeAlignment()) {
             case QPsdShapeLayerItem::StrokeInside:
                 // SwiftUI InsettableShape has .strokeBorder which draws inside
@@ -554,10 +528,7 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             return false;
 
         // Fill
-        const QGradient *g = shape->gradient();
-        if (!g && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
 
         if (g) {
             outputGradient(g, rect, element);
@@ -567,7 +538,7 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
 
         // Stroke
         if (shape->pen().style() != Qt::NoPen) {
-            qreal strokeWidth = std::max(1.0, shape->pen().width() * unitScale);
+            qreal strokeWidth = computeStrokeWidth(shape->pen(), unitScale);
             element->modifiers.append(u".stroke(%1, lineWidth: %2)"_s
                 .arg(colorValue(shape->pen().color()))
                 .arg(strokeWidth, 0, 'f', 1));

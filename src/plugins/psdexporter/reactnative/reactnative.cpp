@@ -206,41 +206,23 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
 QString QPsdExporterReactNativePlugin::outputPathData(const QPainterPath &path) const
 {
     QString d;
-    qreal c1x, c1y, c2x, c2y;
-    int control = 1;
-
-    for (int i = 0; i < path.elementCount(); i++) {
-        const auto point = path.elementAt(i);
-        const auto x = point.x * horizontalScale;
-        const auto y = point.y * verticalScale;
-
-        switch (point.type) {
-        case QPainterPath::MoveToElement:
-            d += u"M %1 %2 "_s.arg(x).arg(y);
+    const auto commands = pathToCommands(path, horizontalScale, verticalScale);
+    for (const auto &cmd : commands) {
+        switch (cmd.type) {
+        case PathCommand::MoveTo:
+            d += u"M %1 %2 "_s.arg(cmd.x).arg(cmd.y);
             break;
-        case QPainterPath::LineToElement:
-            d += u"L %1 %2 "_s.arg(x).arg(y);
+        case PathCommand::LineTo:
+            d += u"L %1 %2 "_s.arg(cmd.x).arg(cmd.y);
             break;
-        case QPainterPath::CurveToElement:
-            c1x = x;
-            c1y = y;
-            control = 1;
+        case PathCommand::CubicTo:
+            d += u"C %1 %2 %3 %4 %5 %6 "_s.arg(cmd.c1x).arg(cmd.c1y).arg(cmd.c2x).arg(cmd.c2y).arg(cmd.x).arg(cmd.y);
             break;
-        case QPainterPath::CurveToDataElement:
-            switch (control) {
-            case 1:
-                c2x = x;
-                c2y = y;
-                control--;
-                break;
-            case 0:
-                d += u"C %1 %2 %3 %4 %5 %6 "_s.arg(c1x).arg(c1y).arg(c2x).arg(c2y).arg(x).arg(y);
-                break;
-            }
+        case PathCommand::Close:
+            d += "Z"_L1;
             break;
         }
     }
-    d += "Z"_L1;
     return d.trimmed();
 }
 
@@ -256,17 +238,14 @@ bool QPsdExporterReactNativePlugin::outputShape(const QModelIndex &shapeIndex, E
 
         QRect rectBounds;
         if (shape->pen().style() != Qt::NoPen) {
-            qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+            qreal dw = computeStrokeWidth(shape->pen(), unitScale);
             rectBounds = adjustRectForStroke(QRectF(shape->rect()), shape->strokeAlignment(), dw).toRect();
         }
         if (!outputBase(shapeIndex, element, rectBounds))
             return false;
 
         // Background color
-        const QGradient *g = shape->gradient();
-        if (g == nullptr && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
         if (g) {
             // React Native doesn't support gradients natively
             // Use first color as fallback
@@ -281,7 +260,7 @@ bool QPsdExporterReactNativePlugin::outputShape(const QModelIndex &shapeIndex, E
 
         // Border
         if (shape->pen().style() != Qt::NoPen) {
-            qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+            qreal dw = computeStrokeWidth(shape->pen(), unitScale);
             element->styles.append({"borderWidth"_L1, qRound(dw)});
             element->styles.append({"borderColor"_L1, colorValue(shape->pen().color())});
         }
@@ -311,10 +290,7 @@ bool QPsdExporterReactNativePlugin::outputShape(const QModelIndex &shapeIndex, E
         pathElement.props.insert("d"_L1, outputPathData(path.path));
 
         // Fill color
-        const QGradient *g = shape->gradient();
-        if (g == nullptr && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
         if (g) {
             if (!g->stops().isEmpty()) {
                 pathElement.props.insert("fill"_L1, shape->brush().color().name().toUpper());

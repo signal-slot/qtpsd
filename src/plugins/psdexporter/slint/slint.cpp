@@ -450,7 +450,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         qWarning() << "Invalid text layer item for index" << textIndex;
         return false;
     }
-    const auto dropShadow = text->dropShadow();
+    const auto shadow = parseDropShadow(text->dropShadow());
     const auto runs = text->runs();
     if (runs.isEmpty()) {
         element->type = "Text";
@@ -477,12 +477,10 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
             if (!vAlign.isEmpty())
                 element->properties.insert("vertical-alignment", vAlign);
         }
-        if (!dropShadow.isEmpty()) {
+        if (shadow) {
             // slint doesn't support dropshadow for text
             element->properties.insert("stroke-width", u"%1px"_s.ARGF(2 * unitScale));
-            QColor color(dropShadow.value("color").toString());
-            color.setAlphaF(dropShadow.value("opacity").toDouble());
-            element->properties.insert("stroke", color.name(QColor::HexArgb));
+            element->properties.insert("stroke", shadow->color.name(QColor::HexArgb));
         }
     } else {
         element->type = "Rectangle";
@@ -522,12 +520,10 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                     if (!vAlign.isEmpty())
                         textElement.properties.insert("vertical-alignment", vAlign);
                 }
-                if (!dropShadow.isEmpty()) {
+                if (shadow) {
                     // slint doesn't support dropshadow for text
                     textElement.properties.insert("stroke-width", u"%1px"_s.ARGF(2 * unitScale));
-                    QColor color(dropShadow.value("color").toString());
-                    color.setAlphaF(dropShadow.value("opacity").toDouble());
-                    textElement.properties.insert("stroke", color.name(QColor::HexArgb));
+                    textElement.properties.insert("stroke", shadow->color.name(QColor::HexArgb));
                 }
                 horizontalLayout.children.append(textElement);
             }
@@ -560,20 +556,25 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
         } else {
             outputRect(path.rect, &element2);
         }
-        const auto dropShadow = shape->dropShadow();
-        if (!dropShadow.isEmpty()) {
-            QColor color(dropShadow.value("color").toString());
-            color.setAlphaF(dropShadow.value("opacity").toDouble());
-            element2.properties.insert("drop-shadow-color", color.name(QColor::HexArgb));
-            const auto angle = (180 - dropShadow.value("angle").toDouble()) * M_PI / 180.0;
-            const auto distance = dropShadow.value("distance").toDouble();
-            element2.properties.insert("drop-shadow-offset-x", u"%1px"_s.ARGF(std::cos(angle) * distance));
-            element2.properties.insert("drop-shadow-offset-y", u"%1px"_s.ARGF(std::sin(angle) * distance));
-            element2.properties.insert("drop-shadow-blur", u"%1px"_s.ARGF(dropShadow.value("size").toDouble()));
+        const auto shapeShadow = parseDropShadow(shape->dropShadow());
+        if (shapeShadow) {
+            element2.properties.insert("drop-shadow-color", shapeShadow->color.name(QColor::HexArgb));
+            const auto angle = M_PI - shapeShadow->angleRad;
+            element2.properties.insert("drop-shadow-offset-x", u"%1px"_s.ARGF(std::cos(angle) * shapeShadow->distance));
+            element2.properties.insert("drop-shadow-offset-y", u"%1px"_s.ARGF(std::sin(angle) * shapeShadow->distance));
+            element2.properties.insert("drop-shadow-blur", u"%1px"_s.ARGF(shapeShadow->blur));
         }
 
-        if (shape->gradient()) {
-            const auto g = shape->gradient();
+        if (!shape->gradient()) {
+            if (shape->pen().style() != Qt::NoPen) {
+                qreal dw = computeStrokeWidth(shape->pen(), unitScale);
+                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &element2);
+                element2.properties.insert("border-width", u"%1px"_s.ARGF(dw));
+                element2.properties.insert("border-color", shape->pen().color().name());
+            }
+        }
+        const auto *g = effectiveGradient(shape);
+        if (g) {
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
@@ -583,7 +584,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
-                element2.properties.insert("background"_L1, gradString);
+                element2.properties.insert("background", gradString);
                 break; }
             case QGradient::RadialGradient: {
                 const auto radial = reinterpret_cast<const QRadialGradient *>(g);
@@ -592,48 +593,14 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
-                element2.properties.insert("background"_L1, gradString);
+                element2.properties.insert("background", gradString);
                 break; }
             default:
-                qFatal() << "Unsupported gradient type"_L1 << g->type();
+                qFatal() << "Unsupported gradient type" << g->type();
             }
         } else {
-            if (shape->pen().style() != Qt::NoPen) {
-                qreal dw = std::max(1.0, shape->pen().width() * unitScale);
-                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &element2);
-                element2.properties.insert("border-width", u"%1px"_s.ARGF(dw));
-                element2.properties.insert("border-color", shape->pen().color().name());
-            }
-            // TODO: merge code with above
-            const auto g = shape->brush().gradient();
-            if (g) {
-                switch (g->type()) {
-                case QGradient::LinearGradient: {
-                    const auto linear = reinterpret_cast<const QLinearGradient *>(g);
-                    const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
-                    QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0 ) + "deg" };
-                    for (const auto &stop : linear->stops()) {
-                        grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
-                    }
-                    const QString gradString = grad.join(", ") + ")";
-                    element2.properties.insert("background", gradString);
-                    break; }
-                case QGradient::RadialGradient: {
-                    const auto radial = reinterpret_cast<const QRadialGradient *>(g);
-                    QStringList grad = { "@radial-gradient(circle" };
-                    for (const auto &stop : radial->stops()) {
-                        grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
-                    }
-                    const QString gradString = grad.join(", ") + ")";
-                    element2.properties.insert("background", gradString);
-                    break; }
-                default:
-                    qFatal() << "Unsupported gradient type" << g->type();
-                }
-            } else {
-                if (shape->brush() != Qt::NoBrush)
-                    element2.properties.insert("background", shape->brush().color().name());
-            }
+            if (shape->brush() != Qt::NoBrush)
+                element2.properties.insert("background", shape->brush().color().name());
         }
         if (path.radius > 0)
             element2.properties.insert("border-radius", u"%1px"_s.ARGF(path.radius * horizontalScale));
@@ -647,12 +614,12 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
         element->type = "Path";
         if (!outputBase(shapeIndex, element, imports))
             return false;
-        if (shape->gradient()) {
+        const auto *pathGrad = effectiveGradient(shape);
+        if (pathGrad) {
             element->properties.insert("stroke", "transparent");
-            const auto g = shape->gradient();
-            switch (g->type()) {
+            switch (pathGrad->type()) {
             case QGradient::LinearGradient: {
-                const auto linear = reinterpret_cast<const QLinearGradient *>(g);
+                const auto linear = reinterpret_cast<const QLinearGradient *>(pathGrad);
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
                 QStringList grad { "@linear-gradient(" + QString::number(180.0 - (angle) * 180.0 / M_PI) + "deg " };
                 for (const auto &stop : linear->stops()) {
@@ -662,7 +629,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 element->properties.insert("fill", gradString);
                 break; }
             case QGradient::RadialGradient: {
-                const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                const auto radial = reinterpret_cast<const QRadialGradient *>(pathGrad);
                 QStringList grad = { "@radial-gradient(circle" };
                 for (const auto &stop : radial->stops()) {
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
@@ -671,7 +638,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 element->properties.insert("fill", gradString);
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                qFatal() << "Unsupported gradient type" << pathGrad->type();
             }
         } else {
             element->properties.insert("stroke-width", u"%1px"_s.ARGF(shape->pen().width() * unitScale));
@@ -751,46 +718,35 @@ bool QPsdExporterSlintPlugin::outputPath(const QPainterPath &path, Element *elem
         break;
     }
 
-    int control = 1;
-    Element cubicTo;
-    cubicTo.type = "CubicTo";
-    for (int i = 0; i < path.elementCount(); i++) {
-        const auto point = path.elementAt(i);
-        const auto x = point.x * horizontalScale;
-        const auto y = point.y * verticalScale;
-        switch (point.type) {
-        case QPainterPath::MoveToElement: {
+    const auto commands = pathToCommands(path, horizontalScale, verticalScale);
+    for (const auto &cmd : commands) {
+        switch (cmd.type) {
+        case PathCommand::MoveTo: {
             Element moveTo;
             moveTo.type = "MoveTo";
-            moveTo.properties.insert("x", u"%1"_s.ARGF(x));
-            moveTo.properties.insert("y", u"%1"_s.ARGF(y));
+            moveTo.properties.insert("x", u"%1"_s.ARGF(cmd.x));
+            moveTo.properties.insert("y", u"%1"_s.ARGF(cmd.y));
             element->children.append(moveTo);
             break; }
-        case QPainterPath::LineToElement: {
+        case PathCommand::LineTo: {
             Element lineTo;
             lineTo.type = "LineTo";
-            lineTo.properties.insert("x", u"%1"_s.ARGF(x));
-            lineTo.properties.insert("y", u"%1"_s.ARGF(y));
+            lineTo.properties.insert("x", u"%1"_s.ARGF(cmd.x));
+            lineTo.properties.insert("y", u"%1"_s.ARGF(cmd.y));
             element->children.append(lineTo);
             break; }
-        case QPainterPath::CurveToElement: {
-            cubicTo.properties.insert("control-1-x", u"%1"_s.ARGF(x));
-            cubicTo.properties.insert("control-1-y", u"%1"_s.ARGF(y));
-            control = 1;
+        case PathCommand::CubicTo: {
+            Element cubicTo;
+            cubicTo.type = "CubicTo";
+            cubicTo.properties.insert("control-1-x", u"%1"_s.ARGF(cmd.c1x));
+            cubicTo.properties.insert("control-1-y", u"%1"_s.ARGF(cmd.c1y));
+            cubicTo.properties.insert("control-2-x", u"%1"_s.ARGF(cmd.c2x));
+            cubicTo.properties.insert("control-2-y", u"%1"_s.ARGF(cmd.c2y));
+            cubicTo.properties.insert("x", u"%1"_s.ARGF(cmd.x));
+            cubicTo.properties.insert("y", u"%1"_s.ARGF(cmd.y));
+            element->children.append(cubicTo);
             break; }
-        case QPainterPath::CurveToDataElement:
-            switch (control) {
-            case 1:
-                cubicTo.properties.insert("control-2-x", u"%1"_s.ARGF(x));
-                cubicTo.properties.insert("control-2-y", u"%1"_s.ARGF(y));
-                control--;
-                break;
-            case 0:
-                cubicTo.properties.insert("x", u"%1"_s.ARGF(x));
-                cubicTo.properties.insert("y", u"%1"_s.ARGF(y));
-                element->children.append(cubicTo);
-                break;
-            }
+        case PathCommand::Close:
             break;
         }
     }

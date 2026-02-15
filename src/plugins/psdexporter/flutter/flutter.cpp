@@ -546,39 +546,23 @@ bool QPsdExporterFlutterPlugin::outputPathProp(const QPainterPath &path, Element
         break;
     }
 
-    qreal c1x, c1y, c2x, c2y;
-    int control = 1;
-    for (int i = 0; i < path.elementCount(); i++) {
-        const auto point = path.elementAt(i);
-        const auto x = point.x * horizontalScale;
-        const auto y = point.y * verticalScale;
-        switch (point.type) {
-        case QPainterPath::MoveToElement:
-            list.append(u"..moveTo(%1, %2)"_s.arg(x).arg(y));
+    const auto commands = pathToCommands(path, horizontalScale, verticalScale);
+    for (const auto &cmd : commands) {
+        switch (cmd.type) {
+        case PathCommand::MoveTo:
+            list.append(u"..moveTo(%1, %2)"_s.arg(cmd.x).arg(cmd.y));
             break;
-        case QPainterPath::LineToElement:
-            list.append(u"..lineTo(%1, %2)"_s.arg(x).arg(y));
+        case PathCommand::LineTo:
+            list.append(u"..lineTo(%1, %2)"_s.arg(cmd.x).arg(cmd.y));
             break;
-        case QPainterPath::CurveToElement:
-            c1x = x;
-            c1y = y;
-            control = 1;
+        case PathCommand::CubicTo:
+            list.append(u"..cubicTo(%1, %2, %3, %4, %5, %6)"_s.arg(cmd.c1x).arg(cmd.c1y).arg(cmd.c2x).arg(cmd.c2y).arg(cmd.x).arg(cmd.y));
             break;
-        case QPainterPath::CurveToDataElement:
-            switch (control) {
-            case 1:
-                c2x = x;
-                c2y = y;
-                control--;
-                break;
-            case 0:
-                list.append(u"..cubicTo(%1, %2, %3, %4, %5, %6)"_s.arg(c1x).arg(c1y).arg(c2x).arg(c2y).arg(x).arg(y));
-                break;
-            }
+        case PathCommand::Close:
+            list.append("..close()"_L1);
             break;
         }
     }
-    list.append("..close()"_L1);
     element->properties.insert("path", list);
 
     return true;
@@ -614,7 +598,7 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
         decorationElement.type = "BoxDecoration"_L1;
         if (shape->pen().style() != Qt::NoPen) {
-            qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+            qreal dw = computeStrokeWidth(shape->pen(), unitScale);
             outputRectProp(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &containerElement);
             Element borderElement;
             borderElement.type = "Border.all"_L1;
@@ -631,7 +615,7 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         Element borderElement;
         borderElement.type = "QtPsdPathBorder"_L1;
         if (shape->pen().style() != Qt::NoPen) {
-            qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+            qreal dw = computeStrokeWidth(shape->pen(), unitScale);
             borderElement.properties.insert("color"_L1, colorValue(shape->pen().color()));
             borderElement.properties.insert("width"_L1, dw);
         }
@@ -640,32 +624,27 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         break;
     }
 
-    if (shape->gradient()) {
+    const auto *g = effectiveGradient(shape);
+    if (g) {
         Element gradientElement;
-        outputGradient(shape->gradient(), shape->rect(), &gradientElement);
-        decorationElement.properties.insert("gradient"_L1, QVariant::fromValue(gradientElement));
-    } else if (shape->brush().gradient()) {
-        Element gradientElement;
-        outputGradient(shape->brush().gradient(), shape->rect(), &gradientElement);
+        outputGradient(g, shape->rect(), &gradientElement);
         decorationElement.properties.insert("gradient"_L1, QVariant::fromValue(gradientElement));
     } else {
         decorationElement.properties.insert("color"_L1, colorValue(shape->brush().color()));
     }
 
     QVariantList listDropShadow;
-    const auto dropShadow = shape->dropShadow();
-    if (!dropShadow.isEmpty()) {
+    const auto shadow = parseDropShadow(shape->dropShadow());
+    if (shadow) {
         Element effect;
         effect.type = "BoxShadow"_L1;
 
-        QColor color(dropShadow.value("color"_L1).toString());
-        color.setAlphaF(dropShadow.value("opacity"_L1).toDouble());
-        effect.properties.insert("color"_L1, colorValue(color));
-        const auto angle = (180 - dropShadow.value("angle"_L1).toDouble()) * M_PI / 180.0;
-        const auto distance = dropShadow.value("distance"_L1).toDouble() * unitScale;
+        effect.properties.insert("color"_L1, colorValue(shadow->color));
+        const auto angle = M_PI - shadow->angleRad;
+        const auto distance = shadow->distance * unitScale;
         effect.properties.insert("offset"_L1, u"Offset.fromDirection(%1, %2)"_s.arg(angle).arg(distance));
-        effect.properties.insert("spreadRadius"_L1, dropShadow.value("spread"_L1).toDouble() * unitScale);
-        effect.properties.insert("blurRadius"_L1, dropShadow.value("size"_L1).toDouble() * unitScale);
+        effect.properties.insert("spreadRadius"_L1, shadow->spread * unitScale);
+        effect.properties.insert("blurRadius"_L1, shadow->blur * unitScale);
 
         listDropShadow.append(QVariant::fromValue(effect));
     }

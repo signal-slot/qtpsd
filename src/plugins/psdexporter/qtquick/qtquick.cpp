@@ -255,30 +255,27 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
             element->layers.append(effect);
         }
 
-        const auto dropShadow = item->dropShadow();
-        if (!dropShadow.isEmpty()) {
+        const auto shadow = parseDropShadow(item->dropShadow());
+        if (shadow) {
             Element effect;
-            QColor color(dropShadow.value("color").toString());
-            color.setAlphaF(dropShadow.value("opacity").toDouble());
-            const auto angle = dropShadow.value("angle").toDouble() * M_PI / 180.0;
-            const auto distance = dropShadow.value("distance").toDouble() * unitScale;
+            const auto distance = shadow->distance * unitScale;
             if (effectMode() == Qt5Effects) {
                 imports->insert("Qt5Compat.GraphicalEffects as GE");
                 effect.type = "GE.DropShadow";
-                effect.properties.insert("color", u"\"%1\""_s.arg(color.name(QColor::HexArgb)));
-                effect.properties.insert("horizontalOffset", std::cos(angle) * distance);
-                effect.properties.insert("verticalOffset", std::sin(angle) * distance);
-                effect.properties.insert("spread", dropShadow.value("spread").toDouble() * unitScale);
-                effect.properties.insert("radius", dropShadow.value("size").toDouble() * unitScale);
+                effect.properties.insert("color", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
+                effect.properties.insert("horizontalOffset", std::cos(shadow->angleRad) * distance);
+                effect.properties.insert("verticalOffset", std::sin(shadow->angleRad) * distance);
+                effect.properties.insert("spread", shadow->spread * unitScale);
+                effect.properties.insert("radius", shadow->blur * unitScale);
             } else {
                 imports->insert("QtQuick.Effects");
                 effect.type = "MultiEffect";
                 effect.properties.insert("shadowEnabled", true);
-                effect.properties.insert("shadowColor", u"\"%1\""_s.arg(color.name(QColor::HexArgb)));
-                effect.properties.insert("shadowHorizontalOffset", std::cos(angle) * distance);
-                effect.properties.insert("shadowVerticalOffset", std::sin(angle) * distance);
-                effect.properties.insert("shadowSpread", dropShadow.value("spread").toDouble() * unitScale);
-                effect.properties.insert("shadowBlur", dropShadow.value("size").toDouble() * unitScale);
+                effect.properties.insert("shadowColor", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
+                effect.properties.insert("shadowHorizontalOffset", std::cos(shadow->angleRad) * distance);
+                effect.properties.insert("shadowVerticalOffset", std::sin(shadow->angleRad) * distance);
+                effect.properties.insert("shadowSpread", shadow->spread * unitScale);
+                effect.properties.insert("shadowBlur", shadow->blur * unitScale);
             }
             element->layers.append(effect);
         }
@@ -309,46 +306,35 @@ bool QPsdExporterQtQuickPlugin::outputPath(const QPainterPath &path, Element *el
         break;
     }
 
-    Element pathCubic;
-    pathCubic.type = "PathCubic";
-    int control = 1;
-    for (int i = 0; i < path.elementCount(); i++) {
-        const auto point = path.elementAt(i);
-        const auto x = point.x * horizontalScale;
-        const auto y = point.y * verticalScale;
-        switch (point.type) {
-        case QPainterPath::MoveToElement: {
+    const auto commands = pathToCommands(path, horizontalScale, verticalScale);
+    for (const auto &cmd : commands) {
+        switch (cmd.type) {
+        case PathCommand::MoveTo: {
             Element pathMove;
             pathMove.type = "PathMove";
-            pathMove.properties.insert("x", x);
-            pathMove.properties.insert("y", y);
+            pathMove.properties.insert("x", cmd.x);
+            pathMove.properties.insert("y", cmd.y);
             element->children.append(pathMove);
             break; }
-        case QPainterPath::LineToElement: {
+        case PathCommand::LineTo: {
             Element pathLine;
             pathLine.type = "PathLine";
-            pathLine.properties.insert("x", x);
-            pathLine.properties.insert("y", y);
+            pathLine.properties.insert("x", cmd.x);
+            pathLine.properties.insert("y", cmd.y);
             element->children.append(pathLine);
             break; }
-        case QPainterPath::CurveToElement: {
-            pathCubic.properties.insert("control1X", x);
-            pathCubic.properties.insert("control1Y", y);
-            control = 1;
+        case PathCommand::CubicTo: {
+            Element pathCubic;
+            pathCubic.type = "PathCubic";
+            pathCubic.properties.insert("control1X", cmd.c1x);
+            pathCubic.properties.insert("control1Y", cmd.c1y);
+            pathCubic.properties.insert("control2X", cmd.c2x);
+            pathCubic.properties.insert("control2Y", cmd.c2y);
+            pathCubic.properties.insert("x", cmd.x);
+            pathCubic.properties.insert("y", cmd.y);
+            element->children.append(pathCubic);
             break; }
-        case QPainterPath::CurveToDataElement:
-            switch (control) {
-            case 1:
-                pathCubic.properties.insert("control2X", x);
-                pathCubic.properties.insert("control2Y", y);
-                control--;
-                break;
-            case 0:
-                pathCubic.properties.insert("x", x);
-                pathCubic.properties.insert("y", y);
-                element->children.append(pathCubic);
-                break;
-            }
+        case PathCommand::Close:
             break;
         }
     }
@@ -495,10 +481,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 return false;
         }
 
-        const QGradient *g = shape->gradient();
-        if (g == nullptr && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
         if (g) {
             switch (g->type()) {
             case QGradient::LinearGradient: {
@@ -684,7 +667,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 outputRect(path.rect, &rectElement);
             }
             if (shape->pen().style() != Qt::NoPen) {
-                qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+                qreal dw = computeStrokeWidth(shape->pen(), unitScale);
                 outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
                 rectElement.properties.insert("border.width", dw);
                 rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
@@ -712,10 +695,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         rectElement.properties.insert("radius", path.radius * unitScale);
 
-        const QGradient *g = shape->gradient();
-        if (g == nullptr && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
         if (g) {
             switch (g->type()) {
             case QGradient::LinearGradient: {
@@ -870,7 +850,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             }
         } else {
             if (shape->pen().style() != Qt::NoPen) {
-                qreal dw = std::max(1.0, shape->pen().width() * unitScale);
+                qreal dw = computeStrokeWidth(shape->pen(), unitScale);
                 outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
                 rectElement.properties.insert("border.width", dw);
                 rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
@@ -890,10 +870,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             return false;
         Element shapePath;
         shapePath.type = "ShapePath";
-        const QGradient *g = shape->gradient();
-        if (g == nullptr && shape->brush().gradient()) {
-            g = shape->brush().gradient();
-        }
+        const QGradient *g = effectiveGradient(shape);
         if (g) {
             shapePath.properties.insert("strokeWidth", 0);
             shapePath.properties.insert("strokeColor", u"\"transparent\""_s);

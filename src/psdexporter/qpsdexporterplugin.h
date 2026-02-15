@@ -14,9 +14,14 @@
 #include <QtPsdGui/qpsdshapelayeritem.h>
 #include <QtPsdGui/qpsdimagelayeritem.h>
 
+#include <QtCore/QCborMap>
 #include <QtCore/QDir>
 #include <QtCore/QMimeDatabase>
 #include <QtGui/QIcon>
+#include <QtGui/QPainterPath>
+#include <QtGui/QPen>
+
+#include <optional>
 
 QT_BEGIN_NAMESPACE
 
@@ -100,6 +105,33 @@ protected:
                                               const HAlignStrings &strings);
     static QString verticalAlignmentString(Qt::Alignment alignment,
                                             const VAlignStrings &strings);
+
+    static const QGradient *effectiveGradient(const QPsdShapeLayerItem *item);
+
+    static qreal computeStrokeWidth(const QPen &pen, qreal unitScale);
+
+    struct DropShadowInfo {
+        QColor color;       // opacity already applied
+        qreal angleRad;     // in radians
+        qreal distance;     // raw pixels (not scaled)
+        qreal spread;       // raw (0.0-1.0)
+        qreal blur;         // raw pixels (not scaled)
+    };
+    static std::optional<DropShadowInfo> parseDropShadow(const QCborMap &dropShadow);
+
+    struct PathCommand {
+        enum Type { MoveTo, LineTo, CubicTo, Close };
+        Type type;
+        qreal x = 0;       // endpoint (MoveTo/LineTo/CubicTo)
+        qreal y = 0;
+        qreal c1x = 0;     // control point 1 (CubicTo only)
+        qreal c1y = 0;
+        qreal c2x = 0;     // control point 2 (CubicTo only)
+        qreal c2y = 0;
+    };
+    static QList<PathCommand> pathToCommands(const QPainterPath &path,
+                                              qreal hScale = 1.0,
+                                              qreal vScale = 1.0);
 
     void writeLicenseHeader(QTextStream &out, const QString &commentPrefix = u"// "_s) const;
 
