@@ -203,6 +203,41 @@ QImage QPsdGuiLayerTreeItemModel::mergedImage() const
     return d->mergedImage;
 }
 
+QImage QPsdGuiLayerTreeItemModel::documentAlphaMask() const
+{
+    // Determine if this document has extra channels beyond the color mode base
+    const auto ch = channels();
+    bool hasDocAlpha = false;
+    switch (colorMode()) {
+    case QPsdFileHeader::RGB:
+        hasDocAlpha = (ch > 3);
+        break;
+    case QPsdFileHeader::CMYK:
+        hasDocAlpha = (ch > 4);
+        break;
+    case QPsdFileHeader::Grayscale:
+        hasDocAlpha = (ch > 1);
+        break;
+    default:
+        break;
+    }
+
+    if (!hasDocAlpha || d->mergedImage.isNull() || !d->mergedImage.hasAlphaChannel())
+        return QImage();
+
+    // Extract alpha channel from the merged image as a grayscale mask
+    const QImage src = d->mergedImage.convertToFormat(QImage::Format_ARGB32);
+    QImage mask(src.width(), src.height(), QImage::Format_Grayscale8);
+    for (int y = 0; y < src.height(); ++y) {
+        const QRgb *srcLine = reinterpret_cast<const QRgb *>(src.constScanLine(y));
+        uchar *dstLine = mask.scanLine(y);
+        for (int x = 0; x < src.width(); ++x) {
+            dstLine[x] = static_cast<uchar>(qAlpha(srcLine[x]));
+        }
+    }
+    return mask;
+}
+
 QImage QPsdGuiLayerTreeItemModel::patternImage(const QString &patternId) const
 {
     return d->patterns.value(patternId);

@@ -31,6 +31,7 @@ public:
     const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const;
 
     QImage mergedImage() const;
+    QImage documentAlphaMask() const;
 
     QImage patternImage(const QString &patternId) const;
 

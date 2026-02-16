@@ -26,6 +26,9 @@ public:
     QImage patternImage(const QString &patternId) const;
     bool showChecker() const;
 
+protected:
+    void drawForeground(QPainter *painter, const QRectF &rect) override;
+
 public slots:
     void setModel(QPsdWidgetTreeItemModel *model);
     void setItemVisible(quint32 id, bool visible);

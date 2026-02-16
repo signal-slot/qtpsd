@@ -473,6 +473,11 @@ QPsdFileHeader::ColorMode QPsdLayerTreeItemModel::colorMode() const
     return d->fileHeader.colorMode();
 }
 
+quint16 QPsdLayerTreeItemModel::channels() const
+{
+    return d->fileHeader.channels();
+}
+
 QPsdResolutionInfo QPsdLayerTreeItemModel::resolutionInfo() const
 {
     return d->resolutionInfo;

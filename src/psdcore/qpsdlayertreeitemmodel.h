@@ -71,6 +71,7 @@ public:
     QString errorMessage() const;
 
     QPsdFileHeader::ColorMode colorMode() const;
+    quint16 channels() const;
     QPsdResolutionInfo resolutionInfo() const;
     QPsdFilterMask filterMask() const;
 

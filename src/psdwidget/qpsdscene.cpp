@@ -31,6 +31,7 @@ public:
     QPsdWidgetTreeItemModel *model = nullptr;
     QMetaObject::Connection modelConnection;
     bool showChecker = false;
+    QImage documentAlphaMask;
 };
 
 QPsdScene::Private::Private(QPsdScene *parent)
@@ -120,6 +121,8 @@ void QPsdScene::reset()
 {
     auto items = this->items();
     qDeleteAll(items);
+
+    d->documentAlphaMask = QImage();
 
     if (d->model == nullptr) {
         return;
@@ -215,6 +218,9 @@ void QPsdScene::reset()
 
     traverseTree(QModelIndex(), nullptr, QPainter::CompositionMode_SourceOver);
 
+    // Store document-level alpha mask for post-processing in drawForeground()
+    d->documentAlphaMask = d->model->documentAlphaMask();
+
     // If no layers were added (e.g., bitmap mode PSD with no layer records),
     // fall back to rendering the merged image from the Image Data section
     if (this->items().isEmpty()) {
@@ -226,6 +232,46 @@ void QPsdScene::reset()
     }
 
     setSceneRect(QRect{ QPoint{}, d->model->size() });
+}
+
+void QPsdScene::drawForeground(QPainter *painter, const QRectF &rect)
+{
+    Q_UNUSED(rect);
+
+    if (d->documentAlphaMask.isNull())
+        return;
+
+    // Apply document-level alpha mask as post-processing
+    // This handles PSD documents with extra channels (user-defined alpha, saved selections, spot colors)
+    QImage *backbuffer = dynamic_cast<QImage *>(painter->device());
+    if (backbuffer) {
+        const QTransform xf = painter->combinedTransform();
+        const QRectF sr = sceneRect();
+        const QRect deviceRect = xf.mapRect(sr).toAlignedRect().intersected(backbuffer->rect());
+        if (deviceRect.isEmpty())
+            return;
+
+        // Scale document alpha mask to match the device rect
+        QImage mask = d->documentAlphaMask.scaled(deviceRect.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+
+        // Apply alpha mask: multiply existing alpha by mask value
+        QImage region = backbuffer->copy(deviceRect).convertToFormat(QImage::Format_ARGB32);
+        for (int y = 0; y < region.height(); ++y) {
+            QRgb *rgbLine = reinterpret_cast<QRgb *>(region.scanLine(y));
+            const uchar *maskLine = mask.constScanLine(y);
+            for (int x = 0; x < region.width(); ++x) {
+                const int a = qAlpha(rgbLine[x]);
+                const int newA = (a * maskLine[x]) / 255;
+                rgbLine[x] = qRgba(qRed(rgbLine[x]), qGreen(rgbLine[x]), qBlue(rgbLine[x]), newA);
+            }
+        }
+
+        painter->save();
+        painter->resetTransform();
+        painter->setCompositionMode(QPainter::CompositionMode_Source);
+        painter->drawImage(deviceRect.topLeft(), region);
+        painter->restore();
+    }
 }
 
 void QPsdScene::setShowChecker(bool showChecker)
