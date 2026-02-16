@@ -35,12 +35,41 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
     const auto *layer = this->layer<QPsdTextLayerItem>();
 
-    const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
-        ? groupCompositionMode()
-        : QtPsdGui::compositionMode(layer->record().blendMode());
-    painter->setCompositionMode(compositionMode);
-    // Apply both opacity and fill opacity for text content
-    painter->setOpacity(layer->opacity() * layer->fillOpacity());
+    // Determine the effective blend mode
+    const auto blendMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+        ? QPsdBlend::Mode::Normal
+        : layer->record().blendMode();
+
+    // For custom blend modes, redirect rendering to a temp image
+    QImage tempImage;
+    QPainter tempPainter;
+    QPainter *p = painter;
+    const bool useCustomBlend = QtPsdGui::isCustomBlendMode(blendMode);
+
+    if (useCustomBlend) {
+        // Get the bounding rect in device coordinates to create temp image
+        const QRectF br = boundingRect();
+        const QTransform xf = painter->combinedTransform();
+        const QRect deviceRect = xf.mapRect(br).toAlignedRect();
+        if (!deviceRect.isEmpty()) {
+            tempImage = QImage(deviceRect.size(), QImage::Format_ARGB32_Premultiplied);
+            tempImage.fill(Qt::transparent);
+            tempPainter.begin(&tempImage);
+            tempPainter.setRenderHints(painter->renderHints());
+            // Translate so drawing at local coordinates maps to temp image
+            tempPainter.translate(-br.topLeft());
+            p = &tempPainter;
+        }
+    }
+
+    if (!useCustomBlend) {
+        const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+            ? groupCompositionMode()
+            : QtPsdGui::compositionMode(layer->record().blendMode());
+        painter->setCompositionMode(compositionMode);
+        // Apply both opacity and fill opacity for text content
+        painter->setOpacity(layer->opacity() * layer->fillOpacity());
+    }
 
     const bool isPointText = (layer->textType() == QPsdTextLayerItem::TextType::PointText);
     const bool hasParagraphFrame = !isPointText && !layer->textFrame().isEmpty();
@@ -75,8 +104,8 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             chunk.color = run.color;
             chunk.text = part;
             chunk.alignment = run.alignment;
-            painter->setFont(chunk.font);
-            chunk.width = painter->fontMetrics().horizontalAdvance(part);
+            p->setFont(chunk.font);
+            chunk.width = p->fontMetrics().horizontalAdvance(part);
             currentLine.append(chunk);
         }
     }
@@ -119,10 +148,10 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
                 x = anchorX - lineWidth;
 
             for (const auto &chunk : line) {
-                painter->setFont(chunk.font);
-                painter->setPen(chunk.color);
-                painter->drawText(QPointF(x, baselineY), chunk.text);
-                x += painter->fontMetrics().horizontalAdvance(chunk.text);
+                p->setFont(chunk.font);
+                p->setPen(chunk.color);
+                p->drawText(QPointF(x, baselineY), chunk.text);
+                x += p->fontMetrics().horizontalAdvance(chunk.text);
             }
             baselineY += fm.height();
         }
@@ -161,11 +190,39 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             const auto hAlign = static_cast<Qt::Alignment>(line.first().alignment & Qt::AlignHorizontal_Mask);
             const QRectF lineRect(drawLeft, currentY, drawWidth, fm.height() * 100);
 
-            painter->setFont(line.first().font);
-            painter->setPen(line.first().color);
+            p->setFont(line.first().font);
+            p->setPen(line.first().color);
             QRectF boundingRect;
-            painter->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
+            p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
             currentY += boundingRect.height();
+        }
+    }
+
+    // Blend temp image back to backbuffer using custom blend mode
+    if (useCustomBlend && !tempImage.isNull()) {
+        tempPainter.end();
+        const qreal opacity = layer->opacity() * layer->fillOpacity();
+        QImage *backbuffer = dynamic_cast<QImage *>(painter->device());
+        if (backbuffer) {
+            const QTransform xf = painter->combinedTransform();
+            const QRectF br = boundingRect();
+            const QRect deviceRect = xf.mapRect(br).toAlignedRect();
+            const QRect clipped = deviceRect.intersected(backbuffer->rect());
+            if (!clipped.isEmpty()) {
+                QImage destRegion = backbuffer->copy(clipped).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                QImage srcRegion = tempImage.copy(
+                    clipped.x() - deviceRect.x(),
+                    clipped.y() - deviceRect.y(),
+                    clipped.width(), clipped.height()
+                ).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                QtPsdGui::customBlend(destRegion, srcRegion, blendMode, opacity);
+                painter->save();
+                painter->resetTransform();
+                painter->setCompositionMode(QPainter::CompositionMode_Source);
+                painter->setOpacity(1.0);
+                painter->drawImage(clipped.topLeft(), destRegion);
+                painter->restore();
+            }
         }
     }
 }

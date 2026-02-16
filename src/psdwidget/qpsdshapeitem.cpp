@@ -24,25 +24,33 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     const auto *layer = this->layer<QPsdShapeLayerItem>();
 
     setMask(painter);
-    const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
-        ? groupCompositionMode()
-        : QtPsdGui::compositionMode(layer->record().blendMode());
-    painter->setCompositionMode(compositionMode);
-    // Apply both opacity and fill opacity for shape content
-    // In Photoshop, fill opacity affects only the layer content, not effects
-    painter->setOpacity(abstractLayer()->opacity() * abstractLayer()->fillOpacity());
+
+    // Determine the effective blend mode
+    const auto blendMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+        ? QPsdBlend::Mode::Normal
+        : layer->record().blendMode();
+    const bool useCustomBlend = QtPsdGui::isCustomBlendMode(blendMode);
+
+    if (!useCustomBlend) {
+        const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+            ? groupCompositionMode()
+            : QtPsdGui::compositionMode(layer->record().blendMode());
+        painter->setCompositionMode(compositionMode);
+        painter->setOpacity(abstractLayer()->opacity() * abstractLayer()->fillOpacity());
+    }
     painter->setRenderHint(QPainter::Antialiasing);
 
     // Check for raster layer mask - if present, render shape into a temp image
     // so we can apply per-pixel alpha masking (same technique as QPsdImageItem)
     const QImage layerMask = layer->layerMask();
     const bool hasMask = !layerMask.isNull();
+    const bool needTempImage = hasMask || useCustomBlend;
 
     QImage tempImage;
     QPainter tempPainterObj;
     QPainter *p = painter;
 
-    if (hasMask) {
+    if (needTempImage) {
         tempImage = QImage(layer->rect().size(), QImage::Format_ARGB32);
         tempImage.fill(Qt::transparent);
         tempPainterObj.begin(&tempImage);
@@ -198,33 +206,63 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         }
     }
 
-    // Apply raster layer mask and draw result
-    if (hasMask) {
+    // Apply raster layer mask and/or custom blend, then draw result
+    if (needTempImage) {
         tempPainterObj.end();
 
-        const QRect maskRect = layer->layerMaskRect();
-        const QRect layerRect = layer->rect();
-        const int defaultColor = layer->layerMaskDefaultColor();
+        // Apply raster layer mask if present
+        if (hasMask) {
+            const QRect maskRect = layer->layerMaskRect();
+            const QRect layerRect = layer->rect();
+            const int defaultColor = layer->layerMaskDefaultColor();
 
-        for (int y = 0; y < tempImage.height(); ++y) {
-            QRgb *scanLine = reinterpret_cast<QRgb *>(tempImage.scanLine(y));
-            for (int x = 0; x < tempImage.width(); ++x) {
-                const int maskX = (layerRect.x() + x) - maskRect.x();
-                const int maskY = (layerRect.y() + y) - maskRect.y();
+            for (int y = 0; y < tempImage.height(); ++y) {
+                QRgb *scanLine = reinterpret_cast<QRgb *>(tempImage.scanLine(y));
+                for (int x = 0; x < tempImage.width(); ++x) {
+                    const int maskX = (layerRect.x() + x) - maskRect.x();
+                    const int maskY = (layerRect.y() + y) - maskRect.y();
 
-                int maskValue = defaultColor;
-                if (maskX >= 0 && maskX < layerMask.width()
-                    && maskY >= 0 && maskY < layerMask.height()) {
-                    maskValue = qGray(layerMask.pixel(maskX, maskY));
+                    int maskValue = defaultColor;
+                    if (maskX >= 0 && maskX < layerMask.width()
+                        && maskY >= 0 && maskY < layerMask.height()) {
+                        maskValue = qGray(layerMask.pixel(maskX, maskY));
+                    }
+
+                    const int alpha = qAlpha(scanLine[x]);
+                    const int newAlpha = (alpha * maskValue) / 255;
+                    scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
                 }
-
-                const int alpha = qAlpha(scanLine[x]);
-                const int newAlpha = (alpha * maskValue) / 255;
-                scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
             }
         }
 
-        painter->drawImage(0, 0, tempImage);
+        if (useCustomBlend) {
+            const qreal opacity = abstractLayer()->opacity() * abstractLayer()->fillOpacity();
+            QImage *backbuffer = dynamic_cast<QImage *>(painter->device());
+            if (backbuffer) {
+                const QTransform xf = painter->combinedTransform();
+                const QRect deviceRect = xf.mapRect(QRectF(QPointF(0, 0), QSizeF(tempImage.size()))).toAlignedRect();
+                const QRect clipped = deviceRect.intersected(backbuffer->rect());
+                if (!clipped.isEmpty()) {
+                    QImage destRegion = backbuffer->copy(clipped).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                    QImage srcRegion = tempImage.copy(
+                        clipped.x() - deviceRect.x(),
+                        clipped.y() - deviceRect.y(),
+                        clipped.width(), clipped.height()
+                    ).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                    QtPsdGui::customBlend(destRegion, srcRegion, blendMode, opacity);
+                    painter->save();
+                    painter->resetTransform();
+                    painter->setCompositionMode(QPainter::CompositionMode_Source);
+                    painter->setOpacity(1.0);
+                    painter->drawImage(clipped.topLeft(), destRegion);
+                    painter->restore();
+                }
+            } else {
+                painter->drawImage(0, 0, tempImage);
+            }
+        } else {
+            painter->drawImage(0, 0, tempImage);
+        }
     }
 }
 

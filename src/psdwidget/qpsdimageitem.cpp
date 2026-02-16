@@ -430,16 +430,53 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         }
     }
 
-    const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
-        ? groupCompositionMode()
-        : QtPsdGui::compositionMode(layer->record().blendMode());
-    painter->setCompositionMode(compositionMode);
-    // Apply both opacity and fill opacity to the layer content
-    // In Photoshop: opacity affects everything, fill opacity affects only layer pixels (not effects)
-    // Effects (drop shadow etc.) were already drawn above with just opacity
-    painter->setOpacity(layer->opacity() * layer->fillOpacity());
-    // Finally, draw the layer itself
-    painter->drawImage(r, image);
+    // Determine the effective blend mode
+    const auto blendMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+        ? QPsdBlend::Mode::Normal  // group mode already handled by QPainter
+        : layer->record().blendMode();
+
+    if (QtPsdGui::isCustomBlendMode(blendMode)) {
+        // Custom per-pixel compositing for unsupported QPainter blend modes
+        const qreal opacity = layer->opacity() * layer->fillOpacity();
+        QImage *backbuffer = dynamic_cast<QImage *>(painter->device());
+        if (backbuffer) {
+            const QTransform xf = painter->combinedTransform();
+            const QRect deviceRect = xf.mapRect(QRectF(r)).toAlignedRect();
+            const QRect clipped = deviceRect.intersected(backbuffer->rect());
+            if (!clipped.isEmpty()) {
+                QImage destRegion = backbuffer->copy(clipped);
+                QImage srcRegion = image.copy(
+                    clipped.x() - deviceRect.x(),
+                    clipped.y() - deviceRect.y(),
+                    clipped.width(), clipped.height()
+                ).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                destRegion = destRegion.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                QtPsdGui::customBlend(destRegion, srcRegion, blendMode, opacity);
+                painter->save();
+                painter->resetTransform();
+                painter->setCompositionMode(QPainter::CompositionMode_Source);
+                painter->setOpacity(1.0);
+                painter->drawImage(clipped.topLeft(), destRegion);
+                painter->restore();
+            }
+        } else {
+            // Fallback for non-QImage paint devices (e.g., QPixmap on screen)
+            painter->setCompositionMode(QPainter::CompositionMode_SourceOver);
+            painter->setOpacity(layer->opacity() * layer->fillOpacity());
+            painter->drawImage(r, image);
+        }
+    } else {
+        const auto compositionMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
+            ? groupCompositionMode()
+            : QtPsdGui::compositionMode(layer->record().blendMode());
+        painter->setCompositionMode(compositionMode);
+        // Apply both opacity and fill opacity to the layer content
+        // In Photoshop: opacity affects everything, fill opacity affects only layer pixels (not effects)
+        // Effects (drop shadow etc.) were already drawn above with just opacity
+        painter->setOpacity(layer->opacity() * layer->fillOpacity());
+        // Finally, draw the layer itself
+        painter->drawImage(r, image);
+    }
 
     // Border/stroke effect (FrFX) - inner strokes go on top of the layer
     if (border && border->isEnable() && border->position() == QPsdBorder::Inner) {

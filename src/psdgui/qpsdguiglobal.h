@@ -22,6 +22,9 @@ QT_BEGIN_NAMESPACE
 namespace QtPsdGui {
 Q_PSDGUI_EXPORT QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader &fileHeader, const QPsdColorModeData &colorModeData = QPsdColorModeData(), const QByteArray &iccProfile = QByteArray());
 Q_PSDGUI_EXPORT QPainter::CompositionMode compositionMode(QPsdBlend::Mode psdBlendMode);
+Q_PSDGUI_EXPORT bool isCustomBlendMode(QPsdBlend::Mode mode);
+Q_PSDGUI_EXPORT void customBlend(QImage &dest, const QImage &src,
+                                  QPsdBlend::Mode mode, qreal opacity);
 }
 
 QT_END_NAMESPACE

@@ -1,8 +1,89 @@
 #include "qpsdguiglobal.h"
 
+#include <QtCore/QtMath>
+
 QT_BEGIN_NAMESPACE
 
 namespace QtPsdGui {
+
+// --- HSL helper functions per W3C Compositing and Blending spec §13.3 ---
+
+static inline qreal luminance(qreal r, qreal g, qreal b)
+{
+    return 0.299 * r + 0.587 * g + 0.114 * b;
+}
+
+static inline void clipColor(qreal &r, qreal &g, qreal &b)
+{
+    const qreal l = luminance(r, g, b);
+    const qreal n = qMin(r, qMin(g, b));
+    const qreal x = qMax(r, qMax(g, b));
+
+    if (n < 0.0) {
+        const qreal denom = l - n;
+        if (denom > 1e-10) {
+            r = l + (r - l) * l / denom;
+            g = l + (g - l) * l / denom;
+            b = l + (b - l) * l / denom;
+        }
+    }
+    if (x > 1.0) {
+        const qreal denom = x - l;
+        if (denom > 1e-10) {
+            r = l + (r - l) * (1.0 - l) / denom;
+            g = l + (g - l) * (1.0 - l) / denom;
+            b = l + (b - l) * (1.0 - l) / denom;
+        }
+    }
+}
+
+static inline void setLum(qreal &r, qreal &g, qreal &b, qreal l)
+{
+    const qreal d = l - luminance(r, g, b);
+    r += d;
+    g += d;
+    b += d;
+    clipColor(r, g, b);
+}
+
+static inline qreal saturation(qreal r, qreal g, qreal b)
+{
+    return qMax(r, qMax(g, b)) - qMin(r, qMin(g, b));
+}
+
+static inline void setSat(qreal &r, qreal &g, qreal &b, qreal s)
+{
+    // Sort channels into min, mid, max by pointer
+    qreal *cmin = &r, *cmid = &g, *cmax = &b;
+    if (*cmin > *cmid) std::swap(cmin, cmid);
+    if (*cmid > *cmax) std::swap(cmid, cmax);
+    if (*cmin > *cmid) std::swap(cmin, cmid);
+
+    if (*cmax > *cmin) {
+        *cmid = ((*cmid - *cmin) * s) / (*cmax - *cmin);
+        *cmax = s;
+    } else {
+        *cmid = 0.0;
+        *cmax = 0.0;
+    }
+    *cmin = 0.0;
+}
+
+// --- Blend formula helpers ---
+
+static inline qreal colorBurnFormula(qreal dst, qreal src)
+{
+    if (dst >= 1.0) return 1.0;
+    if (src <= 0.0) return 0.0;
+    return 1.0 - qMin(1.0, (1.0 - dst) / src);
+}
+
+static inline qreal colorDodgeFormula(qreal dst, qreal src)
+{
+    if (dst <= 0.0) return 0.0;
+    if (src >= 1.0) return 1.0;
+    return qMin(1.0, dst / (1.0 - src));
+}
 QImage imageDataToImage(const QPsdAbstractImage &imageData, const QPsdFileHeader &fileHeader, const QPsdColorModeData &colorModeData, const QByteArray &iccProfile)
 {
     QImage image;
@@ -262,6 +343,10 @@ QPainter::CompositionMode compositionMode(QPsdBlend::Mode psdBlendMode)
     switch (psdBlendMode) {
         case QPsdBlend::Mode::Invalid:
         case QPsdBlend::Mode::PassThrough:
+            qWarning() << "QPainter doesn't support QPsdBlend::Mode" << psdBlendMode;
+            return QPainter::CompositionMode_SourceOver;
+
+        // Custom blend modes handled by customBlend() — return SourceOver as fallback
         case QPsdBlend::Mode::Dissolve:
         case QPsdBlend::Mode::LinearBurn:
         case QPsdBlend::Mode::DarkerColor:
@@ -277,7 +362,6 @@ QPainter::CompositionMode compositionMode(QPsdBlend::Mode psdBlendMode)
         case QPsdBlend::Mode::Saturation:
         case QPsdBlend::Mode::Color:
         case QPsdBlend::Mode::Luminosity:
-            qWarning() << "QPainter doesn't support QPsdBlend::Mode" << psdBlendMode;
             return QPainter::CompositionMode_SourceOver;
 
         case QPsdBlend::Mode::Normal:
@@ -305,6 +389,224 @@ QPainter::CompositionMode compositionMode(QPsdBlend::Mode psdBlendMode)
         case QPsdBlend::Mode::Exclusion:
             return QPainter::CompositionMode_Exclusion;
         }
+}
+
+bool isCustomBlendMode(QPsdBlend::Mode mode)
+{
+    switch (mode) {
+    case QPsdBlend::Mode::Dissolve:
+    case QPsdBlend::Mode::LinearBurn:
+    case QPsdBlend::Mode::DarkerColor:
+    case QPsdBlend::Mode::LinearDodge:
+    case QPsdBlend::Mode::LighterColor:
+    case QPsdBlend::Mode::VividLight:
+    case QPsdBlend::Mode::LinearLight:
+    case QPsdBlend::Mode::PinLight:
+    case QPsdBlend::Mode::HardMix:
+    case QPsdBlend::Mode::Subtract:
+    case QPsdBlend::Mode::Divide:
+    case QPsdBlend::Mode::Hue:
+    case QPsdBlend::Mode::Saturation:
+    case QPsdBlend::Mode::Color:
+    case QPsdBlend::Mode::Luminosity:
+        return true;
+    default:
+        return false;
+    }
+}
+
+// Apply blend formula to a single pixel (all values in 0.0-1.0 straight alpha space)
+static inline void blendPixel(qreal sr, qreal sg, qreal sb,
+                               qreal dr, qreal dg, qreal db,
+                               QPsdBlend::Mode mode,
+                               qreal &outR, qreal &outG, qreal &outB)
+{
+    switch (mode) {
+    case QPsdBlend::Mode::LinearDodge: // Add
+        outR = qMin(sr + dr, 1.0);
+        outG = qMin(sg + dg, 1.0);
+        outB = qMin(sb + db, 1.0);
+        break;
+    case QPsdBlend::Mode::LinearBurn:
+        outR = qMax(sr + dr - 1.0, 0.0);
+        outG = qMax(sg + dg - 1.0, 0.0);
+        outB = qMax(sb + db - 1.0, 0.0);
+        break;
+    case QPsdBlend::Mode::VividLight:
+        // src<=0.5: ColorBurn(dst, 2*src); else ColorDodge(dst, 2*(src-0.5))
+        outR = (sr <= 0.5) ? colorBurnFormula(dr, 2.0 * sr) : colorDodgeFormula(dr, 2.0 * (sr - 0.5));
+        outG = (sg <= 0.5) ? colorBurnFormula(dg, 2.0 * sg) : colorDodgeFormula(dg, 2.0 * (sg - 0.5));
+        outB = (sb <= 0.5) ? colorBurnFormula(db, 2.0 * sb) : colorDodgeFormula(db, 2.0 * (sb - 0.5));
+        break;
+    case QPsdBlend::Mode::LinearLight:
+        // src<=0.5: LinearBurn(dst, 2*src); else LinearDodge(dst, 2*(src-0.5))
+        outR = (sr <= 0.5) ? qMax(dr + 2.0 * sr - 1.0, 0.0) : qMin(dr + 2.0 * (sr - 0.5), 1.0);
+        outG = (sg <= 0.5) ? qMax(dg + 2.0 * sg - 1.0, 0.0) : qMin(dg + 2.0 * (sg - 0.5), 1.0);
+        outB = (sb <= 0.5) ? qMax(db + 2.0 * sb - 1.0, 0.0) : qMin(db + 2.0 * (sb - 0.5), 1.0);
+        break;
+    case QPsdBlend::Mode::PinLight:
+        // src<=0.5: min(dst, 2*src); else max(dst, 2*(src-0.5))
+        outR = (sr <= 0.5) ? qMin(dr, 2.0 * sr) : qMax(dr, 2.0 * (sr - 0.5));
+        outG = (sg <= 0.5) ? qMin(dg, 2.0 * sg) : qMax(dg, 2.0 * (sg - 0.5));
+        outB = (sb <= 0.5) ? qMin(db, 2.0 * sb) : qMax(db, 2.0 * (sb - 0.5));
+        break;
+    case QPsdBlend::Mode::HardMix:
+        outR = (sr + dr >= 1.0) ? 1.0 : 0.0;
+        outG = (sg + dg >= 1.0) ? 1.0 : 0.0;
+        outB = (sb + db >= 1.0) ? 1.0 : 0.0;
+        break;
+    case QPsdBlend::Mode::Subtract:
+        outR = qMax(dr - sr, 0.0);
+        outG = qMax(dg - sg, 0.0);
+        outB = qMax(db - sb, 0.0);
+        break;
+    case QPsdBlend::Mode::Divide:
+        outR = (sr > 1.0 / 256.0) ? qMin(dr / sr, 1.0) : 1.0;
+        outG = (sg > 1.0 / 256.0) ? qMin(dg / sg, 1.0) : 1.0;
+        outB = (sb > 1.0 / 256.0) ? qMin(db / sb, 1.0) : 1.0;
+        break;
+    case QPsdBlend::Mode::DarkerColor: {
+        const qreal sl = luminance(sr, sg, sb);
+        const qreal dl = luminance(dr, dg, db);
+        if (sl < dl) { outR = sr; outG = sg; outB = sb; }
+        else         { outR = dr; outG = dg; outB = db; }
+        break;
+    }
+    case QPsdBlend::Mode::LighterColor: {
+        const qreal sl = luminance(sr, sg, sb);
+        const qreal dl = luminance(dr, dg, db);
+        if (sl > dl) { outR = sr; outG = sg; outB = sb; }
+        else         { outR = dr; outG = dg; outB = db; }
+        break;
+    }
+    case QPsdBlend::Mode::Hue: {
+        // SetLum(SetSat(src, Sat(dst)), Lum(dst))
+        outR = sr; outG = sg; outB = sb;
+        setSat(outR, outG, outB, saturation(dr, dg, db));
+        setLum(outR, outG, outB, luminance(dr, dg, db));
+        break;
+    }
+    case QPsdBlend::Mode::Saturation: {
+        // SetLum(SetSat(dst, Sat(src)), Lum(dst))
+        outR = dr; outG = dg; outB = db;
+        setSat(outR, outG, outB, saturation(sr, sg, sb));
+        setLum(outR, outG, outB, luminance(dr, dg, db));
+        break;
+    }
+    case QPsdBlend::Mode::Color: {
+        // SetLum(src, Lum(dst))
+        outR = sr; outG = sg; outB = sb;
+        setLum(outR, outG, outB, luminance(dr, dg, db));
+        break;
+    }
+    case QPsdBlend::Mode::Luminosity: {
+        // SetLum(dst, Lum(src))
+        outR = dr; outG = dg; outB = db;
+        setLum(outR, outG, outB, luminance(sr, sg, sb));
+        break;
+    }
+    default:
+        // Dissolve handled separately; fallback = normal
+        outR = sr; outG = sg; outB = sb;
+        break;
+    }
+}
+
+void customBlend(QImage &dest, const QImage &src,
+                  QPsdBlend::Mode mode, qreal opacity)
+{
+    const int w = qMin(dest.width(), src.width());
+    const int h = qMin(dest.height(), src.height());
+    if (w <= 0 || h <= 0)
+        return;
+
+    const bool isDissolve = (mode == QPsdBlend::Mode::Dissolve);
+
+    for (int y = 0; y < h; ++y) {
+        QRgb *dstLine = reinterpret_cast<QRgb *>(dest.scanLine(y));
+        const QRgb *srcLine = reinterpret_cast<const QRgb *>(src.constScanLine(y));
+
+        for (int x = 0; x < w; ++x) {
+            const QRgb sp = srcLine[x];
+            const QRgb dp = dstLine[x];
+
+            // Unpremultiply source
+            int sa = qAlpha(sp);
+            if (sa == 0)
+                continue;
+
+            qreal sr, sg, sb;
+            if (sa == 255) {
+                sr = qRed(sp) / 255.0;
+                sg = qGreen(sp) / 255.0;
+                sb = qBlue(sp) / 255.0;
+            } else {
+                sr = qRed(sp) / (qreal)sa;
+                sg = qGreen(sp) / (qreal)sa;
+                sb = qBlue(sp) / (qreal)sa;
+            }
+
+            // Effective source alpha
+            const qreal srcAlpha = (sa / 255.0) * opacity;
+
+            if (isDissolve) {
+                // Deterministic dither based on pixel position
+                const quint32 hash = (static_cast<quint32>(x) * 2654435761u)
+                                   ^ (static_cast<quint32>(y) * 2246822519u);
+                const qreal threshold = (hash & 0xFFFF) / 65535.0;
+                if (threshold < srcAlpha) {
+                    // Source pixel fully replaces destination
+                    dstLine[x] = qRgba(qBound(0, qRound(sr * 255.0), 255),
+                                        qBound(0, qRound(sg * 255.0), 255),
+                                        qBound(0, qRound(sb * 255.0), 255),
+                                        255);
+                }
+                // else: keep destination as-is
+                continue;
+            }
+
+            // Unpremultiply destination
+            const int da = qAlpha(dp);
+            qreal dr, dg, db;
+            if (da == 0) {
+                dr = dg = db = 0.0;
+            } else if (da == 255) {
+                dr = qRed(dp) / 255.0;
+                dg = qGreen(dp) / 255.0;
+                db = qBlue(dp) / 255.0;
+            } else {
+                dr = qRed(dp) / (qreal)da;
+                dg = qGreen(dp) / (qreal)da;
+                db = qBlue(dp) / (qreal)da;
+            }
+
+            // Apply blend formula
+            qreal outR, outG, outB;
+            blendPixel(sr, sg, sb, dr, dg, db, mode, outR, outG, outB);
+
+            // Composite: result = blend(src,dst) * srcAlpha + dst * (1 - srcAlpha)
+            const qreal invSrcAlpha = 1.0 - srcAlpha;
+            const qreal rr = outR * srcAlpha + dr * invSrcAlpha;
+            const qreal rg = outG * srcAlpha + dg * invSrcAlpha;
+            const qreal rb = outB * srcAlpha + db * invSrcAlpha;
+
+            // Result alpha: standard Porter-Duff over
+            const qreal dstAlpha = da / 255.0;
+            const qreal ra = srcAlpha + dstAlpha * invSrcAlpha;
+
+            if (ra < 1e-10) {
+                dstLine[x] = 0;
+                continue;
+            }
+
+            // Premultiply result
+            const int finalR = qBound(0, qRound(rr * ra * 255.0), 255);
+            const int finalG = qBound(0, qRound(rg * ra * 255.0), 255);
+            const int finalB = qBound(0, qRound(rb * ra * 255.0), 255);
+            const int finalA = qBound(0, qRound(ra * 255.0), 255);
+            dstLine[x] = qRgba(finalR, finalG, finalB, finalA);
+        }
+    }
 }
 
 }
