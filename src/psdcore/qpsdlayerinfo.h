@@ -22,6 +22,7 @@ public:
 
     QList<QPsdLayerRecord> records() const;
     QList<QPsdChannelImageData> channelImageData() const;
+    bool hasMergedAlpha() const;
 
     void setFileHeader(const QPsdFileHeader &fileHeader);
 

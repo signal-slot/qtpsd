@@ -24,6 +24,7 @@ public:
     QPsdLayerInfo layerInfo() const;
     QPsdGlobalLayerMaskInfo globalLayerMaskInfo() const;
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
+    bool hasMergedAlpha() const;
 
     void setFileHeader(const QPsdFileHeader &fileHeader);
 

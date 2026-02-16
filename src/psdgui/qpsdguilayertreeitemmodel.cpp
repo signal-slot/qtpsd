@@ -181,6 +181,10 @@ void QPsdGuiLayerTreeItemModel::fromParser(const QPsdParser &parser)
     const auto iccProfile = parser.iccProfile();
     d->iccProfile = iccProfile;
     d->mergedImage = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
+    if (!hasMergedAlpha()) {
+        // Extra channels are NOT transparency — strip alpha from merged image
+        d->mergedImage = d->mergedImage.convertToFormat(QImage::Format_RGB32);
+    }
 
     // Store pattern images for pattern fill rendering
     for (const auto &key : {"Patt", "Pat2", "Pat3"}) {
@@ -205,24 +209,7 @@ QImage QPsdGuiLayerTreeItemModel::mergedImage() const
 
 QImage QPsdGuiLayerTreeItemModel::documentAlphaMask() const
 {
-    // Determine if this document has extra channels beyond the color mode base
-    const auto ch = channels();
-    bool hasDocAlpha = false;
-    switch (colorMode()) {
-    case QPsdFileHeader::RGB:
-        hasDocAlpha = (ch > 3);
-        break;
-    case QPsdFileHeader::CMYK:
-        hasDocAlpha = (ch > 4);
-        break;
-    case QPsdFileHeader::Grayscale:
-        hasDocAlpha = (ch > 1);
-        break;
-    default:
-        break;
-    }
-
-    if (!hasDocAlpha || d->mergedImage.isNull() || !d->mergedImage.hasAlphaChannel())
+    if (!hasMergedAlpha() || d->mergedImage.isNull() || !d->mergedImage.hasAlphaChannel())
         return QImage();
 
     // Extract alpha channel from the merged image as a grayscale mask

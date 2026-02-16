@@ -47,6 +47,7 @@ public:
     QList<IndexInfo> clippingMasks;
     QPsdResolutionInfo resolutionInfo;
     QPsdFilterMask filterMask;
+    bool hasMergedAlpha = false;
 };
 
 QPsdLayerTreeItemModel::Private::Private(const ::QPsdLayerTreeItemModel *model) : q(model)
@@ -274,6 +275,7 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
         }
     }
     const auto layerAndMaskInformation = parser.layerAndMaskInformation();
+    d->hasMergedAlpha = layerAndMaskInformation.hasMergedAlpha();
     const auto layers = layerAndMaskInformation.layerInfo();
     d->layerRecords = layers.records();
     const auto channelImageData = layers.channelImageData();
@@ -486,6 +488,11 @@ QPsdResolutionInfo QPsdLayerTreeItemModel::resolutionInfo() const
 QPsdFilterMask QPsdLayerTreeItemModel::filterMask() const
 {
     return d->filterMask;
+}
+
+bool QPsdLayerTreeItemModel::hasMergedAlpha() const
+{
+    return d->hasMergedAlpha;
 }
 
 void QPsdLayerTreeItemModel::load(const QString &fileName)

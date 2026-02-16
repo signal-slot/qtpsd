@@ -14,6 +14,7 @@ public:
 
     QList<QPsdLayerRecord> records;
     QList<QPsdChannelImageData> channelImageData;
+    bool hasMergedAlpha = false;
 };
 
 QPsdLayerInfo::Private::Private()
@@ -24,6 +25,7 @@ void QPsdLayerInfo::Private::parse(QIODevice *source, quint32 length)
     EnsureSeek es(source, length);
 
     const auto count = readS16(source);
+    hasMergedAlpha = (count < 0);
 
     for (int i = 0; i < std::abs(count); i++) {
         records.append(QPsdLayerRecord(source));
@@ -81,6 +83,11 @@ QList<QPsdLayerRecord> QPsdLayerInfo::records() const
 QList<QPsdChannelImageData> QPsdLayerInfo::channelImageData() const
 {
     return d->channelImageData;
+}
+
+bool QPsdLayerInfo::hasMergedAlpha() const
+{
+    return d->hasMergedAlpha;
 }
 
 void QPsdLayerInfo::setFileHeader(const QPsdFileHeader &fileHeader)

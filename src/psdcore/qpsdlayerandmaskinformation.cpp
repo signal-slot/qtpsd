@@ -76,6 +76,11 @@ QHash<QByteArray, QVariant> QPsdLayerAndMaskInformation::additionalLayerInformat
     return d->additionalLayerInformation;
 }
 
+bool QPsdLayerAndMaskInformation::hasMergedAlpha() const
+{
+    return d->layerInfo.hasMergedAlpha();
+}
+
 void QPsdLayerAndMaskInformation::setFileHeader(const QPsdFileHeader &fileHeader)
 {
     d->layerInfo.setFileHeader(fileHeader);

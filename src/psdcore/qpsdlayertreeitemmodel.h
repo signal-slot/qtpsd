@@ -74,6 +74,7 @@ public:
     quint16 channels() const;
     QPsdResolutionInfo resolutionInfo() const;
     QPsdFilterMask filterMask() const;
+    bool hasMergedAlpha() const;
 
 public slots:
     void load(const QString &fileName);
