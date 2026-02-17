@@ -44,6 +44,12 @@ public:
     // For PointText, returns an empty rect
     QRectF textFrame() const;
 
+    void setRuns(const QList<Run> &runs);
+    void setBounds(const QRectF &bounds);
+    void setTextType(TextType type);
+    void setTextOrigin(const QPointF &origin);
+    void setTextFrame(const QRectF &frame);
+
     // Set the current PSD path context for font resolution (thread-local)
     static void setCurrentPsdPath(const QString &path);
     static QString currentPsdPath();

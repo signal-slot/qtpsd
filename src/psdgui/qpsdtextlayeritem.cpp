@@ -295,6 +295,31 @@ QRectF QPsdTextLayerItem::textFrame() const {
     return d->textFrame;
 }
 
+void QPsdTextLayerItem::setRuns(const QList<Run> &runs)
+{
+    d->runs = runs;
+}
+
+void QPsdTextLayerItem::setBounds(const QRectF &bounds)
+{
+    d->bounds = bounds;
+}
+
+void QPsdTextLayerItem::setTextType(TextType type)
+{
+    d->textType = type;
+}
+
+void QPsdTextLayerItem::setTextOrigin(const QPointF &origin)
+{
+    d->textOrigin = origin;
+}
+
+void QPsdTextLayerItem::setTextFrame(const QRectF &frame)
+{
+    d->textFrame = frame;
+}
+
 void QPsdTextLayerItem::setCurrentPsdPath(const QString &path)
 {
     s_currentPsdPath = path;

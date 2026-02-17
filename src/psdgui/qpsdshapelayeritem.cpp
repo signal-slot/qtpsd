@@ -269,6 +269,26 @@ QPsdShapeLayerItem::QPsdShapeLayerItem()
 
 QPsdShapeLayerItem::~QPsdShapeLayerItem() = default;
 
+void QPsdShapeLayerItem::setPen(const QPen &pen)
+{
+    d->pen = pen;
+}
+
+void QPsdShapeLayerItem::setBrush(const QBrush &brush)
+{
+    d->brush = brush;
+}
+
+void QPsdShapeLayerItem::setStrokeAlignment(StrokeAlignment alignment)
+{
+    d->strokeAlignment = alignment;
+}
+
+void QPsdShapeLayerItem::setPathInfo(const PathInfo &info)
+{
+    d->path = info;
+}
+
 QPen QPsdShapeLayerItem::pen() const
 {
     return d->pen;

@@ -18,10 +18,14 @@ public:
     Type type() const override { return Folder; }
 
     bool isOpened() const;
+    void setIsOpened(bool opened);
 
     QRect artboardRect() const;
+    void setArtboardRect(const QRect &rect);
+
     QString artboardPresetName() const;
     QColor artboardBackground() const;
+    void setArtboardBackground(const QColor &color);
 
 private:
     class Private;

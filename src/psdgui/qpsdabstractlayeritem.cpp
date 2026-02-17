@@ -521,6 +521,61 @@ void QPsdAbstractLayerItem::setIccProfile(const QByteArray &iccProfile)
     }
 }
 
+void QPsdAbstractLayerItem::setId(quint32 id)
+{
+    d->id = id;
+}
+
+void QPsdAbstractLayerItem::setName(const QString &name)
+{
+    d->name = name;
+}
+
+void QPsdAbstractLayerItem::setVisible(bool visible)
+{
+    d->visible = visible;
+}
+
+void QPsdAbstractLayerItem::setOpacity(qreal opacity)
+{
+    d->opacity = opacity;
+}
+
+void QPsdAbstractLayerItem::setFillOpacity(qreal opacity)
+{
+    d->fillOpacity = opacity;
+}
+
+void QPsdAbstractLayerItem::setRect(const QRect &rect)
+{
+    d->rect = rect;
+}
+
+void QPsdAbstractLayerItem::setGradient(QGradient *gradient)
+{
+    d->gradient.reset(gradient);
+}
+
+void QPsdAbstractLayerItem::setGradientOpacity(qreal opacity)
+{
+    d->gradientOpacity = opacity;
+}
+
+void QPsdAbstractLayerItem::setDropShadow(const QCborMap &shadow)
+{
+    d->dropShadow = shadow;
+}
+
+void QPsdAbstractLayerItem::setImage(const QImage &image)
+{
+    d->image = image;
+}
+
+void QPsdAbstractLayerItem::setVectorMask(const PathInfo &info)
+{
+    d->vectorMask = info;
+}
+
 QPsdAbstractLayerItem::PathInfo QPsdAbstractLayerItem::parseShape(const QPsdVectorMaskSetting &vms) const
 {
     PathInfo ret;

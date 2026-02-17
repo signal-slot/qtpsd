@@ -76,9 +76,19 @@ bool QPsdFolderLayerItem::isOpened() const
     return d->opened;
 }
 
+void QPsdFolderLayerItem::setIsOpened(bool opened)
+{
+    d->opened = opened;
+}
+
 QRect QPsdFolderLayerItem::artboardRect() const
 {
     return d->artboardRect;
+}
+
+void QPsdFolderLayerItem::setArtboardRect(const QRect &rect)
+{
+    d->artboardRect = rect;
 }
 
 QString QPsdFolderLayerItem::artboardPresetName() const
@@ -89,6 +99,11 @@ QString QPsdFolderLayerItem::artboardPresetName() const
 QColor QPsdFolderLayerItem::artboardBackground() const
 {
     return d->artboardBackground;
+}
+
+void QPsdFolderLayerItem::setArtboardBackground(const QColor &color)
+{
+    d->artboardBackground = color;
 }
 
 QT_END_NAMESPACE

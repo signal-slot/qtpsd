@@ -110,6 +110,7 @@ public:
     void setLayerHint(const QModelIndex &index, const ExportHint exportHint);
 
     QSize size() const;
+    void setSize(const QSize &size);
 
     bool isVisible(const QModelIndex &index) const;
     void setVisible(const QModelIndex &index, bool visible);
@@ -121,8 +122,13 @@ public:
     QList<QPersistentModelIndex> groupIndexes(const QModelIndex &index) const;
 
     QFileInfo fileInfo() const;
+    void setFileInfo(const QFileInfo &fileInfo);
     QString fileName() const;
+    void setFileName(const QString &fileName);
     QString errorMessage() const;
+
+    void loadHints(const QString &hintFilePath);
+    void saveHints(const QString &hintFilePath);
 
 public slots:
     void load(const QString &fileName);

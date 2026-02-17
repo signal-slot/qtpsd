@@ -75,6 +75,18 @@ public:
 
     void setIccProfile(const QByteArray &iccProfile);
 
+    void setId(quint32 id);
+    void setName(const QString &name);
+    void setVisible(bool visible);
+    void setOpacity(qreal opacity);
+    void setFillOpacity(qreal opacity);
+    void setRect(const QRect &rect);
+    void setGradient(QGradient *gradient);
+    void setGradientOpacity(qreal opacity);
+    void setDropShadow(const QCborMap &shadow);
+    void setImage(const QImage &image);
+    void setVectorMask(const PathInfo &info);
+
     QVariantList effects() const;
 
 protected:

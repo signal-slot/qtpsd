@@ -23,6 +23,11 @@ public:
     StrokeAlignment strokeAlignment() const;
     QPsdAbstractLayerItem::PathInfo pathInfo() const;
 
+    void setPen(const QPen &pen);
+    void setBrush(const QBrush &brush);
+    void setStrokeAlignment(StrokeAlignment alignment);
+    void setPathInfo(const PathInfo &info);
+
     QString vscgPatternId() const;
     qreal vscgPatternScale() const;
     qreal vscgPatternAngle() const;
