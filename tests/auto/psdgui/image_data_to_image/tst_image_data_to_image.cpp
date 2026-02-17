@@ -279,10 +279,14 @@ void tst_ImageDataToImage::generateImages()
     const auto colorModeData = parser.colorModeData();
     const auto iccProfile = parser.iccProfile();
     const auto imageData = parser.imageData();
+    const auto hasMergedAlpha = parser.layerAndMaskInformation().hasMergedAlpha();
 
     QImage image;
     if (imageData.width() > 0 && imageData.height() > 0) {
         image = QtPsdGui::imageDataToImage(imageData, header, colorModeData, iccProfile);
+        if (!hasMergedAlpha) {
+            image = image.convertToFormat(QImage::Format_RGB32);
+        }
     }
 
     if (image.isNull()) {
