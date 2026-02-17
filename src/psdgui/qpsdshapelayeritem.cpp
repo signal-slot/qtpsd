@@ -5,10 +5,12 @@
 #include "qpsdvectorstrokecontentsetting.h"
 
 #include <QtGui/QColor>
+#include <QtGui/QLinearGradient>
 #include <QtGui/QPen>
 #include <QtGui/QRadialGradient>
 
 #include <QtPsdCore/QPsdDescriptor>
+#include <QtPsdCore/QPsdEnum>
 #include <QtPsdCore/QPsdUnitFloat>
 #include <QtPsdCore/QPsdVectorStrokeData>
 
@@ -45,6 +47,51 @@ Qt::PenCapStyle strokeStyleLineCapTypeToQt(const QPsdEnum &data)
     }
     qFatal() << value << "not implemented";
     return Qt::FlatCap;
+}
+QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
+{
+    const auto gdfl = gdflVariant.value<QPsdDescriptor>().data();
+    const auto grad = gdfl.value("Grad").value<QPsdDescriptor>().data();
+
+    // Parse color stops
+    QGradientStops stops;
+    const auto clrs = grad.value("Clrs").toList();
+    for (const auto &c : clrs) {
+        const auto clr = c.value<QPsdDescriptor>().data();
+        const auto lctn = clr.value("Lctn").toDouble();
+        const auto clrDescriptor = clr.value("Clr ").value<QPsdDescriptor>();
+        stops.append({lctn / 4096, colorFromDescriptor(clrDescriptor)});
+    }
+
+    // Determine gradient type
+    const auto type = gdfl.value("Type").value<QPsdEnum>();
+    const auto typeValue = type.value();
+
+    // Read angle
+    const auto angl = gdfl.value("Angl").value<QPsdUnitFloat>();
+    const auto angle = angl.value() * M_PI / 180.0;
+
+    if (typeValue == "Lnr ") {
+        QLinearGradient gradient;
+        const auto center = rect.center();
+        gradient.setStart(center.x() - std::cos(angle) * rect.width() / 2,
+                          center.y() - std::sin(angle) * rect.height() / 2);
+        gradient.setFinalStop(center.x() + std::cos(angle) * rect.width() / 2,
+                              center.y() + std::sin(angle) * rect.height() / 2);
+        gradient.setStops(stops);
+        return QBrush(gradient);
+    } else if (typeValue == "Rdl ") {
+        QRadialGradient gradient;
+        const auto center = rect.center();
+        gradient.setCenter(center);
+        gradient.setFocalPoint(center);
+        gradient.setRadius(qMax(rect.width(), rect.height()) / 2);
+        gradient.setStops(stops);
+        return QBrush(gradient);
+    } else {
+        qWarning() << "GdFl gradient type" << typeValue << "not supported";
+        return Qt::NoBrush;
+    }
 }
 }
 
@@ -188,6 +235,8 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                     d->vscgPatternAngle = angl.value();
                 }
                 d->brush = Qt::NoBrush;
+            } else if (additionalLayerInformation.contains("GdFl")) {
+                d->brush = brushFromGdFl(additionalLayerInformation.value("GdFl"), rect());
             }
         }
     } else {
@@ -207,6 +256,8 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                 d->vscgPatternAngle = angl.value();
             }
             d->brush = Qt::NoBrush;
+        } else if (additionalLayerInformation.contains("GdFl")) {
+            d->brush = brushFromGdFl(additionalLayerInformation.value("GdFl"), rect());
         }
     }
 }

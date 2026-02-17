@@ -461,6 +461,165 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
     const QPsdShapeLayerItem *shape = dynamic_cast<const QPsdShapeLayerItem *>(model()->layerItem(shapeIndex));
     const auto path = shape->pathInfo();
     switch (path.type) {
+    case QPsdAbstractLayerItem::PathInfo::None: {
+        // Fill layers (GdFl, SoCo without vector mask) cover the entire layer rect
+        const QGradient *g = effectiveGradient(shape);
+        if (g) {
+            switch (g->type()) {
+            case QGradient::LinearGradient: {
+                const auto linear = reinterpret_cast<const QLinearGradient *>(g);
+                bool simpleVertical = linear->start().x() == linear->finalStop().x();
+                Element gradient;
+                gradient.type = "gradient: Gradient";
+                for (const auto &stop : linear->stops()) {
+                    Element stopElement;
+                    stopElement.type = "GradientStop";
+                    stopElement.properties.insert("position", stop.first);
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    gradient.children.append(stopElement);
+                }
+
+                if (simpleVertical) {
+                    element->type = "Rectangle";
+                    if (!outputBase(shapeIndex, element, imports))
+                        return false;
+                    element->children.append(gradient);
+                } else if (effectMode() == Qt5Effects) {
+                    imports->insert("Qt5Compat.GraphicalEffects as GE");
+                    Element effect;
+                    effect.type = "GE.LinearGradient";
+                    if (!outputBase(shapeIndex, &effect, imports))
+                        return false;
+                    effect.properties.insert("start", QPointF(linear->start().x() * horizontalScale, linear->start().y() * verticalScale));
+                    effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
+                    effect.children.append(gradient);
+                    *element = effect;
+                } else if (effectMode() == EffectMaker) {
+                    imports->insert("QtQuick.Shapes");
+                    Element shapeElem;
+                    shapeElem.type = "Shape";
+                    if (!outputBase(shapeIndex, &shapeElem, imports))
+                        return false;
+                    Element shapePath;
+                    shapePath.type = "ShapePath";
+                    shapePath.properties.insert("strokeWidth", 0);
+                    shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                    Element fillGrad;
+                    fillGrad.type = "fillGradient: LinearGradient";
+                    fillGrad.properties.insert("x1", linear->start().x() * horizontalScale);
+                    fillGrad.properties.insert("y1", linear->start().y() * verticalScale);
+                    fillGrad.properties.insert("x2", linear->finalStop().x() * horizontalScale);
+                    fillGrad.properties.insert("y2", linear->finalStop().y() * verticalScale);
+                    for (const auto &stop : linear->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        fillGrad.children.append(stopElement);
+                    }
+                    shapePath.children.append(fillGrad);
+                    const QRect shapeRect = computeBaseRect(shapeIndex);
+                    const qreal w = shapeRect.width() * horizontalScale;
+                    const qreal h = shapeRect.height() * verticalScale;
+                    Element startPath;
+                    startPath.type = "PathMove";
+                    startPath.properties.insert("x", 0);
+                    startPath.properties.insert("y", 0);
+                    shapePath.children.append(startPath);
+                    Element line1; line1.type = "PathLine"; line1.properties.insert("x", w); line1.properties.insert("y", 0);
+                    Element line2; line2.type = "PathLine"; line2.properties.insert("x", w); line2.properties.insert("y", h);
+                    Element line3; line3.type = "PathLine"; line3.properties.insert("x", 0); line3.properties.insert("y", h);
+                    Element line4; line4.type = "PathLine"; line4.properties.insert("x", 0); line4.properties.insert("y", 0);
+                    shapePath.children.append(line1);
+                    shapePath.children.append(line2);
+                    shapePath.children.append(line3);
+                    shapePath.children.append(line4);
+                    shapeElem.children.append(shapePath);
+                    *element = shapeElem;
+                }
+                break; }
+            case QGradient::RadialGradient: {
+                const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                if (effectMode() == Qt5Effects) {
+                    imports->insert("Qt5Compat.GraphicalEffects as GE");
+                    Element effect;
+                    effect.type = "GE.RadialGradient";
+                    if (!outputBase(shapeIndex, &effect, imports))
+                        return false;
+                    const QRect shapeRect = computeBaseRect(shapeIndex);
+                    const qreal elemW = shapeRect.width() * horizontalScale;
+                    const qreal elemH = shapeRect.height() * verticalScale;
+                    effect.properties.insert("horizontalOffset", radial->center().x() * horizontalScale - elemW / 2);
+                    effect.properties.insert("verticalOffset", radial->center().y() * verticalScale - elemH / 2);
+                    effect.properties.insert("horizontalRadius", radial->radius() * horizontalScale);
+                    effect.properties.insert("verticalRadius", radial->radius() * verticalScale);
+                    Element gradient;
+                    gradient.type = "gradient: Gradient";
+                    for (const auto &stop : radial->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        gradient.children.append(stopElement);
+                    }
+                    effect.children.append(gradient);
+                    *element = effect;
+                } else if (effectMode() == EffectMaker) {
+                    imports->insert("QtQuick.Shapes");
+                    Element shapeElem;
+                    shapeElem.type = "Shape";
+                    if (!outputBase(shapeIndex, &shapeElem, imports))
+                        return false;
+                    Element shapePath;
+                    shapePath.type = "ShapePath";
+                    shapePath.properties.insert("strokeWidth", 0);
+                    shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                    Element fillGrad;
+                    fillGrad.type = "fillGradient: RadialGradient";
+                    fillGrad.properties.insert("centerX", radial->center().x() * horizontalScale);
+                    fillGrad.properties.insert("centerY", radial->center().y() * verticalScale);
+                    fillGrad.properties.insert("centerRadius", radial->radius() * std::max(horizontalScale, verticalScale));
+                    fillGrad.properties.insert("focalX", radial->focalPoint().x() * horizontalScale);
+                    fillGrad.properties.insert("focalY", radial->focalPoint().y() * verticalScale);
+                    fillGrad.properties.insert("focalRadius", radial->focalRadius() * std::max(horizontalScale, verticalScale));
+                    for (const auto &stop : radial->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        fillGrad.children.append(stopElement);
+                    }
+                    shapePath.children.append(fillGrad);
+                    const QRect shapeRect = computeBaseRect(shapeIndex);
+                    const qreal w = shapeRect.width() * horizontalScale;
+                    const qreal h = shapeRect.height() * verticalScale;
+                    Element startPath;
+                    startPath.type = "PathMove";
+                    startPath.properties.insert("x", 0);
+                    startPath.properties.insert("y", 0);
+                    shapePath.children.append(startPath);
+                    Element line1; line1.type = "PathLine"; line1.properties.insert("x", w); line1.properties.insert("y", 0);
+                    Element line2; line2.type = "PathLine"; line2.properties.insert("x", w); line2.properties.insert("y", h);
+                    Element line3; line3.type = "PathLine"; line3.properties.insert("x", 0); line3.properties.insert("y", h);
+                    Element line4; line4.type = "PathLine"; line4.properties.insert("x", 0); line4.properties.insert("y", 0);
+                    shapePath.children.append(line1);
+                    shapePath.children.append(line2);
+                    shapePath.children.append(line3);
+                    shapePath.children.append(line4);
+                    shapeElem.children.append(shapePath);
+                    *element = shapeElem;
+                }
+                break; }
+            default:
+                qWarning() << "Unsupported gradient type for fill layer:" << g->type();
+            }
+        } else if (shape->brush() != Qt::NoBrush) {
+            element->type = "Rectangle";
+            if (!outputBase(shapeIndex, element, imports))
+                return false;
+            element->properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name()));
+        }
+        break; }
     case QPsdAbstractLayerItem::PathInfo::Rectangle: {
         bool filled = isFilledRect(path, shape);
         if (!filled) {

@@ -71,7 +71,7 @@ QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::Private::layerItemObject(const
 
             if (additionalLayerInformation.contains("TySh")) {
                 item = new QPsdTextLayerItem(*layerRecord);
-            } else if (additionalLayerInformation.contains("vscg") || additionalLayerInformation.contains("SoCo") || additionalLayerInformation.contains("PtFl")) {
+            } else if (additionalLayerInformation.contains("vscg") || additionalLayerInformation.contains("SoCo") || additionalLayerInformation.contains("PtFl") || additionalLayerInformation.contains("GdFl")) {
                 item = new QPsdShapeLayerItem(*layerRecord);
             } else {
                 // Check for adjustment layer keys
