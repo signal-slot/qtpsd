@@ -73,16 +73,16 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
 
     if (typeValue == "Lnr ") {
         QLinearGradient gradient;
-        const auto center = rect.center();
-        gradient.setStart(center.x() - std::cos(angle) * rect.width() / 2,
-                          center.y() - std::sin(angle) * rect.height() / 2);
-        gradient.setFinalStop(center.x() + std::cos(angle) * rect.width() / 2,
-                              center.y() + std::sin(angle) * rect.height() / 2);
+        const QPointF center(rect.width() / 2, rect.height() / 2);
+        gradient.setStart(center.x() + std::cos(angle) * rect.width() / 2,
+                          center.y() + std::sin(angle) * rect.height() / 2);
+        gradient.setFinalStop(center.x() - std::cos(angle) * rect.width() / 2,
+                              center.y() - std::sin(angle) * rect.height() / 2);
         gradient.setStops(stops);
         return QBrush(gradient);
     } else if (typeValue == "Rdl ") {
         QRadialGradient gradient;
-        const auto center = rect.center();
+        const QPointF center(rect.width() / 2, rect.height() / 2);
         gradient.setCenter(center);
         gradient.setFocalPoint(center);
         gradient.setRadius(qMax(rect.width(), rect.height()) / 2);
@@ -183,11 +183,11 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                         const auto opacities = vscg.opacities();
                         const auto angle = vscg.angle() * M_PI / 180.0;
                         QLinearGradient gradient;
-                        const auto center = rect().center();
-                        gradient.setStart(center.x() - std::cos(angle) * rect().width() / 2,
-                                          center.y() - std::sin(angle) * rect().height() / 2);
-                        gradient.setFinalStop(center.x() + std::cos(angle) * rect().width() / 2,
-                                              center.y() + std::sin(angle) * rect().height() / 2);
+                        const QPointF center(rect().width() / 2, rect().height() / 2);
+                        gradient.setStart(center.x() + std::cos(angle) * rect().width() / 2,
+                                          center.y() + std::sin(angle) * rect().height() / 2);
+                        gradient.setFinalStop(center.x() - std::cos(angle) * rect().width() / 2,
+                                              center.y() - std::sin(angle) * rect().height() / 2);
                         for (int i = 0; i < colors.size(); ++i) {
                             const auto color = colors.at(i);
                             gradient.setColorAt(color.first, QColor(color.second));
@@ -198,7 +198,7 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                         const auto colors = vscg.colors();
                         const auto opacities = vscg.opacities();
                         QRadialGradient gradient;
-                        const auto center = rect().center();
+                        const QPointF center(rect().width() / 2, rect().height() / 2);
                         gradient.setCenter(center);
                         gradient.setFocalPoint(center);
                         gradient.setRadius(qMax(rect().width(), rect().height()) / 2);
