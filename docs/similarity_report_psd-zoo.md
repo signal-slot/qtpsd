@@ -1,14 +1,14 @@
 # QtPsd Similarity Test Results (psd-zoo)
 
-Generated on: 2026-02-16T22:48:53
+Generated on: 2026-02-17T08:36:50
 
 ## Summary Statistics
 
 | Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export | Image Data vs Flutter Export | Image Data vs LVGL Export |
 |--------|------------------------|------------------------------|----------------------------|------------------------------|---------------------------|
 | Total Tests | 337 | 337 | 337 | 337 | 337 |
-| Passed Tests (>50%) | 255 (75.7%) | 207 (61.4%) | 201 (59.6%) | 200 (59.3%) | 194 (57.6%) |
-| Average Similarity | 80.09% | 63.34% | 61.89% | 63.60% | 61.53% |
+| Passed Tests (>50%) | 251 (74.5%) | 207 (61.4%) | 201 (59.6%) | 200 (59.3%) | 194 (57.6%) |
+| Average Similarity | 79.05% | 63.34% | 61.89% | 63.60% | 61.53% |
 
 ## adjustment
 
@@ -180,13 +180,13 @@ Generated on: 2026-02-16T22:48:53
 
 | Image Data | QPsdView | QtQuick | Slint | Flutter | LVGL |
 |---:|---:|---:|---:|---:|---:|
-| [alpha.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/alpha.psd) | 100.00% | [25.00%](exports/psd-zoo/channel/alpha/QtQuick/) | [25.00%](exports/psd-zoo/channel/alpha/Slint/) | [25.00%](exports/psd-zoo/channel/alpha/Flutter/) | [25.00%](exports/psd-zoo/channel/alpha/LVGL/) |
+| [alpha.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/alpha.psd) | 25.00% | [25.00%](exports/psd-zoo/channel/alpha/QtQuick/) | [25.00%](exports/psd-zoo/channel/alpha/Slint/) | [25.00%](exports/psd-zoo/channel/alpha/Flutter/) | [25.00%](exports/psd-zoo/channel/alpha/LVGL/) |
 | [<img src="images/imagedata/psd-zoo/channel/alpha.png" width="140">](images/imagedata/psd-zoo/channel/alpha.png) | [<img src="images/psdview/psd-zoo/channel/alpha.png" width="140">](images/psdview/psd-zoo/channel/alpha.png) | [<img src="images/qtquick/psd-zoo/channel/alpha.png" width="140">](images/qtquick/psd-zoo/channel/alpha.png) | [<img src="images/slint/psd-zoo/channel/alpha.png" width="140">](images/slint/psd-zoo/channel/alpha.png) | [<img src="images/flutter/psd-zoo/channel/alpha.png" width="140">](images/flutter/psd-zoo/channel/alpha.png) | [<img src="images/lvgl/psd-zoo/channel/alpha.png" width="140">](images/lvgl/psd-zoo/channel/alpha.png) |
-| [multiple_alpha.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/multiple_alpha.psd) | 100.00% | [0.00%](exports/psd-zoo/channel/multiple_alpha/QtQuick/) | [0.00%](exports/psd-zoo/channel/multiple_alpha/Slint/) | [0.00%](exports/psd-zoo/channel/multiple_alpha/Flutter/) | [0.00%](exports/psd-zoo/channel/multiple_alpha/LVGL/) |
+| [multiple_alpha.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/multiple_alpha.psd) | 0.00% | [0.00%](exports/psd-zoo/channel/multiple_alpha/QtQuick/) | [0.00%](exports/psd-zoo/channel/multiple_alpha/Slint/) | [0.00%](exports/psd-zoo/channel/multiple_alpha/Flutter/) | [0.00%](exports/psd-zoo/channel/multiple_alpha/LVGL/) |
 | [<img src="images/imagedata/psd-zoo/channel/multiple_alpha.png" width="140">](images/imagedata/psd-zoo/channel/multiple_alpha.png) | [<img src="images/psdview/psd-zoo/channel/multiple_alpha.png" width="140">](images/psdview/psd-zoo/channel/multiple_alpha.png) | [<img src="images/qtquick/psd-zoo/channel/multiple_alpha.png" width="140">](images/qtquick/psd-zoo/channel/multiple_alpha.png) | [<img src="images/slint/psd-zoo/channel/multiple_alpha.png" width="140">](images/slint/psd-zoo/channel/multiple_alpha.png) | [<img src="images/flutter/psd-zoo/channel/multiple_alpha.png" width="140">](images/flutter/psd-zoo/channel/multiple_alpha.png) | [<img src="images/lvgl/psd-zoo/channel/multiple_alpha.png" width="140">](images/lvgl/psd-zoo/channel/multiple_alpha.png) |
-| [selection.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/selection.psd) | 100.00% | [25.00%](exports/psd-zoo/channel/selection/QtQuick/) | [25.00%](exports/psd-zoo/channel/selection/Slint/) | [25.00%](exports/psd-zoo/channel/selection/Flutter/) | [25.00%](exports/psd-zoo/channel/selection/LVGL/) |
+| [selection.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/selection.psd) | 25.00% | [25.00%](exports/psd-zoo/channel/selection/QtQuick/) | [25.00%](exports/psd-zoo/channel/selection/Slint/) | [25.00%](exports/psd-zoo/channel/selection/Flutter/) | [25.00%](exports/psd-zoo/channel/selection/LVGL/) |
 | [<img src="images/imagedata/psd-zoo/channel/selection.png" width="140">](images/imagedata/psd-zoo/channel/selection.png) | [<img src="images/psdview/psd-zoo/channel/selection.png" width="140">](images/psdview/psd-zoo/channel/selection.png) | [<img src="images/qtquick/psd-zoo/channel/selection.png" width="140">](images/qtquick/psd-zoo/channel/selection.png) | [<img src="images/slint/psd-zoo/channel/selection.png" width="140">](images/slint/psd-zoo/channel/selection.png) | [<img src="images/flutter/psd-zoo/channel/selection.png" width="140">](images/flutter/psd-zoo/channel/selection.png) | [<img src="images/lvgl/psd-zoo/channel/selection.png" width="140">](images/lvgl/psd-zoo/channel/selection.png) |
-| [spot_color.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/spot_color.psd) | 100.00% | [0.00%](exports/psd-zoo/channel/spot_color/QtQuick/) | [0.00%](exports/psd-zoo/channel/spot_color/Slint/) | [0.00%](exports/psd-zoo/channel/spot_color/Flutter/) | [0.00%](exports/psd-zoo/channel/spot_color/LVGL/) |
+| [spot_color.psd](https://github.com/signal-slot/psd-zoo/tree/main/channel/spot_color.psd) | 0.00% | [0.00%](exports/psd-zoo/channel/spot_color/QtQuick/) | [0.00%](exports/psd-zoo/channel/spot_color/Slint/) | [0.00%](exports/psd-zoo/channel/spot_color/Flutter/) | [0.00%](exports/psd-zoo/channel/spot_color/LVGL/) |
 | [<img src="images/imagedata/psd-zoo/channel/spot_color.png" width="140">](images/imagedata/psd-zoo/channel/spot_color.png) | [<img src="images/psdview/psd-zoo/channel/spot_color.png" width="140">](images/psdview/psd-zoo/channel/spot_color.png) | [<img src="images/qtquick/psd-zoo/channel/spot_color.png" width="140">](images/qtquick/psd-zoo/channel/spot_color.png) | [<img src="images/slint/psd-zoo/channel/spot_color.png" width="140">](images/slint/psd-zoo/channel/spot_color.png) | [<img src="images/flutter/psd-zoo/channel/spot_color.png" width="140">](images/flutter/psd-zoo/channel/spot_color.png) | [<img src="images/lvgl/psd-zoo/channel/spot_color.png" width="140">](images/lvgl/psd-zoo/channel/spot_color.png) |
 
 ## color_mode
