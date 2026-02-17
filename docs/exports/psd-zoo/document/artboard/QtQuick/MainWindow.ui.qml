@@ -12,5 +12,12 @@ Item {
             x: 0
             y: 0
         }
+        Rectangle {
+            color: "#ffffff"
+            height: 400
+            width: 400
+            x: 0
+            y: 0
+        }
     }
 }

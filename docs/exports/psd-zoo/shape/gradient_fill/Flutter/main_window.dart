@@ -27,11 +27,21 @@ class MainWindow extends StatelessWidget {
             left: 29,
             top: 29,
             width: 142,
-            child: Image.asset(
-              "assets/images/gradient_shape.png", 
-              fit: BoxFit.contain,
-              height: 142,
-              width: 142,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment(-0.298656, -0.298656),
+                  colors: [
+                    Color.fromARGB(255, 255, 0, 0),
+                    Color.fromARGB(255, 0, 0, 255),
+                  ],
+                  end: Alignment(1.11556, 1.11556),
+                  stops: [
+                    0,
+                    1,
+                  ],
+                ),
+              ),
             ),
           ),
         ],

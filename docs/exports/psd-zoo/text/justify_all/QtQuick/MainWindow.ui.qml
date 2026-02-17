@@ -18,6 +18,7 @@ Item {
         height: 181
         horizontalAlignment: Text.AlignLeft
         text: "This text is fully justified including the last line of each paragraph."
+        verticalAlignment: Text.AlignBottom
         width: 283
         wrapMode: Text.Wrap
         x: 10

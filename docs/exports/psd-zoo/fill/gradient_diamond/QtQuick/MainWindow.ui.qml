@@ -11,12 +11,4 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 200
-        source: "images/diamond_gradient.png"
-        width: 200
-        x: 0
-        y: 0
-    }
 }

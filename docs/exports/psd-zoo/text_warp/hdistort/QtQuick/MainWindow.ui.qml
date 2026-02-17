@@ -15,9 +15,10 @@ Item {
         color: "#000000"
         font.family: "Roboto"
         font.pixelSize: 28
-        height: 32
+        height: 37
         horizontalAlignment: Text.AlignLeft
         text: "DISTORT"
+        verticalAlignment: Text.AlignBottom
         width: 114
         x: 50
         y: 91

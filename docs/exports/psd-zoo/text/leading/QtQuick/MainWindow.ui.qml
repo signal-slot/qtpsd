@@ -15,9 +15,10 @@ Item {
         color: "#000000"
         font.family: "Roboto"
         font.pixelSize: 24
-        height: 123
+        height: 32
         horizontalAlignment: Text.AlignLeft
         text: "Line A\nLine B\nLine C"
+        verticalAlignment: Text.AlignBottom
         width: 66
         x: 30
         y: 35

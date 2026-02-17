@@ -15,11 +15,12 @@ Item {
         color: "#000000"
         font.family: "Roboto"
         font.pixelSize: 21
-        height: 88
+        height: 28
         horizontalAlignment: Text.AlignLeft
         text: "Rotated"
-        width: 89
-        x: 90
-        y: 96
+        verticalAlignment: Text.AlignBottom
+        width: 99
+        x: 71
+        y: 88
     }
 }

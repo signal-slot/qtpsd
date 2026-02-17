@@ -18,6 +18,7 @@ Item {
         height: 161
         horizontalAlignment: Text.AlignLeft
         text: "Internationalization implementation characterization extraordinarily"
+        verticalAlignment: Text.AlignBottom
         width: 160
         wrapMode: Text.Wrap
         x: 20

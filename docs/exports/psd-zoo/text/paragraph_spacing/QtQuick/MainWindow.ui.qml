@@ -18,6 +18,7 @@ Item {
         height: 261
         horizontalAlignment: Text.AlignLeft
         text: "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
+        verticalAlignment: Text.AlignBottom
         width: 360
         wrapMode: Text.Wrap
         x: 20

@@ -18,6 +18,7 @@ Item {
         height: 252
         horizontalAlignment: Text.AlignLeft
         text: "Paragraph text in a bounding box. This text wraps automatically when it reaches the edge of the box."
+        verticalAlignment: Text.AlignBottom
         width: 354
         wrapMode: Text.Wrap
         x: 25

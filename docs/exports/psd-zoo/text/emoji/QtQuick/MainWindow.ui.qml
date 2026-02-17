@@ -13,7 +13,7 @@ Item {
         y: 0
     }
     Item {
-        height: 72
+        height: 36
         width: 203
         x: 30
         y: 72
@@ -28,6 +28,7 @@ Item {
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
                     text: "😀"
+                    verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
@@ -35,6 +36,7 @@ Item {
                     font.family: "Noto Sans"
                     font.pixelSize: 36
                     text: ""
+                    verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
@@ -42,6 +44,7 @@ Item {
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
                     text: "🚀"
+                    verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
@@ -49,6 +52,7 @@ Item {
                     font.family: "Noto Sans"
                     font.pixelSize: 36
                     text: ""
+                    verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
@@ -56,6 +60,7 @@ Item {
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
                     text: "❤"
+                    verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
@@ -63,6 +68,7 @@ Item {
                     font.family: "Noto Sans"
                     font.pixelSize: 36
                     text: ""
+                    verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
@@ -70,6 +76,7 @@ Item {
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
                     text: "🌟"
+                    verticalAlignment: Text.AlignBottom
                 }
             }
         }

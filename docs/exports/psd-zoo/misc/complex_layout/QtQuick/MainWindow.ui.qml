@@ -41,9 +41,10 @@ Item {
             color: "#1e1e1e"
             font.family: "Roboto"
             font.pixelSize: 20
-            height: 23
+            height: 26
             horizontalAlignment: Text.AlignLeft
             text: "Card Title"
+            verticalAlignment: Text.AlignBottom
             width: 87
             x: 80
             y: 59
@@ -55,6 +56,7 @@ Item {
             height: 121
             horizontalAlignment: Text.AlignLeft
             text: "This is body text in a card layout with multiple layers and groups."
+            verticalAlignment: Text.AlignBottom
             width: 250
             wrapMode: Text.Wrap
             x: 80

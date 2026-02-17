@@ -11,10 +11,8 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
+    Item {
         height: 142
-        source: "images/gradient_shape.png"
         width: 142
         x: 29
         y: 29

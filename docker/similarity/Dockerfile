@@ -53,11 +53,16 @@ RUN set -eux; \
     && tar -xJf /tmp/flutter.tar.xz -C /opt \
     && rm -f /tmp/flutter.tar.xz /tmp/flutter_releases.json
 
-RUN curl https://sh.rustup.rs -sSf | bash -s -- -y
-ENV PATH="/opt/flutter/bin:/root/.cargo/bin:${PATH}"
-RUN git config --global --add safe.directory /opt/flutter \
+ENV CARGO_HOME=/usr/local/cargo
+RUN curl https://sh.rustup.rs -sSf | bash -s -- -y --default-toolchain stable --no-modify-path
+ENV PATH="/opt/flutter/bin:${CARGO_HOME}/bin:${PATH}"
+ENV PUB_CACHE=/pub-cache
+RUN mkdir -p ${PUB_CACHE} \
+    && git config --global --add safe.directory /opt/flutter \
     && flutter config --no-analytics \
-    && flutter precache
+    && flutter precache \
+    && chmod -R a+rX /opt/flutter \
+    && chmod -R a+rwX ${PUB_CACHE}
 RUN cargo install slint-viewer --locked
 
 WORKDIR /workspace

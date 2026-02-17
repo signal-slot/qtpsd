@@ -27,11 +27,23 @@ class MainWindow extends StatelessWidget {
             left: 0,
             top: 0,
             width: 300,
-            child: Image.asset(
-              "assets/images/3_color_stops.png", 
-              fit: BoxFit.contain,
-              height: 200,
-              width: 300,
+            child: Container(
+              decoration: (
+                gradient: LinearGradient(
+                  begin: Alignment(-1, 0),
+                  colors: [
+                    Color.fromARGB(255, 255, 0, 0),
+                    Color.fromARGB(255, 0, 255, 0),
+                    Color.fromARGB(255, 0, 0, 255),
+                  ],
+                  end: Alignment(1, 0),
+                  stops: [
+                    0,
+                    0.5,
+                    1,
+                  ],
+                ),
+              ),
             ),
           ),
         ],

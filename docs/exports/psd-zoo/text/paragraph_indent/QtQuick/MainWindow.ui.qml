@@ -18,6 +18,7 @@ Item {
         height: 261
         horizontalAlignment: Text.AlignLeft
         text: "First paragraph with indent. This is a longer text to test paragraph formatting.\n\nSecond paragraph."
+        verticalAlignment: Text.AlignBottom
         width: 360
         wrapMode: Text.Wrap
         x: 20

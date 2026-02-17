@@ -11,12 +11,20 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
+    Rectangle {
         height: 200
-        source: "images/linear_gradient.png"
         width: 200
         x: 0
         y: 0
+        gradient: Gradient {
+            GradientStop {
+                color: "#000000"
+                position: 0
+            }
+            GradientStop {
+                color: "#ffffff"
+                position: 1
+            }
+        }
     }
 }

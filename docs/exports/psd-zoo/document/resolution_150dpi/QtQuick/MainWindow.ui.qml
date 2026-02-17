@@ -15,9 +15,10 @@ Item {
         color: "#000000"
         font.family: "Roboto"
         font.pixelSize: 50
-        height: 56
+        height: 66
         horizontalAlignment: Text.AlignLeft
         text: "150 DPI"
+        verticalAlignment: Text.AlignBottom
         width: 175
         x: 30
         y: 48

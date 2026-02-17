@@ -18,6 +18,7 @@ Item {
         height: 180
         horizontalAlignment: Text.AlignLeft
         text: ""
+        verticalAlignment: Text.AlignBottom
         width: 180
         wrapMode: Text.Wrap
         x: 10

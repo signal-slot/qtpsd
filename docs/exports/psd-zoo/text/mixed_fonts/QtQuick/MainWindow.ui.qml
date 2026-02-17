@@ -15,9 +15,10 @@ Item {
         color: "#000000"
         font.family: "Roboto"
         font.pixelSize: 24
-        height: 27
+        height: 32
         horizontalAlignment: Text.AlignLeft
         text: "Regular"
+        verticalAlignment: Text.AlignBottom
         width: 87
         x: 20
         y: 75
@@ -26,9 +27,10 @@ Item {
         color: "#000000"
         font.family: "Roboto"
         font.pixelSize: 24
-        height: 27
+        height: 32
         horizontalAlignment: Text.AlignLeft
         text: "Bold"
+        verticalAlignment: Text.AlignBottom
         width: 55
         x: 145
         y: 75

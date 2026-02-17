@@ -27,11 +27,21 @@ class MainWindow extends StatelessWidget {
             left: 0,
             top: 0,
             width: 200,
-            child: Image.asset(
-              "assets/images/dithered_gradient.png", 
-              fit: BoxFit.contain,
-              height: 200,
-              width: 200,
+            child: Container(
+              decoration: (
+                gradient: LinearGradient(
+                  begin: Alignment(-1, 0),
+                  colors: [
+                    Color.fromARGB(255, 0, 0, 128),
+                    Color.fromARGB(255, 128, 0, 0),
+                  ],
+                  end: Alignment(1, 0),
+                  stops: [
+                    0,
+                    1,
+                  ],
+                ),
+              ),
             ),
           ),
         ],

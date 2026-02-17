@@ -18,6 +18,7 @@ Item {
         height: 151
         horizontalAlignment: Text.AlignLeft
         text: "This is justified text that should wrap across multiple lines in a text box."
+        verticalAlignment: Text.AlignBottom
         width: 253
         wrapMode: Text.Wrap
         x: 25
