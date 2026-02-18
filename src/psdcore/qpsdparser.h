@@ -63,6 +63,12 @@ public:
      */
     void load(const QString &source);
 
+    void setFileHeader(const QPsdFileHeader &header);
+    void setColorModeData(const QPsdColorModeData &data);
+    void setImageResources(const QPsdImageResources &resources);
+    void setLayerAndMaskInformation(const QPsdLayerAndMaskInformation &info);
+    void setImageData(const QPsdImageData &data);
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

@@ -93,6 +93,31 @@ QPsdImageData QPsdParser::imageData() const
     return d->imageData;
 }
 
+void QPsdParser::setFileHeader(const QPsdFileHeader &header)
+{
+    d->fileHeader = header;
+}
+
+void QPsdParser::setColorModeData(const QPsdColorModeData &data)
+{
+    d->colorModeData = data;
+}
+
+void QPsdParser::setImageResources(const QPsdImageResources &resources)
+{
+    d->imageResources = resources;
+}
+
+void QPsdParser::setLayerAndMaskInformation(const QPsdLayerAndMaskInformation &info)
+{
+    d->layerAndMaskInformation = info;
+}
+
+void QPsdParser::setImageData(const QPsdImageData &data)
+{
+    d->imageData = data;
+}
+
 QByteArray QPsdParser::iccProfile() const
 {
     // ICC Profile resource ID is 0x040F (1039)

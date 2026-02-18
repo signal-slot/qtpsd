@@ -29,6 +29,7 @@ public:
     void fromParser(const QPsdParser &parser) override;
 
     const QPsdAbstractLayerItem *layerItem(const QModelIndex &index) const;
+    void setLayerItem(const QModelIndex &index, QPsdAbstractLayerItem *item);
 
     QImage mergedImage() const;
     QImage documentAlphaMask() const;
