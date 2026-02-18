@@ -24,7 +24,8 @@ public:
 };
 
 QPsdLayerRecord::Private::Private()
-    : opacity(0)
+    : blendMode(QPsdBlend::Normal)
+    , opacity(0)
     , clipping(Base)
     , flags(0)
 {}
