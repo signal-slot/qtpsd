@@ -101,4 +101,24 @@ QPsdGlobalLayerMaskInfo::Kind QPsdGlobalLayerMaskInfo::kind() const
     return d->kind;
 }
 
+void QPsdGlobalLayerMaskInfo::setOverlayColorSpace(quint16 overlayColorSpace)
+{
+    d->overlayColorSpace = overlayColorSpace;
+}
+
+void QPsdGlobalLayerMaskInfo::setColor(const QString &color)
+{
+    d->color = color;
+}
+
+void QPsdGlobalLayerMaskInfo::setOpacity(quint16 opacity)
+{
+    d->opacity = opacity;
+}
+
+void QPsdGlobalLayerMaskInfo::setKind(Kind kind)
+{
+    d->kind = kind;
+}
+
 QT_END_NAMESPACE

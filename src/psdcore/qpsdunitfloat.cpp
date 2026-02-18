@@ -70,6 +70,27 @@ double QPsdUnitFloat::value() const
     return d->value;
 }
 
+QByteArray QPsdUnitFloat::unitToTag(Unit unit)
+{
+    switch (unit) {
+    case Points: return "#Pnt"_ba;
+    case MilliMeters: return "#Mlm"_ba;
+    case Angle: return "#Ang"_ba;
+    case Density: return "#Rsl"_ba;
+    case Distance: return "#Rlt"_ba;
+    case None: return "#Nne"_ba;
+    case Percent: return "#Prc"_ba;
+    case Pixels: return "#Pxl"_ba;
+    }
+    return "#Nne"_ba;
+}
+
+void QPsdUnitFloat::write(QIODevice *dest) const
+{
+    writeByteArray(dest, unitToTag(d->unit));
+    writeDouble(dest, d->value);
+}
+
 QDebug operator<<(QDebug s, const QPsdUnitFloat &value)
 {
     QDebugStateSaver saver(s);

@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationExpaPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -29,6 +31,17 @@ public:
         return result;
     }
 
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        writeU16(&io, 1); // version
+        writeFloat(&io, static_cast<float>(map.value(u"exposure"_s).toDouble()));
+        writeFloat(&io, static_cast<float>(map.value(u"offset"_s).toDouble()));
+        writeFloat(&io, static_cast<float>(map.value(u"gamma"_s).toDouble()));
+        return buf;
+    }
 };
 
 QT_END_NAMESPACE

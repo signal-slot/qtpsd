@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationLclrPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -35,6 +37,25 @@ public:
         skip(source, 6, &length);
         // return colorIndex;
         return colors.at(colorIndex);
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        static const QStringList colors = {
+            "transparent", "#ff0000", "#ff7f00", "#ffff00",
+            "#00ff00", "#0000ff", "#ee82ee", "#808080",
+            "#9fe2bf", "#4b0082", "#ff00ff", "#951d61",
+        };
+        const auto colorStr = data.toString();
+        quint16 colorIndex = 0;
+        int idx = colors.indexOf(colorStr);
+        if (idx >= 0)
+            colorIndex = static_cast<quint16>(idx);
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        writeU16(&io, colorIndex);
+        io.write(QByteArray(6, '\0'));
+        return buf;
     }
 };
 

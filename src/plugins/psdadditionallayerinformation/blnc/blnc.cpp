@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationBlncPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -27,6 +29,24 @@ public:
         result.insert(u"highlights"_s, highlights);
         result.insert(u"preserveLuminosity"_s, preserveLuminosity != 0);
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        const auto writeBalance = [&](const QString &key) {
+            const auto b = map.value(key).toMap();
+            writeS16(&io, static_cast<qint16>(b.value(u"cyanRed"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(b.value(u"magentaGreen"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(b.value(u"yellowBlue"_s).toInt()));
+        };
+        writeBalance(u"shadows"_s);
+        writeBalance(u"midtones"_s);
+        writeBalance(u"highlights"_s);
+        writeU8(&io, map.value(u"preserveLuminosity"_s).toBool() ? 1 : 0);
+        return buf;
     }
 
     QVariant readBalance(QIODevice *source, quint32 *length) const {

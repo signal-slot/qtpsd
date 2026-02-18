@@ -139,4 +139,33 @@ QList<QPsdLinkedLayer::LinkedFile> QPsdLinkedLayer::files() const
     return d->files;
 }
 
+void QPsdLinkedLayer::write(QIODevice *dest) const
+{
+    for (const auto &file : d->files) {
+        // Compute per-file payload size
+        // pascalString(uniqueId, 1): 1-byte length + id bytes + padding to even
+        const quint32 pascalLen = 1 + file.uniqueId.size();
+        const quint32 pascalPadded = pascalLen + (pascalLen % 2 != 0 ? 1 : 0);
+        // writeString(name): S32(charCount) + UTF-16BE chars + 2-byte null
+        const quint32 stringLen = 4 + (file.name.size() + 1) * 2;
+        const quint64 entrySize = 4 /*type*/ + 4 /*version*/
+            + pascalPadded /*uniqueId*/
+            + stringLen /*name*/
+            + 4 /*fileType*/ + 4 /*fileCreator*/
+            + 8 /*dataLength*/ + 1 /*fileOpenDescriptorFlag*/
+            + file.data.size();
+
+        writeU64(dest, entrySize);
+        dest->write("liFD", 4);   // linked file data
+        writeU32(dest, 1);         // version = 1
+        writePascalString(dest, file.uniqueId, 1);
+        writeString(dest, file.name);
+        writeByteArray(dest, file.type.leftJustified(4, '\0', true));
+        dest->write(QByteArray(4, '\0')); // file creator (zeros)
+        writeU64(dest, file.data.size());
+        writeU8(dest, 0);          // no file open descriptor
+        dest->write(file.data);
+    }
+}
+
 QT_END_NAMESPACE

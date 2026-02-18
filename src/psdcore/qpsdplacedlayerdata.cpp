@@ -66,4 +66,12 @@ QPsdDescriptor QPsdPlacedLayerData::descriptor() const
     return d->descriptor;
 }
 
+void QPsdPlacedLayerData::write(QIODevice *dest) const
+{
+    dest->write("soLD", 4);
+    writeU32(dest, 4);   // version
+    writeU32(dest, 16);  // descriptor version
+    d->descriptor.write(dest);
+}
+
 QT_END_NAMESPACE

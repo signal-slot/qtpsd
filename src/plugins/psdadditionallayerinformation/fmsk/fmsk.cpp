@@ -3,6 +3,9 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsdfiltermask.h>
+#include <QtPsdCore/qpsdcolorspace.h>
+
+#include <QtCore/QBuffer>
 
 QT_BEGIN_NAMESPACE
 
@@ -28,6 +31,16 @@ public:
         filterMask.setOpacity(opacity / 100.0);
 
         return QVariant::fromValue(filterMask);
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto mask = data.value<QPsdFilterMask>();
+        writeColorSpace(&io, mask.colorSpace());
+        writeU16(&io, static_cast<quint16>(mask.opacity() * 100));
+        return buf;
     }
 };
 

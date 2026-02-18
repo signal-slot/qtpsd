@@ -24,6 +24,9 @@ public:
     QList<QPsdChannelImageData> channelImageData() const;
     bool hasMergedAlpha() const;
 
+    void setRecords(const QList<QPsdLayerRecord> &records);
+    void setChannelImageData(const QList<QPsdChannelImageData> &channelImageData);
+
     void setFileHeader(const QPsdFileHeader &fileHeader);
 
 private:

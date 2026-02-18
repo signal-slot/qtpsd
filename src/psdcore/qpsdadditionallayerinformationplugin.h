@@ -17,6 +17,7 @@ public:
     explicit QPsdAdditionalLayerInformationPlugin(QObject *parent = nullptr);
 
     virtual QVariant parse(QIODevice *source , quint32 length) const = 0;
+    virtual QByteArray serialize(const QVariant &data) const { Q_UNUSED(data); return {}; }
 
     static QByteArrayList keys() {
         return QPsdAbstractPlugin::keys<QPsdAdditionalLayerInformationPlugin>(QPsdAdditionalLayerInformationFactoryInterface_iid, "psdadditionallayerinformation");

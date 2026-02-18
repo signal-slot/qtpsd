@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationLuniPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -19,6 +21,14 @@ public:
         });
 
         return readString(source, &length);
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        writeString(&io, data.toString());
+        return buf;
     }
 };
 

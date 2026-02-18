@@ -33,6 +33,9 @@ public:
     Unit unit() const;
     double value() const;
 
+    void write(QIODevice *dest) const;
+    static QByteArray unitToTag(Unit unit);
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

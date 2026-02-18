@@ -19,6 +19,7 @@ public:
     ~QPsdImageResources() override;
 
     QList<QPsdImageResourceBlock> imageResourceBlocks() const;
+    void setImageResourceBlocks(const QList<QPsdImageResourceBlock> &blocks);
 
 private:
     class Private;

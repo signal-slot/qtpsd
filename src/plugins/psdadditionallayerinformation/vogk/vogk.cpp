@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsddescriptor.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationVogkPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -25,6 +27,16 @@ public:
 
         QPsdDescriptor descriptor(source, &length);
         return QVariant::fromValue(descriptor);
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        writeU32(&io, 1);
+        writeU32(&io, 16);
+        data.value<QPsdDescriptor>().write(&io);
+        return buf;
     }
 };
 

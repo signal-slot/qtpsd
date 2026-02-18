@@ -63,4 +63,14 @@ quint32 QPsdChannelInfo::length() const
     return d->length;
 }
 
+void QPsdChannelInfo::setId(ChannelID id)
+{
+    d->id = id;
+}
+
+void QPsdChannelInfo::setLength(quint32 length)
+{
+    d->length = length;
+}
+
 QT_END_NAMESPACE

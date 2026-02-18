@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationU16Plugin : public QPsdAdditionalLayerInformationPlugin
@@ -19,6 +21,15 @@ public:
         // Padding
         skip(source, 2, &length);
         return res;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        writeU16(&io, data.value<quint16>());
+        io.write(QByteArray(2, '\0'));
+        return buf;
     }
 };
 

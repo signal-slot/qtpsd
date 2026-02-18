@@ -68,6 +68,8 @@ public:
     FillRule initialFill() const;
     FillRule fillRule() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

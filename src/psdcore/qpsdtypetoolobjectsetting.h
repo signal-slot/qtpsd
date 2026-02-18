@@ -24,6 +24,8 @@ public:
     QRect rect() const;
     QRectF bounds() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

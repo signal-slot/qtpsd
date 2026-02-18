@@ -37,6 +37,8 @@ public:
     bool strokeStyleStrokeAdjust() const;
     int strokeStyleVersion() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsddescriptor.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationLevlPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -33,6 +35,28 @@ public:
         result.insert(u"green"_s, green);
         result.insert(u"blue"_s, blue);
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        const auto writeLevels = [&](const QString &key) {
+            const auto l = map.value(key).toMap();
+            writeU16(&io, static_cast<quint16>(l.value(u"shadowInput"_s).toUInt()));
+            writeU16(&io, static_cast<quint16>(l.value(u"highlightInput"_s).toUInt()));
+            writeU16(&io, static_cast<quint16>(l.value(u"shadowOutput"_s).toUInt()));
+            writeU16(&io, static_cast<quint16>(l.value(u"highlightOutput"_s).toUInt()));
+            writeU16(&io, static_cast<quint16>(l.value(u"midtoneInput"_s).toUInt()));
+        };
+        writeLevels(u"rgb"_s);
+        writeLevels(u"red"_s);
+        writeLevels(u"green"_s);
+        writeLevels(u"blue"_s);
+        // 592 bytes of unknown data (lost during parse)
+        io.write(QByteArray(592, '\0'));
+        return buf;
     }
 
     QVariant readLevels(QIODevice *source, quint32 *length) const {

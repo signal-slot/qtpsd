@@ -48,6 +48,16 @@ QByteArray QPsdEnum::value() const
     return d->value;
 }
 
+void QPsdEnum::write(QIODevice *dest) const
+{
+    // Write type: S32 length (0 means 4-byte key) + bytes
+    writeS32(dest, d->type.size() == 4 ? 0 : d->type.size());
+    writeByteArray(dest, d->type);
+    // Write value: S32 length (0 means 4-byte key) + bytes
+    writeS32(dest, d->value.size() == 4 ? 0 : d->value.size());
+    writeByteArray(dest, d->value);
+}
+
 QDebug operator<<(QDebug s, const QPsdEnum &value)
 {
     QDebugStateSaver saver(s);

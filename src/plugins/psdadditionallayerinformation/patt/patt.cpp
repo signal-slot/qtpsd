@@ -232,6 +232,131 @@ public:
         }
         return QVariant::fromValue(result);
     }
+
+    QByteArray serialize(const QVariant &data) const override {
+        const auto hash = data.value<QVariantHash>();
+        QByteArray result;
+        QBuffer output(&result);
+        output.open(QIODevice::WriteOnly);
+
+        for (auto it = hash.constBegin(); it != hash.constEnd(); ++it) {
+            const QByteArray uniqueID = it.key().toLatin1();
+            const QImage image = it.value().value<QImage>();
+            if (image.isNull())
+                continue;
+
+            const QImage argbImage = image.convertToFormat(QImage::Format_ARGB32);
+            const int w = argbImage.width();
+            const int h = argbImage.height();
+            const int pixelCount = w * h;
+
+            // Determine if grayscale (all R==G==B)
+            bool isGrayscale = true;
+            for (int y = 0; y < h && isGrayscale; ++y) {
+                const auto *line = reinterpret_cast<const QRgb *>(argbImage.constScanLine(y));
+                for (int x = 0; x < w; ++x) {
+                    if (qRed(line[x]) != qGreen(line[x]) || qRed(line[x]) != qBlue(line[x])) {
+                        isGrayscale = false;
+                        break;
+                    }
+                }
+            }
+
+            const quint32 imageMode = isGrayscale ? 1 : 3;
+            const quint32 channelCount = isGrayscale ? 1 : 3;
+
+            // Extract channel data from image
+            QList<QByteArray> channelDataList;
+            if (isGrayscale) {
+                QByteArray grayData(pixelCount, Qt::Uninitialized);
+                for (int y = 0; y < h; ++y) {
+                    const auto *line = reinterpret_cast<const QRgb *>(argbImage.constScanLine(y));
+                    for (int x = 0; x < w; ++x) {
+                        grayData[y * w + x] = static_cast<char>(qRed(line[x]));
+                    }
+                }
+                channelDataList.append(grayData);
+            } else {
+                QByteArray rData(pixelCount, Qt::Uninitialized);
+                QByteArray gData(pixelCount, Qt::Uninitialized);
+                QByteArray bData(pixelCount, Qt::Uninitialized);
+                for (int y = 0; y < h; ++y) {
+                    const auto *line = reinterpret_cast<const QRgb *>(argbImage.constScanLine(y));
+                    for (int x = 0; x < w; ++x) {
+                        const int idx = y * w + x;
+                        rData[idx] = static_cast<char>(qRed(line[x]));
+                        gData[idx] = static_cast<char>(qGreen(line[x]));
+                        bData[idx] = static_cast<char>(qBlue(line[x]));
+                    }
+                }
+                channelDataList.append(rData);
+                channelDataList.append(gData);
+                channelDataList.append(bData);
+            }
+
+            // Build VMAL data
+            QByteArray vmalData;
+            {
+                QBuffer vmalBuf(&vmalData);
+                vmalBuf.open(QIODevice::WriteOnly);
+
+                const QRect patternRect(0, 0, w, h);
+                writeRectangle(&vmalBuf, patternRect);
+                writeU32(&vmalBuf, channelCount);
+
+                // Actual image channels
+                for (quint32 ch = 0; ch < channelCount; ++ch) {
+                    writeU32(&vmalBuf, 1); // isWritten
+                    const QByteArray &rawData = channelDataList[ch];
+                    // size = U32(depth) + Rectangle(16) + U16(depth) + U8(compression) + rawData
+                    const quint32 channelSize = 4 + 16 + 2 + 1 + rawData.size();
+                    writeU32(&vmalBuf, channelSize);
+                    writeU32(&vmalBuf, 8); // pixel depth
+                    writeRectangle(&vmalBuf, patternRect);
+                    writeU16(&vmalBuf, 8); // pixel depth
+                    writeU8(&vmalBuf, 0);  // raw compression
+                    writeByteArray(&vmalBuf, rawData);
+                }
+
+                // User mask (not written)
+                writeU32(&vmalBuf, 0);
+                // Sheet mask (not written)
+                writeU32(&vmalBuf, 0);
+            }
+
+            // Build pattern data
+            QByteArray patternData;
+            {
+                QBuffer patternBuf(&patternData);
+                patternBuf.open(QIODevice::WriteOnly);
+
+                writeU32(&patternBuf, 1); // version
+                writeU32(&patternBuf, imageMode);
+                writeU16(&patternBuf, 0); // point vertical
+                writeU16(&patternBuf, 0); // point horizontal
+                writeString(&patternBuf, QString::fromLatin1(uniqueID)); // name (use uniqueID)
+                writePascalString(&patternBuf, uniqueID, 1);
+
+                // VMAL: version + size + data
+                writeU32(&patternBuf, 3); // VMAL version
+                writeU32(&patternBuf, vmalData.size());
+                writeByteArray(&patternBuf, vmalData);
+            }
+
+            // Write pattern length + data + padding
+            const quint32 patternLength = patternData.size();
+            writeU32(&output, patternLength);
+            writeByteArray(&output, patternData);
+
+            // Pad to 4-byte boundary based on patternLength
+            if (patternLength % 4 != 0) {
+                const int padBytes = 4 - (patternLength % 4);
+                output.write(QByteArray(padBytes, '\0'));
+            }
+        }
+
+        return result;
+    }
 };
 
 QT_END_NAMESPACE

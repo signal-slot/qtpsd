@@ -78,6 +78,11 @@ QByteArray QPsdImageData::imageData() const
     return d->imageData;
 }
 
+void QPsdImageData::setImageData(const QByteArray &imageData)
+{
+    d->imageData = imageData;
+}
+
 const unsigned char *QPsdImageData::gray() const
 {
     return reinterpret_cast<const unsigned char *>(d->imageData.constData());

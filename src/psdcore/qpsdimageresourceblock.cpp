@@ -85,4 +85,19 @@ QByteArray QPsdImageResourceBlock::data() const
     return d->data;
 }
 
+void QPsdImageResourceBlock::setId(quint16 id)
+{
+    d->id = id;
+}
+
+void QPsdImageResourceBlock::setName(const QByteArray &name)
+{
+    d->name = name;
+}
+
+void QPsdImageResourceBlock::setData(const QByteArray &data)
+{
+    d->data = data;
+}
+
 QT_END_NAMESPACE

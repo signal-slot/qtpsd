@@ -67,4 +67,14 @@ QByteArray QPsdMetadataItem::data() const
     return d->data;
 }
 
+void QPsdMetadataItem::write(QIODevice *dest) const
+{
+    dest->write("8BIM", 4);
+    writeByteArray(dest, d->key.leftJustified(4, '\0', true));
+    writeU8(dest, d->copyOnSheetDuplication);
+    dest->write(QByteArray(3, '\0'));
+    writeU32(dest, d->data.size());
+    dest->write(d->data);
+}
+
 QT_END_NAMESPACE

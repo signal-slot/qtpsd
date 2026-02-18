@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationCurvPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -66,6 +68,61 @@ public:
             result.insert(u"extraCurves"_s, extraCurves);
 
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+
+        const auto writeCurve = [&](const QVariantList &points) {
+            writeU16(&io, static_cast<quint16>(points.size()));
+            for (const auto &p : points) {
+                const auto pt = p.toMap();
+                writeS16(&io, static_cast<qint16>(pt.value(u"input"_s).toInt()));
+                writeS16(&io, static_cast<qint16>(pt.value(u"output"_s).toInt()));
+            }
+        };
+
+        writeU8(&io, 0);  // v1 (lost during parse)
+        writeU16(&io, 1);  // version
+
+        if (map.contains(u"curves"_s)) {
+            // channelsVersion 4 format
+            const auto curves = map.value(u"curves"_s).toList();
+            writeU16(&io, 4);  // channelsVersion
+            writeU16(&io, static_cast<quint16>(curves.size()));
+            for (const auto &c : curves)
+                writeCurve(c.toList());
+        } else {
+            // Bitmask format
+            quint16 channels = 0;
+            if (map.contains(u"rgb"_s)) channels |= 1;
+            if (map.contains(u"red"_s)) channels |= 2;
+            if (map.contains(u"green"_s)) channels |= 4;
+            if (map.contains(u"blue"_s)) channels |= 8;
+            writeU16(&io, 1);  // channelsVersion
+            writeU16(&io, channels);
+            if (channels & 1) writeCurve(map.value(u"rgb"_s).toList());
+            if (channels & 2) writeCurve(map.value(u"red"_s).toList());
+            if (channels & 4) writeCurve(map.value(u"green"_s).toList());
+            if (channels & 8) writeCurve(map.value(u"blue"_s).toList());
+        }
+
+        io.write("Crv ", 4);
+        writeU16(&io, 0);  // version2 (lost during parse)
+        writeU16(&io, 0);  // version3 (lost during parse)
+
+        const auto extraCurves = map.value(u"extraCurves"_s).toList();
+        writeU16(&io, static_cast<quint16>(extraCurves.size()));
+        for (const auto &entry : extraCurves) {
+            const auto e = entry.toMap();
+            writeU16(&io, static_cast<quint16>(e.value(u"channelIndex"_s).toUInt()));
+            writeCurve(e.value(u"points"_s).toList());
+        }
+
+        return buf;
     }
 
     QVariant readCurve(QIODevice *source, quint32 *length) const {

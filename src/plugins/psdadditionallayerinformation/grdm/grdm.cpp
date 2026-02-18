@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsdcolorspace.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationGrdmPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -103,6 +105,66 @@ public:
         skip(source, 2, &length);
 
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+
+        const bool hasMethod = map.contains(u"method"_s);
+        writeU16(&io, hasMethod ? 3 : 1);  // version
+        writeU8(&io, map.value(u"reverse"_s).toBool() ? 1 : 0);
+        writeU8(&io, map.value(u"dither"_s).toBool() ? 1 : 0);
+
+        if (hasMethod) {
+            const auto method = map.value(u"method"_s).toString().toLatin1().leftJustified(4, '\0', true);
+            io.write(method);
+        }
+
+        writeString(&io, map.value(u"name"_s).toString());
+
+        const auto colorStops = map.value(u"colorStops"_s).toList();
+        writeU16(&io, static_cast<quint16>(colorStops.size()));
+        for (const auto &s : colorStops) {
+            const auto stop = s.toMap();
+            writeU32(&io, stop.value(u"location"_s).toUInt());
+            writeU32(&io, stop.value(u"midpoint"_s).toUInt());
+            io.write(QByteArray(10, '\0'));  // color space (lost during parse)
+            io.write(QByteArray(2, '\0'));   // unknown padding
+        }
+
+        const auto transparencyStops = map.value(u"transparencyStops"_s).toList();
+        writeU16(&io, static_cast<quint16>(transparencyStops.size()));
+        for (const auto &s : transparencyStops) {
+            const auto stop = s.toMap();
+            writeU32(&io, stop.value(u"location"_s).toUInt());
+            writeU32(&io, stop.value(u"midpoint"_s).toUInt());
+            writeU16(&io, static_cast<quint16>(stop.value(u"opacity"_s).toUInt()));
+        }
+
+        writeU16(&io, 2);  // expansionCount
+        writeU16(&io, static_cast<quint16>(map.value(u"interpolation"_s).toUInt()));
+        writeU16(&io, 32);  // len
+        writeU16(&io, static_cast<quint16>(map.value(u"gradientMode"_s).toUInt()));
+        writeU32(&io, map.value(u"randomSeed"_s).toUInt());
+        writeU16(&io, map.value(u"showTransparency"_s).toBool() ? 1 : 0);
+        writeU16(&io, map.value(u"useVectorColor"_s).toBool() ? 1 : 0);
+        writeU32(&io, map.value(u"roughness"_s).toUInt());
+        writeU16(&io, static_cast<quint16>(map.value(u"colorModel"_s).toUInt()));
+
+        const auto minColor = map.value(u"minColor"_s).toList();
+        for (int i = 0; i < 4; ++i)
+            writeU16(&io, static_cast<quint16>(i < minColor.size() ? minColor.at(i).toUInt() : 0));
+
+        const auto maxColor = map.value(u"maxColor"_s).toList();
+        for (int i = 0; i < 4; ++i)
+            writeU16(&io, static_cast<quint16>(i < maxColor.size() ? maxColor.at(i).toUInt() : 0));
+
+        io.write(QByteArray(2, '\0'));  // final padding
+
+        return buf;
     }
 };
 

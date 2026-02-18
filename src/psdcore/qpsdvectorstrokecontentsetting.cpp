@@ -14,6 +14,8 @@ Q_LOGGING_CATEGORY(lcQPsdVectorStrokeContentSetting, "qt.psdcore.vscg")
 class QPsdVectorStrokeContentSetting::Private : public QSharedData
 {
 public:
+    QByteArray contentKey;
+    QPsdDescriptor descriptor;
     Type type;
     QString solidColor;
     GradientType gradientType = Linear;
@@ -42,14 +44,16 @@ QPsdVectorStrokeContentSetting::QPsdVectorStrokeContentSetting(QIODevice *source
     });
 
     // Key for data
-    const auto key = readByteArray(source, 4, &length);
+    d->contentKey = readByteArray(source, 4, &length);
+    const auto &key = d->contentKey;
 
     // Version ( = 16 )
     const auto version = readU32(source, &length);
     Q_ASSERT(version == 16);
 
     // Descriptor of placed layer information
-    QPsdDescriptor descriptor(source, &length);
+    d->descriptor = QPsdDescriptor(source, &length);
+    const auto &descriptor = d->descriptor;
 
     if (key == "SoCo") {
         d->type = SolidColor;
@@ -242,6 +246,13 @@ qreal QPsdVectorStrokeContentSetting::patternScale() const
 qreal QPsdVectorStrokeContentSetting::patternOpacity() const
 {
     return d->opacity;
+}
+
+void QPsdVectorStrokeContentSetting::write(QIODevice *dest) const
+{
+    writeByteArray(dest, d->contentKey.leftJustified(4, '\0', true));
+    writeU32(dest, 16); // version
+    d->descriptor.write(dest);
 }
 
 QT_END_NAMESPACE

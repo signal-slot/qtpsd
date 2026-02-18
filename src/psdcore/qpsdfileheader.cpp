@@ -112,4 +112,29 @@ QPsdFileHeader::ColorMode QPsdFileHeader::colorMode() const
     return d->colorMode;
 }
 
+void QPsdFileHeader::setChannels(quint16 channels)
+{
+    d->channels = channels;
+}
+
+void QPsdFileHeader::setHeight(quint32 height)
+{
+    d->height = height;
+}
+
+void QPsdFileHeader::setWidth(quint32 width)
+{
+    d->width = width;
+}
+
+void QPsdFileHeader::setDepth(quint16 depth)
+{
+    d->depth = depth;
+}
+
+void QPsdFileHeader::setColorMode(ColorMode colorMode)
+{
+    d->colorMode = colorMode;
+}
+
 QT_END_NAMESPACE

@@ -306,4 +306,62 @@ QPsdVectorMaskSetting::FillRule QPsdVectorMaskSetting::fillRule() const
     return d->fillRule;
 }
 
+void QPsdVectorMaskSetting::write(QIODevice *dest) const
+{
+    // Version
+    writeU32(dest, 3);
+    // Flags
+    writeU32(dest, d->flags);
+
+    // Path fill rule record (type 6): 2-byte type + 2-byte fillRule + 22 zero-pad = 26 bytes
+    writeU16(dest, 6);
+    writeU16(dest, static_cast<quint16>(d->fillRule));
+    dest->write(QByteArray(22, '\0'));
+
+    // Initial fill rule record (type 8): 2-byte type + 2-byte initialFill + 22 zero-pad = 26 bytes
+    writeU16(dest, 8);
+    writeU16(dest, static_cast<quint16>(d->initialFill));
+    dest->write(QByteArray(22, '\0'));
+
+    // Clipboard record (type 7) if we have a valid clipboard rect
+    if (!d->clipboardRect.isNull() || d->clipboardResolution != 0) {
+        writeU16(dest, 7);
+        writePathNumber(dest, d->clipboardRect.top());
+        writePathNumber(dest, d->clipboardRect.left());
+        writePathNumber(dest, d->clipboardRect.bottom() + 1);
+        writePathNumber(dest, d->clipboardRect.right() + 1);
+        writePathNumber(dest, d->clipboardResolution);
+        dest->write(QByteArray(2, '\0'));
+    }
+
+    // Sub paths
+    for (const auto &pathInfo : d->subPathList) {
+        // Subpath length record
+        const quint16 lengthRecordType = (d->type == Open) ? 3 : 0;
+        writeU16(dest, lengthRecordType);
+        writeU16(dest, static_cast<quint16>(pathInfo.subPath.size()));
+        writeU16(dest, static_cast<quint16>(pathInfo.operation));
+        writeU16(dest, pathInfo.fillRule == NonZero ? 2 : 0);
+        dest->write(QByteArray(16, '\0'));
+
+        // Bezier knot records
+        for (const auto &knot : pathInfo.subPath) {
+            quint16 knotType;
+            if (d->type == Open) {
+                knotType = (knot.type == BezierPath::Linked) ? 4 : 5;
+            } else {
+                knotType = (knot.type == BezierPath::Linked) ? 1 : 2;
+            }
+            writeU16(dest, knotType);
+            // preceding (y, x), anchor (y, x), leaving (y, x)
+            writePathNumber(dest, knot.preceding.y());
+            writePathNumber(dest, knot.preceding.x());
+            writePathNumber(dest, knot.anchor.y());
+            writePathNumber(dest, knot.anchor.x());
+            writePathNumber(dest, knot.leaving.y());
+            writePathNumber(dest, knot.leaving.x());
+        }
+    }
+}
+
 QT_END_NAMESPACE

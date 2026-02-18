@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationU32Plugin : public QPsdAdditionalLayerInformationPlugin
@@ -16,6 +18,14 @@ public:
             Q_ASSERT(length == 0);
         });
         return readU32(source, &length);
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        writeU32(&io, data.value<quint32>());
+        return buf;
     }
 };
 

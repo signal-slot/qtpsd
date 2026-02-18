@@ -26,6 +26,10 @@ public:
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
     bool hasMergedAlpha() const;
 
+    void setLayerInfo(const QPsdLayerInfo &layerInfo);
+    void setGlobalLayerMaskInfo(const QPsdGlobalLayerMaskInfo &globalLayerMaskInfo);
+    void setAdditionalLayerInformation(const QHash<QByteArray, QVariant> &info);
+
     void setFileHeader(const QPsdFileHeader &fileHeader);
 
 private:

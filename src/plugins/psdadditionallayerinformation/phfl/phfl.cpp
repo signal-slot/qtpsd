@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsdcolorspace.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationPhflPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -42,6 +44,27 @@ public:
         result.insert(u"density"_s, density);
         result.insert(u"preserveLuminosity"_s, preserveLuminosity != 0);
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        if (map.contains(u"labColor"_s)) {
+            writeU16(&io, 3); // version 3
+            const auto lab = map.value(u"labColor"_s).toMap();
+            writeS32(&io, lab.value(u"l"_s).toInt());
+            writeS32(&io, lab.value(u"a"_s).toInt());
+            writeS32(&io, lab.value(u"b"_s).toInt());
+        } else {
+            // version 2 color space data was lost (toString), write zeros
+            writeU16(&io, 2);
+            io.write(QByteArray(10, '\0')); // color space placeholder
+        }
+        writeS32(&io, map.value(u"density"_s).toInt());
+        writeU8(&io, map.value(u"preserveLuminosity"_s).toBool() ? 1 : 0);
+        return buf;
     }
 };
 
