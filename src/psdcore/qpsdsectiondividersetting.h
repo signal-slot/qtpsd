@@ -33,6 +33,8 @@ public:
     QPsdBlend::Mode key() const;
     SubType subType() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

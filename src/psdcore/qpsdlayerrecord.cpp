@@ -189,4 +189,54 @@ void QPsdLayerRecord::setImageData(const QPsdChannelImageData &imageData)
     d->imageData = imageData;
 }
 
+void QPsdLayerRecord::setRect(const QRect &rect)
+{
+    d->rect = rect;
+}
+
+void QPsdLayerRecord::setChannelInfo(const QList<QPsdChannelInfo> &channelInfo)
+{
+    d->channelInfo = channelInfo;
+}
+
+void QPsdLayerRecord::setBlendMode(QPsdBlend::Mode blendMode)
+{
+    d->blendMode = blendMode;
+}
+
+void QPsdLayerRecord::setOpacity(quint8 opacity)
+{
+    d->opacity = opacity;
+}
+
+void QPsdLayerRecord::setClipping(Clipping clipping)
+{
+    d->clipping = clipping;
+}
+
+void QPsdLayerRecord::setFlags(quint8 flags)
+{
+    d->flags = flags;
+}
+
+void QPsdLayerRecord::setName(const QByteArray &name)
+{
+    d->name = name;
+}
+
+void QPsdLayerRecord::setAdditionalLayerInformation(const QHash<QByteArray, QVariant> &info)
+{
+    d->additionalLayerInformation = info;
+}
+
+void QPsdLayerRecord::setLayerMaskAdjustmentLayerData(const QPsdLayerMaskAdjustmentLayerData &data)
+{
+    d->layerMaskAdjustmentLayerData = data;
+}
+
+void QPsdLayerRecord::setLayerBlendingRangesData(const QPsdLayerBlendingRangesData &data)
+{
+    d->layerBlendingRangesData = data;
+}
+
 QT_END_NAMESPACE

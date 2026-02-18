@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationBritPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -29,6 +31,19 @@ public:
         result.insert(u"meanValue"_s, mean);
         result.insert(u"labColorOnly"_s, lab != 0);
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        writeS16(&io, static_cast<qint16>(map.value(u"brightness"_s).toInt()));
+        writeS16(&io, static_cast<qint16>(map.value(u"contrast"_s).toInt()));
+        writeU16(&io, static_cast<quint16>(map.value(u"meanValue"_s).toUInt()));
+        writeU8(&io, map.value(u"labColorOnly"_s).toBool() ? 1 : 0);
+        io.write(QByteArray(1, '\0')); // padding
+        return buf;
     }
 };
 

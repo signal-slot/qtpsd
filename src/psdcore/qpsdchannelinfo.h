@@ -29,6 +29,9 @@ public:
     ChannelID id() const;
     quint32 length() const;
 
+    void setId(ChannelID id);
+    void setLength(quint32 length);
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

@@ -13,6 +13,7 @@ Q_LOGGING_CATEGORY(lcQPsdVectorStrokeData, "qt.psdcore.vstk")
 class QPsdVectorStrokeData::Private : public QSharedData
 {
 public:
+    QPsdDescriptor descriptor;
     bool fillEnabled = false;
     bool strokeEnabled = false;
     QPsdBlend::Mode strokeStyleBlendMode = QPsdBlend::Invalid;
@@ -63,8 +64,8 @@ QPsdVectorStrokeData::QPsdVectorStrokeData(QIODevice *source, quint32 length)
     // Version ( = 16 for Photoshop 6.0)
     auto version = readU32(source, &length);
     Q_ASSERT(version == 16);
-    QPsdDescriptor descriptor(source, &length);
-    const auto data = descriptor.data();
+    d->descriptor = QPsdDescriptor(source, &length);
+    const auto data = d->descriptor.data();
     auto keys = data.keys();
     std::sort(keys.begin(), keys.end(), std::less<QString>());
     for (const auto &key : keys) {
@@ -76,9 +77,9 @@ QPsdVectorStrokeData::QPsdVectorStrokeData(QIODevice *source, quint32 length)
         FOREACH(STOREVALUE);
 #undef STOREVALUE
         if (key == "strokeStyleContent") {
-            const auto descriptor = value.value<QPsdDescriptor>();
-            if (descriptor.data().size() == 1) {
-                const auto clr_ = descriptor.data().value("Clr ").value<QPsdDescriptor>().data();
+            const auto contentDescriptor = value.value<QPsdDescriptor>();
+            if (contentDescriptor.data().size() == 1) {
+                const auto clr_ = contentDescriptor.data().value("Clr ").value<QPsdDescriptor>().data();
                 const int rd__ = clr_.value("Rd  ").toDouble();
                 const int grn_ = clr_.value("Grn ").toDouble();
                 const int bl__ = clr_.value("Bl  ").toDouble();
@@ -128,5 +129,11 @@ QPsdVectorStrokeData::~QPsdVectorStrokeData() = default;
     decltype(QPsdVectorStrokeData::Private::name) QPsdVectorStrokeData::name() const { return d->name; }
 FOREACH(GETTER)
 #undef GETTER
+
+void QPsdVectorStrokeData::write(QIODevice *dest) const
+{
+    writeU32(dest, 16); // version
+    d->descriptor.write(dest);
+}
 
 QT_END_NAMESPACE

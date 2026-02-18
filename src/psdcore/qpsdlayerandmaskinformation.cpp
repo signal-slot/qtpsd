@@ -76,6 +76,21 @@ QHash<QByteArray, QVariant> QPsdLayerAndMaskInformation::additionalLayerInformat
     return d->additionalLayerInformation;
 }
 
+void QPsdLayerAndMaskInformation::setLayerInfo(const QPsdLayerInfo &layerInfo)
+{
+    d->layerInfo = layerInfo;
+}
+
+void QPsdLayerAndMaskInformation::setGlobalLayerMaskInfo(const QPsdGlobalLayerMaskInfo &globalLayerMaskInfo)
+{
+    d->globalLayerMaskInfo = globalLayerMaskInfo;
+}
+
+void QPsdLayerAndMaskInformation::setAdditionalLayerInformation(const QHash<QByteArray, QVariant> &info)
+{
+    d->additionalLayerInformation = info;
+}
+
 void QPsdLayerAndMaskInformation::setFileHeader(const QPsdFileHeader &fileHeader)
 {
     d->layerInfo.setFileHeader(fileHeader);

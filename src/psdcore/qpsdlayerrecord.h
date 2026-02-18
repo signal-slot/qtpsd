@@ -43,6 +43,17 @@ public:
     QByteArray name() const;
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
 
+    void setRect(const QRect &rect);
+    void setChannelInfo(const QList<QPsdChannelInfo> &channelInfo);
+    void setBlendMode(QPsdBlend::Mode blendMode);
+    void setOpacity(quint8 opacity);
+    void setClipping(Clipping clipping);
+    void setFlags(quint8 flags);
+    void setName(const QByteArray &name);
+    void setAdditionalLayerInformation(const QHash<QByteArray, QVariant> &info);
+    void setLayerMaskAdjustmentLayerData(const QPsdLayerMaskAdjustmentLayerData &data);
+    void setLayerBlendingRangesData(const QPsdLayerBlendingRangesData &data);
+
     QPsdChannelImageData imageData() const;
     void setImageData(const QPsdChannelImageData &imageData);
 

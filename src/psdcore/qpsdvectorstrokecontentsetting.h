@@ -46,6 +46,8 @@ public:
     qreal patternScale() const;
     qreal patternOpacity() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

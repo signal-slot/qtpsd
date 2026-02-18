@@ -5,6 +5,7 @@
 #include "qpsdcolorspace.h"
 
 #include <QtCore/QStringDecoder>
+#include <QtCore/QStringEncoder>
 
 QT_BEGIN_NAMESPACE
 
@@ -174,17 +175,62 @@ double QPsdSection::readPathNumber(QIODevice *source, quint32 *length)
 QPsdColorSpace QPsdSection::readColorSpace(QIODevice *source, quint32 *length)
 {
     QPsdColorSpace colorSpace;
-    
+
     // Read color space ID (2 bytes)
     colorSpace.setId(static_cast<QPsdColorSpace::Id>(readU16(source, length)));
-    
+
     // Read four 16-bit color values (8 bytes total)
     colorSpace.color().raw.value1 = readU16(source, length);
     colorSpace.color().raw.value2 = readU16(source, length);
     colorSpace.color().raw.value3 = readU16(source, length);
     colorSpace.color().raw.value4 = readU16(source, length);
-    
+
     return colorSpace;
+}
+
+void QPsdSection::writeString(QIODevice *dest, const QString &str)
+{
+    // Unicode string: U32 charCount + UTF-16BE code units
+    // The charCount includes the null terminator
+    if (str.isEmpty()) {
+        writeS32(dest, 0);
+        return;
+    }
+    QStringEncoder encoder(QStringEncoder::Utf16BE);
+    QByteArray encoded = encoder.encode(str);
+    // charCount = number of UTF-16 code units + 1 for null terminator
+    qint32 charCount = encoded.size() / 2 + 1;
+    writeS32(dest, charCount);
+    dest->write(encoded);
+    // Write null terminator (2 bytes)
+    dest->write(QByteArray(2, '\0'));
+}
+
+void QPsdSection::writeColorSpace(QIODevice *dest, const QPsdColorSpace &cs)
+{
+    writeU16(dest, static_cast<quint16>(cs.id()));
+    writeU16(dest, cs.color().raw.value1);
+    writeU16(dest, cs.color().raw.value2);
+    writeU16(dest, cs.color().raw.value3);
+    writeU16(dest, cs.color().raw.value4);
+}
+
+void QPsdSection::writePathNumber(QIODevice *dest, double value)
+{
+    // Fixed-point 8.24 format: 1 byte integer + 3 bytes fraction
+    auto a = static_cast<qint8>(value);
+    double frac = value - static_cast<double>(a);
+    if (frac < 0) {
+        a--;
+        frac += 1.0;
+    }
+    auto b = static_cast<quint32>(frac * std::pow(2, 24) + 0.5);
+    if (b > 0xFFFFFF)
+        b = 0xFFFFFF;
+    writeU8(dest, static_cast<quint8>(a));
+    writeU8(dest, static_cast<quint8>((b >> 16) & 0xFF));
+    writeU8(dest, static_cast<quint8>((b >> 8) & 0xFF));
+    writeU8(dest, static_cast<quint8>(b & 0xFF));
 }
 
 QT_END_NAMESPACE

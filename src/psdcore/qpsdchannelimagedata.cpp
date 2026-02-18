@@ -123,6 +123,11 @@ QByteArray QPsdChannelImageData::userSuppliedLayerMask() const
     return d->imageData.contains(QPsdChannelInfo::UserSuppliedLayerMask) ? d->imageData.value(QPsdChannelInfo::UserSuppliedLayerMask) : QByteArray();
 }
 
+void QPsdChannelImageData::setChannelData(QPsdChannelInfo::ChannelID channelId, const QByteArray &data)
+{
+    d->imageData.insert(channelId, data);
+}
+
 const unsigned char *QPsdChannelImageData::gray() const
 {
     return r();

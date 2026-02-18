@@ -22,6 +22,8 @@ public:
     quint8 copyOnSheetDuplication() const;
     QByteArray data() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

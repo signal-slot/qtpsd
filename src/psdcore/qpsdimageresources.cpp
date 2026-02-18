@@ -57,4 +57,9 @@ QList<QPsdImageResourceBlock> QPsdImageResources::imageResourceBlocks() const
     return d->imageResourceBlocks;
 }
 
+void QPsdImageResources::setImageResourceBlocks(const QList<QPsdImageResourceBlock> &blocks)
+{
+    d->imageResourceBlocks = blocks;
+}
+
 QT_END_NAMESPACE

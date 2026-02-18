@@ -23,6 +23,9 @@ public:
     QList<QPsdLayerRecord> records() const;
     QList<QPsdChannelImageData> channelImageData() const;
 
+    void setRecords(const QList<QPsdLayerRecord> &records);
+    void setChannelImageData(const QList<QPsdChannelImageData> &channelImageData);
+
     void setFileHeader(const QPsdFileHeader &fileHeader);
 
 private:

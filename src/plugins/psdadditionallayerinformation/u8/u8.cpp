@@ -19,6 +19,12 @@ public:
         skip(source, 3, &length);
         return ret;
     }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf(4, '\0');
+        buf[0] = static_cast<char>(data.value<quint8>());
+        return buf;
+    }
 };
 
 QT_END_NAMESPACE

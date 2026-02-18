@@ -22,6 +22,8 @@ public:
     QByteArray type() const;
     QByteArray value() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

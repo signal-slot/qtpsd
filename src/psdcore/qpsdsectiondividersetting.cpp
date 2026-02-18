@@ -72,4 +72,14 @@ QPsdSectionDividerSetting::SubType QPsdSectionDividerSetting::subType() const
     return d->subType;
 }
 
+void QPsdSectionDividerSetting::write(QIODevice *dest) const
+{
+    writeU32(dest, static_cast<quint32>(d->type));
+    if (d->key != QPsdBlend::Invalid) {
+        dest->write("8BIM", 4);
+        writeByteArray(dest, QPsdBlend::toKey(d->key).leftJustified(4, ' ', true));
+        writeU32(dest, static_cast<quint32>(d->subType));
+    }
+}
+
 QT_END_NAMESPACE

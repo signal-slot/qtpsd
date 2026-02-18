@@ -127,4 +127,27 @@ QRectF QPsdTypeToolObjectSetting::bounds() const
     return d->bounds;
 }
 
+void QPsdTypeToolObjectSetting::write(QIODevice *dest) const
+{
+    // Version
+    writeU16(dest, 1);
+    // Transform: xx, xy, yx, yy, tx, ty
+    for (int i = 0; i < 6; ++i)
+        writeDouble(dest, i < d->transform.size() ? d->transform.at(i) : 0.0);
+    // Text version
+    writeU16(dest, 50);
+    // Descriptor version
+    writeU32(dest, 16);
+    // Text data
+    d->textData.write(dest);
+    // Warp version
+    writeU16(dest, 1);
+    // Descriptor version
+    writeU32(dest, 16);
+    // Warp data
+    d->warpData.write(dest);
+    // Rectangle: left, top, right, bottom (as S32)
+    writeRectangle(dest, d->rect);
+}
+
 QT_END_NAMESPACE

@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsddescriptor.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationLfx2Plugin : public QPsdAdditionalLayerInformationPlugin
@@ -26,6 +28,16 @@ public:
         // Descriptor. Based on the Action file format structure
         QPsdDescriptor descriptor(source, &length);
         return QVariant::fromValue(descriptor);
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        writeU32(&io, 0);
+        writeU32(&io, 16);
+        data.value<QPsdDescriptor>().write(&io);
+        return buf;
     }
 };
 

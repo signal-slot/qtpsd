@@ -28,14 +28,15 @@ public:
     QPsdFileHeader header() const;
     void setHeader(const QPsdFileHeader &header);
 
+    void setWidth(quint32 width);
+    void setHeight(quint32 height);
+    void setOpacity(quint8 opacity);
+
     virtual QByteArray imageData() const = 0;
     virtual bool hasAlpha() const { return false; }
     QByteArray toImage(QPsdFileHeader::ColorMode colorMode) const;
 
 protected:
-    void setWidth(quint32 width);
-    void setHeight(quint32 height);
-    void setOpacity(quint8 opacity);
 
     virtual const unsigned char *gray() const = 0;
     virtual const unsigned char *r() const = 0;

@@ -33,6 +33,12 @@ public:
     quint16 depth() const;
     ColorMode colorMode() const;
 
+    void setChannels(quint16 channels);
+    void setHeight(quint32 height);
+    void setWidth(quint32 width);
+    void setDepth(quint16 depth);
+    void setColorMode(ColorMode colorMode);
+
     QSize size() const { return QSize(width(), height()); }
 
 private:

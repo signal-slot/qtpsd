@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsdmetadataitem.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationShmdPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -25,6 +27,18 @@ public:
             ret.append(QVariant::fromValue(item));
         }
         return ret;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto list = data.toList();
+        writeU32(&io, list.size());
+        for (const auto &item : list) {
+            item.value<QPsdMetadataItem>().write(&io);
+        }
+        return buf;
     }
 };
 

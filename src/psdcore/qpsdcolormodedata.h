@@ -18,6 +18,7 @@ public:
     ~QPsdColorModeData() override;
 
     QByteArray colorData() const;
+    void setColorData(const QByteArray &colorData);
 
 private:
     class Private;

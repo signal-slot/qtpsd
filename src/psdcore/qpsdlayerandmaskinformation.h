@@ -25,6 +25,10 @@ public:
     QPsdGlobalLayerMaskInfo globalLayerMaskInfo() const;
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
 
+    void setLayerInfo(const QPsdLayerInfo &layerInfo);
+    void setGlobalLayerMaskInfo(const QPsdGlobalLayerMaskInfo &globalLayerMaskInfo);
+    void setAdditionalLayerInformation(const QHash<QByteArray, QVariant> &info);
+
     void setFileHeader(const QPsdFileHeader &fileHeader);
 
 private:

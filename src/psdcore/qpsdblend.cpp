@@ -40,6 +40,41 @@ Mode from(const QByteArray &key) {
          };
     return converter.value(key, Invalid);
 }
+
+QByteArray toKey(Mode mode) {
+    static const QHash<Mode, QByteArray> converter =
+        {
+         { PassThrough, "pass" },
+         { Normal, "norm" },
+         { Dissolve, "diss" },
+         { Darken, "dark" },
+         { Multiply, "mul " },
+         { ColorBurn, "idiv" },
+         { LinearBurn, "lbrn" },
+         { DarkerColor, "dkCl" },
+         { Lighten, "lite" },
+         { Screen, "scrn" },
+         { ColorDodge, "div " },
+         { LinearDodge, "lddg" },
+         { LighterColor, "lgCl" },
+         { Overlay, "over" },
+         { SoftLight, "sLit" },
+         { HardLight, "hLit" },
+         { VividLight, "vLit" },
+         { LinearLight, "lLit" },
+         { PinLight, "pLit" },
+         { HardMix, "hMix" },
+         { Difference, "diff" },
+         { Exclusion, "smud" },
+         { Subtract, "fsub" },
+         { Divide, "fdiv" },
+         { Hue, "hue " },
+         { Saturation, "sat " },
+         { Color, "colr" },
+         { Luminosity, "lum " },
+         };
+    return converter.value(mode, "norm");
+}
 }
 
 QT_END_NAMESPACE

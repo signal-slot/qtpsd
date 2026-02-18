@@ -21,6 +21,10 @@ public:
     QByteArray name() const;
     QByteArray data() const;
 
+    void setId(quint16 id);
+    void setName(const QByteArray &name);
+    void setData(const QByteArray &data);
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

@@ -28,6 +28,11 @@ public:
     quint16 opacity() const;
     Kind kind() const;
 
+    void setOverlayColorSpace(quint16 overlayColorSpace);
+    void setColor(const QString &color);
+    void setOpacity(quint16 opacity);
+    void setKind(Kind kind);
+
 private:
     class Private;
     QSharedDataPointer<Private> d;

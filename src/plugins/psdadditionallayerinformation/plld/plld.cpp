@@ -4,6 +4,8 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsdplacedlayer.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationPlLdPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -14,6 +16,14 @@ public:
     // Placed Layer (replaced by SoLd in Photoshop CS3)
     QVariant parse(QIODevice *source , quint32 length) const override {
         return QVariant::fromValue(QPsdPlacedLayer(source, length));
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        data.value<QPsdPlacedLayer>().write(&io);
+        return buf;
     }
 };
 

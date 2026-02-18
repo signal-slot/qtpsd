@@ -52,6 +52,7 @@ namespace QPsdBlend {
     };
 
     Q_PSDCORE_EXPORT Mode from(const QByteArray &key);
+    Q_PSDCORE_EXPORT QByteArray toKey(Mode mode);
 }
 
 #endif // QPSDBLENDH_H

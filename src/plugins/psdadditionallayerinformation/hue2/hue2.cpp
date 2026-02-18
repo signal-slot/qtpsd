@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationHue2Plugin : public QPsdAdditionalLayerInformationPlugin
@@ -37,6 +39,26 @@ public:
         result.insert(u"blues"_s, blues);
         result.insert(u"magentas"_s, magentas);
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        writeU16(&io, 2); // version
+        const QStringList keys = {u"master"_s, u"reds"_s, u"yellows"_s, u"greens"_s, u"cyans"_s, u"blues"_s, u"magentas"_s};
+        for (const auto &key : keys) {
+            const auto h = map.value(key).toMap();
+            writeS16(&io, static_cast<qint16>(h.value(u"a"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(h.value(u"b"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(h.value(u"c"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(h.value(u"d"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(h.value(u"hue"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(h.value(u"saturation"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(h.value(u"lightness"_s).toInt()));
+        }
+        return buf;
     }
 
     QVariant readHue(QIODevice *source, quint32 *length) const {

@@ -3,6 +3,8 @@
 
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
+#include <QtCore/QBuffer>
+
 QT_BEGIN_NAMESPACE
 
 class QPsdAdditionalLayerInformationSelcPlugin : public QPsdAdditionalLayerInformationPlugin
@@ -36,6 +38,26 @@ public:
         result.insert(u"blacks"_s, readSelectiveColors(source, &length));
 
         return result;
+    }
+
+    QByteArray serialize(const QVariant &data) const override {
+        QByteArray buf;
+        QBuffer io(&buf);
+        io.open(QIODevice::WriteOnly);
+        const auto map = data.toMap();
+        writeU16(&io, 1); // version
+        const quint16 mode = map.value(u"mode"_s).toString() == u"absolute"_s ? 1 : 0;
+        writeU16(&io, mode);
+        io.write(QByteArray(8, '\0')); // padding
+        const QStringList keys = {u"reds"_s, u"yellows"_s, u"greens"_s, u"cyans"_s, u"blues"_s, u"magentas"_s, u"whites"_s, u"neutrals"_s, u"blacks"_s};
+        for (const auto &key : keys) {
+            const auto sc = map.value(key).toMap();
+            writeS16(&io, static_cast<qint16>(sc.value(u"c"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(sc.value(u"m"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(sc.value(u"y"_s).toInt()));
+            writeS16(&io, static_cast<qint16>(sc.value(u"k"_s).toInt()));
+        }
+        return buf;
     }
 
     QVariant readSelectiveColors(QIODevice *source, quint32 *length) const {

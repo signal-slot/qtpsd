@@ -98,6 +98,76 @@ protected:
 
     static double readPathNumber(QIODevice *source, quint32 *length = nullptr);
 
+public:
+    template<typename T>
+    static void write(QIODevice *dest, T value) {
+        T be = qToBigEndian(value);
+        dest->write(reinterpret_cast<const char *>(&be), sizeof(T));
+    }
+
+    static void writeU8(QIODevice *dest, quint8 value) {
+        dest->write(reinterpret_cast<const char *>(&value), 1);
+    }
+    static void writeU16(QIODevice *dest, quint16 value) {
+        write<quint16>(dest, value);
+    }
+    static void writeU32(QIODevice *dest, quint32 value) {
+        write<quint32>(dest, value);
+    }
+    static void writeS16(QIODevice *dest, qint16 value) {
+        write<qint16>(dest, value);
+    }
+    static void writeS32(QIODevice *dest, qint32 value) {
+        write<qint32>(dest, value);
+    }
+
+    static void writeByteArray(QIODevice *dest, const QByteArray &data) {
+        dest->write(data);
+    }
+
+    static void writePascalString(QIODevice *dest, const QByteArray &str, int padding = 1) {
+        writeU8(dest, static_cast<quint8>(str.size()));
+        if (!str.isEmpty())
+            dest->write(str);
+        // Pad so that total (1 + str.size()) is a multiple of padding
+        int total = 1 + str.size();
+        if (padding > 1 && total % padding != 0) {
+            int padBytes = padding - (total % padding);
+            dest->write(QByteArray(padBytes, '\0'));
+        }
+    }
+
+    static void writeRectangle(QIODevice *dest, const QRect &rect) {
+        writeS32(dest, rect.top());
+        writeS32(dest, rect.left());
+        writeS32(dest, rect.bottom() + 1);
+        writeS32(dest, rect.right() + 1);
+    }
+
+    static void writeU64(QIODevice *dest, quint64 value) {
+        write<quint64>(dest, value);
+    }
+
+    static void writeDouble(QIODevice *dest, double value) {
+        write<double>(dest, value);
+    }
+
+    static void writeFloat(QIODevice *dest, float value) {
+        write<float>(dest, value);
+    }
+
+    static void writeString(QIODevice *dest, const QString &str);
+    static void writeColorSpace(QIODevice *dest, const QPsdColorSpace &cs);
+    static void writePathNumber(QIODevice *dest, double value);
+
+    static void writePadding(QIODevice *dest, int alignment) {
+        if (alignment > 1 && dest->pos() % alignment != 0) {
+            int padBytes = alignment - (dest->pos() % alignment);
+            dest->write(QByteArray(padBytes, '\0'));
+        }
+    }
+
+protected:
     static int even(int size)
     {
         return size % 2 == 0 ? size : size + 1;

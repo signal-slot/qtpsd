@@ -23,6 +23,8 @@ public:
     QByteArray imageData() const override;
     bool hasAlpha() const override;
 
+    void setImageData(const QByteArray &imageData);
+
 protected:
     const unsigned char *a() const override;
     const unsigned char *gray() const override;

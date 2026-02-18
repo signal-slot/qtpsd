@@ -56,4 +56,9 @@ QByteArray QPsdColorModeData::colorData() const
     return d->colorData;
 }
 
+void QPsdColorModeData::setColorData(const QByteArray &colorData)
+{
+    d->colorData = colorData;
+}
+
 QT_END_NAMESPACE

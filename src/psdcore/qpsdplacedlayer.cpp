@@ -14,7 +14,12 @@ class QPsdPlacedLayer::Private : public QSharedData
 {
 public:
     QByteArray uniqueID;
-    double transform[8];
+    quint32 pageNumber = 1;
+    quint32 totalPages = 1;
+    quint32 antiAliasPolicy = 16;
+    quint32 placedLayerType = 0;
+    double transform[8] = {};
+    QPsdDescriptor warpDescriptor;
 };
 
 QPsdPlacedLayer::QPsdPlacedLayer()
@@ -43,20 +48,20 @@ QPsdPlacedLayer::QPsdPlacedLayer(QIODevice *source, quint32 length)
     qCDebug(lcQPsdPlacedLayer) << "uniqueID" << d->uniqueID;
 
     //Page number
-    auto pageNumber = readU32(source, &length);
-    qCDebug(lcQPsdPlacedLayer) << "pageNumber" << pageNumber;
+    d->pageNumber = readU32(source, &length);
+    qCDebug(lcQPsdPlacedLayer) << "pageNumber" << d->pageNumber;
 
     // Total pages
-    auto totalPages = readU32(source, &length);
-    qCDebug(lcQPsdPlacedLayer) << "totalPages" << totalPages;
+    d->totalPages = readU32(source, &length);
+    qCDebug(lcQPsdPlacedLayer) << "totalPages" << d->totalPages;
 
     // Anit alias policy
-    auto antiAliasPolicy = readU32(source, &length);
-    qCDebug(lcQPsdPlacedLayer) << "antiAliasPolicy" << antiAliasPolicy;
+    d->antiAliasPolicy = readU32(source, &length);
+    qCDebug(lcQPsdPlacedLayer) << "antiAliasPolicy" << d->antiAliasPolicy;
 
     // Placed layer type: 0 = unknown, 1 = vector, 2 = raster, 3 = image stack
-    auto placedLayerType = readU32(source, &length);
-    qCDebug(lcQPsdPlacedLayer) << "placedLayerType" << placedLayerType;
+    d->placedLayerType = readU32(source, &length);
+    qCDebug(lcQPsdPlacedLayer) << "placedLayerType" << d->placedLayerType;
 
     //Transformation: 8 doubles for x,y location of transform points
     d->transform[0] = readDouble(source, &length);
@@ -78,7 +83,7 @@ QPsdPlacedLayer::QPsdPlacedLayer(QIODevice *source, quint32 length)
     Q_ASSERT(warpDescriptorVersion == 16);
 
     // Descriptor for warping information
-    QPsdDescriptor worpDescriptor(source, &length);
+    d->warpDescriptor = QPsdDescriptor(source, &length);
 }
 
 QPsdPlacedLayer::QPsdPlacedLayer(const QPsdPlacedLayer &other)
@@ -100,6 +105,22 @@ QPsdPlacedLayer::~QPsdPlacedLayer() = default;
 QByteArray QPsdPlacedLayer::uniqueId() const
 {
     return d->uniqueID;
+}
+
+void QPsdPlacedLayer::write(QIODevice *dest) const
+{
+    dest->write("plcL", 4);
+    writeU32(dest, 3); // version
+    writePascalString(dest, d->uniqueID, 1);
+    writeU32(dest, d->pageNumber);
+    writeU32(dest, d->totalPages);
+    writeU32(dest, d->antiAliasPolicy);
+    writeU32(dest, d->placedLayerType);
+    for (int i = 0; i < 8; ++i)
+        writeDouble(dest, d->transform[i]);
+    writeU32(dest, 0);  // warp version
+    writeU32(dest, 16); // warp descriptor version
+    d->warpDescriptor.write(dest);
 }
 
 QT_END_NAMESPACE

@@ -26,6 +26,8 @@ public:
     };
     QList<LinkedFile> files() const;
 
+    void write(QIODevice *dest) const;
+
 private:
     class Private;
     QSharedDataPointer<Private> d;
