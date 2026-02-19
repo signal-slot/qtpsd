@@ -4,6 +4,7 @@
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 
 #include <QtCore/QBuffer>
+#include <QtCore/QStringEncoder>
 
 QT_BEGIN_NAMESPACE
 
@@ -24,10 +25,20 @@ public:
     }
 
     QByteArray serialize(const QVariant &data) const override {
+        // luni format: S32(charCount) + UTF-16BE chars, padded to 4-byte boundary
+        // charCount = number of actual characters (no null terminator counted)
         QByteArray buf;
         QBuffer io(&buf);
         io.open(QIODevice::WriteOnly);
-        writeString(&io, data.toString());
+        const QString str = data.toString();
+        QStringEncoder encoder(QStringEncoder::Utf16BE);
+        QByteArray encoded = encoder.encode(str);
+        writeS32(&io, encoded.size() / 2);
+        io.write(encoded);
+        // Pad to 4-byte boundary (trailing null bytes)
+        int remainder = buf.size() % 4;
+        if (remainder != 0)
+            io.write(QByteArray(4 - remainder, '\0'));
         return buf;
     }
 };

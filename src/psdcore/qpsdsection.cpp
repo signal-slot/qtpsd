@@ -190,12 +190,8 @@ QPsdColorSpace QPsdSection::readColorSpace(QIODevice *source, quint32 *length)
 
 void QPsdSection::writeString(QIODevice *dest, const QString &str)
 {
-    // Unicode string: U32 charCount + UTF-16BE code units
-    // The charCount includes the null terminator
-    if (str.isEmpty()) {
-        writeS32(dest, 0);
-        return;
-    }
+    // Unicode string: U32 charCount + UTF-16BE code units + null terminator
+    // PSD convention: even empty strings include the null terminator (charCount=1)
     QStringEncoder encoder(QStringEncoder::Utf16BE);
     QByteArray encoded = encoder.encode(str);
     // charCount = number of UTF-16 code units + 1 for null terminator

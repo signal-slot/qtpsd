@@ -25,6 +25,8 @@ public:
     void setClassID(const QByteArray &classID);
     QHash<QByteArray, QVariant> data() const;
     void setData(const QHash<QByteArray, QVariant> &data);
+    QList<QByteArray> keyOrder() const;
+    void setKeyOrder(const QList<QByteArray> &keyOrder);
 
     void write(QIODevice *dest) const;
 

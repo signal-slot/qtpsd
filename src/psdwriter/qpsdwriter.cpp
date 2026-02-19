@@ -372,15 +372,21 @@ bool QPsdWriter::write(QIODevice *device) const
                         if (plugin)
                             payload = plugin->serialize(value);
                     }
-                    if (!payload.isEmpty()) {
+                    // Write entry if payload is non-empty, or if the parsed value
+                    // was valid (e.g. Patt with no patterns has valid QVariantHash
+                    // but empty serialized payload). Skip only for invalid QVariant
+                    // (plugins that discard data, like lmsk/lr16/anno/feid).
+                    if (!payload.isEmpty() || value.isValid()) {
                         extraBuf.write("8BIM", 4);
                         extraBuf.write(key.leftJustified(4, '\0', true));
+                        // Per-layer ALI: length field includes 4-byte-aligned padding
                         quint32 paddedSize = payload.size();
-                        if (paddedSize % 2 != 0) paddedSize++;
+                        int remainder = paddedSize % 4;
+                        if (remainder != 0) paddedSize += (4 - remainder);
                         QPsdSection::writeU32(&extraBuf, paddedSize);
                         extraBuf.write(payload);
-                        if (payload.size() % 2 != 0)
-                            extraBuf.write(QByteArray(1, '\0'));
+                        if (paddedSize > static_cast<quint32>(payload.size()))
+                            extraBuf.write(QByteArray(paddedSize - payload.size(), '\0'));
                     }
                 }
                 extraBuf.close();
@@ -452,7 +458,7 @@ bool QPsdWriter::write(QIODevice *device) const
                 if (plugin)
                     payload = plugin->serialize(value);
             }
-            if (!payload.isEmpty()) {
+            if (!payload.isEmpty() || value.isValid()) {
                 lmiBuf.write("8BIM", 4);
                 lmiBuf.write(key.leftJustified(4, '\0', true));
                 // Top-level ALI: length is actual payload size,

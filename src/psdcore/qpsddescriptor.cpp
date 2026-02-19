@@ -19,6 +19,7 @@ public:
     QString name;
     QByteArray classID;
     QHash<QByteArray, QVariant> data;
+    QList<QByteArray> keyOrder;
     void parse(QIODevice *source, quint32 *length);
 };
 
@@ -47,6 +48,7 @@ void QPsdDescriptor::Private::parse(QIODevice *source, quint32 *length)
         if (plugin) {
             auto value = plugin->parse(source, length);
             data.insert(key, value);
+            keyOrder.append(key);
             if (value.typeId() == QMetaType::QByteArray) {
                 value = value.toByteArray().left(20);
             }
@@ -131,6 +133,16 @@ QHash<QByteArray, QVariant> QPsdDescriptor::data() const
 void QPsdDescriptor::setData(const QHash<QByteArray, QVariant> &data)
 {
     d->data = data;
+}
+
+QList<QByteArray> QPsdDescriptor::keyOrder() const
+{
+    return d->keyOrder;
+}
+
+void QPsdDescriptor::setKeyOrder(const QList<QByteArray> &keyOrder)
+{
+    d->keyOrder = keyOrder;
 }
 
 static QByteArray inferOsType(const QVariant &value)
@@ -272,18 +284,24 @@ void QPsdDescriptor::write(QIODevice *dest) const
     // Item count
     writeS32(dest, d->data.size());
 
-    // Items
-    for (auto it = d->data.constBegin(); it != d->data.constEnd(); ++it) {
+    // Items — use keyOrder for deterministic output matching original parse order
+    const auto &keys = d->keyOrder.isEmpty()
+        ? d->data.keys()
+        : d->keyOrder;
+    for (const auto &key : keys) {
+        if (!d->data.contains(key))
+            continue;
+        const auto &value = d->data.value(key);
         // Key: S32(size) + bytes. Size 0 means exactly 4 bytes.
-        writeS32(dest, it.key().size() == 4 ? 0 : it.key().size());
-        writeByteArray(dest, it.key());
+        writeS32(dest, key.size() == 4 ? 0 : key.size());
+        writeByteArray(dest, key);
 
         // osType
-        const auto osType = inferOsType(it.value());
+        const auto osType = inferOsType(value);
         dest->write(osType.leftJustified(4, '\0', true));
 
         // Value
-        writeDescriptorValue(dest, osType, it.value());
+        writeDescriptorValue(dest, osType, value);
     }
 }
 
