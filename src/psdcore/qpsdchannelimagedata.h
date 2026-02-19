@@ -33,6 +33,11 @@ public:
     Compression channelCompression(QPsdChannelInfo::ChannelID channelId) const;
     void setChannelCompression(QPsdChannelInfo::ChannelID channelId, Compression compression);
 
+#ifdef QT_PSD_RAW_ROUND_TRIP
+    QByteArray rawChannelBytes(QPsdChannelInfo::ChannelID channelId) const;
+    void setRawChannelBytes(QPsdChannelInfo::ChannelID channelId, const QByteArray &data);
+#endif
+
 protected:
     const unsigned char *gray() const override;
     const unsigned char *r() const override;

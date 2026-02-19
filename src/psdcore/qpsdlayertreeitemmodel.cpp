@@ -297,16 +297,18 @@ void QPsdLayerTreeItemModel::fromParser(const QPsdParser &parser)
 
         // Layer structure
         if (additionalLayerInformation.contains("lsdk")) {
-            const auto lsdk = additionalLayerInformation.value("lsdk").toInt();
-            switch (lsdk) {
-            case 1:
+            const auto lsdk = additionalLayerInformation.value("lsdk").template value<QPsdSectionDividerSetting>();
+            switch (lsdk.type()) {
+            case QPsdSectionDividerSetting::OpenFolder:
                 folderType = FolderType::OpenFolder;
                 break;
-            case 2:
+            case QPsdSectionDividerSetting::ClosedFolder:
                 folderType = FolderType::ClosedFolder;
                 break;
-            case 3:
+            case QPsdSectionDividerSetting::BoundingSectionDivider:
                 isCloseFolder = true;
+                break;
+            default:
                 break;
             }
         } else {

@@ -14,6 +14,7 @@ public:
     QPsdDescriptor warpData;
     QRect rect;
     QRectF bounds;
+    QByteArray rawData;
 };
 
 QPsdTypeToolObjectSetting::QPsdTypeToolObjectSetting()
@@ -147,8 +148,24 @@ QRectF QPsdTypeToolObjectSetting::bounds() const
     return d->bounds;
 }
 
+QByteArray QPsdTypeToolObjectSetting::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdTypeToolObjectSetting::setRawData(const QByteArray &data)
+{
+    d->rawData = data;
+}
+
 void QPsdTypeToolObjectSetting::write(QIODevice *dest) const
 {
+    // Use raw data for lossless round-trip if available
+    if (!d->rawData.isEmpty()) {
+        dest->write(d->rawData);
+        return;
+    }
+
     // Version
     writeU16(dest, 1);
     // Transform: xx, xy, yx, yy, tx, ty

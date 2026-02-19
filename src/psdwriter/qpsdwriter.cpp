@@ -249,6 +249,14 @@ bool QPsdWriter::write(QIODevice *device) const
                     QByteArray encoded;
                     if (ri < channelImageDataList.size()) {
                         const auto &cid = channelImageDataList.at(ri);
+#ifdef QT_PSD_RAW_ROUND_TRIP
+                        // Use raw compressed bytes for lossless round-trip if available
+                        const QByteArray rawBytes = cid.rawChannelBytes(ci.id());
+                        if (!rawBytes.isEmpty()) {
+                            encoded = rawBytes;
+                        } else
+#endif
+                        {
                         const QByteArray channelData = cid.channelData(ci.id());
                         const auto compression = cid.channelCompression(ci.id());
                         if (!channelData.isEmpty()) {
@@ -292,6 +300,7 @@ bool QPsdWriter::write(QIODevice *device) const
                             QPsdSection::writeU16(&comprBuf, 0);
                             comprBuf.close();
                             encoded = comprBuf.data();
+                        }
                         }
                     } else {
                         // No channel image data for this record
@@ -379,7 +388,7 @@ bool QPsdWriter::write(QIODevice *device) const
                     if (!payload.isEmpty() || value.isValid()) {
                         extraBuf.write("8BIM", 4);
                         extraBuf.write(key.leftJustified(4, '\0', true));
-                        // Per-layer ALI: length field includes 4-byte-aligned padding
+                        // Per-layer ALI: length field includes padding to 4-byte boundary
                         quint32 paddedSize = payload.size();
                         int remainder = paddedSize % 4;
                         if (remainder != 0) paddedSize += (4 - remainder);
@@ -477,6 +486,13 @@ bool QPsdWriter::write(QIODevice *device) const
 
     // === Section 5: Image Data ===
     {
+#ifdef QT_PSD_RAW_ROUND_TRIP
+        const QByteArray rawImgBytes = d->imageData.rawImageBytes();
+        if (!rawImgBytes.isEmpty()) {
+            device->write(rawImgBytes);
+        } else
+#endif
+        {
         const QByteArray &imgData = d->imageData.imageData();
         const quint16 compression = d->imageData.compression();
         switch (compression) {
@@ -510,6 +526,7 @@ bool QPsdWriter::write(QIODevice *device) const
             if (!imgData.isEmpty())
                 device->write(imgData);
             break;
+        }
         }
     }
 

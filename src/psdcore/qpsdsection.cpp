@@ -234,6 +234,9 @@ QByteArray QPsdSection::encodePackBits(const QByteArray &rawData, int rowWidth, 
     // PSD RLE format:
     // height × uint16 byte counts (per scan line)
     // followed by PackBits-encoded data for each scan line
+    //
+    // Photoshop processes each scanline in 128-byte chunks of raw data,
+    // resetting the encoder state at each chunk boundary.
 
     QByteArray result;
     QList<QByteArray> encodedRows;
@@ -245,37 +248,42 @@ QByteArray QPsdSection::encodePackBits(const QByteArray &rawData, int rowWidth, 
         const int len = qMin(rowWidth, rawData.size() - offset);
 
         QByteArray encoded;
-        int i = 0;
-        while (i < len) {
-            // Look for a run of identical bytes (minimum 2)
-            int runStart = i;
-            while (i + 1 < len && row[i] == row[i + 1] && i - runStart < 127) {
-                ++i;
-            }
-            int runLen = i - runStart + 1;
-
-            if (runLen >= 2) {
-                // Run: emit [-(runLen-1)] [byte]
-                encoded.append(static_cast<char>(-(runLen - 1)));
-                encoded.append(row[runStart]);
-                ++i;
-            } else {
-                // Literal sequence: collect non-run bytes
-                int litStart = runStart;
-                i = runStart;
-                while (i < len) {
-                    // Check if a run of 2+ starts here
-                    if (i + 1 < len && row[i] == row[i + 1]) {
-                        break;
-                    }
+        int chunkStart = 0;
+        while (chunkStart < len) {
+            const int chunkEnd = qMin(chunkStart + 128, len);
+            int i = chunkStart;
+            while (i < chunkEnd) {
+                // Look for a run of identical bytes (minimum 2)
+                int runStart = i;
+                while (i + 1 < chunkEnd && row[i] == row[i + 1] && i - runStart < 127) {
                     ++i;
-                    if (i - litStart >= 128)
-                        break;
                 }
-                int litLen = i - litStart;
-                encoded.append(static_cast<char>(litLen - 1));
-                encoded.append(row + litStart, litLen);
+                int runLen = i - runStart + 1;
+
+                if (runLen >= 2) {
+                    // Run: emit [-(runLen-1)] [byte]
+                    encoded.append(static_cast<char>(-(runLen - 1)));
+                    encoded.append(row[runStart]);
+                    ++i;
+                } else {
+                    // Literal sequence: collect non-run bytes
+                    int litStart = runStart;
+                    i = runStart;
+                    while (i < chunkEnd) {
+                        // Check if a run of 2+ starts here
+                        if (i + 1 < chunkEnd && row[i] == row[i + 1]) {
+                            break;
+                        }
+                        ++i;
+                        if (i - litStart >= 128)
+                            break;
+                    }
+                    int litLen = i - litStart;
+                    encoded.append(static_cast<char>(litLen - 1));
+                    encoded.append(row + litStart, litLen);
+                }
             }
+            chunkStart = chunkEnd;
         }
         encodedRows.append(encoded);
     }

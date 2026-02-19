@@ -13,6 +13,7 @@ class QPsdPlacedLayerData::Private : public QSharedData
 {
 public:
     QPsdDescriptor descriptor;
+    QByteArray rawData;
 };
 
 QPsdPlacedLayerData::QPsdPlacedLayerData()
@@ -66,8 +67,22 @@ QPsdDescriptor QPsdPlacedLayerData::descriptor() const
     return d->descriptor;
 }
 
+QByteArray QPsdPlacedLayerData::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdPlacedLayerData::setRawData(const QByteArray &data)
+{
+    d->rawData = data;
+}
+
 void QPsdPlacedLayerData::write(QIODevice *dest) const
 {
+    if (!d->rawData.isEmpty()) {
+        dest->write(d->rawData);
+        return;
+    }
     dest->write("soLD", 4);
     writeU32(dest, 4);   // version
     writeU32(dest, 16);  // descriptor version

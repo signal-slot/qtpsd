@@ -27,6 +27,14 @@ public:
         if (version == 2) {
             const auto colorSpace = readColorSpace(source, &length);
             result.insert(u"color"_s, colorSpace.toString());
+            // Preserve raw color space data for round-trip
+            QByteArray colorBytes;
+            {
+                QBuffer colorBuf(&colorBytes);
+                colorBuf.open(QIODevice::WriteOnly);
+                writeColorSpace(&colorBuf, colorSpace);
+            }
+            result.insert(u"colorBytes"_s, colorBytes);
         } else {
             const auto l = readS32(source, &length);
             const auto a = readS32(source, &length);
@@ -58,9 +66,13 @@ public:
             writeS32(&io, lab.value(u"a"_s).toInt());
             writeS32(&io, lab.value(u"b"_s).toInt());
         } else {
-            // version 2 color space data was lost (toString), write zeros
             writeU16(&io, 2);
-            io.write(QByteArray(10, '\0')); // color space placeholder
+            const auto colorBytes = map.value(u"colorBytes"_s).toByteArray();
+            if (!colorBytes.isEmpty()) {
+                io.write(colorBytes);
+            } else {
+                io.write(QByteArray(10, '\0'));
+            }
         }
         writeS32(&io, map.value(u"density"_s).toInt());
         writeU8(&io, map.value(u"preserveLuminosity"_s).toBool() ? 1 : 0);

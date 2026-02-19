@@ -12,19 +12,10 @@ class QPsdAdditionalLayerInformationLMskPlugin : public QPsdAdditionalLayerInfor
 public:
     // User Mask
     QVariant parse(QIODevice *source , quint32 length) const override {
-        auto cleanup = qScopeGuard([&] {
-            Q_ASSERT(length == 0);
-        });
-
-        const auto color = readColor(source, &length);
-        Q_UNUSED(color);
-        const auto opacity = readU16(source, &length);
-        Q_UNUSED(opacity);
-        const auto flag = readU8(source, &length);
-        Q_ASSERT(flag == 128);
-        skip(source, 1, &length);
-
-        return {};
+        // Save raw bytes for lossless round-trip
+        const QByteArray rawData = source->read(length);
+        length = 0;
+        return rawData;
     }
 };
 

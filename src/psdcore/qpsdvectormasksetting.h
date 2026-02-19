@@ -68,6 +68,9 @@ public:
     FillRule initialFill() const;
     FillRule fillRule() const;
 
+    QByteArray rawData() const;
+    void setRawData(const QByteArray &data);
+
     void write(QIODevice *dest) const;
 
 private:

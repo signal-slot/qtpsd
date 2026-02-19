@@ -20,6 +20,7 @@ public:
     quint32 placedLayerType = 0;
     double transform[8] = {};
     QPsdDescriptor warpDescriptor;
+    QByteArray rawData;
 };
 
 QPsdPlacedLayer::QPsdPlacedLayer()
@@ -107,8 +108,22 @@ QByteArray QPsdPlacedLayer::uniqueId() const
     return d->uniqueID;
 }
 
+QByteArray QPsdPlacedLayer::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdPlacedLayer::setRawData(const QByteArray &data)
+{
+    d->rawData = data;
+}
+
 void QPsdPlacedLayer::write(QIODevice *dest) const
 {
+    if (!d->rawData.isEmpty()) {
+        dest->write(d->rawData);
+        return;
+    }
     dest->write("plcL", 4);
     writeU32(dest, 3); // version
     writePascalString(dest, d->uniqueID, 1);

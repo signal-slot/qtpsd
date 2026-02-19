@@ -14,6 +14,7 @@ class QPsdLinkedLayer::Private : public QSharedData
 {
 public:
     QList<LinkedFile> files;
+    QByteArray rawData;
 };
 
 QPsdLinkedLayer::QPsdLinkedLayer()
@@ -139,8 +140,22 @@ QList<QPsdLinkedLayer::LinkedFile> QPsdLinkedLayer::files() const
     return d->files;
 }
 
+QByteArray QPsdLinkedLayer::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdLinkedLayer::setRawData(const QByteArray &data)
+{
+    d->rawData = data;
+}
+
 void QPsdLinkedLayer::write(QIODevice *dest) const
 {
+    if (!d->rawData.isEmpty()) {
+        dest->write(d->rawData);
+        return;
+    }
     for (const auto &file : d->files) {
         // Compute per-file payload size
         // pascalString(uniqueId, 1): 1-byte length + id bytes + padding to even

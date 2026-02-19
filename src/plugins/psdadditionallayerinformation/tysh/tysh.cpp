@@ -18,7 +18,14 @@ public:
         auto cleanup = qScopeGuard([&] {
             // Q_ASSERT(length == 0);
         });
+        // Save raw bytes for lossless round-trip
+        const qint64 startPos = source->pos();
+        const quint32 totalLength = length;
         QPsdTypeToolObjectSetting ret(source, &length);
+        const qint64 endPos = source->pos();
+        source->seek(startPos);
+        ret.setRawData(source->read(totalLength));
+        source->seek(endPos);
         return QVariant::fromValue(ret);
     }
 

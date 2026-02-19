@@ -18,6 +18,7 @@ class QPsdEffectsLayer::Private : public QSharedData
 {
 public:
     QVariantList effects;
+    QByteArray rawData;
 };
 
 QPsdEffectsLayer::QPsdEffectsLayer()
@@ -93,8 +94,24 @@ QVariantList QPsdEffectsLayer::effects() const
     return d->effects;
 }
 
+QByteArray QPsdEffectsLayer::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdEffectsLayer::setRawData(const QByteArray &data)
+{
+    d->rawData = data;
+}
+
 void QPsdEffectsLayer::write(QIODevice *dest) const
 {
+    // Use raw data for lossless round-trip if available
+    if (!d->rawData.isEmpty()) {
+        dest->write(d->rawData);
+        return;
+    }
+
     // Color space data is lost during parse (toString()), write zeros as placeholder
     const QByteArray zeroColorSpace(10, '\0');
 

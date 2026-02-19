@@ -65,6 +65,11 @@ qt_internal_add_module(PsdCore
         Qt::CorePrivate
 )
 
+if(QT_PSD_RAW_ROUND_TRIP)
+    target_compile_definitions(PsdCore PRIVATE QT_PSD_RAW_ROUND_TRIP)
+    target_compile_definitions(PsdCore INTERFACE QT_PSD_RAW_ROUND_TRIP)
+endif()
+
 ## Scopes:
 #####################################################################
 

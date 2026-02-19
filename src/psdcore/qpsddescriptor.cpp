@@ -20,6 +20,7 @@ public:
     QByteArray classID;
     QHash<QByteArray, QVariant> data;
     QList<QByteArray> keyOrder;
+    QByteArray rawData;
     void parse(QIODevice *source, quint32 *length);
 };
 
@@ -143,6 +144,16 @@ QList<QByteArray> QPsdDescriptor::keyOrder() const
 void QPsdDescriptor::setKeyOrder(const QList<QByteArray> &keyOrder)
 {
     d->keyOrder = keyOrder;
+}
+
+QByteArray QPsdDescriptor::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdDescriptor::setRawData(const QByteArray &rawData)
+{
+    d->rawData = rawData;
 }
 
 static QByteArray inferOsType(const QVariant &value)

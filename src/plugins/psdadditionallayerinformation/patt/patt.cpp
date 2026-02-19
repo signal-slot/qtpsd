@@ -22,7 +22,14 @@ public:
                 qWarning("patt: %u bytes remaining after parse", length);
         });
 
+        // Save raw bytes for lossless round-trip (must be done before any parsing)
+        const qint64 startPos = source->pos();
+        const quint32 totalLength = length;
+        const QByteArray rawBytes = source->read(totalLength);
+        source->seek(startPos);
+
         QVariantHash result;
+        result.insert(u"__rawData__"_s, rawBytes);
 
         // The following is repeated for each pattern.
         while (length > 20) {
@@ -39,7 +46,7 @@ public:
             auto version = readU32(source, &length);
             if (version != 1) {
                 qWarning("patt: unsupported pattern version %u", version);
-                return {};
+                return QVariant::fromValue(result);
             }
 
             // The image mode of the file. Supported values are: Bitmap = 0; Grayscale = 1; Indexed = 2; RGB = 3; CMYK = 4; Multichannel = 7; Duotone = 8; Lab = 9.
@@ -75,7 +82,7 @@ public:
                 auto version = readU32(source, &length);
                 if (version != 3) {
                     qWarning("patt: unsupported Virtual Memory Array List version %u", version);
-                    return {};
+                    return QVariant::fromValue(result);
                 }
 
                 // Length
@@ -235,6 +242,12 @@ public:
 
     QByteArray serialize(const QVariant &data) const override {
         const auto hash = data.value<QVariantHash>();
+
+        // Use raw bytes for lossless round-trip if available
+        const auto rawData = hash.value(u"__rawData__"_s).toByteArray();
+        if (!rawData.isEmpty())
+            return rawData;
+
         QByteArray result;
         QBuffer output(&result);
         output.open(QIODevice::WriteOnly);

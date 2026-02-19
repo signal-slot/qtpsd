@@ -19,6 +19,7 @@ public:
     QRectF clipboardRect;
     qreal clipboardResolution = 0;
     FillRule initialFill = Same;
+    QByteArray rawData;
 
     static void checkPathType(PathInfo *pathInfo);
 };
@@ -177,7 +178,7 @@ QPsdVectorMaskSetting::QPsdVectorMaskSetting(QIODevice *source, quint32 length)
             pathInfo.operation = static_cast<PathInfo::Operation>(readU16(source, &length));
             // Per-path fill rule: 2 = non-zero winding, otherwise even-odd
             const auto pathFlags = readU16(source, &length);
-            pathInfo.fillRule = (pathFlags == 2) ? NonZero : EvenOdd;
+            pathInfo.fillRule = static_cast<FillRule>(pathFlags);
             qCDebug(lcQPsdVectorMaskSetting) << "pathFlags" << pathFlags << "fillRule" << pathInfo.fillRule;
             break; }
         case 1:   // Closed subpath Bezier knot, linked
@@ -306,8 +307,22 @@ QPsdVectorMaskSetting::FillRule QPsdVectorMaskSetting::fillRule() const
     return d->fillRule;
 }
 
+QByteArray QPsdVectorMaskSetting::rawData() const
+{
+    return d->rawData;
+}
+
+void QPsdVectorMaskSetting::setRawData(const QByteArray &data)
+{
+    d->rawData = data;
+}
+
 void QPsdVectorMaskSetting::write(QIODevice *dest) const
 {
+    if (!d->rawData.isEmpty()) {
+        dest->write(d->rawData);
+        return;
+    }
     // Version
     writeU32(dest, 3);
     // Flags
@@ -341,7 +356,7 @@ void QPsdVectorMaskSetting::write(QIODevice *dest) const
         writeU16(dest, lengthRecordType);
         writeU16(dest, static_cast<quint16>(pathInfo.subPath.size()));
         writeU16(dest, static_cast<quint16>(pathInfo.operation));
-        writeU16(dest, pathInfo.fillRule == NonZero ? 2 : 0);
+        writeU16(dest, static_cast<quint16>(pathInfo.fillRule));
         dest->write(QByteArray(18, '\0'));
 
         // Bezier knot records

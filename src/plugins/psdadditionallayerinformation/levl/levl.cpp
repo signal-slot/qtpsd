@@ -27,13 +27,14 @@ public:
         const auto blue = readLevels(source, &length);
 
         // has many unknown data.. (592 bytes)
-        skip(source, length, &length);
+        const auto unknownData = readByteArray(source, length, &length);
 
         QVariantMap result;
         result.insert(u"rgb"_s, rgb);
         result.insert(u"red"_s, red);
         result.insert(u"green"_s, green);
         result.insert(u"blue"_s, blue);
+        result.insert(u"unknownData"_s, unknownData);
         return result;
     }
 
@@ -54,8 +55,13 @@ public:
         writeLevels(u"red"_s);
         writeLevels(u"green"_s);
         writeLevels(u"blue"_s);
-        // 592 bytes of unknown data (lost during parse)
-        io.write(QByteArray(592, '\0'));
+        // Unknown data (592 bytes typically)
+        const auto unknownData = map.value(u"unknownData"_s).toByteArray();
+        if (!unknownData.isEmpty()) {
+            io.write(unknownData);
+        } else {
+            io.write(QByteArray(592, '\0'));
+        }
         return buf;
     }
 

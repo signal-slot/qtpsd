@@ -15,11 +15,19 @@ class QPsdAdditionalLayerInformationLrFXPlugin : public QPsdAdditionalLayerInfor
 public:
     // Effects Layer info
     QVariant parse(QIODevice *source , quint32 length) const override {
+        // Save raw bytes for lossless round-trip
+        const qint64 startPos = source->pos();
+        const quint32 totalLength = length;
         QPsdEffectsLayer ret(source, &length);
         if (length > 0) {
             // Keep parser forward-progress even if some effect payload is not decoded.
             skip(source, length, &length);
         }
+        const qint64 endPos = source->pos();
+        // Read raw bytes for round-trip
+        source->seek(startPos);
+        ret.setRawData(source->read(totalLength));
+        source->seek(endPos);
         return QVariant::fromValue(ret);
     }
 

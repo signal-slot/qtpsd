@@ -13,10 +13,11 @@ class QPsdAdditionalLayerInformationLr16Plugin : public QPsdAdditionalLayerInfor
 public:
     // Color Balance
     QVariant parse(QIODevice *source , quint32 length) const override {
-        const auto layerInfo = QPsdLayerInfo(source, length);
-        Q_UNUSED(layerInfo);
-
-        return {};
+        // Preserve raw bytes for round-trip since full serialization is not implemented
+        QByteArray rawData;
+        if (length > 0)
+            rawData = source->read(length);
+        return rawData;
     }
 };
 

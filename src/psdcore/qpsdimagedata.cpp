@@ -11,6 +11,9 @@ class QPsdImageData::Private : public QSharedData
 public:
     QByteArray imageData;
     quint16 compression = 0;
+#ifdef QT_PSD_RAW_ROUND_TRIP
+    QByteArray rawImageBytes;
+#endif
 };
 
 QPsdImageData::QPsdImageData()
@@ -33,6 +36,15 @@ QPsdImageData::QPsdImageData(const QPsdFileHeader &header, QIODevice *source)
     auto cleanup = qScopeGuard([&] {
         Q_ASSERT(length == 0);
     });
+
+#ifdef QT_PSD_RAW_ROUND_TRIP
+    // Save raw image data section (compression u16 + compressed data) for lossless round-trip
+    {
+        const qint64 imgStart = source->pos();
+        d->rawImageBytes = source->read(length);
+        source->seek(imgStart);
+    }
+#endif
 
     // Compression method:
     // 0 = Raw image data
@@ -89,6 +101,18 @@ quint16 QPsdImageData::compression() const
 {
     return d->compression;
 }
+
+#ifdef QT_PSD_RAW_ROUND_TRIP
+QByteArray QPsdImageData::rawImageBytes() const
+{
+    return d->rawImageBytes;
+}
+
+void QPsdImageData::setRawImageBytes(const QByteArray &data)
+{
+    d->rawImageBytes = data;
+}
+#endif
 
 const unsigned char *QPsdImageData::gray() const
 {

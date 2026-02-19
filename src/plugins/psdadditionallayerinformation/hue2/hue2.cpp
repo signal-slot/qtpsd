@@ -30,6 +30,11 @@ public:
         const auto blues = readHue(source, &length);
         const auto magentas = readHue(source, &length);
 
+        // Read any remaining bytes (colorize flag, range data, padding)
+        QByteArray trailingData;
+        if (length > 0)
+            trailingData = readByteArray(source, length, &length);
+
         QVariantMap result;
         result.insert(u"master"_s, master);
         result.insert(u"reds"_s, reds);
@@ -38,6 +43,8 @@ public:
         result.insert(u"cyans"_s, cyans);
         result.insert(u"blues"_s, blues);
         result.insert(u"magentas"_s, magentas);
+        if (!trailingData.isEmpty())
+            result.insert(u"trailingData"_s, trailingData);
         return result;
     }
 
@@ -58,6 +65,9 @@ public:
             writeS16(&io, static_cast<qint16>(h.value(u"saturation"_s).toInt()));
             writeS16(&io, static_cast<qint16>(h.value(u"lightness"_s).toInt()));
         }
+        const auto trailingData = map.value(u"trailingData"_s).toByteArray();
+        if (!trailingData.isEmpty())
+            io.write(trailingData);
         return buf;
     }
 

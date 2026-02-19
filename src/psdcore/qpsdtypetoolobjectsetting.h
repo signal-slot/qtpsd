@@ -28,6 +28,9 @@ public:
     void setRect(const QRect &rect);
     QRectF bounds() const;
 
+    QByteArray rawData() const;
+    void setRawData(const QByteArray &data);
+
     void write(QIODevice *dest) const;
 
 private:

@@ -19,7 +19,6 @@ public:
         });
 
         const auto v1 = readU8(source, &length);
-        Q_UNUSED(v1);
         const auto version = readU16(source, &length);
         Q_ASSERT(version == 1);
         const auto channelsVersion = readU16(source, &length);
@@ -27,6 +26,8 @@ public:
         const auto channels = readU16(source, &length);
 
         QVariantMap result;
+        result.insert(u"v1"_s, v1);
+        result.insert(u"channelsVersion"_s, channelsVersion);
 
         if (channelsVersion != 4) {
             if (channels & 1) {
@@ -52,9 +53,9 @@ public:
         const auto signature = readByteArray(source, 4, &length);
         Q_ASSERT(signature == "Crv ");
         const auto version2 = readU16(source, &length);
-        Q_UNUSED(version2);
         const auto version3 = readU16(source, &length);
-        Q_UNUSED(version3);
+        result.insert(u"version2"_s, version2);
+        result.insert(u"version3"_s, version3);
         const auto channels2 = readU16(source, &length);
         QVariantList extraCurves;
         for (quint16 i = 0; i < channels2; i++) {
@@ -85,24 +86,23 @@ public:
             }
         };
 
-        writeU8(&io, 0);  // v1 (lost during parse)
+        writeU8(&io, static_cast<quint8>(map.value(u"v1"_s).toUInt()));
         writeU16(&io, 1);  // version
 
-        if (map.contains(u"curves"_s)) {
-            // channelsVersion 4 format
+        const auto channelsVersion = static_cast<quint16>(map.value(u"channelsVersion"_s, 1).toUInt());
+        if (channelsVersion == 4) {
             const auto curves = map.value(u"curves"_s).toList();
-            writeU16(&io, 4);  // channelsVersion
+            writeU16(&io, 4);
             writeU16(&io, static_cast<quint16>(curves.size()));
             for (const auto &c : curves)
                 writeCurve(c.toList());
         } else {
-            // Bitmask format
             quint16 channels = 0;
             if (map.contains(u"rgb"_s)) channels |= 1;
             if (map.contains(u"red"_s)) channels |= 2;
             if (map.contains(u"green"_s)) channels |= 4;
             if (map.contains(u"blue"_s)) channels |= 8;
-            writeU16(&io, 1);  // channelsVersion
+            writeU16(&io, channelsVersion);
             writeU16(&io, channels);
             if (channels & 1) writeCurve(map.value(u"rgb"_s).toList());
             if (channels & 2) writeCurve(map.value(u"red"_s).toList());
@@ -111,8 +111,8 @@ public:
         }
 
         io.write("Crv ", 4);
-        writeU16(&io, 0);  // version2 (lost during parse)
-        writeU16(&io, 0);  // version3 (lost during parse)
+        writeU16(&io, static_cast<quint16>(map.value(u"version2"_s).toUInt()));
+        writeU16(&io, static_cast<quint16>(map.value(u"version3"_s).toUInt()));
 
         const auto extraCurves = map.value(u"extraCurves"_s).toList();
         writeU16(&io, static_cast<quint16>(extraCurves.size()));

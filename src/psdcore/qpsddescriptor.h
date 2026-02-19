@@ -27,6 +27,8 @@ public:
     void setData(const QHash<QByteArray, QVariant> &data);
     QList<QByteArray> keyOrder() const;
     void setKeyOrder(const QList<QByteArray> &keyOrder);
+    QByteArray rawData() const;
+    void setRawData(const QByteArray &rawData);
 
     void write(QIODevice *dest) const;
 

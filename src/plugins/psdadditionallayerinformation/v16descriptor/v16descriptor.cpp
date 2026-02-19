@@ -17,19 +17,30 @@ public:
         auto cleanup = qScopeGuard([&] {
             // Q_ASSERT(length == 0);
         });
+        // Save raw bytes for lossless round-trip
+        const qint64 startPos = source->pos();
+        const quint32 totalLength = length;
         // Version ( = 16 for Photoshop 6.0)
         auto version = readU32(source, &length);
         Q_ASSERT(version == 16);
         QPsdDescriptor descriptor(source, &length);
+        const qint64 endPos = source->pos();
+        source->seek(startPos);
+        descriptor.setRawData(source->read(totalLength));
+        source->seek(endPos);
         return QVariant::fromValue(descriptor);
     }
 
     QByteArray serialize(const QVariant &data) const override {
+        const auto descriptor = data.value<QPsdDescriptor>();
+        const auto rawData = descriptor.rawData();
+        if (!rawData.isEmpty())
+            return rawData;
         QByteArray buf;
         QBuffer io(&buf);
         io.open(QIODevice::WriteOnly);
         writeU32(&io, 16);
-        data.value<QPsdDescriptor>().write(&io);
+        descriptor.write(&io);
         return buf;
     }
 };

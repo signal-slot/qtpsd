@@ -15,7 +15,15 @@ class QPsdAdditionalLayerInformationLnk_Plugin : public QPsdAdditionalLayerInfor
 public:
     // Linked Layer
     QVariant parse(QIODevice *source , quint32 length) const override {
-        return QVariant::fromValue(QPsdLinkedLayer(source, length));
+        // Save raw bytes for lossless round-trip
+        const qint64 startPos = source->pos();
+        const quint32 totalLength = length;
+        QPsdLinkedLayer ret(source, length);
+        const qint64 endPos = source->pos();
+        source->seek(startPos);
+        ret.setRawData(source->read(totalLength));
+        source->seek(endPos);
+        return QVariant::fromValue(ret);
     }
 
     QByteArray serialize(const QVariant &data) const override {

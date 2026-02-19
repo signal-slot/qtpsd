@@ -12,6 +12,9 @@ public:
     Private();
     QHash<QPsdChannelInfo::ChannelID, QByteArray> imageData;
     QHash<QPsdChannelInfo::ChannelID, QPsdAbstractImage::Compression> channelCompression;
+#ifdef QT_PSD_RAW_ROUND_TRIP
+    QHash<QPsdChannelInfo::ChannelID, QByteArray> rawChannelBytes;
+#endif
 
     const unsigned char *data(QPsdChannelInfo::ChannelID channelID) const {
         if (!imageData.contains(channelID))
@@ -50,6 +53,16 @@ QPsdChannelImageData::QPsdChannelImageData(const QPsdLayerRecord &record, QIODev
         if (id < -3 || id > 3) {
             qWarning() << record.name() << record.blendMode() << id << length << "not supported";
         }
+
+#ifdef QT_PSD_RAW_ROUND_TRIP
+        // Save raw compressed bytes (compression u16 + compressed data) for lossless round-trip
+        {
+            const qint64 channelStart = source->pos();
+            d->rawChannelBytes.insert(id, source->read(channelInfo.length()));
+            source->seek(channelStart);
+        }
+#endif
+
         // Compression. 0 = Raw Data, 1 = RLE compressed, 2 = ZIP without prediction, 3 = ZIP with prediction.
         Compression compression = static_cast<Compression>(readU16(source, &length));
         d->channelCompression.insert(id, compression);
@@ -144,6 +157,18 @@ void QPsdChannelImageData::setChannelCompression(QPsdChannelInfo::ChannelID chan
 {
     d->channelCompression.insert(channelId, compression);
 }
+
+#ifdef QT_PSD_RAW_ROUND_TRIP
+QByteArray QPsdChannelImageData::rawChannelBytes(QPsdChannelInfo::ChannelID channelId) const
+{
+    return d->rawChannelBytes.value(channelId);
+}
+
+void QPsdChannelImageData::setRawChannelBytes(QPsdChannelInfo::ChannelID channelId, const QByteArray &data)
+{
+    d->rawChannelBytes.insert(channelId, data);
+}
+#endif
 
 const unsigned char *QPsdChannelImageData::gray() const
 {

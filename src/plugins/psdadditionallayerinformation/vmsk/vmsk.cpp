@@ -15,7 +15,15 @@ class QPsdAdditionalLayerInformationVmskPlugin : public QPsdAdditionalLayerInfor
 public:
     // Vector mask setting
     QVariant parse(QIODevice *source , quint32 length) const override {
-        return QVariant::fromValue(QPsdVectorMaskSetting(source, length));
+        // Save raw bytes for lossless round-trip
+        const qint64 startPos = source->pos();
+        const quint32 totalLength = length;
+        QPsdVectorMaskSetting ret(source, length);
+        const qint64 endPos = source->pos();
+        source->seek(startPos);
+        ret.setRawData(source->read(totalLength));
+        source->seek(endPos);
+        return QVariant::fromValue(ret);
     }
 
     QByteArray serialize(const QVariant &data) const override {

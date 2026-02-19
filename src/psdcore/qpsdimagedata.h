@@ -27,6 +27,11 @@ public:
 
     quint16 compression() const;
 
+#ifdef QT_PSD_RAW_ROUND_TRIP
+    QByteArray rawImageBytes() const;
+    void setRawImageBytes(const QByteArray &data);
+#endif
+
 protected:
     const unsigned char *a() const override;
     const unsigned char *gray() const override;

@@ -41,12 +41,21 @@ public:
             const auto location = readU32(source, &length);
             const auto midpoint = readU32(source, &length);
             const auto colorSpace = readColorSpace(source, &length);
-            skip(source, 2, &length); // Unknown padding
+            const auto padding = readByteArray(source, 2, &length);
 
             QVariantMap stop;
             stop.insert(u"location"_s, location);
             stop.insert(u"midpoint"_s, midpoint);
             stop.insert(u"color"_s, colorSpace.toString());
+            // Preserve raw color space data for round-trip
+            QByteArray colorBytes;
+            {
+                QBuffer colorBuf(&colorBytes);
+                colorBuf.open(QIODevice::WriteOnly);
+                writeColorSpace(&colorBuf, colorSpace);
+            }
+            stop.insert(u"colorBytes"_s, colorBytes);
+            stop.insert(u"padding"_s, padding);
             colorStops.append(stop);
         }
         result.insert(u"colorStops"_s, colorStops);
@@ -102,7 +111,8 @@ public:
         result.insert(u"minColor"_s, minColor);
         result.insert(u"maxColor"_s, maxColor);
 
-        skip(source, 2, &length);
+        const auto finalPadding = readByteArray(source, 2, &length);
+        result.insert(u"finalPadding"_s, finalPadding);
 
         return result;
     }
@@ -131,8 +141,18 @@ public:
             const auto stop = s.toMap();
             writeU32(&io, stop.value(u"location"_s).toUInt());
             writeU32(&io, stop.value(u"midpoint"_s).toUInt());
-            io.write(QByteArray(10, '\0'));  // color space (lost during parse)
-            io.write(QByteArray(2, '\0'));   // unknown padding
+            const auto colorBytes = stop.value(u"colorBytes"_s).toByteArray();
+            if (!colorBytes.isEmpty()) {
+                io.write(colorBytes);
+            } else {
+                io.write(QByteArray(10, '\0'));
+            }
+            const auto padding = stop.value(u"padding"_s).toByteArray();
+            if (!padding.isEmpty()) {
+                io.write(padding);
+            } else {
+                io.write(QByteArray(2, '\0'));
+            }
         }
 
         const auto transparencyStops = map.value(u"transparencyStops"_s).toList();
@@ -162,7 +182,12 @@ public:
         for (int i = 0; i < 4; ++i)
             writeU16(&io, static_cast<quint16>(i < maxColor.size() ? maxColor.at(i).toUInt() : 0));
 
-        io.write(QByteArray(2, '\0'));  // final padding
+        const auto finalPadding = map.value(u"finalPadding"_s).toByteArray();
+        if (!finalPadding.isEmpty()) {
+            io.write(finalPadding);
+        } else {
+            io.write(QByteArray(2, '\0'));
+        }
 
         return buf;
     }
