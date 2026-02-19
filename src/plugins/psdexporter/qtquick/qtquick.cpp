@@ -411,15 +411,25 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         if (!outputBase(textIndex, element, imports, multiRect))
             return false;
 
+        const bool isParagraph = text->textType() == QPsdTextLayerItem::TextType::ParagraphText;
+
         Element column;
         column.type = "Column";
-        column.properties.insert("anchors.centerIn", "parent");
+        if (isParagraph) {
+            column.properties.insert("anchors.fill", "parent");
+        } else {
+            column.properties.insert("anchors.centerIn", "parent");
+        }
 
         imports->insert("QtQuick.Layouts");
         Element rowLayout;
         rowLayout.type = "RowLayout";
         rowLayout.properties.insert("spacing", 0);
-        rowLayout.properties.insert("anchors.horizontalCenter", "parent.horizontalCenter");
+        if (isParagraph) {
+            rowLayout.properties.insert("width", "parent.width");
+        } else {
+            rowLayout.properties.insert("anchors.horizontalCenter", "parent.horizontalCenter");
+        }
 
         for (const auto &run : runs) {
             const auto texts = run.text.trimmed().split("\n");
@@ -442,6 +452,12 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                     textElement.properties.insert("font.italic", true);
                 textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name()));
                 textElement.properties.insert("Layout.fillHeight", true);
+                if (isParagraph) {
+                    textElement.properties.insert("Layout.fillWidth", true);
+                    textElement.properties.insert("wrapMode"_L1, "Text.Wrap"_L1);
+                }
+                textElement.properties.insert("horizontalAlignment",
+                    horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
                 {
                     const auto vAlign = verticalAlignmentString(run.alignment, {"Text.AlignTop"_L1, "Text.AlignBottom"_L1, "Text.AlignVCenter"_L1});
                     if (!vAlign.isEmpty())
