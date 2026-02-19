@@ -171,7 +171,7 @@ QString tst_PsdExporterSimilarity::sourcePathFor(const QString &sourceId) const
 QString tst_PsdExporterSimilarity::sourceRepositoryBaseUrl() const
 {
     if (m_sourceId == QStringLiteral("psd-zoo")) {
-        return QStringLiteral("https://github.com/signal-slot/psd-zoo/tree/main/");
+        return QStringLiteral("https://github.com/signal-slot/psd-zoo/blob/main/");
     }
     QString fromEnv = qEnvironmentVariable("QTPSD_SIMILARITY_SOURCE_REPO");
     if (!fromEnv.isEmpty() && !fromEnv.endsWith('/')) {
