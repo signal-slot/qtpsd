@@ -53,10 +53,9 @@ QPsdAdditionalLayerInformation::QPsdAdditionalLayerInformation(QIODevice *source
         qCDebug(lcQPsdAdditionalLayerInformation) << (void *)source->pos() << d->key << d->data;
     } else {
         QByteArray data;
-        if (es.bytesAvailable() > 0) {
+        if (es.bytesAvailable() > 0)
             data = source->read(es.bytesAvailable());
-            d->data = data;
-        }
+        d->data = data;
         if (data.size() > 32) {
             data.resize(32);
             data.append("...");

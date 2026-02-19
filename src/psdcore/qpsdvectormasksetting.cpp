@@ -331,7 +331,7 @@ void QPsdVectorMaskSetting::write(QIODevice *dest) const
         writePathNumber(dest, d->clipboardRect.bottom() + 1);
         writePathNumber(dest, d->clipboardRect.right() + 1);
         writePathNumber(dest, d->clipboardResolution);
-        dest->write(QByteArray(2, '\0'));
+        dest->write(QByteArray(4, '\0'));
     }
 
     // Sub paths
@@ -342,7 +342,7 @@ void QPsdVectorMaskSetting::write(QIODevice *dest) const
         writeU16(dest, static_cast<quint16>(pathInfo.subPath.size()));
         writeU16(dest, static_cast<quint16>(pathInfo.operation));
         writeU16(dest, pathInfo.fillRule == NonZero ? 2 : 0);
-        dest->write(QByteArray(16, '\0'));
+        dest->write(QByteArray(18, '\0'));
 
         // Bezier knot records
         for (const auto &knot : pathInfo.subPath) {

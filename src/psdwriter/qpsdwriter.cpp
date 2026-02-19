@@ -407,16 +407,13 @@ bool QPsdWriter::write(QIODevice *device) const
 
             liBuf.close();
 
-            // Write layer info length (rounded up to multiple of 2)
-            // The length field itself must be the even-rounded value,
-            // as the parser uses EnsureSeek(length, 0) and relies on length being even.
+            // Write layer info length (rounded up to multiple of 4)
             quint32 liSize = liBuf.data().size();
-            quint32 liPaddedSize = liSize;
-            if (liPaddedSize % 2 != 0) liPaddedSize++;
+            quint32 liPaddedSize = (liSize + 3) & ~3u;
             QPsdSection::writeU32(&lmiBuf, liPaddedSize);
             lmiBuf.write(liBuf.data());
-            if (liSize % 2 != 0)
-                lmiBuf.write(QByteArray(1, '\0'));
+            if (liPaddedSize > liSize)
+                lmiBuf.write(QByteArray(liPaddedSize - liSize, '\0'));
         }
 
         // --- Global layer mask info ---
