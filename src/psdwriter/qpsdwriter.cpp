@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include "qpsdwriter.h"
+#include <QtPsdCore/qpsdabstractimage.h>
 #include <QtPsdCore/qpsdadditionallayerinformationplugin.h>
 #include <QtPsdCore/qpsdblend.h>
 
@@ -96,7 +97,11 @@ QString QPsdWriter::errorString() const
 // Helper to write layer mask adjustment layer data
 static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLayerData &maskData)
 {
-    if (maskData.isEmpty()) {
+    const QByteArray raw = maskData.rawData();
+    if (!raw.isEmpty()) {
+        QPsdSection::writeU32(dest, raw.size());
+        dest->write(raw);
+    } else if (maskData.isEmpty()) {
         // Empty mask data: just write length 0
         QPsdSection::writeU32(dest, 0);
     } else {
@@ -123,6 +128,13 @@ static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLay
 // Helper to write layer blending ranges data
 static void writeBlendingRangesData(QIODevice *dest, const QPsdLayerBlendingRangesData &rangesData)
 {
+    const QByteArray raw = rangesData.rawData();
+    if (!raw.isEmpty()) {
+        QPsdSection::writeU32(dest, raw.size());
+        dest->write(raw);
+        return;
+    }
+
     QBuffer buf;
     buf.open(QIODevice::WriteOnly);
 
@@ -220,31 +232,81 @@ bool QPsdWriter::write(QIODevice *device) const
             QBuffer liBuf;
             liBuf.open(QIODevice::WriteOnly);
 
+            if (!records.isEmpty()) {
             // Layer count (signed, negative means first alpha is merged result)
-            QPsdSection::writeS16(&liBuf, static_cast<qint16>(records.size()));
+            qint16 layerCount = static_cast<qint16>(records.size());
+            if (layerInfo.hasMergedAlpha())
+                layerCount = -layerCount;
+            QPsdSection::writeS16(&liBuf, layerCount);
 
-            // --- Layer records ---
-            // We need to compute and set channel lengths before writing records.
-            // Build a list of per-record channel data sizes.
-            QList<QList<quint32>> allChannelSizes;
+            // --- Pre-compute channel encoded data ---
+            // For each record, for each channel: encoded bytes (including compression u16)
+            QList<QList<QByteArray>> allEncodedChannels;
             for (int ri = 0; ri < records.size(); ++ri) {
                 const auto &record = records.at(ri);
-                QList<quint32> sizes;
+                QList<QByteArray> encodedChannels;
                 for (const auto &ci : record.channelInfo()) {
-                    quint32 channelDataSize = 0;
+                    QByteArray encoded;
                     if (ri < channelImageDataList.size()) {
-                        // Attempt to get size from the channel image data
-                        // For raw data: 2 (compression) + raw bytes
                         const auto &cid = channelImageDataList.at(ri);
-                        Q_UNUSED(cid);
+                        const QByteArray channelData = cid.channelData(ci.id());
+                        const auto compression = cid.channelCompression(ci.id());
+                        if (!channelData.isEmpty()) {
+                            int height = record.rect().height();
+                            if (ci.id() == QPsdChannelInfo::UserSuppliedLayerMask) {
+                                height = record.layerMaskAdjustmentLayerData().rect().height();
+                            } else if (ci.id() == QPsdChannelInfo::RealUserSuppliedLayerMask) {
+                                height = record.layerMaskAdjustmentLayerData().realUserMaskRect().height();
+                            }
+                            QBuffer comprBuf;
+                            comprBuf.open(QIODevice::WriteOnly);
+                            switch (compression) {
+                            case QPsdAbstractImage::RawData:
+                                QPsdSection::writeU16(&comprBuf, 0);
+                                comprBuf.write(channelData);
+                                break;
+                            case QPsdAbstractImage::RLE:
+                                if (height > 0) {
+                                    int rowWidth = channelData.size() / height;
+                                    QByteArray rleData = QPsdSection::encodePackBits(channelData, rowWidth, height);
+                                    QPsdSection::writeU16(&comprBuf, 1);
+                                    comprBuf.write(rleData);
+                                } else {
+                                    QPsdSection::writeU16(&comprBuf, 1);
+                                }
+                                break;
+                            case QPsdAbstractImage::ZipWithoutPrediction:
+                            case QPsdAbstractImage::ZipWithPrediction:
+                                // TODO: implement zlib compression when encountered
+                                QPsdSection::writeU16(&comprBuf, static_cast<quint16>(compression));
+                                qWarning("ZIP compression re-encoding not yet implemented");
+                                comprBuf.write(channelData);
+                                break;
+                            }
+                            comprBuf.close();
+                            encoded = comprBuf.data();
+                        } else {
+                            // No data: just compression u16
+                            QBuffer comprBuf;
+                            comprBuf.open(QIODevice::WriteOnly);
+                            QPsdSection::writeU16(&comprBuf, 0);
+                            comprBuf.close();
+                            encoded = comprBuf.data();
+                        }
+                    } else {
+                        // No channel image data for this record
+                        QBuffer comprBuf;
+                        comprBuf.open(QIODevice::WriteOnly);
+                        QPsdSection::writeU16(&comprBuf, 0);
+                        comprBuf.close();
+                        encoded = comprBuf.data();
                     }
-                    // Use the length as stored in channelInfo (already set, or computed)
-                    channelDataSize = ci.length();
-                    sizes.append(channelDataSize);
+                    encodedChannels.append(encoded);
                 }
-                allChannelSizes.append(sizes);
+                allEncodedChannels.append(encodedChannels);
             }
 
+            // --- Layer records ---
             for (int ri = 0; ri < records.size(); ++ri) {
                 const auto &record = records.at(ri);
 
@@ -255,10 +317,10 @@ bool QPsdWriter::write(QIODevice *device) const
                 const auto &channelInfoList = record.channelInfo();
                 QPsdSection::writeU16(&liBuf, static_cast<quint16>(channelInfoList.size()));
 
-                // Channel info entries
-                for (const auto &ci : channelInfoList) {
-                    QPsdSection::writeU16(&liBuf, static_cast<quint16>(static_cast<qint16>(ci.id())));
-                    QPsdSection::writeU32(&liBuf, ci.length());
+                // Channel info entries (use pre-computed lengths)
+                for (int ci = 0; ci < channelInfoList.size(); ++ci) {
+                    QPsdSection::writeU16(&liBuf, static_cast<quint16>(static_cast<qint16>(channelInfoList.at(ci).id())));
+                    QPsdSection::writeU32(&liBuf, static_cast<quint32>(allEncodedChannels.at(ri).at(ci).size()));
                 }
 
                 // Blend mode signature
@@ -274,13 +336,8 @@ bool QPsdWriter::write(QIODevice *device) const
                 // Clipping
                 QPsdSection::writeU8(&liBuf, static_cast<quint8>(record.clipping()));
 
-                // Flags
-                quint8 flags = 0;
-                if (record.isTransparencyProtected()) flags |= 0x01;
-                if (record.isVisible()) flags |= 0x02;
-                if (record.hasPixelDataIrrelevantToAppearanceDocument()) flags |= 0x08;
-                if (record.isPixelDataIrrelevantToAppearanceDocument()) flags |= 0x10;
-                QPsdSection::writeU8(&liBuf, flags);
+                // Flags (use raw flags byte directly)
+                QPsdSection::writeU8(&liBuf, record.flags());
 
                 // Filler
                 QPsdSection::writeU8(&liBuf, 0);
@@ -298,22 +355,26 @@ bool QPsdWriter::write(QIODevice *device) const
                 // Layer name (Pascal string, padded to multiple of 4)
                 QPsdSection::writePascalString(&extraBuf, record.name(), 4);
 
-                // Additional layer information
+                // Additional layer information (preserve original order)
                 const auto &ali = record.additionalLayerInformation();
-                for (auto it = ali.constBegin(); it != ali.constEnd(); ++it) {
+                const auto &keyOrder = record.aliKeyOrder();
+                // Use original key order if available, otherwise fall back to hash iteration
+                const auto keys = keyOrder.isEmpty() ? ali.keys() : keyOrder;
+                for (const auto &key : keys) {
+                    if (!ali.contains(key))
+                        continue;
+                    const QVariant &value = ali.value(key);
                     QByteArray payload;
-                    if (it.value().typeId() == QMetaType::QByteArray) {
-                        payload = it.value().toByteArray();
+                    if (value.typeId() == QMetaType::QByteArray) {
+                        payload = value.toByteArray();
                     } else {
-                        auto plugin = QPsdAdditionalLayerInformationPlugin::plugin(it.key());
+                        auto plugin = QPsdAdditionalLayerInformationPlugin::plugin(key);
                         if (plugin)
-                            payload = plugin->serialize(it.value());
+                            payload = plugin->serialize(value);
                     }
                     if (!payload.isEmpty()) {
                         extraBuf.write("8BIM", 4);
-                        extraBuf.write(it.key().leftJustified(4, '\0', true));
-                        // Per-layer ALI: length rounded up to even byte count
-                        // (parser uses EnsureSeek with padding=0, so length must include padding)
+                        extraBuf.write(key.leftJustified(4, '\0', true));
                         quint32 paddedSize = payload.size();
                         if (paddedSize % 2 != 0) paddedSize++;
                         QPsdSection::writeU32(&extraBuf, paddedSize);
@@ -331,49 +392,12 @@ bool QPsdWriter::write(QIODevice *device) const
 
             // --- Channel image data ---
             for (int ri = 0; ri < records.size(); ++ri) {
-                const auto &record = records.at(ri);
-                for (const auto &ci : record.channelInfo()) {
-                    // Compression type: 0 = Raw
-                    QPsdSection::writeU16(&liBuf, 0);
-
-                    // Raw channel data
-                    if (ri < channelImageDataList.size()) {
-                        const auto &cid = channelImageDataList.at(ri);
-                        // Get raw data based on channel ID
-                        QByteArray channelData;
-                        switch (ci.id()) {
-                        case QPsdChannelInfo::TransparencyMask:
-                            channelData = cid.transparencyMaskData();
-                            break;
-                        case QPsdChannelInfo::UserSuppliedLayerMask:
-                            channelData = cid.userSuppliedLayerMask();
-                            break;
-                        default:
-                            // For R/G/B/A channels, use the image data from the channel
-                            // The channel image data stores raw per-channel data keyed by ID
-                            channelData = cid.imageData();
-                            break;
-                        }
-                        // Write the raw channel bytes
-                        // Note: For a proper write, we should write per-channel data
-                        // but the existing API returns combined image data.
-                        // For round-trip fidelity, we rely on the channel length in channelInfo.
-                        if (ci.length() > 2) {
-                            // length includes the 2-byte compression field
-                            quint32 dataSize = ci.length() - 2;
-                            if (static_cast<quint32>(channelData.size()) >= dataSize) {
-                                liBuf.write(channelData.constData(), dataSize);
-                            } else {
-                                // Write what we have, pad with zeros
-                                liBuf.write(channelData);
-                                if (dataSize > static_cast<quint32>(channelData.size())) {
-                                    liBuf.write(QByteArray(dataSize - channelData.size(), '\0'));
-                                }
-                            }
-                        }
-                    }
+                for (int ci = 0; ci < allEncodedChannels.at(ri).size(); ++ci) {
+                    liBuf.write(allEncodedChannels.at(ri).at(ci));
                 }
             }
+
+            } // end if (!records.isEmpty())
 
             liBuf.close();
 
@@ -397,34 +421,40 @@ bool QPsdWriter::write(QIODevice *device) const
             QBuffer glmiBuf;
             glmiBuf.open(QIODevice::WriteOnly);
             // Overlay color space + 4 color components (10 bytes)
-            QPsdSection::writeU16(&glmiBuf, glmi.overlayColorSpace());
-            // Color: 4 * 2 bytes (we write zeros since color is stored as string)
-            glmiBuf.write(QByteArray(8, '\0'));
+            QPsdSection::writeColorSpace(&glmiBuf, glmi.colorSpace());
             // Opacity
             QPsdSection::writeU16(&glmiBuf, glmi.opacity());
             // Kind
             QPsdSection::writeU8(&glmiBuf, static_cast<quint8>(glmi.kind()));
-            // Pad to fill remaining
+            // Filler/padding bytes
+            const QByteArray &glmiRaw = glmi.rawData();
+            if (!glmiRaw.isEmpty())
+                glmiBuf.write(glmiRaw);
             glmiBuf.close();
 
             QPsdSection::writeU32(&lmiBuf, glmiBuf.data().size());
             lmiBuf.write(glmiBuf.data());
         }
 
-        // --- Additional layer information (top-level) ---
+        // --- Additional layer information (top-level, preserve original order) ---
         const auto &topAli = d->layerAndMaskInformation.additionalLayerInformation();
-        for (auto it = topAli.constBegin(); it != topAli.constEnd(); ++it) {
+        const auto &topKeyOrder = d->layerAndMaskInformation.aliKeyOrder();
+        const auto topKeys = topKeyOrder.isEmpty() ? topAli.keys() : topKeyOrder;
+        for (const auto &key : topKeys) {
+            if (!topAli.contains(key))
+                continue;
+            const QVariant &value = topAli.value(key);
             QByteArray payload;
-            if (it.value().typeId() == QMetaType::QByteArray) {
-                payload = it.value().toByteArray();
+            if (value.typeId() == QMetaType::QByteArray) {
+                payload = value.toByteArray();
             } else {
-                auto plugin = QPsdAdditionalLayerInformationPlugin::plugin(it.key());
+                auto plugin = QPsdAdditionalLayerInformationPlugin::plugin(key);
                 if (plugin)
-                    payload = plugin->serialize(it.value());
+                    payload = plugin->serialize(value);
             }
             if (!payload.isEmpty()) {
                 lmiBuf.write("8BIM", 4);
-                lmiBuf.write(it.key().leftJustified(4, '\0', true));
+                lmiBuf.write(key.leftJustified(4, '\0', true));
                 // Top-level ALI: length is actual payload size,
                 // padded to 4-byte boundary (parser uses EnsureSeek with padding=4)
                 QPsdSection::writeU32(&lmiBuf, payload.size());
@@ -445,10 +475,39 @@ bool QPsdWriter::write(QIODevice *device) const
     // === Section 5: Image Data ===
     {
         const QByteArray &imgData = d->imageData.imageData();
-        // Compression: 0 = Raw
-        QPsdSection::writeU16(device, 0);
-        if (!imgData.isEmpty())
-            device->write(imgData);
+        const quint16 compression = d->imageData.compression();
+        switch (compression) {
+        case QPsdAbstractImage::RawData:
+            QPsdSection::writeU16(device, 0);
+            if (!imgData.isEmpty())
+                device->write(imgData);
+            break;
+        case QPsdAbstractImage::RLE: {
+            QPsdSection::writeU16(device, 1);
+            if (!imgData.isEmpty()) {
+                int channels = d->fileHeader.channels();
+                int height = d->fileHeader.height();
+                int channelSize = d->fileHeader.width() * d->fileHeader.depth() / 8;
+                // RLE encode each scan line (height * channels total rows)
+                QByteArray rleData = QPsdSection::encodePackBits(imgData, channelSize, height * channels);
+                device->write(rleData);
+            }
+            break;
+        }
+        case QPsdAbstractImage::ZipWithoutPrediction:
+        case QPsdAbstractImage::ZipWithPrediction:
+            // TODO: implement zlib compression when encountered
+            QPsdSection::writeU16(device, compression);
+            qWarning("ZIP compression re-encoding for image data not yet implemented");
+            if (!imgData.isEmpty())
+                device->write(imgData);
+            break;
+        default:
+            QPsdSection::writeU16(device, 0);
+            if (!imgData.isEmpty())
+                device->write(imgData);
+            break;
+        }
     }
 
     return true;

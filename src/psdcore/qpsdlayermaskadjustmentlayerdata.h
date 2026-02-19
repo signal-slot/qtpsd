@@ -27,6 +27,7 @@ public:
     bool isLayerMaskFromRenderingOtherData() const;
     bool isLayerMaskFromVectorData() const;
     QRect realUserMaskRect() const;
+    QByteArray rawData() const;
 
 private:
     class Private;

@@ -20,7 +20,9 @@ public:
     virtual ~QPsdEnum();
 
     QByteArray type() const;
+    void setType(const QByteArray &type);
     QByteArray value() const;
+    void setValue(const QByteArray &value);
 
     void write(QIODevice *dest) const;
 

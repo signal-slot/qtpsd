@@ -20,6 +20,7 @@ public:
     QPsdLayerBlendingRangesData layerBlendingRangesData;
     QByteArray name;
     QHash<QByteArray, QVariant> additionalLayerInformation;
+    QList<QByteArray> aliKeyOrder;
     QPsdChannelImageData imageData;
 };
 
@@ -96,6 +97,7 @@ QPsdLayerRecord::QPsdLayerRecord(QIODevice *source)
     while (es.bytesAvailable() > 12) {
         QPsdAdditionalLayerInformation ali(source);
         d->additionalLayerInformation.insert(ali.key(), ali.data());
+        d->aliKeyOrder.append(ali.key());
     }
 }
 
@@ -160,6 +162,11 @@ bool QPsdLayerRecord::isPixelDataIrrelevantToAppearanceDocument() const
     return d->flags & 0x10;
 }
 
+quint8 QPsdLayerRecord::flags() const
+{
+    return d->flags;
+}
+
 QPsdLayerMaskAdjustmentLayerData QPsdLayerRecord::layerMaskAdjustmentLayerData() const
 {
     return d->layerMaskAdjustmentLayerData;
@@ -178,6 +185,11 @@ QByteArray QPsdLayerRecord::name() const
 QHash<QByteArray, QVariant> QPsdLayerRecord::additionalLayerInformation() const
 {
     return d->additionalLayerInformation;
+}
+
+QList<QByteArray> QPsdLayerRecord::aliKeyOrder() const
+{
+    return d->aliKeyOrder;
 }
 
 QPsdChannelImageData QPsdLayerRecord::imageData() const

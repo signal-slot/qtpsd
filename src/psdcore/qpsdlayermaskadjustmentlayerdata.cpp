@@ -13,6 +13,7 @@ public:
     quint8 defaultColor;
     quint8 flags;
     QRect realUserMaskRect;
+    QByteArray rawData;
 };
 
 QPsdLayerMaskAdjustmentLayerData::Private::Private()
@@ -35,6 +36,7 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     auto length = readU32(source);
     if (length == 0)
         return;
+    d->rawData = source->peek(length);
     auto cleanup = qScopeGuard([&] {
         Q_ASSERT(length <= 3);
     });
@@ -147,6 +149,11 @@ QRect QPsdLayerMaskAdjustmentLayerData::realUserMaskRect() const
     } else {
         return d->realUserMaskRect;
     }
+}
+
+QByteArray QPsdLayerMaskAdjustmentLayerData::rawData() const
+{
+    return d->rawData;
 }
 
 QT_END_NAMESPACE

@@ -25,6 +25,8 @@ public:
 
     void setImageData(const QByteArray &imageData);
 
+    quint16 compression() const;
+
 protected:
     const unsigned char *a() const override;
     const unsigned char *gray() const override;

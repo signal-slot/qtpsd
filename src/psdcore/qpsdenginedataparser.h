@@ -29,6 +29,7 @@ public:
         QString errorMessage;
     };
     static QCborMap parseEngineData(const QByteArray &data, ParseError* error = nullptr);
+    static QByteArray serializeEngineData(const QCborMap &data);
 
 private:
     QPsdEngineDataParser() = delete;

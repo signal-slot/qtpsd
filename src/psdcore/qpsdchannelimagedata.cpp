@@ -11,6 +11,7 @@ class QPsdChannelImageData::Private : public QSharedData
 public:
     Private();
     QHash<QPsdChannelInfo::ChannelID, QByteArray> imageData;
+    QHash<QPsdChannelInfo::ChannelID, QPsdAbstractImage::Compression> channelCompression;
 
     const unsigned char *data(QPsdChannelInfo::ChannelID channelID) const {
         if (!imageData.contains(channelID))
@@ -51,6 +52,7 @@ QPsdChannelImageData::QPsdChannelImageData(const QPsdLayerRecord &record, QIODev
         }
         // Compression. 0 = Raw Data, 1 = RLE compressed, 2 = ZIP without prediction, 3 = ZIP with prediction.
         Compression compression = static_cast<Compression>(readU16(source, &length));
+        d->channelCompression.insert(id, compression);
 
         if (es.bytesAvailable() <= 0)
             continue;
@@ -123,9 +125,24 @@ QByteArray QPsdChannelImageData::userSuppliedLayerMask() const
     return d->imageData.contains(QPsdChannelInfo::UserSuppliedLayerMask) ? d->imageData.value(QPsdChannelInfo::UserSuppliedLayerMask) : QByteArray();
 }
 
+QByteArray QPsdChannelImageData::channelData(QPsdChannelInfo::ChannelID channelId) const
+{
+    return d->imageData.value(channelId);
+}
+
 void QPsdChannelImageData::setChannelData(QPsdChannelInfo::ChannelID channelId, const QByteArray &data)
 {
     d->imageData.insert(channelId, data);
+}
+
+QPsdChannelImageData::Compression QPsdChannelImageData::channelCompression(QPsdChannelInfo::ChannelID channelId) const
+{
+    return d->channelCompression.value(channelId, RawData);
+}
+
+void QPsdChannelImageData::setChannelCompression(QPsdChannelInfo::ChannelID channelId, Compression compression)
+{
+    d->channelCompression.insert(channelId, compression);
 }
 
 const unsigned char *QPsdChannelImageData::gray() const

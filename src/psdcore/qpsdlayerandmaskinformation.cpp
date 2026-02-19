@@ -13,6 +13,7 @@ public:
     QPsdLayerInfo layerInfo;
     QPsdGlobalLayerMaskInfo globalLayerMaskInfo;
     QHash<QByteArray, QVariant> additionalLayerInformation;
+    QList<QByteArray> aliKeyOrder;
 };
 
 QPsdLayerAndMaskInformation::Private::Private()
@@ -42,6 +43,7 @@ QPsdLayerAndMaskInformation::QPsdLayerAndMaskInformation(QIODevice *source)
     while (es.bytesAvailable() > 12) {
         QPsdAdditionalLayerInformation ali(source, 4);
         d->additionalLayerInformation.insert(ali.key(), ali.data());
+        d->aliKeyOrder.append(ali.key());
     }
 }
 
@@ -74,6 +76,11 @@ QPsdGlobalLayerMaskInfo QPsdLayerAndMaskInformation::globalLayerMaskInfo() const
 QHash<QByteArray, QVariant> QPsdLayerAndMaskInformation::additionalLayerInformation() const
 {
     return d->additionalLayerInformation;
+}
+
+QList<QByteArray> QPsdLayerAndMaskInformation::aliKeyOrder() const
+{
+    return d->aliKeyOrder;
 }
 
 bool QPsdLayerAndMaskInformation::hasMergedAlpha() const

@@ -13,6 +13,7 @@ public:
     Range grayBlendDestinationRange;
     QList<Range> channelSourceRanges;
     QList<Range> channelDestinationRanges;
+    QByteArray rawData;
 };
 
 QPsdLayerBlendingRangesData::Private::Private()
@@ -31,6 +32,8 @@ QPsdLayerBlendingRangesData::QPsdLayerBlendingRangesData(QIODevice *source)
 
     // Length of layer blending ranges data
     auto length = readU32(source);
+    if (length > 0)
+        d->rawData = source->peek(length);
     EnsureSeek es(source, length);
 
     // Composite gray blend source. Contains 2 black values followed by 2 white values. Present but irrelevant for Lab & Grayscale.
@@ -77,6 +80,11 @@ QList<QPsdLayerBlendingRangesData::Range> QPsdLayerBlendingRangesData::channelSo
 QList<QPsdLayerBlendingRangesData::Range> QPsdLayerBlendingRangesData::channelDestinationRanges() const
 {
     return d->channelDestinationRanges;
+}
+
+QByteArray QPsdLayerBlendingRangesData::rawData() const
+{
+    return d->rawData;
 }
 
 QT_END_NAMESPACE

@@ -100,6 +100,11 @@ void QPsdLayerInfo::setChannelImageData(const QList<QPsdChannelImageData> &chann
     d->channelImageData = channelImageData;
 }
 
+void QPsdLayerInfo::setHasMergedAlpha(bool hasMergedAlpha)
+{
+    d->hasMergedAlpha = hasMergedAlpha;
+}
+
 void QPsdLayerInfo::setFileHeader(const QPsdFileHeader &fileHeader)
 {
     // Set the file header on all channel image data entries

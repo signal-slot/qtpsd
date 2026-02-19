@@ -167,6 +167,8 @@ public:
         }
     }
 
+    static QByteArray encodePackBits(const QByteArray &rawData, int rowWidth, int height);
+
 protected:
     static int even(int size)
     {

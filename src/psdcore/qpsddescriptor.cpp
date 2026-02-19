@@ -108,14 +108,29 @@ QString QPsdDescriptor::name() const
     return d->name;
 }
 
+void QPsdDescriptor::setName(const QString &name)
+{
+    d->name = name;
+}
+
 QByteArray QPsdDescriptor::classID() const
 {
     return d->classID;
 }
 
+void QPsdDescriptor::setClassID(const QByteArray &classID)
+{
+    d->classID = classID;
+}
+
 QHash<QByteArray, QVariant> QPsdDescriptor::data() const
 {
     return d->data;
+}
+
+void QPsdDescriptor::setData(const QHash<QByteArray, QVariant> &data)
+{
+    d->data = data;
 }
 
 static QByteArray inferOsType(const QVariant &value)

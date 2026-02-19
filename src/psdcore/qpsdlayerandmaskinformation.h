@@ -24,6 +24,7 @@ public:
     QPsdLayerInfo layerInfo() const;
     QPsdGlobalLayerMaskInfo globalLayerMaskInfo() const;
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
+    QList<QByteArray> aliKeyOrder() const;
     bool hasMergedAlpha() const;
 
     void setLayerInfo(const QPsdLayerInfo &layerInfo);

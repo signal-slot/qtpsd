@@ -30,8 +30,11 @@ public:
     ~QPsdSectionDividerSetting() override;
 
     Type type() const;
+    void setType(Type type);
     QPsdBlend::Mode key() const;
+    void setKey(QPsdBlend::Mode key);
     SubType subType() const;
+    void setSubType(SubType subType);
 
     void write(QIODevice *dest) const;
 

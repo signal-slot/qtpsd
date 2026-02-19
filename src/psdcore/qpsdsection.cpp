@@ -233,4 +233,68 @@ void QPsdSection::writePathNumber(QIODevice *dest, double value)
     writeU8(dest, static_cast<quint8>(b & 0xFF));
 }
 
+QByteArray QPsdSection::encodePackBits(const QByteArray &rawData, int rowWidth, int height)
+{
+    // PSD RLE format:
+    // height × uint16 byte counts (per scan line)
+    // followed by PackBits-encoded data for each scan line
+
+    QByteArray result;
+    QList<QByteArray> encodedRows;
+    encodedRows.reserve(height);
+
+    for (int y = 0; y < height; ++y) {
+        const int offset = y * rowWidth;
+        const char *row = rawData.constData() + offset;
+        const int len = qMin(rowWidth, rawData.size() - offset);
+
+        QByteArray encoded;
+        int i = 0;
+        while (i < len) {
+            // Look for a run of identical bytes (minimum 2)
+            int runStart = i;
+            while (i + 1 < len && row[i] == row[i + 1] && i - runStart < 127) {
+                ++i;
+            }
+            int runLen = i - runStart + 1;
+
+            if (runLen >= 2) {
+                // Run: emit [-(runLen-1)] [byte]
+                encoded.append(static_cast<char>(-(runLen - 1)));
+                encoded.append(row[runStart]);
+                ++i;
+            } else {
+                // Literal sequence: collect non-run bytes
+                int litStart = runStart;
+                i = runStart;
+                while (i < len) {
+                    // Check if a run of 2+ starts here
+                    if (i + 1 < len && row[i] == row[i + 1]) {
+                        break;
+                    }
+                    ++i;
+                    if (i - litStart >= 128)
+                        break;
+                }
+                int litLen = i - litStart;
+                encoded.append(static_cast<char>(litLen - 1));
+                encoded.append(row + litStart, litLen);
+            }
+        }
+        encodedRows.append(encoded);
+    }
+
+    // Write byte counts (uint16 per row)
+    for (const auto &row : encodedRows) {
+        quint16 be = qToBigEndian(static_cast<quint16>(row.size()));
+        result.append(reinterpret_cast<const char *>(&be), 2);
+    }
+    // Write encoded row data
+    for (const auto &row : encodedRows) {
+        result.append(row);
+    }
+
+    return result;
+}
+
 QT_END_NAMESPACE

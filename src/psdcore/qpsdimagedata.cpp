@@ -10,6 +10,7 @@ class QPsdImageData::Private : public QSharedData
 {
 public:
     QByteArray imageData;
+    quint16 compression = 0;
 };
 
 QPsdImageData::QPsdImageData()
@@ -39,6 +40,7 @@ QPsdImageData::QPsdImageData(const QPsdFileHeader &header, QIODevice *source)
     // 2 = ZIP without prediction
     // 3 = ZIP with prediction.
     Compression compression = static_cast<Compression>(readU16(source, &length));
+    d->compression = static_cast<quint16>(compression);
     // The color data.
     switch (compression) {
     case RawData:
@@ -81,6 +83,11 @@ QByteArray QPsdImageData::imageData() const
 void QPsdImageData::setImageData(const QByteArray &imageData)
 {
     d->imageData = imageData;
+}
+
+quint16 QPsdImageData::compression() const
+{
+    return d->compression;
 }
 
 const unsigned char *QPsdImageData::gray() const

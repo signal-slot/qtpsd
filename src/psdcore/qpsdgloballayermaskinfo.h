@@ -5,6 +5,7 @@
 #define QPSDGLOBALLAYERMASKINFO_H
 
 #include <QtPsdCore/qpsdsection.h>
+#include <QtPsdCore/qpsdcolorspace.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -25,13 +26,17 @@ public:
     quint32 length() const;
     quint16 overlayColorSpace() const;
     QString color() const;
+    QPsdColorSpace colorSpace() const;
     quint16 opacity() const;
     Kind kind() const;
+    QByteArray rawData() const;
 
     void setOverlayColorSpace(quint16 overlayColorSpace);
     void setColor(const QString &color);
+    void setColorSpace(const QPsdColorSpace &colorSpace);
     void setOpacity(quint16 opacity);
     void setKind(Kind kind);
+    void setRawData(const QByteArray &rawData);
 
 private:
     class Private;

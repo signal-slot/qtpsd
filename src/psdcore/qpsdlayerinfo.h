@@ -26,6 +26,7 @@ public:
 
     void setRecords(const QList<QPsdLayerRecord> &records);
     void setChannelImageData(const QList<QPsdChannelImageData> &channelImageData);
+    void setHasMergedAlpha(bool hasMergedAlpha);
 
     void setFileHeader(const QPsdFileHeader &fileHeader);
 

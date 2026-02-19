@@ -3,7 +3,9 @@
 
 #include "qpsdtextitem.h"
 
+#include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
+#include <QtGui/QScreen>
 #include <QtGui/QWindow>
 
 QT_BEGIN_NAMESPACE
@@ -99,7 +101,8 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
                 continue;
             Chunk chunk;
             chunk.font = run.font;
-            chunk.font.setPointSizeF(run.font.pointSizeF() / 1.5);
+            const qreal dpiScale = QGuiApplication::primaryScreen()->logicalDotsPerInchY() / 72.0;
+            chunk.font.setPointSizeF(run.font.pointSizeF() / dpiScale);
             chunk.font.setStyleStrategy(QFont::PreferTypoLineMetrics);
             chunk.color = run.color;
             chunk.text = part;

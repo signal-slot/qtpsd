@@ -6,6 +6,7 @@
 #include <QtCore/qiodevice.h>
 #include <QtCore/qcbormap.h>
 #include <QtCore/qcborarray.h>
+#include <QtCore/QStringEncoder>
 
 QT_BEGIN_NAMESPACE
 
@@ -401,6 +402,104 @@ QCborMap QPsdEngineDataParser::parseEngineData(const QByteArray &data, ParseErro
     if (error)
         *error = parseError;
     return QCborMap(); // パース失敗
+}
+
+static void serializeValue(QByteArray &out, const QCborValue &value, int indent);
+
+static void serializeMap(QByteArray &out, const QCborMap &map, int indent)
+{
+    const QByteArray pad(indent, '\t');
+    const QByteArray innerPad(indent + 1, '\t');
+    out += pad + "<<\n";
+    for (auto it = map.constBegin(); it != map.constEnd(); ++it) {
+        const auto key = it.key().toString().toUtf8();
+        out += innerPad + "/" + key + "\n";
+        serializeValue(out, it.value(), indent + 1);
+    }
+    out += pad + ">>\n";
+}
+
+static void serializeValue(QByteArray &out, const QCborValue &value, int indent)
+{
+    const QByteArray pad(indent, '\t');
+    switch (value.type()) {
+    case QCborValue::Map:
+        serializeMap(out, value.toMap(), indent);
+        break;
+    case QCborValue::Array: {
+        out += pad + "[\n";
+        const auto array = value.toArray();
+        for (const auto &item : array)
+            serializeValue(out, item, indent + 1);
+        out += pad + "]\n";
+        break;
+    }
+    case QCborValue::String: {
+        const auto str = value.toString();
+        // Always write ogonek-caron prefix
+        QByteArray encoded;
+        encoded += "\xCB\x9B\xCB\x87";
+        // Check if string contains non-ASCII characters
+        bool hasNonAscii = false;
+        for (const auto &ch : str) {
+            if (ch.unicode() > 127) {
+                hasNonAscii = true;
+                break;
+            }
+        }
+        if (hasNonAscii) {
+            // UTF-16BE BOM + encoded string
+            encoded += "\xFE\xFF";
+            QStringEncoder encoder(QStringEncoder::Utf16BE);
+            QByteArray utf16 = encoder.encode(str);
+            // Escape special characters in the binary content
+            for (int i = 0; i < utf16.size(); ++i) {
+                const char ch = utf16.at(i);
+                if (ch == '(' || ch == ')' || ch == '\\')
+                    encoded += '\\';
+                encoded += ch;
+            }
+        } else {
+            // Latin1 encoding, escape special characters
+            const auto latin1 = str.toLatin1();
+            for (int i = 0; i < latin1.size(); ++i) {
+                const char ch = latin1.at(i);
+                if (ch == '(' || ch == ')' || ch == '\\')
+                    encoded += '\\';
+                encoded += ch;
+            }
+        }
+        out += pad + "(" + encoded + ")\n";
+        break;
+    }
+    case QCborValue::True:
+        out += pad + "true\n";
+        break;
+    case QCborValue::False:
+        out += pad + "false\n";
+        break;
+    case QCborValue::Integer:
+        out += pad + QByteArray::number(static_cast<qlonglong>(value.toInteger())) + "\n";
+        break;
+    case QCborValue::Double: {
+        // Format with decimal point to distinguish from integer
+        const double d = value.toDouble();
+        QByteArray num = QByteArray::number(d, 'g', 15);
+        if (!num.contains('.'))
+            num += ".0";
+        out += pad + num + "\n";
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+QByteArray QPsdEngineDataParser::serializeEngineData(const QCborMap &data)
+{
+    QByteArray out;
+    serializeMap(out, data, 0);
+    return out;
 }
 
 QT_END_NAMESPACE

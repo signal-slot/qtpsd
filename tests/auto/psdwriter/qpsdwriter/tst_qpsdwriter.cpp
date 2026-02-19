@@ -16,6 +16,7 @@
 #include <QtTest/QtTest>
 
 #include <QtCore/QBuffer>
+#include <QtCore/QDateTime>
 #include <QtCore/QDirIterator>
 #include <QtCore/QTemporaryFile>
 
@@ -32,6 +33,23 @@ private slots:
     void roundTripFull();
     void aliCoverage_data();
     void aliCoverage();
+    void binaryRoundTrip_data();
+    void binaryRoundTrip();
+    void writeReport_data();
+    void writeReport();
+    void cleanupTestCase();
+
+private:
+    struct WriteResult {
+        QString category;
+        QString fileName;
+        qint64 fileSize = 0;
+        bool pass = false;
+        QString failSection;
+        qint64 sizeDelta = 0; // written - original (negative = shorter)
+        QString details;
+    };
+    QList<WriteResult> m_results;
 };
 
 void tst_QPsdWriter::writeFileHeader()
@@ -297,6 +315,8 @@ void tst_QPsdWriter::roundTripFull()
         QCOMPARE(reparsedRecords.at(i).name(), originalRecords.at(i).name());
         QCOMPARE(reparsedRecords.at(i).blendMode(), originalRecords.at(i).blendMode());
         QCOMPARE(reparsedRecords.at(i).opacity(), originalRecords.at(i).opacity());
+        QCOMPARE(reparsedRecords.at(i).channelInfo().size(),
+                 originalRecords.at(i).channelInfo().size());
     }
 }
 
@@ -391,6 +411,345 @@ void tst_QPsdWriter::aliCoverage()
             failList << "%1(%2)"_L1.arg(QString::fromLatin1(it.key())).arg(it.value());
         qDebug() << "  failed keys:" << failList.join(", "_L1);
     }
+}
+
+void tst_QPsdWriter::binaryRoundTrip_data()
+{
+    QTest::addColumn<QString>("psd");
+    QTest::addColumn<qint64>("fileSize");
+
+    const QString zooPath = QFINDTESTDATA("../../3rdparty/psd-zoo/");
+    if (zooPath.isEmpty() || !QDir(zooPath).exists()) {
+        QSKIP("psd-zoo submodule not available");
+        return;
+    }
+    QDirIterator it(zooPath, QStringList() << "*.psd"_L1, QDir::Files, QDirIterator::Subdirectories);
+    QList<std::tuple<qint64, QString, QString>> rows;
+    while (it.hasNext()) {
+        const QString filePath = it.next();
+        const QString relativePath = QDir(zooPath).relativeFilePath(filePath);
+        const qint64 size = QFileInfo(filePath).size();
+        rows.append({size, relativePath, filePath});
+    }
+    // Sort by file size ascending
+    std::sort(rows.begin(), rows.end());
+    if (rows.isEmpty()) {
+        QSKIP("No PSD files found in psd-zoo");
+        return;
+    }
+    for (const auto &[size, rel, path] : rows)
+        QTest::newRow(rel.toLatin1().data()) << path << size;
+}
+
+void tst_QPsdWriter::binaryRoundTrip()
+{
+    QFETCH(QString, psd);
+    QFETCH(qint64, fileSize);
+    Q_UNUSED(fileSize);
+
+    // Read original bytes
+    QFile originalFile(psd);
+    QVERIFY(originalFile.open(QIODevice::ReadOnly));
+    const QByteArray originalBytes = originalFile.readAll();
+    originalFile.close();
+
+    // Parse
+    QPsdParser parser;
+    parser.load(psd);
+
+    // Write through QPsdWriter
+    QPsdWriter writer;
+    writer.setFileHeader(parser.fileHeader());
+    writer.setColorModeData(parser.colorModeData());
+    writer.setImageResources(parser.imageResources());
+    writer.setLayerAndMaskInformation(parser.layerAndMaskInformation());
+    writer.setImageData(parser.imageData());
+
+    QTemporaryFile tmpFile;
+    QVERIFY(tmpFile.open());
+    const QString tmpPath = tmpFile.fileName();
+    tmpFile.close();
+
+    QVERIFY2(writer.write(tmpPath), qPrintable(writer.errorString()));
+
+    // Read written bytes
+    QFile writtenFile(tmpPath);
+    QVERIFY(writtenFile.open(QIODevice::ReadOnly));
+    const QByteArray writtenBytes = writtenFile.readAll();
+    writtenFile.close();
+
+    // Compare — binary round-trip must be identical
+    QCOMPARE(writtenBytes, originalBytes);
+}
+
+void tst_QPsdWriter::writeReport_data()
+{
+    QTest::addColumn<QString>("psd");
+    QTest::addColumn<qint64>("fileSize");
+
+    const QString zooPath = QFINDTESTDATA("../../3rdparty/psd-zoo/");
+    if (zooPath.isEmpty() || !QDir(zooPath).exists()) {
+        QSKIP("psd-zoo submodule not available");
+        return;
+    }
+    QDirIterator it(zooPath, QStringList() << "*.psd"_L1, QDir::Files, QDirIterator::Subdirectories);
+    QList<std::tuple<qint64, QString, QString>> rows;
+    while (it.hasNext()) {
+        const QString filePath = it.next();
+        const QString relativePath = QDir(zooPath).relativeFilePath(filePath);
+        const qint64 size = QFileInfo(filePath).size();
+        rows.append({size, relativePath, filePath});
+    }
+    std::sort(rows.begin(), rows.end());
+    if (rows.isEmpty()) {
+        QSKIP("No PSD files found in psd-zoo");
+        return;
+    }
+    for (const auto &[size, rel, path] : rows)
+        QTest::newRow(rel.toLatin1().data()) << path << size;
+}
+
+// Determine which PSD section a byte offset falls in
+static QString sectionForOffset(qint64 offset, qint64 headerEnd, qint64 colorEnd,
+                                qint64 irEnd, qint64 lmiEnd)
+{
+    if (offset < headerEnd) return u"FileHeader"_s;
+    if (offset < colorEnd) return u"ColorMode"_s;
+    if (offset < irEnd) return u"ImageResources"_s;
+    if (offset < lmiEnd) return u"LMI"_s;
+    return u"ImageData"_s;
+}
+
+void tst_QPsdWriter::writeReport()
+{
+    QFETCH(QString, psd);
+    QFETCH(qint64, fileSize);
+
+    const QString zooPath = QFINDTESTDATA("../../3rdparty/psd-zoo/");
+    const QString relativePath = QDir(zooPath).relativeFilePath(psd);
+
+    // Extract category (first path component)
+    const int slashIdx = relativePath.indexOf(u'/');
+    const QString category = (slashIdx > 0) ? relativePath.left(slashIdx) : u"other"_s;
+    const QString fileName = (slashIdx > 0) ? relativePath.mid(slashIdx + 1) : relativePath;
+
+    // Read original bytes
+    QFile originalFile(psd);
+    QVERIFY(originalFile.open(QIODevice::ReadOnly));
+    const QByteArray originalBytes = originalFile.readAll();
+    originalFile.close();
+
+    // Parse to determine section boundaries
+    const qint64 headerEnd = 26;
+    auto readU32 = [&](const QByteArray &data, qint64 offset) -> quint32 {
+        return qFromBigEndian<quint32>(data.constData() + offset);
+    };
+    const quint32 colorLen = readU32(originalBytes, headerEnd);
+    const qint64 colorEnd = headerEnd + 4 + colorLen;
+    const quint32 irLen = readU32(originalBytes, colorEnd);
+    const qint64 irEnd = colorEnd + 4 + irLen;
+    const quint32 lmiLen = readU32(originalBytes, irEnd);
+    const qint64 lmiEnd = irEnd + 4 + lmiLen;
+
+    // Parse and write
+    QPsdParser parser;
+    parser.load(psd);
+
+    QPsdWriter writer;
+    writer.setFileHeader(parser.fileHeader());
+    writer.setColorModeData(parser.colorModeData());
+    writer.setImageResources(parser.imageResources());
+    writer.setLayerAndMaskInformation(parser.layerAndMaskInformation());
+    writer.setImageData(parser.imageData());
+
+    QBuffer outBuf;
+    outBuf.open(QIODevice::WriteOnly);
+    const bool writeOk = writer.write(&outBuf);
+    outBuf.close();
+
+    WriteResult result;
+    result.category = category;
+    result.fileName = fileName;
+    result.fileSize = fileSize;
+
+    if (!writeOk) {
+        result.pass = false;
+        result.failSection = u"WRITE_ERROR"_s;
+        result.details = writer.errorString();
+        m_results.append(result);
+        return;
+    }
+
+    const QByteArray writtenBytes = outBuf.data();
+
+    if (writtenBytes == originalBytes) {
+        result.pass = true;
+        m_results.append(result);
+        return;
+    }
+
+    result.pass = false;
+    result.sizeDelta = writtenBytes.size() - originalBytes.size();
+
+    // Find first diff
+    qint64 firstDiff = -1;
+    const qint64 minLen = qMin<qint64>(writtenBytes.size(), originalBytes.size());
+    for (qint64 i = 0; i < minLen; ++i) {
+        if (writtenBytes.at(i) != originalBytes.at(i)) {
+            firstDiff = i;
+            break;
+        }
+    }
+    if (firstDiff < 0 && writtenBytes.size() != originalBytes.size())
+        firstDiff = minLen;
+
+    result.failSection = sectionForOffset(firstDiff, headerEnd, colorEnd, irEnd, lmiEnd);
+
+    if (result.failSection == u"LMI"_s) {
+        // Detailed LMI analysis: compare sub-section sizes
+        const qint64 lmiStart = irEnd + 4;
+        const quint32 origLiLen = readU32(originalBytes, lmiStart);
+        qint64 origLiEnd = lmiStart + 4 + origLiLen;
+        if (origLiLen % 2 != 0) origLiEnd++;
+
+        // Also read written LMI sub-structure
+        const quint32 writtenLmiLen = readU32(writtenBytes, irEnd);
+        const quint32 writtenLiLen = readU32(writtenBytes, lmiStart);
+        qint64 writtenLiEnd = lmiStart + 4 + writtenLiLen;
+        if (writtenLiLen % 2 != 0) writtenLiEnd++;
+
+        QStringList parts;
+        if (origLiLen != writtenLiLen) {
+            qint64 liDelta = static_cast<qint64>(writtenLiLen) - static_cast<qint64>(origLiLen);
+            parts << u"LayerInfo %1%2"_s.arg(liDelta >= 0 ? u"+"_s : u""_s).arg(liDelta);
+        }
+
+        // GLMI
+        if (origLiEnd + 4 <= originalBytes.size() && writtenLiEnd + 4 <= writtenBytes.size()) {
+            const quint32 origGlmiLen = readU32(originalBytes, origLiEnd);
+            const quint32 writtenGlmiLen = readU32(writtenBytes, writtenLiEnd);
+            if (origGlmiLen != writtenGlmiLen) {
+                qint64 glmiDelta = static_cast<qint64>(writtenGlmiLen) - static_cast<qint64>(origGlmiLen);
+                parts << u"GLMI %1%2"_s.arg(glmiDelta >= 0 ? u"+"_s : u""_s).arg(glmiDelta);
+            }
+
+            // Top-level ALI size
+            qint64 origAliStart = origLiEnd + 4 + origGlmiLen;
+            qint64 writtenAliStart = writtenLiEnd + 4 + writtenGlmiLen;
+            qint64 origAliSize = (irEnd + 4 + lmiLen) - origAliStart;
+            qint64 writtenAliSize = (irEnd + 4 + writtenLmiLen) - writtenAliStart;
+            if (origAliSize != writtenAliSize) {
+                qint64 aliDelta = writtenAliSize - origAliSize;
+                parts << u"TopALI %1%2"_s.arg(aliDelta >= 0 ? u"+"_s : u""_s).arg(aliDelta);
+            }
+        }
+
+        result.details = parts.isEmpty() ? u"byte diff"_s : parts.join(u", "_s);
+    } else {
+        result.details = u"byte diff at %1"_s.arg(firstDiff);
+    }
+
+    m_results.append(result);
+}
+
+void tst_QPsdWriter::cleanupTestCase()
+{
+    if (m_results.isEmpty())
+        return;
+
+    const QString reportPath = QStringLiteral(QT_TESTCASE_SOURCEDIR "/../../../../docs/psd-zoo-write-report.md");
+
+    QFile reportFile(reportPath);
+    if (!reportFile.open(QFile::WriteOnly | QFile::Truncate))
+        return;
+
+    QTextStream ts(&reportFile);
+
+    // Count totals
+    int totalPass = 0;
+    int totalFail = 0;
+    QMap<QString, int> categoryPass;
+    QMap<QString, int> categoryTotal;
+    QMap<QString, int> sectionCounts;
+
+    for (const auto &r : m_results) {
+        categoryTotal[r.category]++;
+        if (r.pass) {
+            totalPass++;
+            categoryPass[r.category]++;
+        } else {
+            totalFail++;
+            sectionCounts[r.failSection]++;
+        }
+    }
+
+    ts << "# PSD Writer Round-Trip Report\n\n";
+    ts << "Generated: " << QDateTime::currentDateTime().toString(Qt::ISODate) << "\n\n";
+
+    // === Summary Statistics ===
+    ts << "## Summary Statistics\n\n";
+    ts << "| Metric | Value |\n";
+    ts << "|--------|-------|\n";
+    ts << "| Total Tests | " << m_results.size() << " |\n";
+    const double passRate = m_results.isEmpty() ? 0.0
+        : 100.0 * totalPass / m_results.size();
+    ts << "| Passed | " << totalPass << " (" << QString::number(passRate, 'f', 1) << "%) |\n";
+    ts << "| Failed | " << totalFail << " |\n\n";
+
+    // === Per-Category Summary ===
+    ts << "## Per-Category Summary\n\n";
+    ts << "| Category | Pass | Total | Rate |\n";
+    ts << "|----------|------|-------|------|\n";
+    for (auto it = categoryTotal.cbegin(); it != categoryTotal.cend(); ++it) {
+        const int pass = categoryPass.value(it.key(), 0);
+        const int total = it.value();
+        const double rate = total > 0 ? 100.0 * pass / total : 0.0;
+        ts << "| " << it.key() << " | " << pass << " | " << total
+           << " | " << QString::number(rate, 'f', 1) << "% |\n";
+    }
+    ts << "\n";
+
+    // === Per-Section Failure Breakdown ===
+    if (!sectionCounts.isEmpty()) {
+        ts << "## Failure Breakdown by Section\n\n";
+        ts << "| Section | Count |\n";
+        ts << "|---------|-------|\n";
+        for (auto it = sectionCounts.cbegin(); it != sectionCounts.cend(); ++it)
+            ts << "| " << it.key() << " | " << it.value() << " |\n";
+        ts << "\n";
+    }
+
+    // === Per-Category Detailed Tables ===
+    // Sort results by category then fileName for grouped output
+    QList<WriteResult> sorted = m_results;
+    std::sort(sorted.begin(), sorted.end(), [](const WriteResult &a, const WriteResult &b) {
+        if (a.category != b.category) return a.category < b.category;
+        return a.fileName < b.fileName;
+    });
+
+    QString currentCategory;
+    for (const auto &r : sorted) {
+        if (r.category != currentCategory) {
+            currentCategory = r.category;
+            ts << "## " << currentCategory << "\n\n";
+            ts << "| File | Size | Result | Delta | Details |\n";
+            ts << "|------|-----:|:------:|------:|:--------|\n";
+        }
+        const QString psdLink = u"[%1](https://github.com/signal-slot/psd-zoo/tree/main/%2/%1)"_s
+            .arg(r.fileName, r.category);
+        if (r.pass) {
+            ts << "| " << psdLink << " | " << r.fileSize << " | PASS | - | - |\n";
+        } else {
+            const QString delta = (r.sizeDelta == 0) ? u"0"_s
+                : ((r.sizeDelta > 0) ? u"+%1"_s.arg(r.sizeDelta) : QString::number(r.sizeDelta));
+            ts << "| " << psdLink << " | " << r.fileSize
+               << " | FAIL | " << delta << " | " << r.details << " |\n";
+        }
+    }
+
+    reportFile.close();
+    qDebug() << "Write report:" << reportPath;
+    qDebug() << "Pass:" << totalPass << "Fail:" << totalFail;
 }
 
 QTEST_MAIN(tst_QPsdWriter)

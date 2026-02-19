@@ -22,6 +22,7 @@ public:
     Range grayBlendDestinationRange() const;
     QList<Range> channelSourceRanges() const;
     QList<Range> channelDestinationRanges() const;
+    QByteArray rawData() const;
 
 private:
     class Private;

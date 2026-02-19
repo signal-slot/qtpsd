@@ -19,9 +19,13 @@ public:
     ~QPsdTypeToolObjectSetting() override;
 
     QList<qreal> transform() const;
+    void setTransform(const QList<qreal> &transform);
     QPsdDescriptor textData() const;
+    void setTextData(const QPsdDescriptor &textData);
     QPsdDescriptor warpData() const;
+    void setWarpData(const QPsdDescriptor &warpData);
     QRect rect() const;
+    void setRect(const QRect &rect);
     QRectF bounds() const;
 
     void write(QIODevice *dest) const;

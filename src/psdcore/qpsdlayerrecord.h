@@ -37,11 +37,12 @@ public:
     bool isVisible() const;
     bool hasPixelDataIrrelevantToAppearanceDocument() const;
     bool isPixelDataIrrelevantToAppearanceDocument() const;
-    // quint8 flags() const;
+    quint8 flags() const;
     QPsdLayerMaskAdjustmentLayerData layerMaskAdjustmentLayerData() const;
     QPsdLayerBlendingRangesData layerBlendingRangesData() const;
     QByteArray name() const;
     QHash<QByteArray, QVariant> additionalLayerInformation() const;
+    QList<QByteArray> aliKeyOrder() const;
 
     void setRect(const QRect &rect);
     void setChannelInfo(const QList<QPsdChannelInfo> &channelInfo);

@@ -62,14 +62,29 @@ QPsdSectionDividerSetting::Type QPsdSectionDividerSetting::type() const
     return d->type;
 }
 
+void QPsdSectionDividerSetting::setType(Type type)
+{
+    d->type = type;
+}
+
 QPsdBlend::Mode QPsdSectionDividerSetting::key() const
 {
     return d->key;
 }
 
+void QPsdSectionDividerSetting::setKey(QPsdBlend::Mode key)
+{
+    d->key = key;
+}
+
 QPsdSectionDividerSetting::SubType QPsdSectionDividerSetting::subType() const
 {
     return d->subType;
+}
+
+void QPsdSectionDividerSetting::setSubType(SubType subType)
+{
+    d->subType = subType;
 }
 
 void QPsdSectionDividerSetting::write(QIODevice *dest) const

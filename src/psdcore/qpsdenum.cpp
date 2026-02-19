@@ -43,9 +43,19 @@ QByteArray QPsdEnum::type() const
     return d->type;
 }
 
+void QPsdEnum::setType(const QByteArray &type)
+{
+    d->type = type;
+}
+
 QByteArray QPsdEnum::value() const
 {
     return d->value;
+}
+
+void QPsdEnum::setValue(const QByteArray &value)
+{
+    d->value = value;
 }
 
 void QPsdEnum::write(QIODevice *dest) const

@@ -20,8 +20,11 @@ public:
     ~QPsdDescriptor() override;
 
     QString name() const;
+    void setName(const QString &name);
     QByteArray classID() const;
+    void setClassID(const QByteArray &classID);
     QHash<QByteArray, QVariant> data() const;
+    void setData(const QHash<QByteArray, QVariant> &data);
 
     void write(QIODevice *dest) const;
 

@@ -36,6 +36,13 @@ public:
     virtual bool hasAlpha() const { return false; }
     QByteArray toImage(QPsdFileHeader::ColorMode colorMode) const;
 
+    enum Compression {
+        RawData = 0,
+        RLE = 1,
+        ZipWithoutPrediction = 2,
+        ZipWithPrediction = 3,
+    };
+
 protected:
 
     virtual const unsigned char *gray() const = 0;
@@ -48,12 +55,6 @@ protected:
     virtual const unsigned char *y() const { return nullptr; }
     virtual const unsigned char *k() const { return nullptr; }
 
-    enum Compression {
-        RawData = 0,
-        RLE = 1,
-        ZipWithoutPrediction = 2,
-        ZipWithPrediction = 3,
-    };
     static QByteArray readRLE(QIODevice *source, int height, quint32 *length);
     static QByteArray readZip(QIODevice *source, quint32 *length);
 

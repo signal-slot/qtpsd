@@ -26,7 +26,11 @@ public:
     QByteArray transparencyMaskData() const;
     QByteArray userSuppliedLayerMask() const;
 
+    QByteArray channelData(QPsdChannelInfo::ChannelID channelId) const;
     void setChannelData(QPsdChannelInfo::ChannelID channelId, const QByteArray &data);
+
+    Compression channelCompression(QPsdChannelInfo::ChannelID channelId) const;
+    void setChannelCompression(QPsdChannelInfo::ChannelID channelId, Compression compression);
 
 protected:
     const unsigned char *gray() const override;

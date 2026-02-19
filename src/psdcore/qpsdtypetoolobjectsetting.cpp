@@ -107,9 +107,19 @@ QList<qreal> QPsdTypeToolObjectSetting::transform() const
     return d->transform;
 }
 
+void QPsdTypeToolObjectSetting::setTransform(const QList<qreal> &transform)
+{
+    d->transform = transform;
+}
+
 QPsdDescriptor QPsdTypeToolObjectSetting::textData() const
 {
     return d->textData;
+}
+
+void QPsdTypeToolObjectSetting::setTextData(const QPsdDescriptor &textData)
+{
+    d->textData = textData;
 }
 
 QPsdDescriptor QPsdTypeToolObjectSetting::warpData() const
@@ -117,9 +127,19 @@ QPsdDescriptor QPsdTypeToolObjectSetting::warpData() const
     return d->warpData;
 }
 
+void QPsdTypeToolObjectSetting::setWarpData(const QPsdDescriptor &warpData)
+{
+    d->warpData = warpData;
+}
+
 QRect QPsdTypeToolObjectSetting::rect() const
 {
     return d->rect;
+}
+
+void QPsdTypeToolObjectSetting::setRect(const QRect &rect)
+{
+    d->rect = rect;
 }
 
 QRectF QPsdTypeToolObjectSetting::bounds() const
