@@ -735,7 +735,7 @@ void tst_QPsdWriter::cleanupTestCase()
             ts << "| File | Size | Result | Delta | Details |\n";
             ts << "|------|-----:|:------:|------:|:--------|\n";
         }
-        const QString psdLink = u"[%1](https://github.com/signal-slot/psd-zoo/blob/main/%2/%1)"_s
+        const QString psdLink = u"[%1](https://github.com/signal-slot/psd-zoo/blob/master/%2/%1)"_s
             .arg(r.fileName, r.category);
         if (r.pass) {
             ts << "| " << psdLink << " | " << r.fileSize << " | PASS | - | - |\n";
