@@ -25,7 +25,7 @@ public:
     // Obsolete
     // inline bool isInvertLayerMaskWhenBlending() const;
     bool isLayerMaskFromRenderingOtherData() const;
-    bool isLayerMaskFromVectorData() const;
+    bool hasMaskParameters() const;
     QRect realUserMaskRect() const;
     QByteArray rawData() const;
 

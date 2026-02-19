@@ -75,8 +75,8 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
         d->realUserMaskRect = readRectangle(source, &length);
     }
 
-    // Mask Parameters. Only present if bit 4 of Flags set above.
-    if (d->flags & 0x10) {
+    // Mask Parameters. Only present if bit 4 of Flags set above and extended format was used.
+    if ((d->flags & 0x10) && d->hasRealUserMask) {
         d->maskParameters = readU8(source, &length);
 
         if (d->maskParameters & 0x01) {
@@ -140,7 +140,7 @@ bool QPsdLayerMaskAdjustmentLayerData::isLayerMaskFromRenderingOtherData() const
     return d->flags & 0x08;
 }
 
-bool QPsdLayerMaskAdjustmentLayerData::isLayerMaskFromVectorData() const
+bool QPsdLayerMaskAdjustmentLayerData::hasMaskParameters() const
 {
     return d->flags & 0x10;
 }

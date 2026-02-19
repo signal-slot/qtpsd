@@ -373,7 +373,7 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
     // - Mask came from rendering other data (e.g. rasterized vector mask)
     // - Mask is from vector data (handled separately via vectorMask())
     if (!layerMaskData.isEmpty() && !maskInfo.isEmpty() && !maskInfo.isLayerMaskDisabled()
-        && !maskInfo.isLayerMaskFromRenderingOtherData() && !maskInfo.isLayerMaskFromVectorData()) {
+        && !maskInfo.isLayerMaskFromRenderingOtherData()) {
         const auto maskRect = maskInfo.rect();
         const auto w = maskRect.width();
         const auto h = maskRect.height();
