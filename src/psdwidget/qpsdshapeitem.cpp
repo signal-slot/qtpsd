@@ -215,6 +215,7 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             const QRect maskRect = layer->layerMaskRect();
             const QRect layerRect = layer->rect();
             const int defaultColor = layer->layerMaskDefaultColor();
+            const int density = layer->layerMaskDensity();
 
             for (int y = 0; y < tempImage.height(); ++y) {
                 QRgb *scanLine = reinterpret_cast<QRgb *>(tempImage.scanLine(y));
@@ -227,6 +228,9 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                         && maskY >= 0 && maskY < layerMask.height()) {
                         maskValue = qGray(layerMask.pixel(maskX, maskY));
                     }
+
+                    // Apply density: scale mask effect (255=full, 0=no masking)
+                    maskValue = 255 - density * (255 - maskValue) / 255;
 
                     const int alpha = qAlpha(scanLine[x]);
                     const int newAlpha = (alpha * maskValue) / 255;

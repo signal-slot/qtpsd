@@ -69,6 +69,7 @@ public:
     QImage layerMask() const;
     QRect layerMaskRect() const;
     quint8 layerMaskDefaultColor() const;
+    quint8 layerMaskDensity() const;
 
     QPsdLinkedLayer::LinkedFile linkedFile() const;
     void setLinkedFile(const QPsdLinkedLayer::LinkedFile &linkedFile);

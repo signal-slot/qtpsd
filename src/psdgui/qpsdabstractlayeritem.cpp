@@ -42,6 +42,7 @@ public:
     QImage layerMask;
     QRect layerMaskRect;
     quint8 layerMaskDefaultColor = 255;  // Default: outside mask is opaque
+    quint8 layerMaskDensity = 255;  // Default: full density (mask fully applied)
     QPsdLinkedLayer::LinkedFile linkedFile;
     QVariantList effects;
 };
@@ -386,6 +387,8 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
                 d->layerMask = maskImage;
                 d->layerMaskRect = maskRect;
                 d->layerMaskDefaultColor = maskInfo.defaultColor();
+                if (maskInfo.maskParameters() & 0x01)
+                    d->layerMaskDensity = maskInfo.userMaskDensity();
             }
         }
     }
@@ -498,6 +501,11 @@ QRect QPsdAbstractLayerItem::layerMaskRect() const
 quint8 QPsdAbstractLayerItem::layerMaskDefaultColor() const
 {
     return d->layerMaskDefaultColor;
+}
+
+quint8 QPsdAbstractLayerItem::layerMaskDensity() const
+{
+    return d->layerMaskDensity;
 }
 
 QPsdLinkedLayer::LinkedFile QPsdAbstractLayerItem::linkedFile() const

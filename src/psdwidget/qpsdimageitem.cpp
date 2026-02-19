@@ -165,11 +165,12 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         const QRect maskRect = layer->layerMaskRect();
         const QRect layerRect = layer->rect();
         const int defaultColor = layer->layerMaskDefaultColor();  // 0=outside transparent, 255=outside opaque
+        const int density = layer->layerMaskDensity();  // 0=no mask effect, 255=full mask
 
         // Convert image to ARGB32 for alpha manipulation
         image = image.convertToFormat(QImage::Format_ARGB32);
 
-        // Apply mask: multiply alpha by mask value
+        // Apply mask: multiply alpha by density-scaled mask value
         for (int y = 0; y < image.height(); ++y) {
             QRgb *scanLine = reinterpret_cast<QRgb *>(image.scanLine(y));
             for (int x = 0; x < image.width(); ++x) {
@@ -184,6 +185,9 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                     // Get mask value (grayscale: 0=transparent, 255=opaque)
                     maskValue = qGray(layerMask.pixel(maskX, maskY));
                 }
+
+                // Apply density: scale mask effect (255=full, 0=no masking)
+                maskValue = 255 - density * (255 - maskValue) / 255;
 
                 // Multiply existing alpha by mask value
                 const int alpha = qAlpha(scanLine[x]);
