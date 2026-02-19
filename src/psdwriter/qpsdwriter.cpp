@@ -20,6 +20,7 @@ public:
     QPsdLayerAndMaskInformation layerAndMaskInformation;
     QPsdImageData imageData;
     mutable QString errorString;
+    bool useRawBytes = true;
 };
 
 QPsdWriter::QPsdWriter()
@@ -89,19 +90,33 @@ void QPsdWriter::setImageData(const QPsdImageData &imageData)
     d->imageData = imageData;
 }
 
+bool QPsdWriter::useRawBytes() const
+{
+    return d->useRawBytes;
+}
+
+void QPsdWriter::setUseRawBytes(bool enable)
+{
+    d->useRawBytes = enable;
+}
+
 QString QPsdWriter::errorString() const
 {
     return d->errorString;
 }
 
 // Helper to write layer mask adjustment layer data
-static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLayerData &maskData)
+static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLayerData &maskData, bool useRawBytes = true)
 {
-    const QByteArray raw = maskData.rawData();
-    if (!raw.isEmpty()) {
-        QPsdSection::writeU32(dest, raw.size());
-        dest->write(raw);
-    } else if (maskData.isEmpty()) {
+    if (useRawBytes) {
+        const QByteArray raw = maskData.rawData();
+        if (!raw.isEmpty()) {
+            QPsdSection::writeU32(dest, raw.size());
+            dest->write(raw);
+            return;
+        }
+    }
+    if (maskData.isEmpty()) {
         // Empty mask data: just write length 0
         QPsdSection::writeU32(dest, 0);
     } else {
@@ -126,13 +141,15 @@ static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLay
 }
 
 // Helper to write layer blending ranges data
-static void writeBlendingRangesData(QIODevice *dest, const QPsdLayerBlendingRangesData &rangesData)
+static void writeBlendingRangesData(QIODevice *dest, const QPsdLayerBlendingRangesData &rangesData, bool useRawBytes = true)
 {
-    const QByteArray raw = rangesData.rawData();
-    if (!raw.isEmpty()) {
-        QPsdSection::writeU32(dest, raw.size());
-        dest->write(raw);
-        return;
+    if (useRawBytes) {
+        const QByteArray raw = rangesData.rawData();
+        if (!raw.isEmpty()) {
+            QPsdSection::writeU32(dest, raw.size());
+            dest->write(raw);
+            return;
+        }
     }
 
     QBuffer buf;
@@ -251,7 +268,7 @@ bool QPsdWriter::write(QIODevice *device) const
                         const auto &cid = channelImageDataList.at(ri);
 #ifdef QT_PSD_RAW_ROUND_TRIP
                         // Use raw compressed bytes for lossless round-trip if available
-                        const QByteArray rawBytes = cid.rawChannelBytes(ci.id());
+                        const QByteArray rawBytes = d->useRawBytes ? cid.rawChannelBytes(ci.id()) : QByteArray();
                         if (!rawBytes.isEmpty()) {
                             encoded = rawBytes;
                         } else
@@ -356,10 +373,10 @@ bool QPsdWriter::write(QIODevice *device) const
                 extraBuf.open(QIODevice::WriteOnly);
 
                 // Layer mask data
-                writeLayerMaskData(&extraBuf, record.layerMaskAdjustmentLayerData());
+                writeLayerMaskData(&extraBuf, record.layerMaskAdjustmentLayerData(), d->useRawBytes);
 
                 // Layer blending ranges
-                writeBlendingRangesData(&extraBuf, record.layerBlendingRangesData());
+                writeBlendingRangesData(&extraBuf, record.layerBlendingRangesData(), d->useRawBytes);
 
                 // Layer name (Pascal string, padded to multiple of 4)
                 QPsdSection::writePascalString(&extraBuf, record.name(), 4);
@@ -439,9 +456,11 @@ bool QPsdWriter::write(QIODevice *device) const
             // Kind
             QPsdSection::writeU8(&glmiBuf, static_cast<quint8>(glmi.kind()));
             // Filler/padding bytes
-            const QByteArray &glmiRaw = glmi.rawData();
-            if (!glmiRaw.isEmpty())
-                glmiBuf.write(glmiRaw);
+            if (d->useRawBytes) {
+                const QByteArray &glmiRaw = glmi.rawData();
+                if (!glmiRaw.isEmpty())
+                    glmiBuf.write(glmiRaw);
+            }
             glmiBuf.close();
 
             QPsdSection::writeU32(&lmiBuf, glmiBuf.data().size());
@@ -487,7 +506,7 @@ bool QPsdWriter::write(QIODevice *device) const
     // === Section 5: Image Data ===
     {
 #ifdef QT_PSD_RAW_ROUND_TRIP
-        const QByteArray rawImgBytes = d->imageData.rawImageBytes();
+        const QByteArray rawImgBytes = d->useRawBytes ? d->imageData.rawImageBytes() : QByteArray();
         if (!rawImgBytes.isEmpty()) {
             device->write(rawImgBytes);
         } else

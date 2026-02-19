@@ -5,8 +5,11 @@ qt_internal_add_test(tst_qpsdwriter
     SOURCES
         tst_qpsdwriter.cpp
     LIBRARIES
+        Qt::Gui
         Qt::PsdCore
+        Qt::PsdWidget
         Qt::PsdWriter
         Qt::Test
         Qt::TestPrivate
+        Qt::Widgets
 )

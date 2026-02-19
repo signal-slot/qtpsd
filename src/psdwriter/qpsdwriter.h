@@ -42,6 +42,9 @@ public:
     bool write(QIODevice *device) const;
     bool write(const QString &filePath) const;
 
+    bool useRawBytes() const;
+    void setUseRawBytes(bool enable);
+
     QString errorString() const;
 
 private:
