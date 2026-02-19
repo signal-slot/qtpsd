@@ -202,6 +202,18 @@ const QPsdAbstractLayerItem *QPsdGuiLayerTreeItemModel::layerItem(const QModelIn
     return d->layerItemObject(layerRecord(index), folderType(index));
 }
 
+void QPsdGuiLayerTreeItemModel::setLayerItem(const QModelIndex &index, QPsdAbstractLayerItem *item)
+{
+    const QPsdLayerRecord *record = layerRecord(index);
+    if (d->mapLayerItemObjects.contains(record)) {
+        delete d->mapLayerItemObjects.take(record);
+    }
+    if (item) {
+        item->setIccProfile(d->iccProfile);
+        d->mapLayerItemObjects.insert(record, item);
+    }
+}
+
 QImage QPsdGuiLayerTreeItemModel::mergedImage() const
 {
     return d->mergedImage;

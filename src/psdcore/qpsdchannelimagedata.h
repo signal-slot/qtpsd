@@ -5,6 +5,7 @@
 #define QPSDCHANNELIMAGEDATA_H
 
 #include <QtPsdCore/qpsdabstractimage.h>
+#include <QtPsdCore/qpsdchannelinfo.h>
 #include <QtPsdCore/qpsdfileheader.h>
 
 QT_BEGIN_NAMESPACE
