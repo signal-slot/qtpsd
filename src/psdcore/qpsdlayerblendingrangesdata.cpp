@@ -40,7 +40,7 @@ QPsdLayerBlendingRangesData::QPsdLayerBlendingRangesData(QIODevice *source)
     d->grayBlendSourceRange = qMakePair(readU8(source), readU8(source));
     d->grayBlendDestinationRange = qMakePair(readU8(source), readU8(source));
 
-    while (es.bytesAvailable() > 8) {
+    while (es.bytesAvailable() >= 4) {
         d->channelSourceRanges.append(qMakePair(readU8(source), readU8(source)));
         d->channelDestinationRanges.append(qMakePair(readU8(source), readU8(source)));
     }

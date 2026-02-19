@@ -120,19 +120,36 @@ static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLay
         // Empty mask data: just write length 0
         QPsdSection::writeU32(dest, 0);
     } else {
-        // Write the mask rect + default color + flags = 20 bytes
         QBuffer buf;
         buf.open(QIODevice::WriteOnly);
+        // Always: rect (16) + defaultColor (1) + flags (1) = 18 bytes
         QPsdSection::writeRectangle(&buf, maskData.rect());
         QPsdSection::writeU8(&buf, maskData.defaultColor());
-        quint8 flags = 0;
-        if (maskData.isPositionRelativeToLayer()) flags |= 0x01;
-        if (maskData.isLayerMaskDisabled()) flags |= 0x02;
-        if (maskData.isLayerMaskFromRenderingOtherData()) flags |= 0x08;
-        if (maskData.isLayerMaskFromVectorData()) flags |= 0x10;
-        QPsdSection::writeU8(&buf, flags);
-        // Padding to get to 20 bytes (rect=16 + defaultColor=1 + flags=1 + padding=2)
-        buf.write(QByteArray(2, '\0'));
+        QPsdSection::writeU8(&buf, maskData.flags());
+
+        if (maskData.hasRealUserMask()) {
+            // Real flags (1) + real default color (1) + real user mask rect (16) = 18 bytes
+            QPsdSection::writeU8(&buf, maskData.realFlags());
+            QPsdSection::writeU8(&buf, maskData.realDefaultColor());
+            QPsdSection::writeRectangle(&buf, maskData.realUserMaskRect());
+        } else {
+            // Padding to get to 20 bytes minimum
+            buf.write(QByteArray(2, '\0'));
+        }
+
+        // Mask parameters — only present if bit 4 of flags is set
+        if (maskData.flags() & 0x10) {
+            const quint8 params = maskData.maskParameters();
+            QPsdSection::writeU8(&buf, params);
+            if (params & 0x01)
+                QPsdSection::writeU8(&buf, maskData.userMaskDensity());
+            if (params & 0x02)
+                QPsdSection::writeDouble(&buf, maskData.userMaskFeather());
+            if (params & 0x04)
+                QPsdSection::writeU8(&buf, maskData.vectorMaskDensity());
+            if (params & 0x08)
+                QPsdSection::writeDouble(&buf, maskData.vectorMaskFeather());
+        }
         buf.close();
 
         QPsdSection::writeU32(dest, buf.data().size());

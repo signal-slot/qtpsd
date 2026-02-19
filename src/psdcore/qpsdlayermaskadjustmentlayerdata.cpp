@@ -14,6 +14,14 @@ public:
     quint8 flags;
     QRect realUserMaskRect;
     QByteArray rawData;
+    quint8 realFlags = 0;
+    quint8 realDefaultColor = 0;
+    bool hasRealUserMask = false;
+    quint8 maskParameters = 0;
+    quint8 userMaskDensity = 0;
+    double userMaskFeather = 0.0;
+    quint8 vectorMaskDensity = 0;
+    double vectorMaskFeather = 0.0;
 };
 
 QPsdLayerMaskAdjustmentLayerData::Private::Private()
@@ -38,7 +46,7 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
         return;
     d->rawData = source->peek(length);
     auto cleanup = qScopeGuard([&] {
-        Q_ASSERT(length <= 3);
+        Q_UNUSED(length);
     });
     EnsureSeek es(source, length);
 
@@ -57,12 +65,11 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     d->flags = readU8(source, &length);
 
     if (length >= 18) {
+        d->hasRealUserMask = true;
         // Real Flags. Same as Flags information above.
-        auto realFlags = readU8(source, &length);
-        Q_UNUSED(realFlags); // TODO
+        d->realFlags = readU8(source, &length);
         // Real user mask background. 0 or 255.
-        auto realUserMaskBackground = readU8(source, &length);
-        Q_UNUSED(realUserMaskBackground); // TODO
+        d->realDefaultColor = readU8(source, &length);
 
         // Rectangle enclosing layer mask: Top, left, bottom, right.
         d->realUserMaskRect = readRectangle(source, &length);
@@ -70,23 +77,19 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
 
     // Mask Parameters. Only present if bit 4 of Flags set above.
     if (d->flags & 0x10) {
-        auto maskParameters = readU8(source, &length);
+        d->maskParameters = readU8(source, &length);
 
-        if (maskParameters & 0x01) {
-            auto userMaskDensity = readU8(source, &length);
-            Q_UNUSED(userMaskDensity);
+        if (d->maskParameters & 0x01) {
+            d->userMaskDensity = readU8(source, &length);
         }
-        if (maskParameters & 0x02) {
-            auto userMaskFeather = readDouble(source, &length);
-            Q_UNUSED(userMaskFeather);
+        if (d->maskParameters & 0x02) {
+            d->userMaskFeather = readDouble(source, &length);
         }
-        if (maskParameters & 0x04) {
-            auto vectorMaskDensity = readU8(source, &length);
-            Q_UNUSED(vectorMaskDensity);
+        if (d->maskParameters & 0x04) {
+            d->vectorMaskDensity = readU8(source, &length);
         }
-        if (maskParameters & 0x08) {
-            auto vectorMaskFeather = readDouble(source, &length);
-            Q_UNUSED(vectorMaskFeather);
+        if (d->maskParameters & 0x08) {
+            d->vectorMaskFeather = readDouble(source, &length);
         }
     }
 }
@@ -154,6 +157,51 @@ QRect QPsdLayerMaskAdjustmentLayerData::realUserMaskRect() const
 QByteArray QPsdLayerMaskAdjustmentLayerData::rawData() const
 {
     return d->rawData;
+}
+
+quint8 QPsdLayerMaskAdjustmentLayerData::flags() const
+{
+    return d->flags;
+}
+
+quint8 QPsdLayerMaskAdjustmentLayerData::realFlags() const
+{
+    return d->realFlags;
+}
+
+quint8 QPsdLayerMaskAdjustmentLayerData::realDefaultColor() const
+{
+    return d->realDefaultColor;
+}
+
+bool QPsdLayerMaskAdjustmentLayerData::hasRealUserMask() const
+{
+    return d->hasRealUserMask;
+}
+
+quint8 QPsdLayerMaskAdjustmentLayerData::maskParameters() const
+{
+    return d->maskParameters;
+}
+
+quint8 QPsdLayerMaskAdjustmentLayerData::userMaskDensity() const
+{
+    return d->userMaskDensity;
+}
+
+double QPsdLayerMaskAdjustmentLayerData::userMaskFeather() const
+{
+    return d->userMaskFeather;
+}
+
+quint8 QPsdLayerMaskAdjustmentLayerData::vectorMaskDensity() const
+{
+    return d->vectorMaskDensity;
+}
+
+double QPsdLayerMaskAdjustmentLayerData::vectorMaskFeather() const
+{
+    return d->vectorMaskFeather;
 }
 
 QT_END_NAMESPACE
