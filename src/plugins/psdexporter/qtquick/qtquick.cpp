@@ -917,28 +917,94 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 break;
             }
         } else {
-            Element rectElement;
-            rectElement.type = "Rectangle";
-            if (filled) {
-                if (!outputBase(shapeIndex, &rectElement, imports))
-                    return false;
+            const auto &pen = shape->pen();
+            bool needsShapePath = pen.style() != Qt::NoPen
+                && (pen.style() != Qt::SolidLine || pen.brush().gradient());
+            if (needsShapePath) {
+                // Dashed or gradient stroke: use Shape+ShapePath (Rectangle.border can't do these)
+                imports->insert("QtQuick.Shapes");
+                Element shapeElem;
+                shapeElem.type = "Shape";
+                qreal dw = computeStrokeWidth(pen, unitScale);
+                QRectF strokeRect = adjustRectForStroke(path.rect, shape->strokeAlignment(), dw);
+                if (filled) {
+                    if (!outputBase(shapeIndex, &shapeElem, imports))
+                        return false;
+                } else {
+                    outputRect(strokeRect, &shapeElem);
+                }
+                Element shapePath;
+                shapePath.type = "ShapePath";
+                shapePath.properties.insert("strokeWidth", dw);
+                if (pen.brush().gradient()) {
+                    const auto stops = pen.brush().gradient()->stops();
+                    if (!stops.isEmpty())
+                        shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(stops.first().second.name(QColor::HexArgb)));
+                    else
+                        shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                } else {
+                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                }
+                if (!pen.dashPattern().isEmpty() && pen.style() != Qt::SolidLine) {
+                    QStringList dashValues;
+                    for (qreal d : pen.dashPattern())
+                        dashValues.append(QString::number(d));
+                    shapePath.properties.insert("dashPattern", u"[%1]"_s.arg(dashValues.join(u", "_s)));
+                }
+                if (pen.capStyle() == Qt::RoundCap)
+                    shapePath.properties.insert("capStyle", u"ShapePath.RoundCap"_s);
+                else if (pen.capStyle() == Qt::SquareCap)
+                    shapePath.properties.insert("capStyle", u"ShapePath.SquareCap"_s);
+                if (pen.joinStyle() == Qt::RoundJoin)
+                    shapePath.properties.insert("joinStyle", u"ShapePath.RoundJoin"_s);
+                else if (pen.joinStyle() == Qt::BevelJoin)
+                    shapePath.properties.insert("joinStyle", u"ShapePath.BevelJoin"_s);
+                if (shape->brush() != Qt::NoBrush)
+                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                else
+                    shapePath.properties.insert("fillColor", u"\"transparent\""_s);
+                const qreal w = strokeRect.width() * horizontalScale;
+                const qreal h = strokeRect.height() * verticalScale;
+                Element startPath; startPath.type = "PathMove";
+                startPath.properties.insert("x", 0); startPath.properties.insert("y", 0);
+                shapePath.children.append(startPath);
+                Element line1; line1.type = "PathLine"; line1.properties.insert("x", w); line1.properties.insert("y", 0);
+                Element line2; line2.type = "PathLine"; line2.properties.insert("x", w); line2.properties.insert("y", h);
+                Element line3; line3.type = "PathLine"; line3.properties.insert("x", 0); line3.properties.insert("y", h);
+                Element line4; line4.type = "PathLine"; line4.properties.insert("x", 0); line4.properties.insert("y", 0);
+                shapePath.children.append(line1);
+                shapePath.children.append(line2);
+                shapePath.children.append(line3);
+                shapePath.children.append(line4);
+                shapeElem.children.append(shapePath);
+                if (filled)
+                    *element = shapeElem;
+                else
+                    element->children.prepend(shapeElem);
             } else {
-                outputRect(path.rect, &rectElement);
+                Element rectElement;
+                rectElement.type = "Rectangle";
+                if (filled) {
+                    if (!outputBase(shapeIndex, &rectElement, imports))
+                        return false;
+                } else {
+                    outputRect(path.rect, &rectElement);
+                }
+                if (pen.style() != Qt::NoPen) {
+                    qreal dw = computeStrokeWidth(pen, unitScale);
+                    outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
+                    rectElement.properties.insert("border.width", dw);
+                    rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                }
+                if (shape->brush() != Qt::NoBrush)
+                    rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                else
+                    rectElement.properties.insert("color", "\"transparent\"");
+                if (filled)
+                    *element = rectElement;
+                else
+                    element->children.append(rectElement);
             }
-            if (shape->pen().style() != Qt::NoPen) {
-                qreal dw = computeStrokeWidth(shape->pen(), unitScale);
-                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
-                rectElement.properties.insert("border.width", dw);
-                rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name(QColor::HexArgb)));
-            }
-            if (shape->brush() != Qt::NoBrush)
-                rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
-            else
-                rectElement.properties.insert("color", "\"transparent\"");
-            if (filled)
-                *element = rectElement;
-            else
-                element->children.append(rectElement);
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
@@ -1156,16 +1222,77 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 break;
             }
         } else {
-            if (shape->pen().style() != Qt::NoPen) {
-                qreal dw = computeStrokeWidth(shape->pen(), unitScale);
-                outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
-                rectElement.properties.insert("border.width", dw);
-                rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name(QColor::HexArgb)));
+            const auto &pen = shape->pen();
+            bool needsShapePath = pen.style() != Qt::NoPen
+                && (pen.style() != Qt::SolidLine || pen.brush().gradient());
+            if (needsShapePath) {
+                // Dashed or gradient stroke: use Shape+ShapePath (Rectangle.border can't do these)
+                imports->insert("QtQuick.Shapes");
+                qreal dw = computeStrokeWidth(pen, unitScale);
+                QRectF strokeRect = adjustRectForStroke(path.rect, shape->strokeAlignment(), dw);
+                const qreal w = strokeRect.width() * horizontalScale;
+                const qreal h = strokeRect.height() * verticalScale;
+                const qreal r = path.radius * unitScale;
+                Element shapeElem;
+                shapeElem.type = "Shape";
+                if (filled) {
+                    if (!outputBase(shapeIndex, &shapeElem, imports))
+                        return false;
+                } else {
+                    outputRect(strokeRect, &shapeElem);
+                }
+                Element shapePath;
+                shapePath.type = "ShapePath";
+                shapePath.properties.insert("strokeWidth", dw);
+                if (pen.brush().gradient()) {
+                    const auto stops = pen.brush().gradient()->stops();
+                    if (!stops.isEmpty())
+                        shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(stops.first().second.name(QColor::HexArgb)));
+                    else
+                        shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                } else {
+                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                }
+                if (!pen.dashPattern().isEmpty() && pen.style() != Qt::SolidLine) {
+                    QStringList dashValues;
+                    for (qreal d : pen.dashPattern())
+                        dashValues.append(QString::number(d));
+                    shapePath.properties.insert("dashPattern", u"[%1]"_s.arg(dashValues.join(u", "_s)));
+                }
+                if (pen.capStyle() == Qt::RoundCap)
+                    shapePath.properties.insert("capStyle", u"ShapePath.RoundCap"_s);
+                else if (pen.capStyle() == Qt::SquareCap)
+                    shapePath.properties.insert("capStyle", u"ShapePath.SquareCap"_s);
+                if (pen.joinStyle() == Qt::RoundJoin)
+                    shapePath.properties.insert("joinStyle", u"ShapePath.RoundJoin"_s);
+                else if (pen.joinStyle() == Qt::BevelJoin)
+                    shapePath.properties.insert("joinStyle", u"ShapePath.BevelJoin"_s);
+                if (shape->brush() != Qt::NoBrush)
+                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                else
+                    shapePath.properties.insert("fillColor", u"\"transparent\""_s);
+                Element svgPath;
+                svgPath.type = "PathSvg";
+                svgPath.properties.insert("path", u"\"M %1 0 L %2 0 Q %3 0 %3 %4 L %3 %5 Q %3 %6 %2 %6 L %1 %6 Q 0 %6 0 %5 L 0 %4 Q 0 0 %1 0 Z\""_s
+                    .arg(r).arg(w - r).arg(w).arg(r).arg(h - r).arg(h));
+                shapePath.children.append(svgPath);
+                shapeElem.children.append(shapePath);
+                if (filled)
+                    *element = shapeElem;
+                else
+                    element->children.prepend(shapeElem);
+            } else {
+                if (pen.style() != Qt::NoPen) {
+                    qreal dw = computeStrokeWidth(pen, unitScale);
+                    outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
+                    rectElement.properties.insert("border.width", dw);
+                    rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                }
+                if (shape->brush() != Qt::NoBrush)
+                    rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                else
+                    rectElement.properties.insert("color", "\"transparent\"");
             }
-            if (shape->brush() != Qt::NoBrush)
-                rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
-            else
-                rectElement.properties.insert("color", "\"transparent\"");
         }
         if (filled)
             *element = rectElement;
@@ -1179,10 +1306,46 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             return false;
         Element shapePath;
         shapePath.type = "ShapePath";
-        const QGradient *g = effectiveGradient(shape);
-        if (g) {
+
+        // Stroke properties (always output from pen)
+        const auto &pen = shape->pen();
+        if (pen.style() == Qt::NoPen) {
             shapePath.properties.insert("strokeWidth", 0);
             shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+        } else {
+            shapePath.properties.insert("strokeWidth", pen.widthF() * unitScale);
+            if (pen.brush().gradient()) {
+                // Gradient stroke: use first stop color as approximation
+                const auto stops = pen.brush().gradient()->stops();
+                if (!stops.isEmpty())
+                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(stops.first().second.name(QColor::HexArgb)));
+                else
+                    shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+            } else {
+                shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+            }
+            // Dash pattern
+            if (pen.style() != Qt::SolidLine && !pen.dashPattern().isEmpty()) {
+                QStringList dashValues;
+                for (qreal d : pen.dashPattern())
+                    dashValues.append(QString::number(d));
+                shapePath.properties.insert("dashPattern", u"[%1]"_s.arg(dashValues.join(u", "_s)));
+            }
+            // Cap style
+            if (pen.capStyle() == Qt::RoundCap)
+                shapePath.properties.insert("capStyle", u"ShapePath.RoundCap"_s);
+            else if (pen.capStyle() == Qt::SquareCap)
+                shapePath.properties.insert("capStyle", u"ShapePath.SquareCap"_s);
+            // Join style
+            if (pen.joinStyle() == Qt::RoundJoin)
+                shapePath.properties.insert("joinStyle", u"ShapePath.RoundJoin"_s);
+            else if (pen.joinStyle() == Qt::BevelJoin)
+                shapePath.properties.insert("joinStyle", u"ShapePath.BevelJoin"_s);
+        }
+
+        // Fill properties
+        const QGradient *g = effectiveGradient(shape);
+        if (g) {
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
@@ -1200,7 +1363,6 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     gradient.children.append(stopElement);
                 }
                 shapePath.children.append(gradient);
-                qDebug() << gradient.children.length();
                 break; }
             case QGradient::RadialGradient: {
                 const auto radial = reinterpret_cast<const QRadialGradient *>(g);
@@ -1241,16 +1403,11 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 qWarning() << "Unsupported gradient type"_L1 << g->type();
                 break;
             }
-            element->children.append(shapePath);
         } else {
-            shapePath.properties.insert("strokeWidth", shape->pen().width() * unitScale);
-            if (shape->pen().style() == Qt::NoPen)
-                shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
-            else
-                shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(shape->pen().color().name(QColor::HexArgb)));
             if (shape->brush() != Qt::NoBrush)
                 shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
-            element->children.append(shapePath);            }
+        }
+
         if (!outputPath(path.path, &shapePath))
             return false;
         element->children.append(shapePath);
