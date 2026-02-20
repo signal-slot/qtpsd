@@ -7,6 +7,7 @@ qt_internal_add_test(tst_qpsdwriter
     LIBRARIES
         Qt::Gui
         Qt::PsdCore
+        Qt::PsdGui
         Qt::PsdWidget
         Qt::PsdWriter
         Qt::Test

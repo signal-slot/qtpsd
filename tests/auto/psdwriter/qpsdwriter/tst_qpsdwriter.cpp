@@ -12,6 +12,7 @@
 #include <QtPsdCore/QPsdImageData>
 #include <QtPsdCore/QPsdParser>
 #include <QtPsdCore/QPsdAdditionalLayerInformationPlugin>
+#include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 #include <QtPsdWidget/QPsdView>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 #include <QtPsdWriter/QPsdWriter>
@@ -51,6 +52,7 @@ private slots:
 
 private:
     static QImage renderPsd(const QString &filePath);
+    static QImage renderComposite(const QString &filePath);
     static double compareImages(const QImage &img1, const QImage &img2);
 
     struct WriteResult {
@@ -477,6 +479,17 @@ QImage tst_QPsdWriter::renderPsd(const QString &filePath)
     return rendered;
 }
 
+QImage tst_QPsdWriter::renderComposite(const QString &filePath)
+{
+    QPsdParser parser;
+    parser.load(filePath);
+
+    QPsdGuiLayerTreeItemModel model;
+    model.fromParser(parser);
+
+    return model.mergedImage();
+}
+
 double tst_QPsdWriter::compareImages(const QImage &img1, const QImage &img2)
 {
     if (img1.size() != img2.size() || img1.isNull() || img2.isNull())
@@ -715,12 +728,12 @@ void tst_QPsdWriter::photoshopSimilarity()
     result.fileName = fileName;
     result.fileSize = fileSize;
 
-    // 1. Render original PSD via QPsdView
-    const QImage originalImage = renderPsd(psd);
+    // 1. Get composite image (Photoshop's pre-composited flat image from Image Data section)
+    const QImage originalImage = renderComposite(psd);
     result.originalRendered = !originalImage.isNull();
     if (originalImage.isNull()) {
         m_photoshopResults.append(result);
-        return; // Not a test failure — some files have empty canvas
+        return; // Not a test failure — some files have empty composite
     }
     result.originalSize = originalImage.size();
 
@@ -1234,7 +1247,7 @@ void tst_QPsdWriter::cleanupTestCase()
 
             ps << "# PSD Photoshop Similarity Report\n\n";
             ps << "Generated: " << QDateTime::currentDateTime().toString(Qt::ISODate) << "\n\n";
-            ps << "Compares **QPsdView rendering of original PSD** vs **Photoshop rendering of round-trip PSD** (PNG screenshots).\n\n";
+            ps << "Compares **PSD composite image** (Photoshop's pre-composited Image Data section) vs **Photoshop rendering of round-trip PSD** (PNG screenshots).\n\n";
 
             // === Summary ===
             ps << "## Summary Statistics\n\n";
