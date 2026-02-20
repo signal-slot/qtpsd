@@ -11,6 +11,7 @@
 #include <QtGui/QTextDocument>
 #include <QtGui/QTextCursor>
 #include <QtGui/QTextCharFormat>
+#include <QtWidgets/QGraphicsPathItem>
 #include <QtWidgets/QGraphicsPixmapItem>
 #include <QtWidgets/QGraphicsScene>
 #include <QtWidgets/QGraphicsTextItem>
@@ -281,6 +282,18 @@ void Canvas::addLayerItems(const QModelIndex &parent, int &zOrder)
             item->setOpacity(layer->opacity / 255.0);
             m_scene->addItem(item);
             m_layerItems.append(item);
+        } else if (layer->type == Layer::ShapeLayer) {
+            auto *pathItem = new QGraphicsPathItem(layer->shapePath);
+            pathItem->setBrush(layer->shapeFillColor.isValid()
+                               ? QBrush(layer->shapeFillColor) : Qt::NoBrush);
+            if (layer->shapeStrokeWidth > 0 && layer->shapeStrokeColor.isValid())
+                pathItem->setPen(QPen(layer->shapeStrokeColor, layer->shapeStrokeWidth));
+            else
+                pathItem->setPen(Qt::NoPen);
+            pathItem->setZValue(++zOrder);
+            pathItem->setOpacity(layer->opacity / 255.0);
+            m_scene->addItem(pathItem);
+            m_layerItems.append(pathItem);
         } else {
             // Image layer
             auto *item = m_scene->addPixmap(QPixmap::fromImage(layer->image));

@@ -91,6 +91,17 @@ QVariant LayerModel::data(const QModelIndex &index, int role) const
             p.end();
             return icon;
         }
+        if (layer->type == Layer::ShapeLayer) {
+            QImage icon(thumbSize, thumbSize, QImage::Format_ARGB32);
+            icon.fill(Qt::transparent);
+            QPainter p(&icon);
+            p.setRenderHint(QPainter::Antialiasing);
+            p.setPen(QPen(Qt::darkBlue, 2));
+            p.setBrush(QColor(100, 150, 255, 100));
+            p.drawRoundedRect(4, 6, thumbSize - 8, thumbSize - 12, 3, 3);
+            p.end();
+            return icon;
+        }
         return layer->image.scaled(thumbSize, thumbSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     }
     case OpacityRole:
@@ -169,6 +180,14 @@ QModelIndex LayerModel::addFolder(const QString &name, const QModelIndex &parent
     layer.type = Layer::FolderLayer;
     layer.name = name;
     // Folders don't need a full-size image
+    return addLayerInternal(layer, parentIndex);
+}
+
+QModelIndex LayerModel::addShapeLayer(const QString &name, const QModelIndex &parentIndex)
+{
+    Layer layer;
+    layer.type = Layer::ShapeLayer;
+    layer.name = name;
     return addLayerInternal(layer, parentIndex);
 }
 
@@ -344,6 +363,32 @@ void LayerModel::compositeRecursive(QImage &result, const QList<Layer> &layers) 
                 p.setCompositionMode(QtPsdGui::compositionMode(layer.blendMode));
                 p.setOpacity(opacity);
                 p.drawImage(0, 0, textImage);
+                p.end();
+            }
+        } else if (layer.type == Layer::ShapeLayer) {
+            QImage shapeImage(result.size(), QImage::Format_ARGB32);
+            shapeImage.fill(Qt::transparent);
+            QPainter sp(&shapeImage);
+            sp.setRenderHint(QPainter::Antialiasing);
+            if (layer.shapeFillColor.isValid())
+                sp.setBrush(layer.shapeFillColor);
+            else
+                sp.setBrush(Qt::NoBrush);
+            if (layer.shapeStrokeWidth > 0 && layer.shapeStrokeColor.isValid())
+                sp.setPen(QPen(layer.shapeStrokeColor, layer.shapeStrokeWidth));
+            else
+                sp.setPen(Qt::NoPen);
+            sp.drawPath(layer.shapePath);
+            sp.end();
+
+            const qreal opacity = layer.opacity / 255.0;
+            if (QtPsdGui::isCustomBlendMode(layer.blendMode)) {
+                QtPsdGui::customBlend(result, shapeImage, layer.blendMode, opacity);
+            } else {
+                QPainter p(&result);
+                p.setCompositionMode(QtPsdGui::compositionMode(layer.blendMode));
+                p.setOpacity(opacity);
+                p.drawImage(0, 0, shapeImage);
                 p.end();
             }
         } else {

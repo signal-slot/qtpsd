@@ -18,6 +18,8 @@
 #include <QtWidgets/QFontComboBox>
 #include <QtWidgets/QFormLayout>
 #include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QButtonGroup>
+#include <QtWidgets/QGroupBox>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMenuBar>
@@ -25,8 +27,8 @@
 #include <QtWidgets/QPlainTextEdit>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QSlider>
+#include <QtWidgets/QDoubleSpinBox>
 #include <QtWidgets/QSpinBox>
-#include <QtWidgets/QToolBar>
 #include <QtWidgets/QTreeView>
 #include <QtWidgets/QVBoxLayout>
 
@@ -46,6 +48,7 @@
 #include <QtPsdWriter/QPsdWriter>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 #include <QtPsdGui/QPsdAbstractLayerItem>
+#include <QtPsdGui/QPsdShapeLayerItem>
 #include <QtPsdGui/QPsdTextLayerItem>
 #include <QtPsdGui/qpsdguiglobal.h>
 
@@ -55,15 +58,15 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
 {
     setWindowTitle(u"PSD Creator"_s);
-    resize(1024, 768);
+    resize(1200, 800);
 
     m_model = new LayerModel(this);
     m_canvas = new Canvas(m_model, this);
     setCentralWidget(m_canvas);
 
     setupMenus();
-    setupToolbar();
     setupLayersPanel();
+    setupPropertiesPanel();
 
     // Start with a default canvas and one layer
     const auto idx = m_model->addLayer(u"Background"_s);
@@ -103,94 +106,78 @@ void MainWindow::setupMenus()
     connect(exitAction, &QAction::triggered, this, &QWidget::close);
 }
 
-void MainWindow::setupToolbar()
-{
-    auto *toolbar = addToolBar(u"Tools"_s);
-
-    auto *brushAction = toolbar->addAction(u"Brush"_s);
-    brushAction->setCheckable(true);
-    brushAction->setChecked(true);
-    connect(brushAction, &QAction::triggered, this, [this, brushAction]() {
-        m_canvas->setTool(Canvas::BrushTool);
-        brushAction->setChecked(true);
-    });
-
-    auto *eraserAction = toolbar->addAction(u"Eraser"_s);
-    eraserAction->setCheckable(true);
-    connect(eraserAction, &QAction::triggered, this, [this, eraserAction]() {
-        m_canvas->setTool(Canvas::EraserTool);
-        eraserAction->setChecked(true);
-    });
-
-    auto *fillAction = toolbar->addAction(u"Fill"_s);
-    fillAction->setCheckable(true);
-    connect(fillAction, &QAction::triggered, this, [this, fillAction]() {
-        m_canvas->setTool(Canvas::FillTool);
-        fillAction->setChecked(true);
-    });
-
-    auto *toolGroup = new QActionGroup(this);
-    toolGroup->addAction(brushAction);
-    toolGroup->addAction(eraserAction);
-    toolGroup->addAction(fillAction);
-    toolGroup->setExclusive(true);
-
-    toolbar->addSeparator();
-
-    auto *colorButton = new QPushButton(u"Color"_s, this);
-    colorButton->setFixedSize(60, 28);
-    connect(colorButton, &QPushButton::clicked, this, &MainWindow::pickColor);
-    toolbar->addWidget(colorButton);
-
-    toolbar->addSeparator();
-
-    auto *sizeLabel = new QLabel(u"Size:"_s, this);
-    toolbar->addWidget(sizeLabel);
-
-    m_brushSizeSpin = new QSpinBox(this);
-    m_brushSizeSpin->setRange(1, 100);
-    m_brushSizeSpin->setValue(5);
-    connect(m_brushSizeSpin, &QSpinBox::valueChanged, m_canvas, &Canvas::setBrushSize);
-    toolbar->addWidget(m_brushSizeSpin);
-}
-
 void MainWindow::setupLayersPanel()
 {
     auto *dock = new QDockWidget(u"Layers"_s, this);
-    dock->setAllowedAreas(Qt::RightDockWidgetArea | Qt::LeftDockWidgetArea);
+    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
 
     auto *panel = new QWidget(dock);
     auto *layout = new QVBoxLayout(panel);
+
+    // Buttons above the tree
+    auto *buttonLayout = new QHBoxLayout;
+    auto *addFolderBtn = new QPushButton(u"Folder"_s, panel);
+    connect(addFolderBtn, &QPushButton::clicked, this, &MainWindow::addFolder);
+    buttonLayout->addWidget(addFolderBtn);
+
+    auto *addTextBtn = new QPushButton(u"Text"_s, panel);
+    connect(addTextBtn, &QPushButton::clicked, this, &MainWindow::addTextLayer);
+    buttonLayout->addWidget(addTextBtn);
+
+    auto *addBtn = new QPushButton(u"Image"_s, panel);
+    connect(addBtn, &QPushButton::clicked, this, &MainWindow::addLayer);
+    buttonLayout->addWidget(addBtn);
+
+    auto *addShapeBtn = new QPushButton(u"Shape"_s, panel);
+    connect(addShapeBtn, &QPushButton::clicked, this, &MainWindow::addShapeLayer);
+    buttonLayout->addWidget(addShapeBtn);
+
+    auto *removeBtn = new QPushButton(u"Remove"_s, panel);
+    connect(removeBtn, &QPushButton::clicked, this, &MainWindow::removeLayer);
+    buttonLayout->addWidget(removeBtn);
+
+    layout->addLayout(buttonLayout);
 
     // Layer tree view
     m_layerTree = new QTreeView(panel);
     m_layerTree->setModel(m_model);
     m_layerTree->setSelectionMode(QAbstractItemView::SingleSelection);
     m_layerTree->setHeaderHidden(true);
-    m_layerTree->setExpandsOnDoubleClick(false); // We handle double-click ourselves
+    m_layerTree->setExpandsOnDoubleClick(false);
     connect(m_layerTree->selectionModel(), &QItemSelectionModel::currentChanged,
             this, &MainWindow::onLayerSelectionChanged);
     connect(m_layerTree, &QTreeView::doubleClicked,
             this, &MainWindow::onLayerDoubleClicked);
     layout->addWidget(m_layerTree);
 
-    // Opacity slider
-    auto *opacityLayout = new QHBoxLayout;
-    opacityLayout->addWidget(new QLabel(u"Opacity:"_s, panel));
-    m_opacitySlider = new QSlider(Qt::Horizontal, panel);
+    dock->setWidget(panel);
+    addDockWidget(Qt::LeftDockWidgetArea, dock);
+}
+
+void MainWindow::setupPropertiesPanel()
+{
+    auto *dock = new QDockWidget(u"Properties"_s, this);
+    dock->setAllowedAreas(Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea);
+
+    auto *panel = new QWidget(dock);
+    auto *layout = new QVBoxLayout(panel);
+
+    // --- Common section ---
+    m_commonGroup = new QGroupBox(u"Common"_s, panel);
+    auto *commonLayout = new QFormLayout(m_commonGroup);
+
+    m_opacitySlider = new QSlider(Qt::Horizontal, m_commonGroup);
     m_opacitySlider->setRange(0, 255);
     m_opacitySlider->setValue(255);
     connect(m_opacitySlider, &QSlider::valueChanged, this, &MainWindow::onOpacityChanged);
-    opacityLayout->addWidget(m_opacitySlider);
-    m_opacityLabel = new QLabel(u"255"_s, panel);
+    m_opacityLabel = new QLabel(u"255"_s, m_commonGroup);
     m_opacityLabel->setFixedWidth(30);
-    opacityLayout->addWidget(m_opacityLabel);
-    layout->addLayout(opacityLayout);
+    auto *opacityRow = new QHBoxLayout;
+    opacityRow->addWidget(m_opacitySlider);
+    opacityRow->addWidget(m_opacityLabel);
+    commonLayout->addRow(u"Opacity:"_s, opacityRow);
 
-    // Blend mode combo
-    auto *blendLayout = new QHBoxLayout;
-    blendLayout->addWidget(new QLabel(u"Blend:"_s, panel));
-    m_blendCombo = new QComboBox(panel);
+    m_blendCombo = new QComboBox(m_commonGroup);
     m_blendCombo->addItem(u"Normal"_s, static_cast<int>(QPsdBlend::Normal));
     m_blendCombo->addItem(u"Multiply"_s, static_cast<int>(QPsdBlend::Multiply));
     m_blendCombo->addItem(u"Screen"_s, static_cast<int>(QPsdBlend::Screen));
@@ -202,36 +189,220 @@ void MainWindow::setupLayersPanel()
     m_blendCombo->addItem(u"Difference"_s, static_cast<int>(QPsdBlend::Difference));
     connect(m_blendCombo, &QComboBox::currentIndexChanged,
             this, &MainWindow::onBlendModeChanged);
-    blendLayout->addWidget(m_blendCombo);
-    layout->addLayout(blendLayout);
+    commonLayout->addRow(u"Blend:"_s, m_blendCombo);
 
-    // Buttons
-    auto *buttonLayout = new QHBoxLayout;
-    auto *addBtn = new QPushButton(u"Add Layer"_s, panel);
-    connect(addBtn, &QPushButton::clicked, this, &MainWindow::addLayer);
-    buttonLayout->addWidget(addBtn);
+    layout->addWidget(m_commonGroup);
 
-    auto *addFolderBtn = new QPushButton(u"Add Folder"_s, panel);
-    connect(addFolderBtn, &QPushButton::clicked, this, &MainWindow::addFolder);
-    buttonLayout->addWidget(addFolderBtn);
+    // --- Image section ---
+    m_imageGroup = new QGroupBox(u"Image"_s, panel);
+    auto *imageLayout = new QVBoxLayout(m_imageGroup);
 
-    auto *addTextBtn = new QPushButton(u"Add Text"_s, panel);
-    connect(addTextBtn, &QPushButton::clicked, this, &MainWindow::addTextLayer);
-    buttonLayout->addWidget(addTextBtn);
-    layout->addLayout(buttonLayout);
+    // Tool buttons
+    auto *toolLayout = new QHBoxLayout;
+    auto *brushBtn = new QPushButton(u"Brush"_s, m_imageGroup);
+    brushBtn->setCheckable(true);
+    brushBtn->setChecked(true);
+    auto *eraserBtn = new QPushButton(u"Eraser"_s, m_imageGroup);
+    eraserBtn->setCheckable(true);
+    auto *fillBtn = new QPushButton(u"Fill"_s, m_imageGroup);
+    fillBtn->setCheckable(true);
 
-    auto *buttonLayout2 = new QHBoxLayout;
-    auto *removeBtn = new QPushButton(u"Remove Layer"_s, panel);
-    connect(removeBtn, &QPushButton::clicked, this, &MainWindow::removeLayer);
-    buttonLayout2->addWidget(removeBtn);
+    auto *toolGroup = new QButtonGroup(this);
+    toolGroup->setExclusive(true);
+    toolGroup->addButton(brushBtn, 0);
+    toolGroup->addButton(eraserBtn, 1);
+    toolGroup->addButton(fillBtn, 2);
+    connect(toolGroup, &QButtonGroup::idClicked, this, [this](int id) {
+        switch (id) {
+        case 0: m_canvas->setTool(Canvas::BrushTool); break;
+        case 1: m_canvas->setTool(Canvas::EraserTool); break;
+        case 2: m_canvas->setTool(Canvas::FillTool); break;
+        }
+    });
+    toolLayout->addWidget(brushBtn);
+    toolLayout->addWidget(eraserBtn);
+    toolLayout->addWidget(fillBtn);
+    imageLayout->addLayout(toolLayout);
 
-    auto *replaceBtn = new QPushButton(u"Replace Image..."_s, panel);
+    // Color + Size
+    auto *imageForm = new QFormLayout;
+    auto *colorButton = new QPushButton(u"Color..."_s, m_imageGroup);
+    connect(colorButton, &QPushButton::clicked, this, &MainWindow::pickColor);
+    imageForm->addRow(u"Color:"_s, colorButton);
+
+    m_brushSizeSpin = new QSpinBox(m_imageGroup);
+    m_brushSizeSpin->setRange(1, 100);
+    m_brushSizeSpin->setValue(5);
+    connect(m_brushSizeSpin, &QSpinBox::valueChanged, m_canvas, &Canvas::setBrushSize);
+    imageForm->addRow(u"Size:"_s, m_brushSizeSpin);
+
+    imageLayout->addLayout(imageForm);
+
+    auto *replaceBtn = new QPushButton(u"Replace Image..."_s, m_imageGroup);
     connect(replaceBtn, &QPushButton::clicked, this, &MainWindow::replaceImage);
-    buttonLayout2->addWidget(replaceBtn);
-    layout->addLayout(buttonLayout2);
+    imageLayout->addWidget(replaceBtn);
+
+    layout->addWidget(m_imageGroup);
+
+    // --- Text section ---
+    m_textGroup = new QGroupBox(u"Text"_s, panel);
+    auto *textLayout = new QFormLayout(m_textGroup);
+
+    m_textFontCombo = new QFontComboBox(m_textGroup);
+    connect(m_textFontCombo, &QFontComboBox::currentFontChanged, this, [this]() {
+        applyTextToolbarToLayer();
+    });
+    textLayout->addRow(u"Font:"_s, m_textFontCombo);
+
+    m_textSizeSpin = new QSpinBox(m_textGroup);
+    m_textSizeSpin->setRange(1, 500);
+    m_textSizeSpin->setValue(24);
+    m_textSizeSpin->setSuffix(u" pt"_s);
+    connect(m_textSizeSpin, &QSpinBox::valueChanged, this, [this]() {
+        applyTextToolbarToLayer();
+    });
+    textLayout->addRow(u"Size:"_s, m_textSizeSpin);
+
+    auto *styleLayout = new QHBoxLayout;
+    m_textBoldBtn = new QPushButton(u"B"_s, m_textGroup);
+    m_textBoldBtn->setCheckable(true);
+    auto boldFont = m_textBoldBtn->font();
+    boldFont.setBold(true);
+    m_textBoldBtn->setFont(boldFont);
+    connect(m_textBoldBtn, &QPushButton::toggled, this, [this]() {
+        applyTextToolbarToLayer();
+    });
+    styleLayout->addWidget(m_textBoldBtn);
+
+    m_textItalicBtn = new QPushButton(u"I"_s, m_textGroup);
+    m_textItalicBtn->setCheckable(true);
+    auto italicFont = m_textItalicBtn->font();
+    italicFont.setItalic(true);
+    m_textItalicBtn->setFont(italicFont);
+    connect(m_textItalicBtn, &QPushButton::toggled, this, [this]() {
+        applyTextToolbarToLayer();
+    });
+    styleLayout->addWidget(m_textItalicBtn);
+    textLayout->addRow(u"Style:"_s, styleLayout);
+
+    m_textColorBtn = new QPushButton(m_textGroup);
+    m_textColorBtn->setFixedHeight(28);
+    connect(m_textColorBtn, &QPushButton::clicked, this, [this]() {
+        const QModelIndex current = m_layerTree->currentIndex();
+        auto *layer = m_model->layerForIndex(current);
+        if (!layer || layer->type != Layer::TextLayer || layer->textRuns.isEmpty())
+            return;
+        const QColor c = QColorDialog::getColor(layer->textRuns.first().color, this);
+        if (c.isValid()) {
+            for (auto &run : layer->textRuns)
+                run.color = c;
+            layer->originalTySh = QVariant();
+            m_textColorBtn->setStyleSheet(u"background-color: %1"_s.arg(c.name()));
+            emit m_model->dataChanged(current, current);
+            m_canvas->updateLayers();
+        }
+    });
+    textLayout->addRow(u"Color:"_s, m_textColorBtn);
+
+    auto *editTextBtn = new QPushButton(u"Edit Text..."_s, m_textGroup);
+    connect(editTextBtn, &QPushButton::clicked, this, [this]() {
+        const QModelIndex current = m_layerTree->currentIndex();
+        if (current.isValid())
+            editTextLayer(current);
+    });
+    textLayout->addRow(editTextBtn);
+
+    layout->addWidget(m_textGroup);
+
+    // --- Shape section ---
+    m_shapeGroup = new QGroupBox(u"Shape"_s, panel);
+    auto *shapeLayout = new QFormLayout(m_shapeGroup);
+
+    m_shapeFillBtn = new QPushButton(m_shapeGroup);
+    m_shapeFillBtn->setFixedHeight(28);
+    connect(m_shapeFillBtn, &QPushButton::clicked, this, [this]() {
+        const QModelIndex current = m_layerTree->currentIndex();
+        auto *layer = m_model->layerForIndex(current);
+        if (!layer || layer->type != Layer::ShapeLayer)
+            return;
+        const QColor c = QColorDialog::getColor(layer->shapeFillColor, this);
+        if (c.isValid()) {
+            layer->shapeFillColor = c;
+            layer->originalSoCo = QVariant();
+            m_shapeFillBtn->setStyleSheet(u"background-color: %1"_s.arg(c.name()));
+            emit m_model->dataChanged(current, current);
+            m_canvas->updateLayers();
+        }
+    });
+    shapeLayout->addRow(u"Fill:"_s, m_shapeFillBtn);
+
+    m_shapeStrokeBtn = new QPushButton(m_shapeGroup);
+    m_shapeStrokeBtn->setFixedHeight(28);
+    connect(m_shapeStrokeBtn, &QPushButton::clicked, this, [this]() {
+        const QModelIndex current = m_layerTree->currentIndex();
+        auto *layer = m_model->layerForIndex(current);
+        if (!layer || layer->type != Layer::ShapeLayer)
+            return;
+        const QColor c = QColorDialog::getColor(layer->shapeStrokeColor, this);
+        if (c.isValid()) {
+            layer->shapeStrokeColor = c;
+            layer->originalVstk = QVariant();
+            m_shapeStrokeBtn->setStyleSheet(u"background-color: %1"_s.arg(c.name()));
+            emit m_model->dataChanged(current, current);
+            m_canvas->updateLayers();
+        }
+    });
+    shapeLayout->addRow(u"Stroke:"_s, m_shapeStrokeBtn);
+
+    m_shapeStrokeWidthSpin = new QDoubleSpinBox(m_shapeGroup);
+    m_shapeStrokeWidthSpin->setRange(0, 100);
+    m_shapeStrokeWidthSpin->setValue(0);
+    connect(m_shapeStrokeWidthSpin, &QDoubleSpinBox::valueChanged, this, [this](double value) {
+        const QModelIndex current = m_layerTree->currentIndex();
+        auto *layer = m_model->layerForIndex(current);
+        if (!layer || layer->type != Layer::ShapeLayer)
+            return;
+        layer->shapeStrokeWidth = value;
+        layer->originalVstk = QVariant();
+        emit m_model->dataChanged(current, current);
+        m_canvas->updateLayers();
+    });
+    shapeLayout->addRow(u"Width:"_s, m_shapeStrokeWidthSpin);
+
+    layout->addWidget(m_shapeGroup);
+
+    layout->addStretch();
 
     dock->setWidget(panel);
     addDockWidget(Qt::RightDockWidgetArea, dock);
+}
+
+void MainWindow::updatePropertiesPanel()
+{
+    const QModelIndex current = m_layerTree->currentIndex();
+    const auto *layer = current.isValid() ? m_model->layerForIndex(current) : nullptr;
+    const auto type = layer ? layer->type : Layer::ImageLayer;
+
+    m_imageGroup->setVisible(type == Layer::ImageLayer);
+    m_textGroup->setVisible(type == Layer::TextLayer);
+    m_shapeGroup->setVisible(type == Layer::ShapeLayer);
+
+    if (type == Layer::TextLayer)
+        updateTextToolbar();
+
+    if (type == Layer::ShapeLayer) {
+        m_shapeFillBtn->setStyleSheet(
+            layer->shapeFillColor.isValid()
+                ? u"background-color: %1"_s.arg(layer->shapeFillColor.name())
+                : QString());
+        m_shapeStrokeBtn->setStyleSheet(
+            layer->shapeStrokeColor.isValid()
+                ? u"background-color: %1"_s.arg(layer->shapeStrokeColor.name())
+                : QString());
+        m_shapeStrokeWidthSpin->blockSignals(true);
+        m_shapeStrokeWidthSpin->setValue(layer->shapeStrokeWidth);
+        m_shapeStrokeWidthSpin->blockSignals(false);
+    }
 }
 
 void MainWindow::newFile()
@@ -326,7 +497,6 @@ void MainWindow::onBlendModeChanged(int comboIndex)
 void MainWindow::addLayer()
 {
     const QModelIndex current = m_layerTree->currentIndex();
-    // If a folder is selected, add inside it; otherwise add at root
     QModelIndex parentIdx;
     if (current.isValid()) {
         const auto *layer = m_model->layerForIndex(current);
@@ -365,7 +535,6 @@ void MainWindow::addTextLayer()
     }
     const auto idx = m_model->addTextLayer(u"Text Layer"_s, parentIdx);
 
-    // Set default text run
     auto *layer = m_model->layerForIndex(idx);
     if (layer) {
         QPsdTextLayerItem::Run run;
@@ -376,6 +545,32 @@ void MainWindow::addTextLayer()
         layer->textPosition = QPoint(10, 30);
     }
 
+    m_layerTree->setCurrentIndex(idx);
+    m_canvas->setActiveLayer(idx);
+    m_canvas->updateLayers();
+}
+
+void MainWindow::addShapeLayer()
+{
+    const QModelIndex current = m_layerTree->currentIndex();
+    QModelIndex parentIdx;
+    if (current.isValid()) {
+        const auto *layer = m_model->layerForIndex(current);
+        if (layer && layer->type == Layer::FolderLayer)
+            parentIdx = current;
+    }
+    const auto idx = m_model->addShapeLayer(u"Shape Layer"_s, parentIdx);
+    auto *layer = m_model->layerForIndex(idx);
+    if (layer) {
+        const QSize cs = m_model->canvasSize();
+        const QRectF rect((cs.width() - 200) / 2.0, (cs.height() - 100) / 2.0, 200, 100);
+        QPainterPath path;
+        path.addRect(rect);
+        layer->shapePath = path;
+        layer->shapeFillColor = QColor(100, 150, 255);
+        layer->shapeStrokeColor = Qt::black;
+        layer->shapeStrokeWidth = 2;
+    }
     m_layerTree->setCurrentIndex(idx);
     m_canvas->setActiveLayer(idx);
     m_canvas->updateLayers();
@@ -417,11 +612,9 @@ void MainWindow::replaceImage()
         return;
     }
 
-    // Place the loaded image on a canvas-sized transparent image
     QImage canvasImage(m_model->canvasSize(), QImage::Format_ARGB32);
     canvasImage.fill(Qt::transparent);
     QPainter p(&canvasImage);
-    // Scale to fit canvas if larger
     const QSize targetSize = newImage.size().boundedTo(m_model->canvasSize());
     const QImage scaled = newImage.scaled(targetSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
     p.drawImage(0, 0, scaled);
@@ -445,6 +638,8 @@ void MainWindow::onLayerDoubleClicked(const QModelIndex &index)
         return;
     if (layer->type == Layer::TextLayer)
         editTextLayer(index);
+    else if (layer->type == Layer::ShapeLayer)
+        editShapeLayer(index);
 }
 
 void MainWindow::updateLayerControls()
@@ -466,9 +661,65 @@ void MainWindow::updateLayerControls()
     const int idx = m_blendCombo->findData(static_cast<int>(layer->blendMode));
     m_blendCombo->setCurrentIndex(idx >= 0 ? idx : 0);
     m_blendCombo->blockSignals(false);
+
+    updatePropertiesPanel();
 }
 
-// --- Phase 3: Text Layer Editing ---
+void MainWindow::applyTextToolbarToLayer()
+{
+    const QModelIndex current = m_layerTree->currentIndex();
+    auto *layer = m_model->layerForIndex(current);
+    if (!layer || layer->type != Layer::TextLayer || layer->textRuns.isEmpty())
+        return;
+
+    const QFont selectedFont = m_textFontCombo->currentFont();
+    const int size = m_textSizeSpin->value();
+    const bool bold = m_textBoldBtn->isChecked();
+    const bool italic = m_textItalicBtn->isChecked();
+
+    for (auto &run : layer->textRuns) {
+        run.font.setFamily(selectedFont.family());
+        run.font.setPointSize(size);
+        run.font.setBold(bold);
+        run.font.setItalic(italic);
+    }
+    layer->originalTySh = QVariant();
+    emit m_model->dataChanged(current, current);
+    m_canvas->updateLayers();
+}
+
+void MainWindow::updateTextToolbar()
+{
+    const QModelIndex current = m_layerTree->currentIndex();
+    const auto *layer = m_model->layerForIndex(current);
+    if (!layer || layer->type != Layer::TextLayer || layer->textRuns.isEmpty())
+        return;
+
+    const auto &run = layer->textRuns.first();
+
+    m_textFontCombo->blockSignals(true);
+    m_textFontCombo->setCurrentFont(run.font);
+    m_textFontCombo->blockSignals(false);
+
+    m_textSizeSpin->blockSignals(true);
+    m_textSizeSpin->setValue(run.font.pointSize() > 0 ? run.font.pointSize() : 24);
+    m_textSizeSpin->blockSignals(false);
+
+    m_textBoldBtn->blockSignals(true);
+    m_textBoldBtn->setChecked(run.font.bold());
+    m_textBoldBtn->blockSignals(false);
+
+    m_textItalicBtn->blockSignals(true);
+    m_textItalicBtn->setChecked(run.font.italic());
+    m_textItalicBtn->blockSignals(false);
+
+    m_textColorBtn->setStyleSheet(
+        run.color.isValid()
+            ? u"background-color: %1"_s.arg(run.color.name())
+            : QString());
+}
+
+// --- Text/Shape Layer Editing ---
 
 void MainWindow::editTextLayer(const QModelIndex &index)
 {
@@ -483,7 +734,6 @@ void MainWindow::editTextLayer(const QModelIndex &index)
     auto *layout = new QVBoxLayout(&dialog);
 
     auto *textEdit = new QPlainTextEdit(&dialog);
-    // Populate with existing text (concatenate all runs)
     QString existingText;
     for (const auto &run : layer->textRuns)
         existingText += run.text;
@@ -502,7 +752,6 @@ void MainWindow::editTextLayer(const QModelIndex &index)
     if (newText == existingText)
         return;
 
-    // Update only the text content, keeping font/color/alignment from existing runs
     if (layer->textRuns.isEmpty()) {
         QPsdTextLayerItem::Run run;
         run.text = newText;
@@ -510,29 +759,79 @@ void MainWindow::editTextLayer(const QModelIndex &index)
         run.color = Qt::black;
         layer->textRuns = {run};
     } else {
-        // Put all new text into the first run, keeping its font/color
         layer->textRuns.first().text = newText;
         while (layer->textRuns.size() > 1)
             layer->textRuns.removeLast();
     }
 
-    // Clear original TySh so it gets regenerated on save
     layer->originalTySh = QVariant();
-    // Canvas uses QGraphicsTextItem for text layers — just refresh
     emit m_model->dataChanged(index, index);
     m_canvas->updateLayers();
 }
 
-// --- Phase 5: Save/Open with tree support ---
+void MainWindow::editShapeLayer(const QModelIndex &index)
+{
+    auto *layer = m_model->layerForIndex(index);
+    if (!layer || layer->type != Layer::ShapeLayer)
+        return;
 
-// Helper: collect layer records recursively for PSD save (bottom-to-top within each level)
+    QDialog dialog(this);
+    dialog.setWindowTitle(u"Edit Shape"_s);
+
+    auto *form = new QFormLayout(&dialog);
+
+    QColor fillColor = layer->shapeFillColor;
+    auto *fillBtn = new QPushButton(fillColor.isValid() ? fillColor.name() : u"None"_s, &dialog);
+    connect(fillBtn, &QPushButton::clicked, &dialog, [&]() {
+        const QColor c = QColorDialog::getColor(fillColor, &dialog);
+        if (c.isValid()) {
+            fillColor = c;
+            fillBtn->setText(c.name());
+        }
+    });
+    form->addRow(u"Fill Color:"_s, fillBtn);
+
+    QColor strokeColor = layer->shapeStrokeColor;
+    auto *strokeBtn = new QPushButton(strokeColor.isValid() ? strokeColor.name() : u"None"_s, &dialog);
+    connect(strokeBtn, &QPushButton::clicked, &dialog, [&]() {
+        const QColor c = QColorDialog::getColor(strokeColor, &dialog);
+        if (c.isValid()) {
+            strokeColor = c;
+            strokeBtn->setText(c.name());
+        }
+    });
+    form->addRow(u"Stroke Color:"_s, strokeBtn);
+
+    auto *widthSpin = new QDoubleSpinBox(&dialog);
+    widthSpin->setRange(0, 100);
+    widthSpin->setValue(layer->shapeStrokeWidth);
+    form->addRow(u"Stroke Width:"_s, widthSpin);
+
+    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    form->addRow(buttons);
+
+    if (dialog.exec() != QDialog::Accepted)
+        return;
+
+    layer->shapeFillColor = fillColor;
+    layer->shapeStrokeColor = strokeColor;
+    layer->shapeStrokeWidth = widthSpin->value();
+    layer->originalVstk = QVariant();
+    layer->originalSoCo = QVariant();
+    emit m_model->dataChanged(index, index);
+    m_canvas->updateLayers();
+}
+
+// --- Save/Open with tree support ---
+
 static void collectLayerRecords(const LayerModel *model, const QModelIndex &parent,
                                 const QSize &canvasSize,
                                 QList<QPsdLayerRecord> &records,
                                 QList<QPsdChannelImageData> &channelDataList)
 {
     const int count = model->rowCount(parent);
-    // PSD expects bottom-to-top order; model stores top-first
     for (int i = count - 1; i >= 0; --i) {
         const auto idx = model->index(i, 0, parent);
         const auto *layer = model->layerForIndex(idx);
@@ -540,17 +839,15 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
             continue;
 
         if (layer->type == Layer::FolderLayer) {
-            // Write bounding section divider (end marker) first
             {
                 QPsdLayerRecord record;
                 record.setRect(QRect(0, 0, 0, 0));
-                // 4 zero-length channels
                 QList<QPsdChannelInfo> channelInfos;
                 for (auto id : {QPsdChannelInfo::TransparencyMask, QPsdChannelInfo::Red,
                                 QPsdChannelInfo::Green, QPsdChannelInfo::Blue}) {
                     QPsdChannelInfo ci;
                     ci.setId(id);
-                    ci.setLength(2); // Just compression header, no data
+                    ci.setLength(2);
                     channelInfos.append(ci);
                 }
                 record.setChannelInfo(channelInfos);
@@ -574,10 +871,8 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
                 channelDataList.append(emptyData);
             }
 
-            // Recurse into children
             collectLayerRecords(model, idx, canvasSize, records, channelDataList);
 
-            // Write folder header (open folder marker)
             {
                 QPsdLayerRecord record;
                 record.setRect(QRect(0, 0, 0, 0));
@@ -611,7 +906,6 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
                 channelDataList.append(emptyData);
             }
         } else {
-            // Regular layer (image or text)
             const int pixelCount = canvasSize.width() * canvasSize.height();
 
             QByteArray rData(pixelCount, '\0');
@@ -619,12 +913,30 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
             QByteArray bData(pixelCount, '\0');
             QByteArray aData(pixelCount, '\0');
 
-            if (!layer->image.isNull()) {
-                const QImage img = layer->image.convertToFormat(QImage::Format_ARGB32);
-                for (int y = 0; y < img.height(); ++y) {
-                    const auto *scanline = reinterpret_cast<const quint32 *>(img.constScanLine(y));
-                    const int rowOffset = y * img.width();
-                    for (int x = 0; x < img.width(); ++x) {
+            QImage sourceImage;
+            if (layer->type == Layer::ShapeLayer) {
+                QImage shapeImage(canvasSize, QImage::Format_ARGB32);
+                shapeImage.fill(Qt::transparent);
+                QPainter sp(&shapeImage);
+                sp.setRenderHint(QPainter::Antialiasing);
+                if (layer->shapeFillColor.isValid())
+                    sp.setBrush(layer->shapeFillColor);
+                if (layer->shapeStrokeWidth > 0 && layer->shapeStrokeColor.isValid())
+                    sp.setPen(QPen(layer->shapeStrokeColor, layer->shapeStrokeWidth));
+                else
+                    sp.setPen(Qt::NoPen);
+                sp.drawPath(layer->shapePath);
+                sp.end();
+                sourceImage = shapeImage;
+            } else if (!layer->image.isNull()) {
+                sourceImage = layer->image.convertToFormat(QImage::Format_ARGB32);
+            }
+
+            if (!sourceImage.isNull()) {
+                for (int y = 0; y < sourceImage.height(); ++y) {
+                    const auto *scanline = reinterpret_cast<const quint32 *>(sourceImage.constScanLine(y));
+                    const int rowOffset = y * sourceImage.width();
+                    for (int x = 0; x < sourceImage.width(); ++x) {
                         const quint32 pixel = scanline[x];
                         aData[rowOffset + x] = static_cast<char>((pixel >> 24) & 0xFF);
                         rData[rowOffset + x] = static_cast<char>((pixel >> 16) & 0xFF);
@@ -662,19 +974,14 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
             QHash<QByteArray, QVariant> ali;
             ali.insert("luni", layer->name);
 
-            // Text layer: add TySh ALI
             if (layer->type == Layer::TextLayer) {
                 if (layer->originalTySh.isValid()) {
-                    // Round-trip: use original TySh data
                     ali.insert("TySh", layer->originalTySh);
                 } else if (!layer->textRuns.isEmpty()) {
-                    // Build TySh from text runs
                     const auto &run = layer->textRuns.first();
 
-                    // Build EngineData
                     QCborMap engineData;
 
-                    // ResourceDict with FontSet
                     QCborMap resourceDict;
                     QCborArray fontSet;
                     QCborMap font;
@@ -686,13 +993,11 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
                     resourceDict.insert(u"FontSet"_s, QCborValue(fontSet));
                     engineData.insert(u"ResourceDict"_s, QCborValue(resourceDict));
 
-                    // EngineDict with Editor, StyleRun
                     QCborMap engineDict;
                     QCborMap editor;
                     editor.insert(u"Text"_s, QCborValue(run.text));
                     engineDict.insert(u"Editor"_s, QCborValue(editor));
 
-                    // StyleRun
                     QCborMap styleRun;
                     QCborArray runArray;
                     QCborMap runLengthArray;
@@ -708,11 +1013,10 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
                     QCborArray styleSheetArray;
                     QCborMap styleSheet;
                     QCborMap styleSheetData;
-                    styleSheetData.insert(u"Font"_s, QCborValue(0)); // Index into FontSet
+                    styleSheetData.insert(u"Font"_s, QCborValue(0));
                     styleSheetData.insert(u"FontSize"_s, QCborValue(static_cast<double>(run.font.pointSizeF())));
-                    // Color as RGBA
                     QCborMap fillColor;
-                    fillColor.insert(u"Type"_s, QCborValue(1)); // RGB
+                    fillColor.insert(u"Type"_s, QCborValue(1));
                     QCborArray colorValues;
                     colorValues.append(QCborValue(run.color.redF()));
                     colorValues.append(QCborValue(run.color.greenF()));
@@ -729,7 +1033,6 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
 
                     const QByteArray edBytes = QPsdEngineDataParser::serializeEngineData(engineData);
 
-                    // Build text descriptor
                     QPsdDescriptor textDesc;
                     textDesc.setName(u""_s);
                     textDesc.setClassID("TxLr");
@@ -738,7 +1041,6 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
                     textData.insert("EngineData", edBytes);
                     textDesc.setData(textData);
 
-                    // Build warp descriptor
                     QPsdDescriptor warpDesc;
                     warpDesc.setName(u""_s);
                     warpDesc.setClassID("warp");
@@ -756,14 +1058,40 @@ static void collectLayerRecords(const LayerModel *model, const QModelIndex &pare
                     warpData.insert("warpRotate", QVariant::fromValue(warpRotateEnum));
                     warpDesc.setData(warpData);
 
-                    // Build TySh
                     QPsdTypeToolObjectSetting tysh;
-                    tysh.setTransform({1.0, 0.0, 0.0, 1.0, 0.0, 0.0}); // Identity
+                    tysh.setTransform({1.0, 0.0, 0.0, 1.0, 0.0, 0.0});
                     tysh.setTextData(textDesc);
                     tysh.setWarpData(warpDesc);
                     tysh.setRect(QRect(0, 0, canvasSize.width(), canvasSize.height()));
                     ali.insert("TySh", QVariant::fromValue(tysh));
                 }
+            }
+
+            if (layer->type == Layer::ShapeLayer) {
+                if (layer->originalVmsk.isValid())
+                    ali.insert("vmsk", layer->originalVmsk);
+                if (layer->originalSoCo.isValid()) {
+                    ali.insert("SoCo", layer->originalSoCo);
+                } else if (layer->shapeFillColor.isValid()) {
+                    QPsdDescriptor colorDesc;
+                    colorDesc.setName(u""_s);
+                    colorDesc.setClassID("RGBC");
+                    QHash<QByteArray, QVariant> colorData;
+                    colorData.insert("Rd  ", layer->shapeFillColor.redF() * 255.0);
+                    colorData.insert("Grn ", layer->shapeFillColor.greenF() * 255.0);
+                    colorData.insert("Bl  ", layer->shapeFillColor.blueF() * 255.0);
+                    colorDesc.setData(colorData);
+
+                    QPsdDescriptor socoDesc;
+                    socoDesc.setName(u""_s);
+                    socoDesc.setClassID("SoCo");
+                    QHash<QByteArray, QVariant> socoData;
+                    socoData.insert("Clr ", QVariant::fromValue(colorDesc));
+                    socoDesc.setData(socoData);
+                    ali.insert("SoCo", QVariant::fromValue(socoDesc));
+                }
+                if (layer->originalVstk.isValid())
+                    ali.insert("vstk", layer->originalVstk);
             }
 
             record.setAdditionalLayerInformation(ali);
@@ -789,7 +1117,6 @@ void MainWindow::saveToPsd(const QString &filePath)
     const QSize size = m_model->canvasSize();
     const int pixelCount = size.width() * size.height();
 
-    // 1. File header: 3 channels (RGB composite), 8-bit, RGB
     QPsdFileHeader header;
     header.setChannels(3);
     header.setWidth(size.width());
@@ -797,38 +1124,31 @@ void MainWindow::saveToPsd(const QString &filePath)
     header.setDepth(8);
     header.setColorMode(QPsdFileHeader::RGB);
 
-    // 2. Build layer records and channel image data recursively
     QList<QPsdLayerRecord> records;
     QList<QPsdChannelImageData> channelDataList;
     collectLayerRecords(m_model, QModelIndex(), size, records, channelDataList);
 
-    // 3. Layer info
     QPsdLayerInfo layerInfo;
     layerInfo.setRecords(records);
     layerInfo.setChannelImageData(channelDataList);
 
-    // 4. Layer and mask information
     QPsdLayerAndMaskInformation lmi;
     lmi.setLayerInfo(layerInfo);
 
-    // 5. Composite image data (flattened, 3 channels: R/G/B)
     const QImage flat = m_model->flattenedImage().convertToFormat(QImage::Format_ARGB32);
     QByteArray compositeData;
     compositeData.reserve(3 * pixelCount);
 
-    // R channel
     for (int y = 0; y < flat.height(); ++y) {
         const auto *scanline = reinterpret_cast<const quint32 *>(flat.constScanLine(y));
         for (int x = 0; x < flat.width(); ++x)
             compositeData.append(static_cast<char>((scanline[x] >> 16) & 0xFF));
     }
-    // G channel
     for (int y = 0; y < flat.height(); ++y) {
         const auto *scanline = reinterpret_cast<const quint32 *>(flat.constScanLine(y));
         for (int x = 0; x < flat.width(); ++x)
             compositeData.append(static_cast<char>((scanline[x] >> 8) & 0xFF));
     }
-    // B channel
     for (int y = 0; y < flat.height(); ++y) {
         const auto *scanline = reinterpret_cast<const quint32 *>(flat.constScanLine(y));
         for (int x = 0; x < flat.width(); ++x)
@@ -840,7 +1160,6 @@ void MainWindow::saveToPsd(const QString &filePath)
     imageData.setHeight(size.height());
     imageData.setImageData(compositeData);
 
-    // 6. Write
     QPsdWriter writer;
     writer.setFileHeader(header);
     writer.setLayerAndMaskInformation(lmi);
@@ -865,17 +1184,14 @@ void MainWindow::loadFromPsd(const QString &filePath)
     m_model->clear();
     m_model->setCanvasSize(size);
 
-    // Recursive walk that preserves tree structure
     std::function<void(const QModelIndex &, const QModelIndex &)> walkTree;
     walkTree = [&](const QModelIndex &sourceParent, const QModelIndex &destParent) {
-        // Insert bottom-to-top so that top-first ordering is maintained
         for (int row = guiModel.rowCount(sourceParent) - 1; row >= 0; --row) {
             const QModelIndex srcIdx = guiModel.index(row, 0, sourceParent);
             const auto folderType = guiModel.folderType(srcIdx);
 
             if (folderType == QPsdLayerTreeItemModel::FolderType::OpenFolder
                 || folderType == QPsdLayerTreeItemModel::FolderType::ClosedFolder) {
-                // Folder
                 Layer folder;
                 folder.type = Layer::FolderLayer;
                 folder.name = guiModel.layerName(srcIdx);
@@ -889,10 +1205,8 @@ void MainWindow::loadFromPsd(const QString &filePath)
                     folder.blendMode = record->blendMode();
 
                 const auto destIdx = m_model->insertLayerAt(destParent, 0, folder);
-                // Recurse into children
                 walkTree(srcIdx, destIdx);
             } else {
-                // Leaf layer
                 const auto *item = guiModel.layerItem(srcIdx);
                 if (!item)
                     continue;
@@ -907,7 +1221,6 @@ void MainWindow::loadFromPsd(const QString &filePath)
                 const QPsdLayerRecord *record = guiModel.layerRecord(srcIdx);
                 if (record) {
                     layer.blendMode = record->blendMode();
-                    // Reconstruct flags from boolean getters
                     quint8 flags = 0;
                     if (record->isTransparencyProtected())
                         flags |= 0x01;
@@ -918,7 +1231,6 @@ void MainWindow::loadFromPsd(const QString &filePath)
                     if (record->isPixelDataIrrelevantToAppearanceDocument())
                         flags |= 0x10;
                     layer.originalFlags = flags;
-                    // Check if layer has alpha channel (transparency mask)
                     layer.hasAlpha = false;
                     for (const auto &ci : record->channelInfo()) {
                         if (ci.id() == QPsdChannelInfo::TransparencyMask) {
@@ -926,22 +1238,43 @@ void MainWindow::loadFromPsd(const QString &filePath)
                             break;
                         }
                     }
-                    // Check for text layer
                     if (record->additionalLayerInformation().contains("TySh")) {
                         layer.type = Layer::TextLayer;
                         layer.originalTySh = record->additionalLayerInformation().value("TySh");
                         layer.textPosition = item->rect().topLeft();
-                        // Extract text runs and origin from the text layer item
                         if (item->type() == QPsdAbstractLayerItem::Text) {
                             const auto *textItem = static_cast<const QPsdTextLayerItem *>(item);
                             layer.textRuns = textItem->runs();
                             layer.textOrigin = textItem->textOrigin();
                         }
                     }
+
+                    const auto &ali = record->additionalLayerInformation();
+                    if (layer.type == Layer::ImageLayer
+                        && item->type() == QPsdAbstractLayerItem::Shape) {
+                        const auto *shapeItem = static_cast<const QPsdShapeLayerItem *>(item);
+                        const auto pathData = shapeItem->pathInfo();
+                        if (!pathData.path.isEmpty()) {
+                            layer.type = Layer::ShapeLayer;
+
+                            layer.shapePath = pathData.path.translated(item->rect().topLeft());
+                            layer.shapeFillColor = shapeItem->brush().color();
+                            if (shapeItem->pen().style() != Qt::NoPen) {
+                                layer.shapeStrokeColor = shapeItem->pen().color();
+                                layer.shapeStrokeWidth = shapeItem->pen().widthF();
+                            }
+
+                            if (ali.contains("vmsk"))
+                                layer.originalVmsk = ali.value("vmsk");
+                            if (ali.contains("vstk"))
+                                layer.originalVstk = ali.value("vstk");
+                            if (ali.contains("SoCo"))
+                                layer.originalSoCo = ali.value("SoCo");
+                        }
+                    }
                 }
 
-                // Image layers: place pixel data on a full canvas
-                if (layer.type != Layer::TextLayer) {
+                if (layer.type != Layer::TextLayer && layer.type != Layer::ShapeLayer) {
                     QImage canvasImage(size, QImage::Format_ARGB32);
                     canvasImage.fill(Qt::transparent);
                     const QImage layerImage = item->image();

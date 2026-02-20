@@ -6,11 +6,12 @@
 
 #include <QtCore/QAbstractItemModel>
 #include <QtGui/QImage>
+#include <QtGui/QPainterPath>
 #include <QtPsdCore/qpsdblend.h>
 #include <QtPsdGui/qpsdtextlayeritem.h>
 
 struct Layer {
-    enum Type { ImageLayer, TextLayer, FolderLayer };
+    enum Type { ImageLayer, TextLayer, FolderLayer, ShapeLayer };
     Type type = ImageLayer;
     QString name;
     QImage image;           // pixel data at original size (not full canvas)
@@ -24,8 +25,16 @@ struct Layer {
     QList<QPsdTextLayerItem::Run> textRuns;
     QPoint textPosition;    // top-left of text content within the canvas
     QPointF textOrigin;     // baseline anchor point (absolute canvas coords)
+    // Shape-specific
+    QPainterPath shapePath;
+    QColor shapeFillColor;
+    QColor shapeStrokeColor;
+    qreal shapeStrokeWidth = 0;
     // Original PSD data for round-trip (kept when loaded from PSD)
     QVariant originalTySh;
+    QVariant originalVmsk;
+    QVariant originalVstk;
+    QVariant originalSoCo;
     // Tree
     QList<Layer> children;  // only for FolderLayer
     // Internal: parent pointer (non-owning, for tree navigation)
@@ -58,6 +67,7 @@ public:
     QModelIndex addLayer(const QString &name, const QModelIndex &parentIndex = QModelIndex());
     QModelIndex addTextLayer(const QString &name, const QModelIndex &parentIndex = QModelIndex());
     QModelIndex addFolder(const QString &name, const QModelIndex &parentIndex = QModelIndex());
+    QModelIndex addShapeLayer(const QString &name, const QModelIndex &parentIndex = QModelIndex());
     void removeLayer(const QModelIndex &index);
 
     // Accessors
