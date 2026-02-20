@@ -630,7 +630,7 @@ public:
     };
     QList<ArtboardInfo> artboards() const { return m_artboards; }
 
-    void buildFromFigmaJson(const QJsonObject &fileJson, const QString &artboardId = {})
+    void buildFromFigmaJson(const QJsonObject &fileJson, const QString &artboardId = {}, int pageIndex = 0)
     {
         beginResetModel();
 
@@ -650,7 +650,8 @@ public:
             return;
         }
 
-        const auto page = children.first().toObject();
+        // Select page by index
+        const auto page = children.at(qBound(0, pageIndex, children.size() - 1)).toObject();
         const auto pageChildren = page["children"_L1].toArray();
 
         QRect canvasRect;
@@ -681,10 +682,7 @@ public:
                 }
             }
         }
-        if (!artboardFound && !m_artboards.isEmpty()) {
-            m_canvasOrigin = m_artboards.first().rect.topLeft();
-            m_size = m_artboards.first().rect.size();
-        } else if (!artboardFound) {
+        if (!artboardFound) {
             m_canvasOrigin = m_fullCanvasOrigin;
             m_size = m_fullCanvasSize;
         }
@@ -692,8 +690,6 @@ public:
         QString activeArtboardId;
         if (artboardFound) {
             activeArtboardId = artboardId;
-        } else if (!m_artboards.isEmpty()) {
-            activeArtboardId = m_artboards.first().figmaId;
         }
 
         for (int ci = pageChildren.size() - 1; ci >= 0; --ci) {
@@ -1120,11 +1116,25 @@ private:
             }
 
             QPsdAbstractLayerItem::PathInfo pathInfo;
+            const qreal w = rect.width();
+            const qreal h = rect.height();
+
+            auto parseGeometry = [&](const QString &key) -> QPainterPath {
+                const auto geometry = nodeJson[key].toArray();
+                if (geometry.isEmpty())
+                    return {};
+                QPainterPath pp;
+                for (const auto &geom : geometry) {
+                    const auto svgPathData = geom.toObject()["path"_L1].toString();
+                    if (!svgPathData.isEmpty())
+                        pp.addPath(parseSvgPath(svgPathData));
+                }
+                return pp;
+            };
+
             if (nodeType == "RECTANGLE"_L1) {
                 const auto radiiArray = nodeJson["rectangleCornerRadii"_L1].toArray();
                 const auto cornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
-                const qreal w = rect.width();
-                const qreal h = rect.height();
                 if (radiiArray.size() == 4) {
                     const qreal tl = radiiArray[0].toDouble();
                     const qreal tr = radiiArray[1].toDouble();
@@ -1157,15 +1167,30 @@ private:
                     pathInfo.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 }
                 pathInfo.rect = QRectF(0, 0, w, h);
+            } else if (nodeType == "ELLIPSE"_L1) {
+                pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
+                QPainterPath pp;
+                pp.addEllipse(QRectF(0, 0, w, h));
+                pathInfo.path = pp;
+                pathInfo.rect = QRectF(0, 0, w, h);
+            } else if (nodeType == "LINE"_L1) {
+                QPainterPath pp = parseGeometry("strokeGeometry"_L1);
+                if (pp.isEmpty())
+                    pp = parseGeometry("fillGeometry"_L1);
+                if (pp.isEmpty()) {
+                    pp.moveTo(0, h / 2.0);
+                    pp.lineTo(w, h / 2.0);
+                }
+                pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
+                pathInfo.path = pp;
             } else {
-                const auto fillGeometry = nodeJson["fillGeometry"_L1].toArray();
-                if (!fillGeometry.isEmpty()) {
-                    const auto geomObj = fillGeometry.first().toObject();
-                    const auto svgPathData = geomObj["path"_L1].toString();
-                    if (!svgPathData.isEmpty()) {
-                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
-                        pathInfo.path = parseSvgPath(svgPathData);
-                    }
+                // STAR, POLYGON, REGULAR_POLYGON, VECTOR, BOOLEAN_OPERATION
+                QPainterPath pp = parseGeometry("fillGeometry"_L1);
+                if (pp.isEmpty())
+                    pp = parseGeometry("strokeGeometry"_L1);
+                if (!pp.isEmpty()) {
+                    pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
+                    pathInfo.path = pp;
                 }
             }
             shapeItem->setPathInfo(pathInfo);
@@ -1442,7 +1467,7 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
         if (folderType != FigmaLayerTreeItemModel::FolderType::NotFolder) {
             QPsdLayerRecord closeRecord;
             closeRecord.setName(QByteArray("</Layer group>"));
-            closeRecord.setFlags(0x02);
+            closeRecord.setFlags(0x00);
             QHash<QByteArray, QVariant> closeALI;
             QPsdSectionDividerSetting closeSetting;
             closeSetting.setType(QPsdSectionDividerSetting::BoundingSectionDivider);
@@ -1457,7 +1482,7 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             folderRecord.setName(name.toUtf8());
             folderRecord.setBlendMode(blendMode);
             folderRecord.setOpacity(qRound(item->opacity() * 255.0));
-            folderRecord.setFlags(0x02);
+            folderRecord.setFlags(0x00);
             QHash<QByteArray, QVariant> folderALI;
             folderALI["lyid"] = layerId;
             folderALI["luni"] = name;
@@ -1476,7 +1501,7 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             leafRecord.setName(name.toUtf8());
             leafRecord.setBlendMode(blendMode);
             leafRecord.setOpacity(qRound(item->opacity() * 255.0));
-            leafRecord.setFlags(0x02);
+            leafRecord.setFlags(0x00);
             QHash<QByteArray, QVariant> leafALI;
             leafALI["lyid"] = layerId;
             leafALI["luni"] = name;
@@ -1662,8 +1687,32 @@ public:
         if (fileJson.contains("error"_L1))
             return false;
 
+        // Enumerate pages and let user choose if multiple exist
+        int pageIndex = 0;
+        const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
+        if (options.contains("pageIndex"_L1)) {
+            pageIndex = options.value("pageIndex"_L1).toInt();
+            nodeId.clear();
+        } else if (pages.size() > 1) {
+            QDialog pageDlg;
+            pageDlg.setWindowTitle(tr("Select Page"));
+            auto *pageLayout = new QFormLayout(&pageDlg);
+            auto *pageCombo = new QComboBox(&pageDlg);
+            for (int i = 0; i < pages.size(); ++i)
+                pageCombo->addItem(pages[i].toObject()["name"_L1].toString(), i);
+            pageLayout->addRow(tr("Page:"), pageCombo);
+            auto *pageBtnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &pageDlg);
+            pageLayout->addRow(pageBtnBox);
+            QObject::connect(pageBtnBox, &QDialogButtonBox::accepted, &pageDlg, &QDialog::accept);
+            QObject::connect(pageBtnBox, &QDialogButtonBox::rejected, &pageDlg, &QDialog::reject);
+            if (pageDlg.exec() != QDialog::Accepted)
+                return false;
+            pageIndex = pageCombo->currentData().toInt();
+            nodeId.clear();  // Page selected explicitly — import all frames
+        }
+
         FigmaLayerTreeItemModel figmaModel;
-        figmaModel.buildFromFigmaJson(fileJson, nodeId);
+        figmaModel.buildFromFigmaJson(fileJson, nodeId, pageIndex);
 
         // Download images before building the widget model (cloning includes images)
         const auto allImageIds = figmaModel.imageNodeIds();
