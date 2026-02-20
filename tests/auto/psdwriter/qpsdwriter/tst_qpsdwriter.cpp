@@ -709,15 +709,17 @@ void tst_QPsdWriter::binaryRoundTrip()
     writer.setLayerAndMaskInformation(parser.layerAndMaskInformation());
     writer.setImageData(parser.imageData());
 
-    QTemporaryFile tmpFile;
-    QVERIFY(tmpFile.open());
-    const QString tmpPath = tmpFile.fileName();
-    tmpFile.close();
+    // Save to round-trip/ directory in repo, preserving category structure
+    const QString zooPath = QFINDTESTDATA("../../3rdparty/psd-zoo/");
+    const QString relativePath = QDir(zooPath).relativeFilePath(psd);
+    const QString roundTripDir = QStringLiteral(QT_TESTCASE_SOURCEDIR "/round-trip");
+    const QString outPath = roundTripDir + u'/' + relativePath;
+    QDir().mkpath(QFileInfo(outPath).absolutePath());
 
-    QVERIFY2(writer.write(tmpPath), qPrintable(writer.errorString()));
+    QVERIFY2(writer.write(outPath), qPrintable(writer.errorString()));
 
     // Read written bytes
-    QFile writtenFile(tmpPath);
+    QFile writtenFile(outPath);
     QVERIFY(writtenFile.open(QIODevice::ReadOnly));
     const QByteArray writtenBytes = writtenFile.readAll();
     writtenFile.close();
