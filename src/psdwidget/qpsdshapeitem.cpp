@@ -137,6 +137,9 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         p->setPen(Qt::NoPen);
         p->setBrush(fillBrush);
         switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::None:
+            p->drawRect(layer->rect());
+            break;
         case QPsdAbstractLayerItem::PathInfo::Rectangle:
             p->drawRect(pathInfo.rect);
             break;
@@ -151,6 +154,12 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         // Draw stroke clipped to inside of the path
         p->save();
         switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::None: {
+            QPainterPath clipPath;
+            clipPath.addRect(layer->rect());
+            p->setClipPath(clipPath, Qt::IntersectClip);
+            break;
+        }
         case QPsdAbstractLayerItem::PathInfo::Rectangle: {
             QPainterPath clipPath;
             clipPath.addRect(pathInfo.rect);
@@ -179,6 +188,9 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         p->setPen(strokePen);
         p->setBrush(Qt::NoBrush);
         switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::None:
+            p->drawRect(layer->rect());
+            break;
         case QPsdAbstractLayerItem::PathInfo::Rectangle:
             p->drawRect(pathInfo.rect);
             break;
@@ -194,6 +206,9 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         // For "center" or "outside" stroke (or no stroke): draw as-is
         const auto dw = p->pen().widthF() / 2.0;
         switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::None:
+            p->drawRect(layer->rect());
+            break;
         case QPsdAbstractLayerItem::PathInfo::Rectangle:
             p->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
             break;

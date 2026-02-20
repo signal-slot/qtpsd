@@ -5,6 +5,7 @@
 #include "qpsdvectorstrokecontentsetting.h"
 
 #include <QtGui/QColor>
+#include <QtGui/QConicalGradient>
 #include <QtGui/QLinearGradient>
 #include <QtGui/QPen>
 #include <QtGui/QRadialGradient>
@@ -86,6 +87,13 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
         gradient.setCenter(center);
         gradient.setFocalPoint(center);
         gradient.setRadius(qMax(rect.width(), rect.height()) / 2);
+        gradient.setStops(stops);
+        return QBrush(gradient);
+    } else if (typeValue == "Angl") {
+        QConicalGradient gradient;
+        const QPointF center(rect.width() / 2, rect.height() / 2);
+        gradient.setCenter(center);
+        gradient.setAngle(angl.value());
         gradient.setStops(stops);
         return QBrush(gradient);
     } else {

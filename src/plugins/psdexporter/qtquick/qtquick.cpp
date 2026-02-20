@@ -629,6 +629,49 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     *element = shapeElem;
                 }
                 break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(g);
+                imports->insert("QtQuick.Shapes");
+                Element shapeElem;
+                shapeElem.type = "Shape";
+                if (!outputBase(shapeIndex, &shapeElem, imports))
+                    return false;
+                Element shapePath;
+                shapePath.type = "ShapePath";
+                shapePath.properties.insert("strokeWidth", 0);
+                shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                Element fillGrad;
+                fillGrad.type = "fillGradient: ConicalGradient";
+                fillGrad.properties.insert("centerX", conical->center().x() * horizontalScale);
+                fillGrad.properties.insert("centerY", conical->center().y() * verticalScale);
+                fillGrad.properties.insert("angle", conical->angle());
+                for (const auto &stop : conical->stops()) {
+                    Element stopElement;
+                    stopElement.type = "GradientStop";
+                    stopElement.properties.insert("position", stop.first);
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    fillGrad.children.append(stopElement);
+                }
+                shapePath.children.append(fillGrad);
+                const QRect shapeRect = computeBaseRect(shapeIndex);
+                const qreal w = shapeRect.width() * horizontalScale;
+                const qreal h = shapeRect.height() * verticalScale;
+                Element startPath;
+                startPath.type = "PathMove";
+                startPath.properties.insert("x", 0);
+                startPath.properties.insert("y", 0);
+                shapePath.children.append(startPath);
+                Element line1; line1.type = "PathLine"; line1.properties.insert("x", w); line1.properties.insert("y", 0);
+                Element line2; line2.type = "PathLine"; line2.properties.insert("x", w); line2.properties.insert("y", h);
+                Element line3; line3.type = "PathLine"; line3.properties.insert("x", 0); line3.properties.insert("y", h);
+                Element line4; line4.type = "PathLine"; line4.properties.insert("x", 0); line4.properties.insert("y", 0);
+                shapePath.children.append(line1);
+                shapePath.children.append(line2);
+                shapePath.children.append(line3);
+                shapePath.children.append(line4);
+                shapeElem.children.append(shapePath);
+                *element = shapeElem;
+                break; }
             default:
                 qWarning() << "Unsupported gradient type for fill layer:" << g->type();
             }
