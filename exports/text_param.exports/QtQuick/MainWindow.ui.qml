@@ -6,7 +6,7 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#1b868a"
+            color: "#ff1b868a"
             height: 240
             width: 320
             x: 0
@@ -14,11 +14,12 @@ Item {
         }
         Text {
             anchors.fill: parent
-            color: "#000000"
+            color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
+            verticalAlignment: Text.AlignVCenter
         }
         Item {
             height: 100
@@ -26,7 +27,7 @@ Item {
             x: 29
             y: 19
             Rectangle {
-                color: "#a8f6ed"
+                color: "#ffa8f6ed"
                 height: 97
                 width: 240
                 x: 1
@@ -39,7 +40,7 @@ Item {
             x: 29
             y: 19
             Rectangle {
-                color: "#7f64f6"
+                color: "#ff7f64f6"
                 height: 50
                 width: 240
                 x: 1
@@ -47,15 +48,16 @@ Item {
             }
         }
         Text {
-            color: "#000000"
+            color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
-            height: 54
+            height: 72
             horizontalAlignment: Text.AlignHCenter
             text: "shooting"
+            verticalAlignment: Text.AlignVCenter
             width: 239
             x: 30
-            y: 20
+            y: 6
         }
     }
 }

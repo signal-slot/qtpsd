@@ -7,7 +7,7 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#8fc5f3"
+            color: "#ff8fc5f3"
             height: 240
             width: 320
             x: 0
@@ -20,12 +20,12 @@ Item {
             x: 64
             y: 74
             ShapePath {
-                fillColor: "#5a6f0e"
+                fillColor: "#ff5a6f0e"
                 strokeColor: "transparent"
                 strokeWidth: 1
             }
             ShapePath {
-                fillColor: "#5a6f0e"
+                fillColor: "#ff5a6f0e"
                 fillRule: ShapePath.WindingFill
                 strokeColor: "transparent"
                 strokeWidth: 1

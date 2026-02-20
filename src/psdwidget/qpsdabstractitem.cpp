@@ -37,7 +37,7 @@ QPsdAbstractItem::QPsdAbstractItem(const QModelIndex &index, const QPsdAbstractL
 {
     auto pos = d->layer->rect().topLeft();
     if (parent) {
-        pos -= parent->pos().toPoint();
+        pos -= parent->mapToScene(QPointF(0, 0)).toPoint();
     }
     setPos(pos);
     setFlags(ItemIsSelectable);

@@ -28,9 +28,9 @@ const styles = StyleSheet.create({
   style1: {
     position: 'absolute',
     left: 30,
-    top: 30,
+    top: 16,
     width: 120,
-    height: 54,
+    height: 72,
     fontFamily: 'Source Han Sans',
     fontSize: 50,
     color: '#FFFFFF',
@@ -39,9 +39,9 @@ const styles = StyleSheet.create({
   style2: {
     position: 'absolute',
     left: 150,
-    top: 60,
+    top: 18,
     width: 478,
-    height: 163,
+    height: 217,
     fontFamily: 'Source Han Sans',
     fontSize: 150,
     color: '#FFFFFF',

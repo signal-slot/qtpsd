@@ -277,6 +277,7 @@
                                 "x": 52,
                                 "y": 80
                             },
+                            "strokeAlignment": "center",
                             "type": "Shape",
                             "visible": true
                         },
@@ -350,6 +351,7 @@
                                 "x": 48,
                                 "y": 79
                             },
+                            "strokeAlignment": "center",
                             "type": "Shape",
                             "visible": true
                         }

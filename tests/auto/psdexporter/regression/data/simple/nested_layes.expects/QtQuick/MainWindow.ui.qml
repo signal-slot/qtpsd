@@ -6,7 +6,7 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#f7e790"
+            color: "#fff7e790"
             height: 240
             width: 320
             x: 0
@@ -20,7 +20,7 @@ Item {
                 x: 39
                 y: 49
                 Rectangle {
-                    color: "#d4f5c9"
+                    color: "#ffd4f5c9"
                     height: 50
                     radius: 20
                     width: 180
@@ -36,7 +36,7 @@ Item {
                     x: 72
                     y: 89
                     Rectangle {
-                        color: "#217903"
+                        color: "#ff217903"
                         height: 10
                         width: 137
                         x: 0.999992
@@ -49,7 +49,7 @@ Item {
                     x: 79
                     y: 81
                     Rectangle {
-                        color: "#5e88e7"
+                        color: "#ff5e88e7"
                         height: 12
                         width: 23
                         x: 1
@@ -58,16 +58,16 @@ Item {
                 }
             }
             Text {
-                color: "#000000"
+                color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
-                height: 33
+                height: 44
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50
-                y: 62
+                y: 54
             }
         }
         Item {
@@ -78,7 +78,7 @@ Item {
                 x: 39
                 y: 134
                 Rectangle {
-                    color: "#d4f5c9"
+                    color: "#ffd4f5c9"
                     height: 50
                     radius: 20
                     width: 180
@@ -94,7 +94,7 @@ Item {
                     x: 72
                     y: 174
                     Rectangle {
-                        color: "#217903"
+                        color: "#ff217903"
                         height: 9.99999
                         width: 137
                         x: 0.999992
@@ -107,7 +107,7 @@ Item {
                     x: 179
                     y: 166
                     Rectangle {
-                        color: "#5e88e7"
+                        color: "#ff5e88e7"
                         height: 12
                         width: 23
                         x: 1
@@ -116,16 +116,16 @@ Item {
                 }
             }
             Text {
-                color: "#000000"
+                color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
-                height: 33
+                height: 44
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50
-                y: 142
+                y: 134
             }
         }
     }

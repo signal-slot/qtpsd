@@ -861,13 +861,34 @@ private:
             const auto overrides = nodeJson["characterStyleOverrides"_L1].toArray();
             const auto overrideTable = nodeJson["styleOverrideTable"_L1].toObject();
 
+            auto applyTextCase = [](QString text, const QString &textCase) -> QString {
+                if (textCase == "UPPER"_L1) return text.toUpper();
+                if (textCase == "LOWER"_L1) return text.toLower();
+                if (textCase == "TITLE"_L1) {
+                    bool capitalizeNext = true;
+                    for (int i = 0; i < text.size(); ++i) {
+                        if (text[i].isSpace()) {
+                            capitalizeNext = true;
+                        } else if (capitalizeNext) {
+                            text[i] = text[i].toUpper();
+                            capitalizeNext = false;
+                        } else {
+                            text[i] = text[i].toLower();
+                        }
+                    }
+                }
+                return text;
+            };
+
             if (overrides.isEmpty() || characters.isEmpty()) {
                 QPsdTextLayerItem::Run run;
-                run.text = characters;
+                run.text = applyTextCase(characters, style["textCase"_L1].toString());
                 run.font = fontFromStyle(style);
                 run.originalFontName = style["fontFamily"_L1].toString();
                 run.color = colorFromFills(fills);
                 run.alignment = alignmentFromStyle(style);
+                if (style.contains("lineHeightPx"_L1))
+                    run.lineHeight = style["lineHeightPx"_L1].toDouble();
                 runs.append(run);
             } else {
                 int pos = 0;
@@ -880,7 +901,7 @@ private:
                     }
 
                     QPsdTextLayerItem::Run run;
-                    run.text = characters.mid(start, pos - start);
+                    const QString rawText = characters.mid(start, pos - start);
 
                     QJsonObject effectiveStyle = style;
                     if (styleId > 0) {
@@ -889,22 +910,27 @@ private:
                             effectiveStyle[it.key()] = it.value();
                     }
 
+                    run.text = applyTextCase(rawText, effectiveStyle["textCase"_L1].toString());
                     run.font = fontFromStyle(effectiveStyle);
                     run.originalFontName = effectiveStyle["fontFamily"_L1].toString();
                     run.color = colorFromFills(effectiveStyle.contains("fills"_L1)
                                                  ? effectiveStyle["fills"_L1].toArray()
                                                  : fills);
                     run.alignment = alignmentFromStyle(style);
+                    if (effectiveStyle.contains("lineHeightPx"_L1))
+                        run.lineHeight = effectiveStyle["lineHeightPx"_L1].toDouble();
                     runs.append(run);
                 }
 
                 if (pos < characters.length()) {
                     QPsdTextLayerItem::Run run;
-                    run.text = characters.mid(pos);
+                    run.text = applyTextCase(characters.mid(pos), style["textCase"_L1].toString());
                     run.font = fontFromStyle(style);
                     run.originalFontName = style["fontFamily"_L1].toString();
                     run.color = colorFromFills(fills);
                     run.alignment = alignmentFromStyle(style);
+                    if (style.contains("lineHeightPx"_L1))
+                        run.lineHeight = style["lineHeightPx"_L1].toDouble();
                     runs.append(run);
                 }
 
@@ -913,7 +939,8 @@ private:
                     if (!mergedRuns.isEmpty() &&
                         mergedRuns.last().font == run.font &&
                         mergedRuns.last().color == run.color &&
-                        mergedRuns.last().alignment == run.alignment) {
+                        mergedRuns.last().alignment == run.alignment &&
+                        qFuzzyCompare(mergedRuns.last().lineHeight, run.lineHeight)) {
                         mergedRuns.last().text += run.text;
                     } else {
                         mergedRuns.append(run);
@@ -956,6 +983,13 @@ private:
             const bool isTopLevelFrame = (parentId == 0)
                 && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1);
             folderItem->setRect(isTopLevelFrame ? QRect() : rect);
+
+            if (nodeJson.value("clipsContent"_L1).toBool(false)) {
+                QPsdAbstractLayerItem::PathInfo clipMask;
+                clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
+                folderItem->setVectorMask(clipMask);
+            }
 
             bool needsGradientBg = false;
             if (isTopLevelFrame) {
@@ -1087,14 +1121,42 @@ private:
 
             QPsdAbstractLayerItem::PathInfo pathInfo;
             if (nodeType == "RECTANGLE"_L1) {
+                const auto radiiArray = nodeJson["rectangleCornerRadii"_L1].toArray();
                 const auto cornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
-                if (cornerRadius > 0) {
+                const qreal w = rect.width();
+                const qreal h = rect.height();
+                if (radiiArray.size() == 4) {
+                    const qreal tl = radiiArray[0].toDouble();
+                    const qreal tr = radiiArray[1].toDouble();
+                    const qreal br = radiiArray[2].toDouble();
+                    const qreal bl = radiiArray[3].toDouble();
+                    if (tl != tr || tr != br || br != bl) {
+                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
+                        QPainterPath pp;
+                        pp.moveTo(tl, 0);
+                        pp.lineTo(w - tr, 0);
+                        if (tr > 0) pp.arcTo(w - 2 * tr, 0, 2 * tr, 2 * tr, 90, -90);
+                        pp.lineTo(w, h - br);
+                        if (br > 0) pp.arcTo(w - 2 * br, h - 2 * br, 2 * br, 2 * br, 0, -90);
+                        pp.lineTo(bl, h);
+                        if (bl > 0) pp.arcTo(0, h - 2 * bl, 2 * bl, 2 * bl, 270, -90);
+                        pp.lineTo(0, tl);
+                        if (tl > 0) pp.arcTo(0, 0, 2 * tl, 2 * tl, 180, -90);
+                        pp.closeSubpath();
+                        pathInfo.path = pp;
+                    } else if (tl > 0) {
+                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
+                        pathInfo.radius = tl;
+                    } else {
+                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                    }
+                } else if (cornerRadius > 0) {
                     pathInfo.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
                     pathInfo.radius = cornerRadius;
                 } else {
                     pathInfo.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 }
-                pathInfo.rect = QRectF(0, 0, rect.width(), rect.height());
+                pathInfo.rect = QRectF(0, 0, w, h);
             } else {
                 const auto fillGeometry = nodeJson["fillGeometry"_L1].toArray();
                 if (!fillGeometry.isEmpty()) {
@@ -1313,18 +1375,13 @@ private:
 
 // ─── buildQPsdModel ────────────────────────────────────────────────────────
 
-static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src)
+static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, const QPsdLayerRecord &record)
 {
     if (!src) return nullptr;
     switch (src->type()) {
     case QPsdAbstractLayerItem::Text: {
         auto *s = static_cast<const QPsdTextLayerItem *>(src);
-        auto *d = new QPsdTextLayerItem();
-        d->setId(s->id());
-        d->setName(s->name());
-        d->setVisible(s->isVisible());
-        d->setOpacity(s->opacity());
-        d->setRect(s->rect());
+        auto *d = new QPsdTextLayerItem(record);
         d->setRuns(s->runs());
         d->setTextType(s->textType());
         d->setTextFrame(s->textFrame());
@@ -1333,12 +1390,7 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src)
     }
     case QPsdAbstractLayerItem::Shape: {
         auto *s = static_cast<const QPsdShapeLayerItem *>(src);
-        auto *d = new QPsdShapeLayerItem();
-        d->setId(s->id());
-        d->setName(s->name());
-        d->setVisible(s->isVisible());
-        d->setOpacity(s->opacity());
-        d->setRect(s->rect());
+        auto *d = new QPsdShapeLayerItem(record);
         d->setBrush(s->brush());
         d->setPen(s->pen());
         d->setPathInfo(s->pathInfo());
@@ -1348,27 +1400,17 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src)
     }
     case QPsdAbstractLayerItem::Image: {
         auto *s = static_cast<const QPsdImageLayerItem *>(src);
-        auto *d = new QPsdImageLayerItem();
-        d->setId(s->id());
-        d->setName(s->name());
-        d->setVisible(s->isVisible());
-        d->setOpacity(s->opacity());
-        d->setRect(s->rect());
+        auto *d = new QPsdImageLayerItem(record);
         d->setImage(s->image());
         d->setDropShadow(s->dropShadow());
         return d;
     }
     case QPsdAbstractLayerItem::Folder: {
         auto *s = static_cast<const QPsdFolderLayerItem *>(src);
-        auto *d = new QPsdFolderLayerItem();
-        d->setId(s->id());
-        d->setName(s->name());
-        d->setVisible(s->isVisible());
-        d->setOpacity(s->opacity());
-        d->setRect(s->rect());
-        d->setIsOpened(s->isOpened());
+        auto *d = new QPsdFolderLayerItem(record, s->isOpened());
         d->setArtboardRect(s->artboardRect());
         d->setArtboardBackground(s->artboardBackground());
+        d->setVectorMask(s->vectorMask());
         d->setDropShadow(s->dropShadow());
         return d;
     }
@@ -1487,9 +1529,12 @@ static QPsdWidgetTreeItemModel *buildQPsdModel(FigmaLayerTreeItemModel *figmaMod
             const QModelIndex index = model->index(row, 0, parentIdx);
             const quint32 lid = model->layerId(index);
             if (layerItemMap.contains(lid)) {
-                auto *clone = cloneLayerItem(layerItemMap.value(lid));
-                if (clone)
-                    model->setLayerItem(index, clone);
+                const QPsdLayerRecord *rec = model->layerRecord(index);
+                if (rec) {
+                    auto *clone = cloneLayerItem(layerItemMap.value(lid), *rec);
+                    if (clone)
+                        model->setLayerItem(index, clone);
+                }
             }
             injectItems(index);
         }

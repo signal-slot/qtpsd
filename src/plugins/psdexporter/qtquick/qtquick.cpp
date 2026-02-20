@@ -175,13 +175,13 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
                     if (effectMode() == Qt5Effects) {
                         imports->insert("Qt5Compat.GraphicalEffects as GE");
                         colorize.type = "GE.ColorOverlay";
-                        colorize.properties.insert("color", u"\"%1\""_s.arg(color.name()));
+                        colorize.properties.insert("color", u"\"%1\""_s.arg(color.name(QColor::HexArgb)));
                         colorize.properties.insert("opacity", sofi.opacity());
                     } else {
                         imports->insert("QtQuick.Effects");
                         colorize.type = "MultiEffect";
                         colorize.properties.insert("colorization", 1.0);
-                        colorize.properties.insert("colorizationColor", u"\"%1\""_s.arg(color.name()));
+                        colorize.properties.insert("colorizationColor", u"\"%1\""_s.arg(color.name(QColor::HexArgb)));
                         colorize.properties.insert("opacity", sofi.opacity());
                     }
                     element->layers.append(colorize);
@@ -356,7 +356,7 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
         Element artboard;
         artboard.type = "Rectangle";
         outputRect(folder->artboardRect(), &artboard);
-        artboard.properties.insert("color", u"\"%1\""_s.arg(folder->artboardBackground().name()));
+        artboard.properties.insert("color", u"\"%1\""_s.arg(folder->artboardBackground().name(QColor::HexArgb)));
         element->children.append(artboard);
     }
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
@@ -400,7 +400,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             element->properties.insert("font.bold", true);
         if (run.font.italic())
             element->properties.insert("font.italic", true);
-        element->properties.insert("color", u"\"%1\""_s.arg(run.color.name()));
+        element->properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
         element->properties.insert("horizontalAlignment",
             horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
         {
@@ -453,7 +453,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                     textElement.properties.insert("font.bold", true);
                 if (run.font.italic())
                     textElement.properties.insert("font.italic", true);
-                textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name()));
+                textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
                 textElement.properties.insert("Layout.fillHeight", true);
                 if (isParagraph) {
                     textElement.properties.insert("Layout.fillWidth", true);
@@ -636,7 +636,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             element->type = "Rectangle";
             if (!outputBase(shapeIndex, element, imports))
                 return false;
-            element->properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name()));
+            element->properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::Rectangle: {
@@ -836,10 +836,12 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 qreal dw = computeStrokeWidth(shape->pen(), unitScale);
                 outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
                 rectElement.properties.insert("border.width", dw);
-                rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
+                rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name(QColor::HexArgb)));
             }
             if (shape->brush() != Qt::NoBrush)
-                rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name()));
+                rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+            else
+                rectElement.properties.insert("color", "\"transparent\"");
             if (filled)
                 *element = rectElement;
             else
@@ -1019,10 +1021,12 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 qreal dw = computeStrokeWidth(shape->pen(), unitScale);
                 outputRect(adjustRectForStroke(path.rect, shape->strokeAlignment(), dw), &rectElement);
                 rectElement.properties.insert("border.width", dw);
-                rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name()));
+                rectElement.properties.insert("border.color", u"\"%1\""_s.arg(shape->pen().color().name(QColor::HexArgb)));
             }
             if (shape->brush() != Qt::NoBrush)
-                rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name()));
+                rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+            else
+                rectElement.properties.insert("color", "\"transparent\"");
         }
         if (filled)
             *element = rectElement;
@@ -1087,9 +1091,9 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             if (shape->pen().style() == Qt::NoPen)
                 shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
             else
-                shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(shape->pen().color().name()));
+                shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(shape->pen().color().name(QColor::HexArgb)));
             if (shape->brush() != Qt::NoBrush)
-                shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name()));
+                shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
             element->children.append(shapePath);            }
         if (!outputPath(path.path, &shapePath))
             return false;
@@ -1118,7 +1122,7 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
         if (!outputBase(imageIndex, &wrapper, imports))
             return false;
         wrapper.properties.insert("border.width", border->size() * unitScale);
-        wrapper.properties.insert("border.color", u"\"%1\""_s.arg(border->color().name()));
+        wrapper.properties.insert("border.color", u"\"%1\""_s.arg(border->color().name(QColor::HexArgb)));
         wrapper.properties.insert("color", "\"transparent\"");
         element->properties.remove("x");
         element->properties.remove("y");

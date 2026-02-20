@@ -55,9 +55,9 @@ const styles = StyleSheet.create({
   style4: {
     position: 'absolute',
     left: 30,
-    top: 20,
+    top: 6,
     width: 239,
-    height: 54,
+    height: 72,
     fontFamily: 'Source Han Sans',
     fontSize: 50,
     color: '#000000',

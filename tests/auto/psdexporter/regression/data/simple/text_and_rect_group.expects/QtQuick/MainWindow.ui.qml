@@ -6,7 +6,7 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#5d5206"
+            color: "#ff5d5206"
             height: 240
             width: 320
             x: 0
@@ -20,7 +20,7 @@ Item {
                 x: 48
                 y: 79
                 Rectangle {
-                    color: "#f5f5ed"
+                    color: "#fff5f5ed"
                     height: 60
                     width: 160
                     x: 2
@@ -33,7 +33,7 @@ Item {
                 x: 52
                 y: 80
                 Rectangle {
-                    color: "#f7e790"
+                    color: "#fff7e790"
                     height: 32
                     width: 155
                     x: 0.999992
@@ -41,16 +41,16 @@ Item {
                 }
             }
             Text {
-                color: "#000000"
+                color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
-                height: 33
+                height: 44
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50
-                y: 79
+                y: 71
             }
         }
     }

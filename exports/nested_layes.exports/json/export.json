@@ -279,6 +279,7 @@
                                         "x": 179,
                                         "y": 166
                                     },
+                                    "strokeAlignment": "center",
                                     "type": "Shape",
                                     "visible": true
                                 },
@@ -352,6 +353,7 @@
                                         "x": 72,
                                         "y": 174
                                     },
+                                    "strokeAlignment": "center",
                                     "type": "Shape",
                                     "visible": true
                                 }
@@ -490,6 +492,7 @@
                                 "x": 39,
                                 "y": 134
                             },
+                            "strokeAlignment": "center",
                             "type": "Shape",
                             "visible": true
                         }
@@ -783,6 +786,7 @@
                                         "x": 79,
                                         "y": 81
                                     },
+                                    "strokeAlignment": "center",
                                     "type": "Shape",
                                     "visible": true
                                 },
@@ -856,6 +860,7 @@
                                         "x": 72,
                                         "y": 89
                                     },
+                                    "strokeAlignment": "center",
                                     "type": "Shape",
                                     "visible": true
                                 }
@@ -994,6 +999,7 @@
                                 "x": 39,
                                 "y": 49
                             },
+                            "strokeAlignment": "center",
                             "type": "Shape",
                             "visible": true
                         }

@@ -111,6 +111,7 @@
                         "x": 170,
                         "y": 75
                     },
+                    "strokeAlignment": "center",
                     "type": "Shape",
                     "visible": true
                 },
@@ -217,12 +218,17 @@
                             "y": 29.179625511169434
                         }
                     ],
+                    "pen": {
+                        "color": "#e5fc14",
+                        "width": 17
+                    },
                     "rect": {
                         "height": 114,
                         "width": 153,
                         "x": 54,
                         "y": 65
                     },
+                    "strokeAlignment": "center",
                     "type": "Shape",
                     "visible": true
                 }

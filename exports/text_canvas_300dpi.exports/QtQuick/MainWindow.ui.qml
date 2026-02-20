@@ -6,33 +6,35 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#012401"
+            color: "#ff012401"
             height: 240
             width: 640
             x: 0
             y: 0
         }
         Text {
-            color: "#ffffff"
+            color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 50
-            height: 54
+            height: 72
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
+            verticalAlignment: Text.AlignVCenter
             width: 120
             x: 30
-            y: 30
+            y: 16
         }
         Text {
-            color: "#ffffff"
+            color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 150
-            height: 163
+            height: 217
             horizontalAlignment: Text.AlignHCenter
             text: "150px"
+            verticalAlignment: Text.AlignVCenter
             width: 478
             x: 150
-            y: 60
+            y: 18
         }
     }
 }

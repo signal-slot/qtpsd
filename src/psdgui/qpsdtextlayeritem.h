@@ -20,6 +20,7 @@ public:
         QString originalFontName;  // Original font name from PSD (e.g., "MyriadPro-Bold")
         QColor color;
         Qt::Alignment alignment = Qt::AlignVCenter;
+        qreal lineHeight = -1;  // px; -1 = use QFontMetrics::height()
     };
     enum class TextType {
         PointText,

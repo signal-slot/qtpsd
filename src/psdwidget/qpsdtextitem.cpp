@@ -83,6 +83,7 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         QString text;
         Qt::Alignment alignment;
         qreal width;
+        qreal lineHeight = -1;
     };
 
     // Split runs into lines by newlines
@@ -107,6 +108,8 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             chunk.color = run.color;
             chunk.text = part;
             chunk.alignment = run.alignment;
+            if (run.lineHeight > 0)
+                chunk.lineHeight = run.lineHeight / dpiScale;
             p->setFont(chunk.font);
             chunk.width = p->fontMetrics().horizontalAdvance(part);
             currentLine.append(chunk);
@@ -132,8 +135,10 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         qreal baselineY = layer->textOrigin().y() - layer->rect().top();
 
         for (const auto &line : lines) {
+            const qreal lineAdvance = (!line.isEmpty() && line.first().lineHeight > 0)
+                ? line.first().lineHeight : fm.height();
             if (line.isEmpty()) {
-                baselineY += fm.height();
+                baselineY += lineAdvance;
                 continue;
             }
 
@@ -156,7 +161,7 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
                 p->drawText(QPointF(x, baselineY), chunk.text);
                 x += p->fontMetrics().horizontalAdvance(chunk.text);
             }
-            baselineY += fm.height();
+            baselineY += lineAdvance;
         }
     } else {
         // Paragraph text: draw line by line with proper Y advancement
@@ -178,8 +183,10 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
         qreal currentY = drawTop;
         for (const auto &line : lines) {
+            const qreal lineAdvance = (!line.isEmpty() && line.first().lineHeight > 0)
+                ? line.first().lineHeight : fm.height();
             if (line.isEmpty()) {
-                currentY += fm.height();
+                currentY += lineAdvance;
                 continue;
             }
 

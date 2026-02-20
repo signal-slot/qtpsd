@@ -7,7 +7,7 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#8fc5f3"
+            color: "#ff8fc5f3"
             height: 240
             width: 320
             x: 0
@@ -20,14 +20,14 @@ Item {
             x: 54
             y: 65
             ShapePath {
-                fillColor: "#5a6f0e"
-                strokeColor: "#e5fc14"
+                fillColor: "#ff5a6f0e"
+                strokeColor: "#ffe5fc14"
                 strokeWidth: 17
             }
             ShapePath {
-                fillColor: "#5a6f0e"
+                fillColor: "#ff5a6f0e"
                 fillRule: ShapePath.WindingFill
-                strokeColor: "#e5fc14"
+                strokeColor: "#ffe5fc14"
                 strokeWidth: 17
                 PathMove {
                     x: 76.7117
@@ -98,12 +98,12 @@ Item {
             x: 170
             y: 75
             ShapePath {
-                fillColor: "#5a6f0e"
+                fillColor: "#ff5a6f0e"
                 strokeColor: "transparent"
                 strokeWidth: 1
             }
             ShapePath {
-                fillColor: "#5a6f0e"
+                fillColor: "#ff5a6f0e"
                 fillRule: ShapePath.WindingFill
                 strokeColor: "transparent"
                 strokeWidth: 1

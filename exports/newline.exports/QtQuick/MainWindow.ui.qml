@@ -7,7 +7,7 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#012401"
+            color: "#ff012401"
             height: 240
             width: 320
             x: 0
@@ -15,28 +15,30 @@ Item {
         }
         Text {
             anchors.fill: parent
-            color: "#eac3c3"
+            color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 50
             horizontalAlignment: Text.AlignHCenter
             text: ""
+            verticalAlignment: Text.AlignVCenter
         }
         Text {
-            color: "#eac3c3"
+            color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 63
+            height: 44
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
+            verticalAlignment: Text.AlignVCenter
             width: 160
             x: 2
-            y: 10
+            y: 1
         }
         Item {
-            height: 63
+            height: 44
             width: 144
             x: 169
-            y: 10
+            y: 1
             Column {
                 anchors.centerIn: parent
                 RowLayout {
@@ -44,24 +46,30 @@ Item {
                     spacing: 0
                     Text {
                         Layout.fillHeight: true
-                        color: "#eac3c3"
+                        color: "#ffeac3c3"
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
+                        horizontalAlignment: Text.AlignHCenter
                         text: "文字列"
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Text {
                         Layout.fillHeight: true
-                        color: "#eac3c3"
+                        color: "#ffeac3c3"
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 16
+                        horizontalAlignment: Text.AlignHCenter
                         text: "中"
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Text {
                         Layout.fillHeight: true
-                        color: "#eac3c3"
+                        color: "#ffeac3c3"
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
+                        horizontalAlignment: Text.AlignHCenter
                         text: "に"
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
                 RowLayout {
@@ -69,39 +77,45 @@ Item {
                     spacing: 0
                     Text {
                         Layout.fillHeight: true
-                        color: "#eac3c3"
+                        color: "#ffeac3c3"
                         font.family: "Koz Go Pr6N"
                         font.pixelSize: 30
+                        horizontalAlignment: Text.AlignHCenter
                         text: "別"
+                        verticalAlignment: Text.AlignVCenter
                     }
                     Text {
                         Layout.fillHeight: true
-                        color: "#eac3c3"
+                        color: "#ffeac3c3"
                         font.family: "Source Han Sans"
                         font.pixelSize: 18
+                        horizontalAlignment: Text.AlignHCenter
                         text: "フォント"
+                        verticalAlignment: Text.AlignVCenter
                     }
                 }
             }
         }
         Text {
-            color: "#eac3c3"
+            color: "#ffeac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 30
-            height: 63
+            height: 44
             horizontalAlignment: Text.AlignHCenter
             text: "Shift\n+改行"
+            verticalAlignment: Text.AlignVCenter
             width: 86
             x: 25
-            y: 110
+            y: 101
         }
         Text {
-            color: "#eac3c3"
+            color: "#ffeac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 24
             height: 116
             horizontalAlignment: Text.AlignHCenter
             text: "段落テキストは折り返される"
+            verticalAlignment: Text.AlignVCenter
             width: 158
             wrapMode: Text.Wrap
             x: 160

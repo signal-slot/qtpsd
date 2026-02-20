@@ -12,8 +12,8 @@ struct MainView: View {
                     .font(.custom("Source Han Sans", size: 30))
                     .foregroundStyle(Color(red: 0.000, green: 0.000, blue: 0.000))
                     .multilineTextAlignment(.center)
-                    .frame(width: 9.0, height: 33.0)
-                    .position(x: 129.5, y: 95.5)
+                    .frame(width: 9.0, height: 44.0)
+                    .position(x: 129.5, y: 93.0)
             }
         }
         .frame(width: 320.0, height: 240.0)

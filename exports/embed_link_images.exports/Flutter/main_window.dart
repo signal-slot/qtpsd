@@ -46,7 +46,7 @@ class MainWindow extends StatelessWidget {
                   top: 150,
                   width: 64,
                   child: Image.asset(
-                    "assets/images/7c7c45584dc3695d1d67a26219dfced93dd2c180e564f292def583b27ba9ecbd.png", 
+                    "assets/images/7c7c45584dc3695d.png", 
                     fit: BoxFit.contain,
                     height: 46,
                     width: 64,
@@ -70,7 +70,7 @@ class MainWindow extends StatelessWidget {
                   top: 149,
                   width: 36,
                   child: Image.asset(
-                    "assets/images/55f66e81a5e64db810dddb2ca1ea18b8f4b08b1d3946916d5e5a78e453772487.png", 
+                    "assets/images/55f66e81a5e64db8.png", 
                     fit: BoxFit.contain,
                     height: 48,
                     width: 36,
