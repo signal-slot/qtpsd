@@ -193,8 +193,11 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
             }
         }
 
+        // Shape layers: vmsk defines both pathInfo() and vectorMask() from the same data,
+        // so the Shape element already clips to the path — skip the redundant mask.
+        const bool isShapeLayer = dynamic_cast<const QPsdShapeLayerItem *>(item) != nullptr;
         const auto mask = item->vectorMask();
-        if (mask.type != QPsdAbstractLayerItem::PathInfo::None) {
+        if (mask.type != QPsdAbstractLayerItem::PathInfo::None && !isShapeLayer) {
             Element effect;
             if (effectMode() == Qt5Effects) {
                 imports->insert("Qt5Compat.GraphicalEffects as GE");
@@ -510,7 +513,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
                     effect.children.append(gradient);
                     *element = effect;
-                } else if (effectMode() == EffectMaker) {
+                } else {
                     imports->insert("QtQuick.Shapes");
                     Element shapeElem;
                     shapeElem.type = "Shape";
@@ -580,7 +583,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     }
                     effect.children.append(gradient);
                     *element = effect;
-                } else if (effectMode() == EffectMaker) {
+                } else {
                     imports->insert("QtQuick.Shapes");
                     Element shapeElem;
                     shapeElem.type = "Shape";
@@ -680,7 +683,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         *element = effect;
                     else
                         element->children.prepend(effect);
-                } else if (effectMode() == EffectMaker) {
+                } else {
                     imports->insert("QtQuick.Shapes");
                     Element shapeElem;
                     shapeElem.type = "Shape";
@@ -764,7 +767,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         *element = effect;
                     else
                         element->children.prepend(effect);
-                } else if (effectMode() == EffectMaker) {
+                } else {
                     imports->insert("QtQuick.Shapes");
                     Element shapeElem;
                     shapeElem.type = "Shape";
@@ -890,7 +893,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
                     effect.children.append(gradient);
                     rectElement.layers.append(effect);
-                } else if (effectMode() == EffectMaker) {
+                } else {
                     imports->insert("QtQuick.Shapes");
                     const qreal w = path.rect.width() * horizontalScale;
                     const qreal h = path.rect.height() * verticalScale;
@@ -963,7 +966,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     }
                     effect.children.append(gradient);
                     rectElement.layers.append(effect);
-                } else if (effectMode() == EffectMaker) {
+                } else {
                     imports->insert("QtQuick.Shapes");
                     const qreal w = path.rect.width() * horizontalScale;
                     const qreal h = path.rect.height() * verticalScale;

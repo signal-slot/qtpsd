@@ -42,11 +42,17 @@ if [[ "${limit}" -gt 0 && "${#psd_files[@]}" -gt "${limit}" ]]; then
   psd_files=("${psd_files[@]:0:${limit}}")
 fi
 
+max_jobs="${QTPSD_SIMILARITY_JOBS:-$(nproc)}"
+
 echo "Export source: ${source_root}"
 echo "Export output: ${export_root}"
 echo "PSD count: ${#psd_files[@]}"
+echo "Max parallel jobs: ${max_jobs}"
 
-fail_count=0
+fail_file="$(mktemp)"
+echo 0 > "${fail_file}"
+trap 'rm -f "${fail_file}"' EXIT
+
 qt_plugin_path="${build_dir}/lib64/qt6/plugins"
 
 run_export() {
@@ -61,12 +67,14 @@ run_export() {
       --input "${psd_path}" \
       --type "${exporter_type}" \
       --outdir "${out_dir}" \
-      --resolution original; then
+      --resolution original 2>/dev/null; then
     echo "Export failed: ${exporter_type} ${psd_path}" >&2
-    fail_count=$((fail_count + 1))
+    # Atomically increment fail count via flock
+    flock "${fail_file}" bash -c "echo \$(( \$(cat '${fail_file}') + 1 )) > '${fail_file}'"
   fi
 }
 
+job_count=0
 for psd_path in "${psd_files[@]}"; do
   rel_path="${psd_path#"${source_root}/"}"
   rel_no_ext="${rel_path%.psd}"
@@ -79,19 +87,23 @@ for psd_path in "${psd_files[@]}"; do
   rm -rf "${qtquick_out}" "${slint_out}" "${flutter_out}" "${lvgl_out}"
   mkdir -p "${qtquick_out}" "${slint_out}" "${flutter_out}" "${lvgl_out}"
 
-  echo "[QtQuick] ${rel_path}"
-  run_export "QtQuick" "${psd_path}" "${qtquick_out}"
-
-  echo "[Slint]   ${rel_path}"
-  run_export "Slint" "${psd_path}" "${slint_out}"
-
-  echo "[Flutter] ${rel_path}"
-  run_export "Flutter" "${psd_path}" "${flutter_out}"
-
-  echo "[LVGL]    ${rel_path}"
-  run_export "LVGL" "${psd_path}" "${lvgl_out}"
+  for exporter_args in \
+    "QtQuick|${psd_path}|${qtquick_out}" \
+    "Slint|${psd_path}|${slint_out}" \
+    "Flutter|${psd_path}|${flutter_out}" \
+    "LVGL|${psd_path}|${lvgl_out}"; do
+    IFS='|' read -r etype epath eout <<< "${exporter_args}"
+    run_export "${etype}" "${epath}" "${eout}" &
+    job_count=$((job_count + 1))
+    if [[ "${job_count}" -ge "${max_jobs}" ]]; then
+      wait -n 2>/dev/null || true
+      job_count=$((job_count - 1))
+    fi
+  done
 done
+wait
 
+fail_count="$(cat "${fail_file}")"
 if [[ "${fail_count}" -gt 0 ]]; then
   echo "Host export completed with ${fail_count} failed exporter runs." >&2
 else

@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 
 Item {
     height: 200
@@ -16,5 +17,49 @@ Item {
         width: 142
         x: 29
         y: 29
+        Shape {
+            height: 140
+            width: 140
+            x: 0.999995
+            y: 0.999995
+            ShapePath {
+                strokeColor: "transparent"
+                strokeWidth: 0
+                fillGradient: LinearGradient {
+                    x1: 121.205
+                    x2: 20.7954
+                    y1: 121.205
+                    y2: 20.7954
+                    GradientStop {
+                        color: "#ff0000"
+                        position: 0
+                    }
+                    GradientStop {
+                        color: "#0000ff"
+                        position: 1
+                    }
+                }
+                PathMove {
+                    x: 0
+                    y: 0
+                }
+                PathLine {
+                    x: 140
+                    y: 0
+                }
+                PathLine {
+                    x: 140
+                    y: 140
+                }
+                PathLine {
+                    x: 0
+                    y: 140
+                }
+                PathLine {
+                    x: 0
+                    y: 0
+                }
+            }
+        }
     }
 }
