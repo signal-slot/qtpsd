@@ -43,6 +43,8 @@ private slots:
     void binaryRoundTrip();
     void visualRoundTrip_data();
     void visualRoundTrip();
+    void photoshopSimilarity_data();
+    void photoshopSimilarity();
     void writeReport_data();
     void writeReport();
     void cleanupTestCase();
@@ -72,6 +74,19 @@ private:
         QString error;
     };
     QList<VisualResult> m_visualResults;
+
+    struct PhotoshopResult {
+        QString category;
+        QString fileName;
+        qint64 fileSize = 0;
+        double similarity = 0.0;
+        bool originalRendered = false;
+        bool photoshopAvailable = false;
+        bool sizeMismatch = false;
+        QSize originalSize;
+        QSize photoshopSize;
+    };
+    QList<PhotoshopResult> m_photoshopResults;
 };
 
 void tst_QPsdWriter::writeFileHeader()
@@ -657,6 +672,87 @@ void tst_QPsdWriter::visualRoundTrip()
                         .arg(result.similarity).arg(fileName)));
 }
 
+void tst_QPsdWriter::photoshopSimilarity_data()
+{
+    QTest::addColumn<QString>("psd");
+    QTest::addColumn<qint64>("fileSize");
+
+    const QString zooPath = QFINDTESTDATA("../../3rdparty/psd-zoo/");
+    if (zooPath.isEmpty() || !QDir(zooPath).exists()) {
+        QSKIP("psd-zoo submodule not available");
+        return;
+    }
+    QDirIterator it(zooPath, QStringList() << "*.psd"_L1, QDir::Files, QDirIterator::Subdirectories);
+    QList<std::tuple<qint64, QString, QString>> rows;
+    while (it.hasNext()) {
+        const QString filePath = it.next();
+        const QString relativePath = QDir(zooPath).relativeFilePath(filePath);
+        const qint64 size = QFileInfo(filePath).size();
+        rows.append({size, relativePath, filePath});
+    }
+    std::sort(rows.begin(), rows.end());
+    if (rows.isEmpty()) {
+        QSKIP("No PSD files found in psd-zoo");
+        return;
+    }
+    for (const auto &[size, rel, path] : rows)
+        QTest::newRow(rel.toLatin1().data()) << path << size;
+}
+
+void tst_QPsdWriter::photoshopSimilarity()
+{
+    QFETCH(QString, psd);
+    QFETCH(qint64, fileSize);
+
+    const QString zooPath = QFINDTESTDATA("../../3rdparty/psd-zoo/");
+    const QString relativePath = QDir(zooPath).relativeFilePath(psd);
+    const int slashIdx = relativePath.indexOf(u'/');
+    const QString category = (slashIdx > 0) ? relativePath.left(slashIdx) : u"other"_s;
+    const QString fileName = (slashIdx > 0) ? relativePath.mid(slashIdx + 1) : relativePath;
+
+    PhotoshopResult result;
+    result.category = category;
+    result.fileName = fileName;
+    result.fileSize = fileSize;
+
+    // 1. Render original PSD via QPsdView
+    const QImage originalImage = renderPsd(psd);
+    result.originalRendered = !originalImage.isNull();
+    if (originalImage.isNull()) {
+        m_photoshopResults.append(result);
+        return; // Not a test failure — some files have empty canvas
+    }
+    result.originalSize = originalImage.size();
+
+    // 2. Load Photoshop-rendered PNG from round-trip/<category>/<basename>.png
+    const QString baseName = QFileInfo(psd).completeBaseName();
+    const QString roundTripDir = QStringLiteral(QT_TESTCASE_SOURCEDIR "/round-trip");
+    const QString photoshopPng = roundTripDir + u'/' + category + u'/' + baseName + u".png"_s;
+
+    if (!QFile::exists(photoshopPng)) {
+        m_photoshopResults.append(result);
+        return; // No Photoshop screenshot available
+    }
+
+    QImage photoshopImage(photoshopPng);
+    result.photoshopAvailable = !photoshopImage.isNull();
+    if (photoshopImage.isNull()) {
+        m_photoshopResults.append(result);
+        return;
+    }
+    result.photoshopSize = photoshopImage.size();
+
+    // 3. Handle size mismatch by scaling Photoshop image to match original
+    if (photoshopImage.size() != originalImage.size()) {
+        result.sizeMismatch = true;
+        photoshopImage = photoshopImage.scaled(originalImage.size(), Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+    }
+
+    // 4. Compare
+    result.similarity = compareImages(originalImage, photoshopImage);
+    m_photoshopResults.append(result);
+}
+
 void tst_QPsdWriter::binaryRoundTrip_data()
 {
     QTest::addColumn<QString>("psd");
@@ -1098,6 +1194,114 @@ void tst_QPsdWriter::cleanupTestCase()
             visualFile.close();
             qDebug() << "Visual report:" << visualReportPath;
             qDebug() << "Pass:" << totalPassed << "Fail:" << totalFailed << "Skip:" << totalSkipped;
+        }
+    }
+
+    // === Photoshop similarity report ===
+    if (!m_photoshopResults.isEmpty()) {
+        const QString photoshopReportPath = QStringLiteral(QT_TESTCASE_SOURCEDIR "/../../../../docs/psd-zoo-photoshop-report.md");
+
+        QFile photoshopFile(photoshopReportPath);
+        if (photoshopFile.open(QFile::WriteOnly | QFile::Truncate)) {
+            QTextStream ps(&photoshopFile);
+
+            // Count totals
+            int totalCompared = 0;
+            int totalPassed = 0;
+            int totalFailed = 0;
+            int totalSkipped = 0;
+            double sumSimilarity = 0.0;
+            QMap<QString, int> catCompared;
+            QMap<QString, int> catPassed;
+            QMap<QString, double> catSumSim;
+
+            for (const auto &r : m_photoshopResults) {
+                if (!r.originalRendered || !r.photoshopAvailable) {
+                    ++totalSkipped;
+                    continue;
+                }
+                ++totalCompared;
+                catCompared[r.category]++;
+                sumSimilarity += r.similarity;
+                catSumSim[r.category] += r.similarity;
+                if (r.similarity >= 90.0) {
+                    ++totalPassed;
+                    catPassed[r.category]++;
+                } else {
+                    ++totalFailed;
+                }
+            }
+
+            ps << "# PSD Photoshop Similarity Report\n\n";
+            ps << "Generated: " << QDateTime::currentDateTime().toString(Qt::ISODate) << "\n\n";
+            ps << "Compares **QPsdView rendering of original PSD** vs **Photoshop rendering of round-trip PSD** (PNG screenshots).\n\n";
+
+            // === Summary ===
+            ps << "## Summary Statistics\n\n";
+            ps << "| Metric | Value |\n";
+            ps << "|--------|-------|\n";
+            ps << "| Total Files | " << m_photoshopResults.size() << " |\n";
+            ps << "| Compared | " << totalCompared << " |\n";
+            ps << "| Skipped (no render / no screenshot) | " << totalSkipped << " |\n";
+            const double passRate = totalCompared > 0 ? 100.0 * totalPassed / totalCompared : 0.0;
+            ps << "| Passed (>=90%) | " << totalPassed << " (" << QString::number(passRate, 'f', 1) << "%) |\n";
+            ps << "| Failed (<90%) | " << totalFailed << " |\n";
+            const double avgSim = totalCompared > 0 ? sumSimilarity / totalCompared : 0.0;
+            ps << "| Average Similarity | " << QString::number(avgSim, 'f', 1) << "% |\n\n";
+
+            // === Per-Category Summary ===
+            ps << "## Per-Category Summary\n\n";
+            ps << "| Category | Pass | Total | Rate | Avg Similarity |\n";
+            ps << "|----------|------|-------|------|----------------|\n";
+            for (auto it = catCompared.cbegin(); it != catCompared.cend(); ++it) {
+                const int pass = catPassed.value(it.key(), 0);
+                const int total = it.value();
+                const double rate = total > 0 ? 100.0 * pass / total : 0.0;
+                const double avg = total > 0 ? catSumSim.value(it.key(), 0.0) / total : 0.0;
+                ps << "| " << it.key() << " | " << pass << " | " << total
+                   << " | " << QString::number(rate, 'f', 1) << "%"
+                   << " | " << QString::number(avg, 'f', 1) << "% |\n";
+            }
+            ps << "\n";
+
+            // === Per-Category Detailed Tables ===
+            QList<PhotoshopResult> sorted = m_photoshopResults;
+            std::sort(sorted.begin(), sorted.end(), [](const PhotoshopResult &a, const PhotoshopResult &b) {
+                if (a.category != b.category) return a.category < b.category;
+                return a.fileName < b.fileName;
+            });
+
+            QString currentCategory;
+            for (const auto &r : sorted) {
+                if (r.category != currentCategory) {
+                    currentCategory = r.category;
+                    ps << "## " << currentCategory << "\n\n";
+                    ps << "| File | Size | Similarity | Result | Details |\n";
+                    ps << "|------|-----:|----------:|:------:|:--------|\n";
+                }
+                const QString psdLink = u"[%1](https://github.com/signal-slot/psd-zoo/blob/master/%2/%1)"_s
+                    .arg(r.fileName, r.category);
+                if (!r.originalRendered) {
+                    ps << "| " << psdLink << " | " << r.fileSize << " | - | SKIP | empty canvas |\n";
+                } else if (!r.photoshopAvailable) {
+                    ps << "| " << psdLink << " | " << r.fileSize << " | - | SKIP | no screenshot |\n";
+                } else {
+                    const QString status = r.similarity >= 90.0 ? u"PASS"_s : u"FAIL"_s;
+                    QString details = u"-"_s;
+                    if (r.sizeMismatch) {
+                        details = u"scaled %1x%2→%3x%4"_s
+                            .arg(r.photoshopSize.width()).arg(r.photoshopSize.height())
+                            .arg(r.originalSize.width()).arg(r.originalSize.height());
+                    }
+                    ps << "| " << psdLink << " | " << r.fileSize
+                       << " | " << QString::number(r.similarity, 'f', 1) << "%"
+                       << " | " << status << " | " << details << " |\n";
+                }
+            }
+
+            photoshopFile.close();
+            qDebug() << "Photoshop report:" << photoshopReportPath;
+            qDebug() << "Compared:" << totalCompared << "Pass:" << totalPassed << "Fail:" << totalFailed << "Skip:" << totalSkipped;
         }
     }
 }
