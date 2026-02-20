@@ -12,6 +12,7 @@ qt_internal_add_app(psdexporter
         Qt::Widgets
         Qt::PsdWidget
         Qt::PsdExporter
+        Qt::PsdImporter
     ENABLE_AUTOGEN_TOOLS
         uic
 )
@@ -22,4 +23,5 @@ target_link_libraries(psdexporter PRIVATE
     Qt::PsdGui
     Qt::PsdWidget
     Qt::PsdExporter
+    Qt::PsdImporter
 )

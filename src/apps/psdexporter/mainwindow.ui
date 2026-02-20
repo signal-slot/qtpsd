@@ -58,6 +58,11 @@
      <addaction name="separator"/>
      <addaction name="clearRecentFiles"/>
     </widget>
+    <widget class="QMenu" name="imports">
+     <property name="title">
+      <string>&amp;Import</string>
+     </property>
+    </widget>
     <widget class="QMenu" name="exports">
      <property name="title">
       <string>&amp;Export</string>
@@ -67,6 +72,7 @@
     <addaction name="openRecentFile"/>
     <addaction name="reload"/>
     <addaction name="save"/>
+    <addaction name="imports"/>
     <addaction name="exports"/>
     <addaction name="close"/>
     <addaction name="separator"/>

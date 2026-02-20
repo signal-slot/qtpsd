@@ -9,6 +9,7 @@
 
 #include <QtPsdGui/QPsdFolderLayerItem>
 #include <QtPsdExporter/QPsdExporterPlugin>
+#include <QtPsdImporter/QPsdImporterPlugin>
 
 class PsdWidget : public QSplitter
 {
@@ -33,6 +34,7 @@ public slots:
     void reload();
     void save();
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
+    bool importFrom(QPsdImporterPlugin *importer);
     void copyViewToClipboard();
     void setViewScale(qreal scale);
     void fitToView();

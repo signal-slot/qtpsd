@@ -15,6 +15,7 @@
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QToolButton>
 #include <QtPsdExporter/QPsdExporterPlugin>
+#include <QtPsdImporter/QPsdImporterPlugin>
 
 class MainWindow::Private : public Ui::MainWindow
 {
@@ -111,6 +112,59 @@ MainWindow::Private::Private(::MainWindow *parent)
         int index = tabWidget->currentIndex();
         auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
         psdWidget->exportTo(exporter, &settings);
+    });
+
+    // Discover importer plugins
+    auto importKeys = QPsdImporterPlugin::keys();
+    QList<QPsdImporterPlugin *> importPlugins;
+    for (const auto &key : importKeys) {
+        auto plugin = QPsdImporterPlugin::plugin(key);
+        importPlugins.append(plugin);
+    }
+    std::sort(importPlugins.begin(), importPlugins.end(), [](const auto *a, const auto *b) {
+        return a->priority() == b->priority() ? a->name() < b->name() : a->priority() < b->priority();
+    });
+    for (auto *plugin : importPlugins) {
+        QString name = plugin->name();
+        QIcon icon = plugin->icon();
+        auto action = new QAction(icon, name);
+        action->setData(QVariant::fromValue(plugin));
+        imports->addAction(action);
+    }
+    connect(imports, &QMenu::triggered, q, [this](QAction *action) {
+        QPsdImporterPlugin *importer = action->data().value<QPsdImporterPlugin *>();
+        Q_ASSERT(importer);
+        auto viewer = new PsdWidget(q);
+        if (viewer->importFrom(importer)) {
+            int index = tabWidget->addTab(viewer, viewer->windowIcon(), viewer->windowTitle());
+            connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
+                for (int i = 0; i < tabWidget->count(); i++) {
+                    if (tabWidget->widget(i) == viewer)
+                        tabWidget->setTabText(i, title);
+                }
+                if (tabWidget->currentWidget() == viewer) {
+                    q->setWindowModified(viewer->isWindowModified());
+                    q->setWindowTitle(title + " - " + applicationName);
+                }
+            });
+            connect(viewer, &PsdWidget::selectionInfoChanged, q, [this, viewer](const QString &info) {
+                if (tabWidget->currentWidget() == viewer)
+                    statusbar->showMessage(info);
+            });
+            connect(viewer, &PsdWidget::viewScaleChanged, q, [this, viewer](qreal scale) {
+                if (tabWidget->currentWidget() == viewer) {
+                    int sliderValue = qRound(std::log10(scale) * 100);
+                    scaleSlider->blockSignals(true);
+                    scaleSlider->setValue(sliderValue);
+                    scaleSlider->blockSignals(false);
+                    scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
+                }
+            });
+            tabWidget->setCurrentIndex(index);
+            updateFileMenus();
+        } else {
+            delete viewer;
+        }
     });
 
     connect(save, &QAction::triggered, q, [this]() {
@@ -414,6 +468,7 @@ void MainWindow::Private::updateFileMenus()
     close->setEnabled(enabled);
     copyView->setEnabled(enabled);
     fontMapping->setEnabled(enabled);
+    imports->setEnabled(true); // imports always enabled since they create new tabs
 }
 
 MainWindow::MainWindow(QWidget *parent)

@@ -9,6 +9,7 @@
 
 #include <QtPsdGui/QPsdTextLayerItem>
 #include <QtPsdWidget/QPsdFontMappingDialog>
+#include <QtPsdImporter/QPsdImporterPlugin>
 
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QFileInfo>
@@ -832,6 +833,28 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
     updateExportHint(exporter->key(), hint);
     save();
     exporter->exportTo(&d->model, to, hint);
+}
+
+bool PsdWidget::importFrom(QPsdImporterPlugin *importer)
+{
+    const auto options = importer->execImportDialog(this);
+    if (options.isEmpty())
+        return false;
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const bool ok = importer->importFrom(&d->model, options);
+    QApplication::restoreOverrideCursor();
+
+    if (ok) {
+        d->treeView->reset();
+        d->psdView->setModel(d->model.widgetModel());
+
+        d->windowTitle = d->model.fileName();
+        setWindowTitle(d->windowTitle);
+        setWindowIcon(importer->icon());
+    }
+
+    return ok;
 }
 
 QString PsdWidget::fileName() const

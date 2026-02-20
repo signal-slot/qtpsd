@@ -16,7 +16,7 @@ set(QT_NO_INTERNAL_COMPATIBILITY_FUNCTIONS TRUE)
 option(QT_PSD_RAW_ROUND_TRIP "Preserve raw compressed bytes for binary-identical round-trip" ON)
 
 find_package(Qt6 ${PROJECT_VERSION} CONFIG REQUIRED COMPONENTS BuildInternals Core CorePrivate Gui)
-find_package(Qt6 ${PROJECT_VERSION} CONFIG OPTIONAL_COMPONENTS Widgets)
+find_package(Qt6 ${PROJECT_VERSION} CONFIG OPTIONAL_COMPONENTS Widgets Network)
 qt_internal_project_setup()
 
 qt_build_repo()
