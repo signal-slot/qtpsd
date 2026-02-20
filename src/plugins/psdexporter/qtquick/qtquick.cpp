@@ -820,8 +820,58 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         element->children.prepend(shapeElem);
                 }
                 break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(g);
+                imports->insert("QtQuick.Shapes");
+                Element shapeElem;
+                shapeElem.type = "Shape";
+                if (filled) {
+                    if (!outputBase(shapeIndex, &shapeElem, imports))
+                        return false;
+                } else {
+                    outputRect(path.rect, &shapeElem);
+                }
+                Element shapePath;
+                shapePath.type = "ShapePath";
+                shapePath.properties.insert("strokeWidth", 0);
+                shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                Element fillGrad;
+                fillGrad.type = "fillGradient: ConicalGradient";
+                fillGrad.properties.insert("centerX", conical->center().x() * horizontalScale);
+                fillGrad.properties.insert("centerY", conical->center().y() * verticalScale);
+                fillGrad.properties.insert("angle", conical->angle());
+                for (const auto &stop : conical->stops()) {
+                    Element stopElement;
+                    stopElement.type = "GradientStop";
+                    stopElement.properties.insert("position", stop.first);
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    fillGrad.children.append(stopElement);
+                }
+                shapePath.children.append(fillGrad);
+                const qreal w = path.rect.width() * horizontalScale;
+                const qreal h = path.rect.height() * verticalScale;
+                Element startPath;
+                startPath.type = "PathMove";
+                startPath.properties.insert("x", 0);
+                startPath.properties.insert("y", 0);
+                shapePath.children.append(startPath);
+                Element line1; line1.type = "PathLine"; line1.properties.insert("x", w); line1.properties.insert("y", 0);
+                Element line2; line2.type = "PathLine"; line2.properties.insert("x", w); line2.properties.insert("y", h);
+                Element line3; line3.type = "PathLine"; line3.properties.insert("x", 0); line3.properties.insert("y", h);
+                Element line4; line4.type = "PathLine"; line4.properties.insert("x", 0); line4.properties.insert("y", 0);
+                shapePath.children.append(line1);
+                shapePath.children.append(line2);
+                shapePath.children.append(line3);
+                shapePath.children.append(line4);
+                shapeElem.children.append(shapePath);
+                if (filled)
+                    *element = shapeElem;
+                else
+                    element->children.prepend(shapeElem);
+                break; }
             default:
-                qFatal() << "Unsupported gradient type"_L1 << g->type();
+                qWarning() << "Unsupported gradient type"_L1 << g->type();
+                break;
             }
         } else {
             Element rectElement;
@@ -1013,8 +1063,54 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         element->children.prepend(shapeElem);
                 }
                 break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(g);
+                imports->insert("QtQuick.Shapes");
+                const qreal w = path.rect.width() * horizontalScale;
+                const qreal h = path.rect.height() * verticalScale;
+                const qreal r = path.radius * unitScale;
+                Element shapeElem;
+                shapeElem.type = "Shape";
+                if (filled) {
+                    if (!outputBase(shapeIndex, &shapeElem, imports))
+                        return false;
+                } else {
+                    element->type = "Item";
+                    if (!outputBase(shapeIndex, element, imports))
+                        return false;
+                    outputRect(path.rect, &shapeElem);
+                }
+                Element shapePath;
+                shapePath.type = "ShapePath";
+                shapePath.properties.insert("strokeWidth", 0);
+                shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                Element fillGrad;
+                fillGrad.type = "fillGradient: ConicalGradient";
+                fillGrad.properties.insert("centerX", conical->center().x() * horizontalScale);
+                fillGrad.properties.insert("centerY", conical->center().y() * verticalScale);
+                fillGrad.properties.insert("angle", conical->angle());
+                for (const auto &stop : conical->stops()) {
+                    Element stopElement;
+                    stopElement.type = "GradientStop";
+                    stopElement.properties.insert("position", stop.first);
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    fillGrad.children.append(stopElement);
+                }
+                shapePath.children.append(fillGrad);
+                Element svgPath;
+                svgPath.type = "PathSvg";
+                svgPath.properties.insert("path", u"\"M %1 0 L %2 0 Q %3 0 %3 %4 L %3 %5 Q %3 %6 %2 %6 L %1 %6 Q 0 %6 0 %5 L 0 %4 Q 0 0 %1 0 Z\""_s
+                    .arg(r).arg(w - r).arg(w).arg(r).arg(h - r).arg(h));
+                shapePath.children.append(svgPath);
+                shapeElem.children.append(shapePath);
+                if (filled)
+                    *element = shapeElem;
+                else
+                    element->children.prepend(shapeElem);
+                break; }
             default:
-                qFatal() << "Unsupported gradient type"_L1 << g->type();
+                qWarning() << "Unsupported gradient type"_L1 << g->type();
+                break;
             }
         } else {
             if (shape->pen().style() != Qt::NoPen) {
@@ -1082,8 +1178,25 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                 }
                 shapePath.children.append(gradient);
                 break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(g);
+                Element gradient;
+                gradient.type = "fillGradient: ConicalGradient";
+                gradient.properties.insert("centerX", conical->center().x() * horizontalScale);
+                gradient.properties.insert("centerY", conical->center().y() * verticalScale);
+                gradient.properties.insert("angle", conical->angle());
+                for (const auto &stop : conical->stops()) {
+                    Element stopElement;
+                    stopElement.type = "GradientStop";
+                    stopElement.properties.insert("position", stop.first);
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    gradient.children.append(stopElement);
+                }
+                shapePath.children.append(gradient);
+                break; }
             default:
-                qFatal() << "Unsupported gradient type"_L1 << g->type();
+                qWarning() << "Unsupported gradient type"_L1 << g->type();
+                break;
             }
             element->children.append(shapePath);
         } else {
