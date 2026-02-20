@@ -262,8 +262,8 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
                 effect.properties.insert("shadowColor", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
                 effect.properties.insert("shadowHorizontalOffset", offset.x());
                 effect.properties.insert("shadowVerticalOffset", offset.y());
-                effect.properties.insert("shadowSpread", shadow->spread * unitScale);
                 effect.properties.insert("shadowBlur", shadow->blur * unitScale);
+                effect.properties.insert("shadowOpacity", shadow->color.alphaF());
             }
             element->layers.append(effect);
         }
@@ -491,7 +491,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                     gradient.children.append(stopElement);
                 }
 
@@ -530,7 +530,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -575,7 +575,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         gradient.children.append(stopElement);
                     }
                     effect.children.append(gradient);
@@ -602,7 +602,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -656,7 +656,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                     gradient.children.append(stopElement);
                 }
 
@@ -704,7 +704,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -756,7 +756,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         gradient.children.append(stopElement);
                     }
                     effect.children.append(gradient);
@@ -790,7 +790,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -870,7 +870,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                     gradient.children.append(stopElement);
                 }
 
@@ -917,7 +917,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -958,7 +958,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         gradient.children.append(stopElement);
                     }
                     effect.children.append(gradient);
@@ -992,7 +992,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -1050,7 +1050,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                     gradient.children.append(stopElement);
                 }
                 shapePath.children.append(gradient);
@@ -1070,7 +1070,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name()));
+                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
                     gradient.children.append(stopElement);
                 }
                 shapePath.children.append(gradient);
@@ -1141,7 +1141,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
         element.id = id;
-        if (!hint.visible)
+        if (!hint.visible || (item && !item->isVisible()))
             element.properties.insert("visible", false);
         if (!id.isEmpty())
             exports->insert(id);
@@ -1193,7 +1193,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                 Element touchArea { "MouseArea", id };
                 outputBase(index, &touchArea, imports);
                 touchArea.layers.clear();
-                if (!hint.visible)
+                if (!hint.visible || (item && !item->isVisible()))
                     touchArea.properties.insert("visible", "false");
                 element.id = QString();
                 element.properties.remove("x");
@@ -1250,7 +1250,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             break;
         }
         element.id = id;
-        if (!hint.visible)
+        if (!hint.visible || (item && !item->isVisible()))
             element.properties.insert("visible", false);
         if (!id.isEmpty())
             exports->insert(id);
@@ -1310,7 +1310,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         if (!id.isEmpty())
             exports->insert(id);
         outputBase(index, &element, imports);
-        if (!hint.visible)
+        if (!hint.visible || (item && !item->isVisible()))
             element.properties.insert("visible", false);
         parent->children.append(element);
         break;
