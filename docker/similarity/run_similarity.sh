@@ -117,7 +117,7 @@ capture_one() {
   return 1
 }
 
-max_capture_jobs="${QTPSD_CAPTURE_JOBS:-4}"
+max_capture_jobs="${QTPSD_CAPTURE_JOBS:-8}"
 fail_file="$(mktemp)"
 echo 0 > "${fail_file}"
 ok_file="$(mktemp)"
