@@ -3,7 +3,6 @@
 
 #include <QtTest/QtTest>
 #include <QtGui/QImage>
-#include <QtCore/QDateTime>
 #include <QtCore/QDirIterator>
 #include <QtCore/QFile>
 #include <QtCore/QProcess>
@@ -790,7 +789,6 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
 
     QTextStream stream(&reportFile);
     stream << "# QtPsd Similarity Test Results (" << m_sourceId << ")\n\n";
-    stream << "Generated on: " << QDateTime::currentDateTime().toString(Qt::ISODate) << "\n\n";
 
     auto accumulate = [&](Metric metric) {
         int total = 0;

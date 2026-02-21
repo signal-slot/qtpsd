@@ -1,7 +1,5 @@
 # QtPsd Similarity Test Results (ag-psd)
 
-Generated on: 2026-02-10T19:14:40
-
 ## Summary Statistics
 
 | Metric | Photoshop vs QPsdView | Photoshop vs Image Data | Image Data vs QPsdView |

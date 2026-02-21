@@ -1,7 +1,5 @@
 # QtPsd Similarity Test Results (psd-zoo)
 
-Generated on: 2026-02-21T21:48:59
-
 ## Summary Statistics
 
 | Metric | Image Data vs QPsdView | Image Data vs QtQuick Export | Image Data vs Slint Export | Image Data vs Flutter Export | Image Data vs LVGL Export |
