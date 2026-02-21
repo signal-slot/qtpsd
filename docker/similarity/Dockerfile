@@ -37,6 +37,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libxkbcommon-x11-0 \
     libxcb-cursor0 \
     xvfb \
+    xcompmgr \
     xdotool \
     imagemagick \
     xauth \
