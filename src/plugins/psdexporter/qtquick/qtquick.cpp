@@ -98,6 +98,8 @@ private:
     };
 
     EffectMode m_effectMode = NoGPU;
+    mutable bool m_needsBlendShader = false;
+    mutable int m_blendCounter = 0;
 
     bool outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds = {}) const;
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
@@ -108,6 +110,7 @@ private:
     bool outputImage(const QModelIndex &imageIndex, Element *element, ImportData *imports) const;
 
     bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
+    void applyBlendModes(Element *element, ImportData *imports) const;
 
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
@@ -117,6 +120,9 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     if (!initializeExport(model, to, hint, "images"_L1)) {
         return false;
     }
+
+    m_blendCounter = 0;
+    m_needsBlendShader = false;
 
     ImportData imports;
     imports.insert("QtQuick");
@@ -133,7 +139,21 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
             return false;
     }
 
-    return saveTo("MainWindow.ui", &window, imports, exports);
+    if (!saveTo("MainWindow.ui", &window, imports, exports))
+        return false;
+
+    // Copy blend shader to output directory if needed
+    if (m_needsBlendShader) {
+        QFile shader(":/qtquick/blend.frag.qsb");
+        if (shader.open(QIODevice::ReadOnly)) {
+            QFile output(dir.absoluteFilePath("blend.frag.qsb"));
+            if (output.open(QIODevice::WriteOnly))
+                output.write(shader.readAll());
+        }
+        m_needsBlendShader = false;
+    }
+
+    return true;
 }
 
 bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds) const
@@ -364,7 +384,122 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
         if (!traverseTree(childIndex, element, imports, exports, QPsdExporterTreeItemModel::ExportHint::None, nextGroupBlendMode))
             return false;
     }
+    if (effectMode() != NoGPU)
+        applyBlendModes(element, imports);
     return true;
+}
+
+void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *imports) const
+{
+    // Check if any child has a blend mode
+    bool hasBlend = false;
+    for (const auto &child : std::as_const(element->children)) {
+        if (child.properties.contains(u"property string blendMode"_s)) {
+            hasBlend = true;
+            break;
+        }
+    }
+    if (!hasBlend) return;
+
+    QList<Element> accumulated;
+
+    for (auto &child : element->children) {
+        if (child.properties.contains(u"property string blendMode"_s)) {
+            QString mode = child.properties.take(u"property string blendMode"_s).toString();
+            mode.remove(u'"');
+
+            if (effectMode() == Qt5Effects) {
+                imports->insert(u"Qt5Compat.GraphicalEffects as GE"_s);
+
+                // Wrap accumulated children as background source
+                Element bgItem;
+                bgItem.type = u"Item"_s;
+                bgItem.id = u"_blend_bg_%1"_s.arg(m_blendCounter);
+                bgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
+                bgItem.properties.insert(u"layer.enabled"_s, true);
+                bgItem.properties.insert(u"visible"_s, false);
+                bgItem.children = accumulated;
+
+                // Wrap blend-mode child as foreground source
+                Element fgItem;
+                fgItem.type = u"Item"_s;
+                fgItem.id = u"_blend_fg_%1"_s.arg(m_blendCounter);
+                fgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
+                fgItem.properties.insert(u"layer.enabled"_s, true);
+                fgItem.properties.insert(u"visible"_s, false);
+                fgItem.children.append(child);
+
+                // Blend composites bg + fg using the specified mode
+                Element blend;
+                blend.type = u"GE.Blend"_s;
+                blend.properties.insert(u"anchors.fill"_s, u"parent"_s);
+                blend.properties.insert(u"source"_s, bgItem.id);
+                blend.properties.insert(u"foregroundSource"_s, fgItem.id);
+                blend.properties.insert(u"mode"_s, u"\"%1\""_s.arg(mode));
+
+                accumulated.clear();
+                accumulated.append(bgItem);
+                accumulated.append(fgItem);
+                accumulated.append(blend);
+            } else {
+                // EffectMaker mode: ShaderEffect with custom blend shader
+
+                // Wrap accumulated children as background source
+                Element bgItem;
+                bgItem.type = u"Item"_s;
+                bgItem.id = u"_blend_bg_%1"_s.arg(m_blendCounter);
+                bgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
+                bgItem.properties.insert(u"layer.enabled"_s, true);
+                bgItem.properties.insert(u"visible"_s, false);
+                bgItem.children = accumulated;
+
+                // Wrap blend-mode child as foreground source
+                Element fgItem;
+                fgItem.type = u"Item"_s;
+                fgItem.id = u"_blend_fg_%1"_s.arg(m_blendCounter);
+                fgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
+                fgItem.properties.insert(u"layer.enabled"_s, true);
+                fgItem.properties.insert(u"visible"_s, false);
+                fgItem.children.append(child);
+
+                // Map blend mode string to shader constant
+                int blendModeInt = -1; // fallback: normal
+                if (mode == "multiply"_L1)         blendModeInt = 0;
+                else if (mode == "screen"_L1)      blendModeInt = 1;
+                else if (mode == "overlay"_L1)     blendModeInt = 2;
+                else if (mode == "darken"_L1)      blendModeInt = 3;
+                else if (mode == "lighten"_L1)     blendModeInt = 4;
+                else if (mode == "colorDodge"_L1)  blendModeInt = 5;
+                else if (mode == "colorBurn"_L1)   blendModeInt = 6;
+                else if (mode == "hardLight"_L1)   blendModeInt = 7;
+                else if (mode == "softLight"_L1)   blendModeInt = 8;
+                else if (mode == "difference"_L1)  blendModeInt = 9;
+                else if (mode == "exclusion"_L1)   blendModeInt = 10;
+
+                // ShaderEffect composites bg + fg using blend mode
+                Element shader;
+                shader.type = u"ShaderEffect"_s;
+                shader.properties.insert(u"anchors.fill"_s, u"parent"_s);
+                shader.properties.insert(u"property var source"_s, fgItem.id);
+                shader.properties.insert(u"property var background"_s, bgItem.id);
+                shader.properties.insert(u"property int blendMode"_s, blendModeInt);
+                shader.properties.insert(u"fragmentShader"_s, u"\"blend.frag.qsb\""_s);
+
+                accumulated.clear();
+                accumulated.append(bgItem);
+                accumulated.append(fgItem);
+                accumulated.append(shader);
+
+                m_needsBlendShader = true;
+            }
+
+            m_blendCounter++;
+        } else {
+            accumulated.append(child);
+        }
+    }
+
+    element->children = accumulated;
 }
 
 bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element *element, ImportData *imports) const
@@ -408,11 +543,13 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             if (!vAlign.isEmpty())
                 element->properties.insert("verticalAlignment", vAlign);
         }
+        element->properties.insert("clip", true);
     } else {
         element->type = "Item";
         QRect multiRect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, multiRect))
             return false;
+        element->properties.insert("clip", true);
 
         const bool isParagraph = text->textType() == QPsdTextLayerItem::TextType::ParagraphText;
 
@@ -1009,6 +1146,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
         bool filled = isFilledRect(path, shape);
+        bool gradientHandled = false;
         Element rectElement;
         rectElement.type = "Rectangle";
         if (filled) {
@@ -1095,6 +1233,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         *element = shapeElem;
                     else
                         element->children.prepend(shapeElem);
+                    gradientHandled = true;
                 }
 
                 break; }
@@ -1170,6 +1309,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         *element = shapeElem;
                     else
                         element->children.prepend(shapeElem);
+                    gradientHandled = true;
                 }
                 break; }
             case QGradient::ConicalGradient: {
@@ -1216,6 +1356,7 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     *element = shapeElem;
                 else
                     element->children.prepend(shapeElem);
+                gradientHandled = true;
                 break; }
             default:
                 qWarning() << "Unsupported gradient type"_L1 << g->type();
@@ -1294,10 +1435,12 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     rectElement.properties.insert("color", "\"transparent\"");
             }
         }
-        if (filled)
-            *element = rectElement;
-        else
-            element->children.append(rectElement);
+        if (!gradientHandled) {
+            if (filled)
+                *element = rectElement;
+            else
+                element->children.append(rectElement);
+        }
         break; }
     case QPsdAbstractLayerItem::PathInfo::Path: {
         imports->insert("QtQuick.Shapes");
@@ -1485,13 +1628,22 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         if (!generated)
             return false;
 
-        // Propagate inherited group blend mode to leaf items
-        if (item->type() != QPsdAbstractLayerItem::Folder
-            && groupBlendMode != QPsdBlend::PassThrough
-            && groupBlendMode != QPsdBlend::Invalid) {
-            const auto modeStr = blendModeString(groupBlendMode);
-            if (!modeStr.isEmpty())
-                element.properties.insert("property string blendMode", u"\"%1\""_s.arg(modeStr));
+        // Determine effective blend mode for leaf items
+        if (item->type() != QPsdAbstractLayerItem::Folder) {
+            QPsdBlend::Mode effectiveMode = QPsdBlend::Invalid;
+            // Leaf's own blend mode takes priority
+            const auto leafMode = item->record().blendMode();
+            if (leafMode != QPsdBlend::Normal && leafMode != QPsdBlend::PassThrough && leafMode != QPsdBlend::Invalid) {
+                effectiveMode = leafMode;
+            } else if (groupBlendMode != QPsdBlend::PassThrough && groupBlendMode != QPsdBlend::Invalid) {
+                effectiveMode = groupBlendMode;
+            }
+            if (effectiveMode != QPsdBlend::Invalid) {
+                element.properties.insert("layer.enabled", true);
+                const auto modeStr = blendModeString(effectiveMode);
+                if (!modeStr.isEmpty())
+                    element.properties.insert("property string blendMode", u"\"%1\""_s.arg(modeStr));
+            }
         }
 
         if (indexMergeMap.contains(index)) {

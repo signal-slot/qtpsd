@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "qpsdimageitem.h"
+#include "qpsdblur_p.h"
 #include <QtCore/QBuffer>
 #include <QtCore/QDebug>
 #include <QtCore/QtMath>
@@ -13,49 +14,6 @@
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdPatternFill>
 #include <QtPsdWidget/QPsdScene>
-
-QT_BEGIN_NAMESPACE
-
-static void boxBlurAlpha(QImage &img, int radius)
-{
-    if (radius <= 0 || img.isNull())
-        return;
-    img = img.convertToFormat(QImage::Format_ARGB32);
-    const int w = img.width();
-    const int h = img.height();
-    const int size = 2 * radius + 1;
-
-    // Horizontal pass
-    QImage temp(w, h, QImage::Format_ARGB32);
-    temp.fill(Qt::transparent);
-    for (int y = 0; y < h; ++y) {
-        const QRgb *src = reinterpret_cast<const QRgb *>(img.constScanLine(y));
-        QRgb *dst = reinterpret_cast<QRgb *>(temp.scanLine(y));
-        int sum = 0;
-        for (int x = -radius; x <= radius; ++x)
-            sum += qAlpha(src[qBound(0, x, w - 1)]);
-        for (int x = 0; x < w; ++x) {
-            const int a = qBound(0, sum / size, 255);
-            const QRgb s = src[x];
-            dst[x] = qRgba(qRed(s), qGreen(s), qBlue(s), a);
-            sum -= qAlpha(src[qBound(0, x - radius, w - 1)]);
-            sum += qAlpha(src[qBound(0, x + radius + 1, w - 1)]);
-        }
-    }
-    // Vertical pass
-    for (int x = 0; x < w; ++x) {
-        int sum = 0;
-        for (int y = -radius; y <= radius; ++y)
-            sum += qAlpha(reinterpret_cast<const QRgb *>(temp.constScanLine(qBound(0, y, h - 1)))[x]);
-        for (int y = 0; y < h; ++y) {
-            const int a = qBound(0, sum / size, 255);
-            const QRgb s = reinterpret_cast<const QRgb *>(temp.constScanLine(y))[x];
-            reinterpret_cast<QRgb *>(img.scanLine(y))[x] = qRgba(qRed(s), qGreen(s), qBlue(s), a);
-            sum -= qAlpha(reinterpret_cast<const QRgb *>(temp.constScanLine(qBound(0, y - radius, h - 1)))[x]);
-            sum += qAlpha(reinterpret_cast<const QRgb *>(temp.constScanLine(qBound(0, y + radius + 1, h - 1)))[x]);
-        }
-    }
-}
 
 // Dilate the alpha channel of an image using separable max filter
 // Returns an image expanded by 'radius' pixels on each side
@@ -221,19 +179,19 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             
             // Create shadow from the original image
             QImage shadowImage = image.convertToFormat(QImage::Format_ARGB32);
-            
-            // Fill shadow with shadow color while preserving alpha
+
+            // Fill ALL pixels with shadow color RGB, keeping their alpha
+            // This prevents black-fringe when blur spreads alpha into
+            // previously-transparent (black RGB) pixels
             for (int y = 0; y < shadowImage.height(); ++y) {
                 QRgb *scanLine = reinterpret_cast<QRgb *>(shadowImage.scanLine(y));
                 for (int x = 0; x < shadowImage.width(); ++x) {
-                    const int alpha = qAlpha(scanLine[x]);
-                    if (alpha > 0) {
-                        scanLine[x] = qRgba(color.red(), color.green(), color.blue(), alpha);
-                    }
+                    scanLine[x] = qRgba(color.red(), color.green(), color.blue(), qAlpha(scanLine[x]));
                 }
             }
-            
+
             // Apply blur (3-pass box blur approximates gaussian)
+            const QColor transparentShadowColor(color.red(), color.green(), color.blue(), 0);
             if (blur > 0) {
                 const int blurRadius = qMax(1, static_cast<int>(blur));
                 // Expand the image to accommodate blur spread
@@ -241,7 +199,7 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                 QImage expanded(shadowImage.width() + margin * 2,
                                 shadowImage.height() + margin * 2,
                                 QImage::Format_ARGB32);
-                expanded.fill(Qt::transparent);
+                expanded.fill(transparentShadowColor);
                 QPainter ep(&expanded);
                 ep.drawImage(margin, margin, shadowImage);
                 ep.end();
@@ -279,7 +237,7 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                 QImage glowImage(image.width() + margin * 2,
                                  image.height() + margin * 2,
                                  QImage::Format_ARGB32);
-                glowImage.fill(Qt::transparent);
+                glowImage.fill(QColor(glowColor.red(), glowColor.green(), glowColor.blue(), 0));
 
                 // Extract alpha from original and fill with glow color
                 QImage alphaSource = image.convertToFormat(QImage::Format_ARGB32);

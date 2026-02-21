@@ -34,6 +34,8 @@ public:
     QScopedPointer<QGradient> gradient;
     qreal gradientOpacity = 1.0;
     QCborMap dropShadow;
+    QCborMap innerShadow;
+    qreal layerBlur = 0;
     QScopedPointer<QPsdBorder> border;
     QScopedPointer<QPsdPatternFill> patternFill;
     PathInfo vectorMask;
@@ -413,6 +415,11 @@ QPsdLayerRecord QPsdAbstractLayerItem::record() const
     return d->record;
 }
 
+void QPsdAbstractLayerItem::setRecord(const QPsdLayerRecord &record)
+{
+    d->record = record;
+}
+
 quint32 QPsdAbstractLayerItem::id() const
 {
     return d->id;
@@ -461,6 +468,11 @@ qreal QPsdAbstractLayerItem::gradientOpacity() const
 QCborMap QPsdAbstractLayerItem::dropShadow() const
 {
     return d->dropShadow;
+}
+
+QCborMap QPsdAbstractLayerItem::innerShadow() const
+{
+    return d->innerShadow;
 }
 
 QPsdBorder *QPsdAbstractLayerItem::border() const
@@ -572,6 +584,21 @@ void QPsdAbstractLayerItem::setGradientOpacity(qreal opacity)
 void QPsdAbstractLayerItem::setDropShadow(const QCborMap &shadow)
 {
     d->dropShadow = shadow;
+}
+
+void QPsdAbstractLayerItem::setInnerShadow(const QCborMap &shadow)
+{
+    d->innerShadow = shadow;
+}
+
+qreal QPsdAbstractLayerItem::layerBlur() const
+{
+    return d->layerBlur;
+}
+
+void QPsdAbstractLayerItem::setLayerBlur(qreal radius)
+{
+    d->layerBlur = radius;
 }
 
 void QPsdAbstractLayerItem::setImage(const QImage &image)

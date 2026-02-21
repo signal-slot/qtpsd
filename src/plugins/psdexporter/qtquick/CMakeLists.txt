@@ -15,4 +15,5 @@ qt_add_resources(QPsdExporterQtQuickPlugin "qtquick"
     PREFIX "/qtquick"
     FILES
         qtquick.png
+        blend.frag.qsb
 )

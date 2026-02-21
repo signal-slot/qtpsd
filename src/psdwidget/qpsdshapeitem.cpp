@@ -2,15 +2,34 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "qpsdshapeitem.h"
+#include "qpsdblur_p.h"
 
+#include <QtCore/QCborMap>
 #include <QtGui/QPainter>
 #include <QtGui/QPainterPath>
+#include <QtMath>
 #include <QtPsdCore/QPsdVectorMaskSetting>
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdPatternFill>
 #include <QtPsdWidget/QPsdScene>
 
-QT_BEGIN_NAMESPACE
+static void drawShapePath(QPainter *p, const QPsdAbstractLayerItem::PathInfo &pathInfo)
+{
+    switch (pathInfo.type) {
+    case QPsdAbstractLayerItem::PathInfo::Rectangle:
+        // Axis-aligned rectangles: disable AA to match Figma's crisp pixel rendering
+        p->setRenderHint(QPainter::Antialiasing, false);
+        p->drawRect(pathInfo.rect);
+        p->setRenderHint(QPainter::Antialiasing, true);
+        break;
+    case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+        p->drawRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+        break;
+    default:
+        p->drawPath(pathInfo.path);
+        break;
+    }
+}
 
 QPsdShapeItem::QPsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
     : QPsdAbstractItem(index, psdData, maskItem, group, parent)
@@ -24,6 +43,62 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     const auto *layer = this->layer<QPsdShapeLayerItem>();
 
     setMask(painter);
+
+    const auto pathInfo = layer->pathInfo();
+
+    // Drop shadow rendering (from dropShadow QCborMap, e.g. Figma import)
+    const auto shadow = layer->dropShadow();
+    if (!shadow.isEmpty()
+        && pathInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
+        const QColor shadowColor(shadow.value(QLatin1String("color")).toString());
+        const qreal shadowOpacity = shadow.value(QLatin1String("opacity")).toDouble(1.0);
+        const qreal angle = shadow.value(QLatin1String("angle")).toDouble(0);
+        const qreal distance = shadow.value(QLatin1String("distance")).toDouble(0);
+        const qreal blur = shadow.value(QLatin1String("size")).toDouble(0);
+
+        const qreal angleRad = qDegreesToRadians(angle);
+        const QPointF offset(qCos(angleRad) * distance, qSin(angleRad) * distance);
+
+        // Render shape silhouette with shadow color
+        // Fill with shadow color at zero alpha so blur edge pixels inherit
+        // the correct RGB (otherwise transparent pixels are black)
+        const QSize shapeSize = layer->rect().size();
+        const QColor transparentShadow(shadowColor.red(), shadowColor.green(), shadowColor.blue(), 0);
+        QImage silhouette(shapeSize, QImage::Format_ARGB32);
+        silhouette.fill(transparentShadow);
+        {
+            QPainter sp(&silhouette);
+            sp.setRenderHint(QPainter::Antialiasing);
+            sp.setPen(Qt::NoPen);
+            sp.setBrush(shadowColor);
+            drawShapePath(&sp, pathInfo);
+        }
+
+        // Apply blur (3-pass box blur approximates gaussian)
+        if (blur > 0) {
+            const int blurRadius = qMax(1, static_cast<int>(blur));
+            const int margin = blurRadius * 2;
+            QImage expanded(silhouette.width() + margin * 2,
+                            silhouette.height() + margin * 2,
+                            QImage::Format_ARGB32);
+            expanded.fill(transparentShadow);
+            QPainter ep(&expanded);
+            ep.drawImage(margin, margin, silhouette);
+            ep.end();
+            boxBlurAlpha(expanded, blurRadius);
+            boxBlurAlpha(expanded, blurRadius);
+            boxBlurAlpha(expanded, blurRadius);
+            painter->save();
+            painter->setOpacity(shadowOpacity);
+            painter->drawImage(offset.toPoint() - QPoint(margin, margin), expanded);
+            painter->restore();
+        } else {
+            painter->save();
+            painter->setOpacity(shadowOpacity);
+            painter->drawImage(offset.toPoint(), silhouette);
+            painter->restore();
+        }
+    }
 
     // Determine the effective blend mode
     const auto blendMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
@@ -44,24 +119,33 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     // so we can apply per-pixel alpha masking (same technique as QPsdImageItem)
     const QImage layerMask = layer->layerMask();
     const bool hasMask = !layerMask.isNull();
-    const bool needTempImage = hasMask || useCustomBlend;
+    const qreal blurRadius = layer->layerBlur();
+    const bool hasLayerBlur = blurRadius > 0;
+    const bool needTempImage = hasMask || useCustomBlend || hasLayerBlur;
+
+    // For layer blur, expand temp image by blur margin
+    const int blurMargin = hasLayerBlur ? qMax(1, static_cast<int>(blurRadius + 0.5)) * 3 : 0;
 
     QImage tempImage;
     QPainter tempPainterObj;
     QPainter *p = painter;
 
     if (needTempImage) {
-        tempImage = QImage(layer->rect().size(), QImage::Format_ARGB32);
+        const QSize imgSize = hasLayerBlur
+            ? QSize(layer->rect().width() + blurMargin * 2, layer->rect().height() + blurMargin * 2)
+            : layer->rect().size();
+        tempImage = QImage(imgSize, QImage::Format_ARGB32);
         tempImage.fill(Qt::transparent);
         tempPainterObj.begin(&tempImage);
         tempPainterObj.setRenderHint(QPainter::Antialiasing);
+        if (hasLayerBlur)
+            tempPainterObj.translate(blurMargin, blurMargin);
         p = &tempPainterObj;
     }
 
     const auto *gradient = layer->gradient();
     const auto *border = layer->border();
     const auto *patternFill = layer->patternFill();
-    const auto pathInfo = layer->pathInfo();
     if (gradient) {
         p->setPen(Qt::NoPen);
         p->setBrush(QBrush(*gradient));
@@ -202,8 +286,8 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             break;
         }
         p->restore();
-    } else {
-        // For "center" or "outside" stroke (or no stroke): draw as-is
+    } else if (strokeAlignment == QPsdShapeLayerItem::StrokeOutside && p->pen().style() != Qt::NoPen) {
+        // For "outside" stroke: expand rect so inner edge of stroke aligns with shape boundary
         const auto dw = p->pen().widthF() / 2.0;
         switch (pathInfo.type) {
         case QPsdAbstractLayerItem::PathInfo::None:
@@ -213,17 +297,98 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             p->drawRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw));
             break;
         case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-            p->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius, pathInfo.radius);
+            p->drawRoundedRect(pathInfo.rect.adjusted(-dw, -dw, dw, dw), pathInfo.radius + dw, pathInfo.radius + dw);
             break;
         default:
             p->drawPath(pathInfo.path);
             break;
         }
+    } else {
+        // For "center" stroke (or no stroke): Qt centers stroke on path boundary by default
+        drawShapePath(p, pathInfo);
+    }
+
+    // Inner shadow rendering (drawn on top of shape, clipped to shape boundary)
+    const auto innerShadowMap = layer->innerShadow();
+    if (!innerShadowMap.isEmpty()
+        && pathInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
+        const QColor isColor(innerShadowMap.value(QLatin1String("color")).toString());
+        const qreal isOpacity = innerShadowMap.value(QLatin1String("opacity")).toDouble(1.0);
+        const qreal isAngle = innerShadowMap.value(QLatin1String("angle")).toDouble(0);
+        const qreal isDistance = innerShadowMap.value(QLatin1String("distance")).toDouble(0);
+        const qreal isBlur = innerShadowMap.value(QLatin1String("size")).toDouble(0);
+
+        const qreal isAngleRad = qDegreesToRadians(isAngle);
+        const QPointF isOffset(qCos(isAngleRad) * isDistance, qSin(isAngleRad) * isDistance);
+
+        // Approach: blur a padded shape silhouette, then invert alpha
+        // The padding ensures blur has transparent pixels at shape edges
+        const QSize shapeSize = layer->rect().size();
+        // Scale blur radius: 3-pass box blur gives sigma ≈ r, so use r/3
+        // to match Figma's inner shadow spread of ~radius pixels
+        const int blurRadius = isBlur > 0 ? qMax(1, static_cast<int>(isBlur / 3.0 + 0.5)) : 0;
+        const int margin = blurRadius * 2;
+
+        QImage silhouette(shapeSize.width() + margin * 2,
+                          shapeSize.height() + margin * 2,
+                          QImage::Format_ARGB32);
+        silhouette.fill(Qt::transparent);
+        {
+            QPainter sp(&silhouette);
+            sp.setRenderHint(QPainter::Antialiasing);
+            sp.translate(margin, margin);
+            sp.setPen(Qt::NoPen);
+            sp.setBrush(Qt::white);
+            drawShapePath(&sp, pathInfo);
+        }
+
+        // Blur the silhouette — transparent padding lets blur attenuate at edges
+        if (blurRadius > 0) {
+            boxBlurAlpha(silhouette, blurRadius);
+            boxBlurAlpha(silhouette, blurRadius);
+            boxBlurAlpha(silhouette, blurRadius);
+        }
+
+        // Invert alpha and fill with shadow color
+        for (int y = 0; y < silhouette.height(); ++y) {
+            QRgb *scanLine = reinterpret_cast<QRgb *>(silhouette.scanLine(y));
+            for (int x = 0; x < silhouette.width(); ++x) {
+                scanLine[x] = qRgba(isColor.red(), isColor.green(), isColor.blue(),
+                                     255 - qAlpha(scanLine[x]));
+            }
+        }
+
+        // Clip to shape boundary and draw with offset
+        p->save();
+        QPainterPath clipPath;
+        switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::Rectangle:
+            clipPath.addRect(pathInfo.rect);
+            break;
+        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+            clipPath.addRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            break;
+        default:
+            clipPath = pathInfo.path;
+            break;
+        }
+        p->setClipPath(clipPath, Qt::IntersectClip);
+        p->setOpacity(isOpacity);
+        p->drawImage(isOffset.toPoint() - QPoint(margin, margin), silhouette);
+        p->restore();
     }
 
     // Apply raster layer mask and/or custom blend, then draw result
     if (needTempImage) {
         tempPainterObj.end();
+
+        // Apply layer blur (Gaussian approximation via 3-pass box blur)
+        if (hasLayerBlur) {
+            const int br = qMax(1, static_cast<int>(blurRadius / 3.0 + 0.5));
+            boxBlurRgba(tempImage, br);
+            boxBlurRgba(tempImage, br);
+            boxBlurRgba(tempImage, br);
+        }
 
         // Apply raster layer mask if present
         if (hasMask) {
@@ -277,10 +442,10 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                     painter->restore();
                 }
             } else {
-                painter->drawImage(0, 0, tempImage);
+                painter->drawImage(-blurMargin, -blurMargin, tempImage);
             }
         } else {
-            painter->drawImage(0, 0, tempImage);
+            painter->drawImage(-blurMargin, -blurMargin, tempImage);
         }
     }
 }

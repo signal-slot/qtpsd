@@ -18,14 +18,18 @@ void QPsdFolderItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     if (layer->artboardBackground() == Qt::transparent)
         return;
 
+    // Use local coordinates (0,0) since artboardRect() is in absolute canvas coordinates
+    // but the painter is in item-local coordinates
+    const QRectF localRect(QPointF(0, 0), QSizeF(layer->artboardRect().size()));
+
     auto f = painter->font();
     f.setPointSize(24);
     painter->setFont(f);
     painter->setPen(Qt::white);
-    painter->drawText(layer->artboardRect().adjusted(0, -10, 0, -10).topLeft(), name());
+    painter->drawText(localRect.adjusted(0, -10, 0, -10).topLeft(), name());
 
     painter->setBrush(layer->artboardBackground());
-    painter->drawRect(layer->artboardRect());
+    painter->drawRect(localRect);
 }
 
 QT_END_NAMESPACE

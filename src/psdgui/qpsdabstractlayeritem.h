@@ -37,6 +37,7 @@ public:
     virtual Type type() const = 0;
 
     QPsdLayerRecord record() const;
+    void setRecord(const QPsdLayerRecord &record);
 
     quint32 id() const;
     QString name() const;
@@ -48,6 +49,7 @@ public:
     QGradient *gradient() const;
     qreal gradientOpacity() const;
     QCborMap dropShadow() const;
+    QCborMap innerShadow() const;
     QPsdBorder *border() const;
     QPsdPatternFill *patternFill() const;
     struct PathInfo {
@@ -85,6 +87,9 @@ public:
     void setGradient(QGradient *gradient);
     void setGradientOpacity(qreal opacity);
     void setDropShadow(const QCborMap &shadow);
+    void setInnerShadow(const QCborMap &shadow);
+    qreal layerBlur() const;
+    void setLayerBlur(qreal radius);
     void setImage(const QImage &image);
     void setVectorMask(const PathInfo &info);
 

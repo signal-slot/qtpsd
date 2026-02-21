@@ -8,8 +8,11 @@
 #include <QtCore/QJsonObject>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSettings>
+#include <QtGui/QFontMetrics>
+#include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
 #include <QtGui/QPainterPath>
+#include <QtGui/QScreen>
 #include <QtNetwork/QNetworkAccessManager>
 #include <QtNetwork/QNetworkReply>
 #include <QtNetwork/QNetworkRequest>
@@ -502,6 +505,7 @@ public:
         ClippingMaskIndexRole,
         LayerItemObjectRole,
         BlendModeRole,
+        IsMaskRole,
     };
 
     enum class FolderType {
@@ -617,6 +621,8 @@ public:
             return QVariant::fromValue(QPersistentModelIndex());
         case BlendModeRole:
             return QVariant::fromValue(static_cast<int>(node.blendMode));
+        case IsMaskRole:
+            return node.isMask;
         }
         return {};
     }
@@ -792,15 +798,16 @@ private:
         QPsdAbstractLayerItem *layerItem = nullptr;
         QList<quintptr> childIds;
         QJsonArray fills;
+        bool isMask = false;
     };
 
-    quintptr processNode(const QJsonObject &nodeJson, quintptr parentId)
+    quintptr processNode(const QJsonObject &nodeJson, quintptr parentId, qreal inheritedOpacity = 1.0)
     {
         const QString figmaId = nodeJson["id"_L1].toString();
         const QString name = nodeJson["name"_L1].toString();
         const QString nodeType = nodeJson["type"_L1].toString();
         const bool visible = nodeJson.value("visible"_L1).toBool(true);
-        const qreal opacity = nodeJson.value("opacity"_L1).toDouble(1.0);
+        const qreal opacity = nodeJson.value("opacity"_L1).toDouble(1.0) * inheritedOpacity;
 
         if (!visible) return 0;
 
@@ -822,6 +829,7 @@ private:
         node.layerId = layerId;
         node.rect = rect;
         node.blendMode = blendMode;
+        node.isMask = nodeJson.value("isMask"_L1).toBool(false);
 
         static const QSet<QString> folderTypes = {
             "FRAME"_L1, "GROUP"_L1, "COMPONENT"_L1, "INSTANCE"_L1,
@@ -854,8 +862,9 @@ private:
             const auto characters = nodeJson["characters"_L1].toString();
             const auto style = nodeJson["style"_L1].toObject();
 
-            const auto overrides = nodeJson["characterStyleOverrides"_L1].toArray();
-            const auto overrideTable = nodeJson["styleOverrideTable"_L1].toObject();
+            // QPsdTextItem divides lineHeight by dpiScale, but Figma's lineHeightPx
+            // is already in actual pixels. Pre-multiply to counteract the division.
+            const qreal dpiScale = QGuiApplication::primaryScreen()->logicalDotsPerInchY() / 72.0;
 
             auto applyTextCase = [](QString text, const QString &textCase) -> QString {
                 if (textCase == "UPPER"_L1) return text.toUpper();
@@ -876,60 +885,24 @@ private:
                 return text;
             };
 
-            if (overrides.isEmpty() || characters.isEmpty()) {
-                QPsdTextLayerItem::Run run;
-                run.text = applyTextCase(characters, style["textCase"_L1].toString());
-                run.font = fontFromStyle(style);
-                run.originalFontName = style["fontFamily"_L1].toString();
-                run.color = colorFromFills(fills);
-                run.alignment = alignmentFromStyle(style);
-                if (style.contains("lineHeightPx"_L1))
-                    run.lineHeight = style["lineHeightPx"_L1].toDouble();
-                runs.append(run);
-            } else {
-                int pos = 0;
-                while (pos < characters.length() && pos < overrides.size()) {
-                    int styleId = overrides[pos].toInt();
-                    int start = pos;
-                    while (pos < characters.length() && pos < overrides.size()
-                           && overrides[pos].toInt() == styleId) {
-                        ++pos;
-                    }
-
+            // Prefer styledTextSegments (more reliable per-segment fills/styles)
+            const auto segments = nodeJson["styledTextSegments"_L1].toArray();
+            if (!segments.isEmpty()) {
+                for (const auto &seg : segments) {
+                    const auto segObj = seg.toObject();
                     QPsdTextLayerItem::Run run;
-                    const QString rawText = characters.mid(start, pos - start);
-
-                    QJsonObject effectiveStyle = style;
-                    if (styleId > 0) {
-                        const auto override_ = overrideTable[QString::number(styleId)].toObject();
-                        for (auto it = override_.begin(); it != override_.end(); ++it)
-                            effectiveStyle[it.key()] = it.value();
-                    }
-
-                    run.text = applyTextCase(rawText, effectiveStyle["textCase"_L1].toString());
-                    run.font = fontFromStyle(effectiveStyle);
-                    run.originalFontName = effectiveStyle["fontFamily"_L1].toString();
-                    run.color = colorFromFills(effectiveStyle.contains("fills"_L1)
-                                                 ? effectiveStyle["fills"_L1].toArray()
-                                                 : fills);
+                    const auto segFills = segObj["fills"_L1].toArray();
+                    run.text = applyTextCase(segObj["characters"_L1].toString(),
+                                             segObj["textCase"_L1].toString());
+                    run.font = fontFromStyle(segObj);
+                    run.originalFontName = segObj["fontFamily"_L1].toString();
+                    run.color = !segFills.isEmpty() ? colorFromFills(segFills) : colorFromFills(fills);
                     run.alignment = alignmentFromStyle(style);
-                    if (effectiveStyle.contains("lineHeightPx"_L1))
-                        run.lineHeight = effectiveStyle["lineHeightPx"_L1].toDouble();
+                    if (segObj.contains("lineHeightPx"_L1))
+                        run.lineHeight = segObj["lineHeightPx"_L1].toDouble() * dpiScale;
                     runs.append(run);
                 }
-
-                if (pos < characters.length()) {
-                    QPsdTextLayerItem::Run run;
-                    run.text = applyTextCase(characters.mid(pos), style["textCase"_L1].toString());
-                    run.font = fontFromStyle(style);
-                    run.originalFontName = style["fontFamily"_L1].toString();
-                    run.color = colorFromFills(fills);
-                    run.alignment = alignmentFromStyle(style);
-                    if (style.contains("lineHeightPx"_L1))
-                        run.lineHeight = style["lineHeightPx"_L1].toDouble();
-                    runs.append(run);
-                }
-
+                // Merge adjacent runs with identical styling
                 QList<QPsdTextLayerItem::Run> mergedRuns;
                 for (const auto &run : runs) {
                     if (!mergedRuns.isEmpty() &&
@@ -943,16 +916,106 @@ private:
                     }
                 }
                 runs = mergedRuns;
+            } else {
+                // Fallback to characterStyleOverrides
+                const auto overrides = nodeJson["characterStyleOverrides"_L1].toArray();
+                const auto overrideTable = nodeJson["styleOverrideTable"_L1].toObject();
+
+                if (overrides.isEmpty() || characters.isEmpty()) {
+                    QPsdTextLayerItem::Run run;
+                    run.text = applyTextCase(characters, style["textCase"_L1].toString());
+                    run.font = fontFromStyle(style);
+                    run.originalFontName = style["fontFamily"_L1].toString();
+                    run.color = colorFromFills(fills);
+                    run.alignment = alignmentFromStyle(style);
+                    if (style.contains("lineHeightPx"_L1))
+                        run.lineHeight = style["lineHeightPx"_L1].toDouble() * dpiScale;
+                    runs.append(run);
+                } else {
+                    int pos = 0;
+                    while (pos < characters.length() && pos < overrides.size()) {
+                        int styleId = overrides[pos].toInt();
+                        int start = pos;
+                        while (pos < characters.length() && pos < overrides.size()
+                               && overrides[pos].toInt() == styleId) {
+                            ++pos;
+                        }
+
+                        QPsdTextLayerItem::Run run;
+                        const QString rawText = characters.mid(start, pos - start);
+
+                        QJsonObject effectiveStyle = style;
+                        if (styleId > 0) {
+                            const auto override_ = overrideTable[QString::number(styleId)].toObject();
+                            for (auto it = override_.begin(); it != override_.end(); ++it)
+                                effectiveStyle[it.key()] = it.value();
+                        }
+
+                        run.text = applyTextCase(rawText, effectiveStyle["textCase"_L1].toString());
+                        run.font = fontFromStyle(effectiveStyle);
+                        run.originalFontName = effectiveStyle["fontFamily"_L1].toString();
+                        run.color = colorFromFills(effectiveStyle.contains("fills"_L1)
+                                                     ? effectiveStyle["fills"_L1].toArray()
+                                                     : fills);
+                        run.alignment = alignmentFromStyle(style);
+                        if (effectiveStyle.contains("lineHeightPx"_L1))
+                            run.lineHeight = effectiveStyle["lineHeightPx"_L1].toDouble() * dpiScale;
+                        runs.append(run);
+                    }
+
+                    if (pos < characters.length()) {
+                        QPsdTextLayerItem::Run run;
+                        run.text = applyTextCase(characters.mid(pos), style["textCase"_L1].toString());
+                        run.font = fontFromStyle(style);
+                        run.originalFontName = style["fontFamily"_L1].toString();
+                        run.color = colorFromFills(fills);
+                        run.alignment = alignmentFromStyle(style);
+                        if (style.contains("lineHeightPx"_L1)
+                            && style["lineHeightUnit"_L1].toString() != "INTRINSIC_%"_L1)
+                            run.lineHeight = style["lineHeightPx"_L1].toDouble() * dpiScale;
+                        runs.append(run);
+                    }
+
+                    QList<QPsdTextLayerItem::Run> mergedRuns;
+                    for (const auto &run : runs) {
+                        if (!mergedRuns.isEmpty() &&
+                            mergedRuns.last().font == run.font &&
+                            mergedRuns.last().color == run.color &&
+                            mergedRuns.last().alignment == run.alignment &&
+                            qFuzzyCompare(mergedRuns.last().lineHeight, run.lineHeight)) {
+                            mergedRuns.last().text += run.text;
+                        } else {
+                            mergedRuns.append(run);
+                        }
+                    }
+                    runs = mergedRuns;
+                }
             }
 
             textItem->setRuns(runs);
 
+            // Compute capHeightOffset to compensate for QPsdTextItem adjustment.
+            // QPsdTextItem subtracts (ascent - capHeight) from drawTop, which
+            // shifts Figma text too high. Add it back to the textFrame Y.
+            QFont primaryFont = fontFromStyle(style);
+            QFont adjustedFont = primaryFont;
+            adjustedFont.setPointSizeF(adjustedFont.pointSizeF() / dpiScale);
+            adjustedFont.setStyleStrategy(QFont::PreferTypoLineMetrics);
+            QFontMetrics fm(adjustedFont);
+            const qreal capHeightOffset = fm.ascent() - fm.capHeight();
+
             const auto textAutoResize = style["textAutoResize"_L1].toString();
             if (textAutoResize == "NONE"_L1 || textAutoResize == "HEIGHT"_L1) {
+                // Fixed-width text box: use ParagraphText with word wrapping
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
-                textItem->setTextFrame(QRectF(rect));
+                textItem->setTextFrame(QRectF(rect.x(), rect.y() + capHeightOffset,
+                                              rect.width(), rect.height()));
             } else {
-                textItem->setTextType(QPsdTextLayerItem::TextType::PointText);
+                // Auto-resize text: use ParagraphText but with extra width to
+                // prevent unwanted wrapping from font metric differences
+                textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
+                textItem->setTextFrame(QRectF(rect.x(), rect.y() + capHeightOffset,
+                                              rect.width() + 100, rect.height()));
             }
 
             node.layerItem = textItem;
@@ -978,7 +1041,7 @@ private:
 
             const bool isTopLevelFrame = (parentId == 0)
                 && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1);
-            folderItem->setRect(isTopLevelFrame ? QRect() : rect);
+            folderItem->setRect(rect);
 
             if (nodeJson.value("clipsContent"_L1).toBool(false)) {
                 QPsdAbstractLayerItem::PathInfo clipMask;
@@ -998,21 +1061,23 @@ private:
                         folderItem->setArtboardBackground(frameBrush.color());
                     }
                 }
-            } else if ((nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1)
+            } else if ((nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1
+                        || nodeType == "INSTANCE"_L1 || nodeType == "COMPONENT_SET"_L1)
                        && !fills.isEmpty()) {
                 const auto nestedBrush = brushFromFigmaFills(fills, rect);
                 if (nestedBrush.style() != Qt::NoBrush)
                     needsGradientBg = true;
             }
 
-            if (isTopLevelFrame)
-                node.rect = QRect();
+            // QPsdScene doesn't apply folder-level opacity to children,
+            // so propagate the folder's opacity to its children instead
+            folderItem->setOpacity(1.0);
             node.layerItem = folderItem;
             node.folderType = FolderType::OpenFolder;
 
             const auto children = nodeJson["children"_L1].toArray();
             for (int ci = children.size() - 1; ci >= 0; --ci) {
-                quintptr childId = processNode(children.at(ci).toObject(), nodeId);
+                quintptr childId = processNode(children.at(ci).toObject(), nodeId, opacity);
                 if (childId != 0)
                     node.childIds.append(childId);
             }
@@ -1093,25 +1158,60 @@ private:
             const auto strokeWeight = nodeJson["strokeWeight"_L1].toDouble(0);
             if (!strokes.isEmpty() && strokeWeight > 0) {
                 const auto strokeObj = strokes.first().toObject();
-                if (strokeObj.value("visible"_L1).toBool(true)
-                    && strokeObj["type"_L1].toString() == "SOLID"_L1) {
-                    const auto color = strokeObj["color"_L1].toObject();
-                    QColor c = QColor::fromRgbF(
-                        color["r"_L1].toDouble(),
-                        color["g"_L1].toDouble(),
-                        color["b"_L1].toDouble(),
-                        strokeObj.value("opacity"_L1).toDouble(1.0));
-                    QPen pen(c);
-                    pen.setWidthF(strokeWeight);
-                    shapeItem->setPen(pen);
+                if (strokeObj.value("visible"_L1).toBool(true)) {
+                    const auto strokeType = strokeObj["type"_L1].toString();
+                    QPen pen;
+                    if (strokeType == "SOLID"_L1) {
+                        const auto color = strokeObj["color"_L1].toObject();
+                        QColor c = QColor::fromRgbF(
+                            color["r"_L1].toDouble(),
+                            color["g"_L1].toDouble(),
+                            color["b"_L1].toDouble(),
+                            strokeObj.value("opacity"_L1).toDouble(1.0));
+                        pen = QPen(c);
+                    } else if (strokeType.startsWith("GRADIENT_"_L1)) {
+                        QBrush strokeBrush = brushFromSingleFill(strokeObj, rect);
+                        if (strokeBrush.style() != Qt::NoBrush)
+                            pen = QPen(strokeBrush, strokeWeight);
+                    }
 
-                    const auto strokeAlign = nodeJson["strokeAlign"_L1].toString();
-                    if (strokeAlign == "INSIDE"_L1)
-                        shapeItem->setStrokeAlignment(QPsdShapeLayerItem::StrokeInside);
-                    else if (strokeAlign == "OUTSIDE"_L1)
-                        shapeItem->setStrokeAlignment(QPsdShapeLayerItem::StrokeOutside);
-                    else
-                        shapeItem->setStrokeAlignment(QPsdShapeLayerItem::StrokeCenter);
+                    if (pen.style() != Qt::NoPen) {
+                        pen.setWidthF(strokeWeight);
+
+                        const auto strokeCap = nodeJson["strokeCap"_L1].toString();
+                        if (strokeCap == "ROUND"_L1)
+                            pen.setCapStyle(Qt::RoundCap);
+                        else if (strokeCap == "SQUARE"_L1)
+                            pen.setCapStyle(Qt::SquareCap);
+                        else
+                            pen.setCapStyle(Qt::FlatCap);
+
+                        const auto strokeJoin = nodeJson["strokeJoin"_L1].toString();
+                        if (strokeJoin == "ROUND"_L1)
+                            pen.setJoinStyle(Qt::RoundJoin);
+                        else if (strokeJoin == "BEVEL"_L1)
+                            pen.setJoinStyle(Qt::BevelJoin);
+                        else
+                            pen.setJoinStyle(Qt::MiterJoin);
+
+                        const auto strokeDashes = nodeJson["strokeDashes"_L1].toArray();
+                        if (!strokeDashes.isEmpty() && strokeWeight > 0) {
+                            QVector<qreal> pattern;
+                            for (const auto &d : strokeDashes)
+                                pattern.append(d.toDouble() / strokeWeight);
+                            pen.setDashPattern(pattern);
+                        }
+
+                        shapeItem->setPen(pen);
+
+                        const auto strokeAlign = nodeJson["strokeAlign"_L1].toString();
+                        if (strokeAlign == "INSIDE"_L1)
+                            shapeItem->setStrokeAlignment(QPsdShapeLayerItem::StrokeInside);
+                        else if (strokeAlign == "OUTSIDE"_L1)
+                            shapeItem->setStrokeAlignment(QPsdShapeLayerItem::StrokeOutside);
+                        else
+                            shapeItem->setStrokeAlignment(QPsdShapeLayerItem::StrokeCenter);
+                    }
                 }
             }
 
@@ -1174,10 +1274,14 @@ private:
                 pathInfo.path = pp;
                 pathInfo.rect = QRectF(0, 0, w, h);
             } else if (nodeType == "LINE"_L1) {
+                // LINE nodes: strokeGeometry already includes the complete
+                // visual (stroke width + caps) as a filled shape. Use it
+                // as fill and clear the stroke pen to avoid double rendering.
                 QPainterPath pp = parseGeometry("strokeGeometry"_L1);
-                if (pp.isEmpty())
-                    pp = parseGeometry("fillGeometry"_L1);
-                if (pp.isEmpty()) {
+                if (!pp.isEmpty()) {
+                    shapeItem->setBrush(shapeItem->pen().brush());
+                    shapeItem->setPen(Qt::NoPen);
+                } else {
                     pp.moveTo(0, h / 2.0);
                     pp.lineTo(w, h / 2.0);
                 }
@@ -1193,6 +1297,58 @@ private:
                     pathInfo.path = pp;
                 }
             }
+            // Apply rotation for shapes built from basic parameters.
+            // Skip for fillGeometry-based paths (POLYGON, STAR, VECTOR, etc.)
+            // because their geometry already reflects the node's transforms.
+            const bool needsRotation = (nodeType == "RECTANGLE"_L1
+                                        || nodeType == "ELLIPSE"_L1);
+            const qreal rotationRad = nodeJson.value("rotation"_L1).toDouble(0.0);
+            const qreal rotation = rotationRad * 180.0 / M_PI; // convert to degrees
+            if (needsRotation && std::abs(rotation) > 0.01
+                && pathInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
+                // Get original (pre-rotation) dimensions from Figma's size property
+                const auto sizeObj = nodeJson["size"_L1].toObject();
+                qreal origW = sizeObj["x"_L1].toDouble(0);
+                qreal origH = sizeObj["y"_L1].toDouble(0);
+                if (origW <= 0 || origH <= 0) {
+                    // Fallback: compute from bbox and rotation angle
+                    const qreal rad = std::abs(rotationRad);
+                    const qreal c = std::abs(std::cos(rad));
+                    const qreal s = std::abs(std::sin(rad));
+                    const qreal denom = c * c - s * s;
+                    if (std::abs(denom) > 0.001) {
+                        origW = (w * c - h * s) / denom;
+                        origH = (h * c - w * s) / denom;
+                    } else {
+                        // ~45° case, assume square
+                        origW = origH = w / std::sqrt(2.0);
+                    }
+                }
+
+                // Build the original path at pre-rotation size
+                QPainterPath pp;
+                if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::Rectangle) {
+                    pp.addRect(0, 0, origW, origH);
+                } else if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::RoundedRectangle) {
+                    pp.addRoundedRect(0, 0, origW, origH, pathInfo.radius, pathInfo.radius);
+                } else {
+                    // Path type (including ellipses already converted to paths)
+                    pp = pathInfo.path;
+                    origW = w;
+                    origH = h;
+                }
+
+                // Rotate around shape center, then center in bounding box
+                QTransform t;
+                t.translate(w / 2.0, h / 2.0);
+                t.rotate(-rotation);
+                t.translate(-origW / 2.0, -origH / 2.0);
+
+                pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
+                pathInfo.path = t.map(pp);
+                pathInfo.rect = QRectF(0, 0, w, h);
+            }
+
             shapeItem->setPathInfo(pathInfo);
 
             if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::None)
@@ -1211,13 +1367,15 @@ private:
             node.folderType = FolderType::NotFolder;
         }
 
-        // Parse drop shadow effects
+        // Parse shadow effects
         if (node.layerItem) {
             const auto effects = nodeJson["effects"_L1].toArray();
             for (const auto &effect : effects) {
                 const auto eff = effect.toObject();
-                if (eff["type"_L1].toString() == "DROP_SHADOW"_L1
-                    && eff.value("visible"_L1).toBool(true)) {
+                if (!eff.value("visible"_L1).toBool(true))
+                    continue;
+                const auto effType = eff["type"_L1].toString();
+                if (effType == "DROP_SHADOW"_L1) {
                     const auto c = eff["color"_L1].toObject();
                     const auto offset = eff["offset"_L1].toObject();
                     const qreal ox = offset["x"_L1].toDouble();
@@ -1231,7 +1389,21 @@ private:
                     shadow.insert(QLatin1String("spread"), eff["spread"_L1].toDouble(0));
                     shadow.insert(QLatin1String("size"), eff["radius"_L1].toDouble(0));
                     node.layerItem->setDropShadow(shadow);
-                    break;
+                } else if (effType == "INNER_SHADOW"_L1) {
+                    const auto c = eff["color"_L1].toObject();
+                    const auto offset = eff["offset"_L1].toObject();
+                    const qreal ox = offset["x"_L1].toDouble();
+                    const qreal oy = offset["y"_L1].toDouble();
+                    QCborMap shadow;
+                    shadow.insert(QLatin1String("color"), QColor::fromRgbF(
+                        c["r"_L1].toDouble(), c["g"_L1].toDouble(), c["b"_L1].toDouble()).name());
+                    shadow.insert(QLatin1String("opacity"), c["a"_L1].toDouble(1.0));
+                    shadow.insert(QLatin1String("angle"), std::atan2(oy, ox) * 180.0 / M_PI);
+                    shadow.insert(QLatin1String("distance"), std::sqrt(ox * ox + oy * oy));
+                    shadow.insert(QLatin1String("size"), eff["radius"_L1].toDouble(0));
+                    node.layerItem->setInnerShadow(shadow);
+                } else if (effType == "LAYER_BLUR"_L1) {
+                    node.layerItem->setLayerBlur(eff["radius"_L1].toDouble(0));
                 }
             }
         }
@@ -1305,67 +1477,105 @@ private:
         return map.value(mode, QPsdBlend::Normal);
     }
 
-    static QBrush brushFromFigmaFills(const QJsonArray &fills, const QRect &rect)
+    static QBrush brushFromSingleFill(const QJsonObject &obj, const QRect &rect)
     {
-        for (int i = fills.size() - 1; i >= 0; --i) {
-            const auto &fill = fills[i];
-            const auto obj = fill.toObject();
-            if (!obj.value("visible"_L1).toBool(true))
-                continue;
-            const auto type = obj["type"_L1].toString();
-            const qreal fillOpacity = obj.value("opacity"_L1).toDouble(1.0);
+        const auto type = obj["type"_L1].toString();
+        const qreal fillOpacity = obj.value("opacity"_L1).toDouble(1.0);
 
-            if (type == "SOLID"_L1) {
-                const auto color = obj["color"_L1].toObject();
-                QColor c = QColor::fromRgbF(
-                    color["r"_L1].toDouble(),
-                    color["g"_L1].toDouble(),
-                    color["b"_L1].toDouble(),
-                    fillOpacity);
-                return QBrush(c);
+        if (type == "SOLID"_L1) {
+            const auto color = obj["color"_L1].toObject();
+            QColor c = QColor::fromRgbF(
+                color["r"_L1].toDouble(),
+                color["g"_L1].toDouble(),
+                color["b"_L1].toDouble(),
+                fillOpacity);
+            return QBrush(c);
+        }
+
+        const auto handles = obj["gradientHandlePositions"_L1].toArray();
+        const auto stopsArr = obj["gradientStops"_L1].toArray();
+        if (handles.size() < 2 || stopsArr.isEmpty())
+            return QBrush();
+
+        QGradientStops stops;
+        for (const auto &s : stopsArr) {
+            const auto sObj = s.toObject();
+            const auto sc = sObj["color"_L1].toObject();
+            QColor stopColor = QColor::fromRgbF(
+                sc["r"_L1].toDouble(),
+                sc["g"_L1].toDouble(),
+                sc["b"_L1].toDouble(),
+                sc["a"_L1].toDouble(1.0) * fillOpacity);
+            stops.append({sObj["position"_L1].toDouble(), stopColor});
+        }
+
+        const auto h0 = handles[0].toObject();
+        const auto h1 = handles[1].toObject();
+        const qreal x0 = h0["x"_L1].toDouble() * rect.width();
+        const qreal y0 = h0["y"_L1].toDouble() * rect.height();
+        const qreal x1 = h1["x"_L1].toDouble() * rect.width();
+        const qreal y1 = h1["y"_L1].toDouble() * rect.height();
+
+        if (type == "GRADIENT_LINEAR"_L1) {
+            QLinearGradient gradient(x0, y0, x1, y1);
+            gradient.setStops(stops);
+            return QBrush(gradient);
+        } else if (type == "GRADIENT_RADIAL"_L1 || type == "GRADIENT_DIAMOND"_L1) {
+            const qreal radius = std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
+            QRadialGradient gradient(x0, y0, radius);
+            gradient.setStops(stops);
+            return QBrush(gradient);
+        } else if (type == "GRADIENT_ANGULAR"_L1) {
+            const qreal angle = std::atan2(y1 - y0, x1 - x0) * 180.0 / M_PI;
+            QConicalGradient gradient(x0, y0, angle);
+            // Figma sweeps CW, Qt sweeps CCW: reverse stops to flip direction
+            QGradientStops cwStops;
+            for (int i = stops.size() - 1; i >= 0; --i) {
+                qreal pos = 1.0 - stops[i].first;
+                cwStops.append({pos, stops[i].second});
             }
-
-            const auto handles = obj["gradientHandlePositions"_L1].toArray();
-            const auto stopsArr = obj["gradientStops"_L1].toArray();
-            if (handles.size() < 2 || stopsArr.isEmpty())
-                continue;
-
-            QGradientStops stops;
-            for (const auto &s : stopsArr) {
-                const auto sObj = s.toObject();
-                const auto sc = sObj["color"_L1].toObject();
-                QColor stopColor = QColor::fromRgbF(
-                    sc["r"_L1].toDouble(),
-                    sc["g"_L1].toDouble(),
-                    sc["b"_L1].toDouble(),
-                    sc["a"_L1].toDouble(1.0) * fillOpacity);
-                stops.append({sObj["position"_L1].toDouble(), stopColor});
-            }
-
-            const auto h0 = handles[0].toObject();
-            const auto h1 = handles[1].toObject();
-            const qreal x0 = h0["x"_L1].toDouble() * rect.width();
-            const qreal y0 = h0["y"_L1].toDouble() * rect.height();
-            const qreal x1 = h1["x"_L1].toDouble() * rect.width();
-            const qreal y1 = h1["y"_L1].toDouble() * rect.height();
-
-            if (type == "GRADIENT_LINEAR"_L1) {
-                QLinearGradient gradient(x0, y0, x1, y1);
-                gradient.setStops(stops);
-                return QBrush(gradient);
-            } else if (type == "GRADIENT_RADIAL"_L1 || type == "GRADIENT_DIAMOND"_L1) {
-                const qreal radius = std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
-                QRadialGradient gradient(x0, y0, radius);
-                gradient.setStops(stops);
-                return QBrush(gradient);
-            } else if (type == "GRADIENT_ANGULAR"_L1) {
-                const qreal angle = std::atan2(y1 - y0, x1 - x0) * 180.0 / M_PI;
-                QConicalGradient gradient(x0, y0, -angle);
-                gradient.setStops(stops);
-                return QBrush(gradient);
-            }
+            gradient.setStops(cwStops);
+            return QBrush(gradient);
         }
         return QBrush();
+    }
+
+    static QBrush brushFromFigmaFills(const QJsonArray &fills, const QRect &rect)
+    {
+        // Collect visible fills (bottom to top)
+        QList<QJsonObject> visibleFills;
+        for (int i = 0; i < fills.size(); ++i) {
+            const auto obj = fills[i].toObject();
+            if (!obj.value("visible"_L1).toBool(true))
+                continue;
+            if (obj["type"_L1].toString() == "IMAGE"_L1)
+                continue;
+            visibleFills.append(obj);
+        }
+
+        if (visibleFills.isEmpty())
+            return QBrush();
+
+        // Single fill: return directly (no compositing needed)
+        if (visibleFills.size() == 1)
+            return brushFromSingleFill(visibleFills.first(), rect);
+
+        // Multiple fills: composite into a QImage
+        QImage composited(rect.size(), QImage::Format_ARGB32_Premultiplied);
+        composited.fill(Qt::transparent);
+        QPainter p(&composited);
+        p.setRenderHint(QPainter::Antialiasing);
+        const QRectF localRect(QPointF(0, 0), QSizeF(rect.size()));
+        for (const auto &obj : visibleFills) {
+            QBrush brush = brushFromSingleFill(obj, rect);
+            if (brush.style() != Qt::NoBrush) {
+                p.setPen(Qt::NoPen);
+                p.setBrush(brush);
+                p.drawRect(localRect);
+            }
+        }
+        p.end();
+        return QBrush(composited);
     }
 
     static Qt::Alignment alignmentFromStyle(const QJsonObject &style)
@@ -1411,6 +1621,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setTextType(s->textType());
         d->setTextFrame(s->textFrame());
         d->setDropShadow(s->dropShadow());
+        d->setInnerShadow(s->innerShadow());
+        d->setLayerBlur(s->layerBlur());
         return d;
     }
     case QPsdAbstractLayerItem::Shape: {
@@ -1421,6 +1633,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setPathInfo(s->pathInfo());
         d->setStrokeAlignment(s->strokeAlignment());
         d->setDropShadow(s->dropShadow());
+        d->setInnerShadow(s->innerShadow());
+        d->setLayerBlur(s->layerBlur());
         return d;
     }
     case QPsdAbstractLayerItem::Image: {
@@ -1428,6 +1642,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         auto *d = new QPsdImageLayerItem(record);
         d->setImage(s->image());
         d->setDropShadow(s->dropShadow());
+        d->setInnerShadow(s->innerShadow());
+        d->setLayerBlur(s->layerBlur());
         return d;
     }
     case QPsdAbstractLayerItem::Folder: {
@@ -1437,6 +1653,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setArtboardBackground(s->artboardBackground());
         d->setVectorMask(s->vectorMask());
         d->setDropShadow(s->dropShadow());
+        d->setInnerShadow(s->innerShadow());
+        d->setLayerBlur(s->layerBlur());
         return d;
     }
     default:
@@ -1450,7 +1668,16 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
                               QHash<quint32, const QPsdAbstractLayerItem *> &layerItemMap)
 {
     const int n = figmaModel->rowCount(parent);
-    for (int row = 0; row < n; ++row) {
+
+    // Detect mask layers among direct children.
+    // In Figma, isMask masks all siblings above it (lower indices).
+    // We iterate in reverse (back→front = PSD bottom→top), so once we
+    // encounter a mask, all subsequently processed children are masked.
+    bool masking = false;
+
+    // Iterate in reverse: Figma lists children front-to-back (top first),
+    // but PSD records are bottom-to-top (bottom first)
+    for (int row = n - 1; row >= 0; --row) {
         const QModelIndex index = figmaModel->index(row, 0, parent);
         auto *item = figmaModel->data(index, FigmaLayerTreeItemModel::LayerItemObjectRole)
                          .value<QPsdAbstractLayerItem *>();
@@ -1463,6 +1690,14 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
                                     .value<FigmaLayerTreeItemModel::FolderType>();
         const auto blendMode = static_cast<QPsdBlend::Mode>(
             figmaModel->data(index, FigmaLayerTreeItemModel::BlendModeRole).toInt());
+        const bool isMask = figmaModel->data(index, FigmaLayerTreeItemModel::IsMaskRole).toBool();
+
+        // Mask layer itself is Base (default); it starts a new clipping region
+        if (isMask)
+            masking = true;
+
+        // Layers above the mask (processed after in reverse iteration) are NonBase
+        const bool isClipped = masking && !isMask;
 
         if (folderType != FigmaLayerTreeItemModel::FolderType::NotFolder) {
             QPsdLayerRecord closeRecord;
@@ -1483,6 +1718,8 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             folderRecord.setBlendMode(blendMode);
             folderRecord.setOpacity(qRound(item->opacity() * 255.0));
             folderRecord.setFlags(0x00);
+            if (isClipped)
+                folderRecord.setClipping(QPsdLayerRecord::NonBase);
             QHash<QByteArray, QVariant> folderALI;
             folderALI["lyid"] = layerId;
             folderALI["luni"] = name;
@@ -1499,9 +1736,11 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             QPsdLayerRecord leafRecord;
             leafRecord.setRect(rect);
             leafRecord.setName(name.toUtf8());
-            leafRecord.setBlendMode(blendMode);
+            leafRecord.setBlendMode(blendMode == QPsdBlend::PassThrough ? QPsdBlend::Normal : blendMode);
             leafRecord.setOpacity(qRound(item->opacity() * 255.0));
             leafRecord.setFlags(0x00);
+            if (isClipped)
+                leafRecord.setClipping(QPsdLayerRecord::NonBase);
             QHash<QByteArray, QVariant> leafALI;
             leafALI["lyid"] = layerId;
             leafALI["luni"] = name;
@@ -1557,8 +1796,9 @@ static QPsdWidgetTreeItemModel *buildQPsdModel(FigmaLayerTreeItemModel *figmaMod
                 const QPsdLayerRecord *rec = model->layerRecord(index);
                 if (rec) {
                     auto *clone = cloneLayerItem(layerItemMap.value(lid), *rec);
-                    if (clone)
+                    if (clone) {
                         model->setLayerItem(index, clone);
+                    }
                 }
             }
             injectItems(index);

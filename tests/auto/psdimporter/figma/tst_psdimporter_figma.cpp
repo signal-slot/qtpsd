@@ -193,6 +193,10 @@ void tst_PsdImporterFigma::ensurePageImported(int pageIndex)
             m_pageCache.artboardRects.insert(layerItem->name(), abRect);
     }
 
+    // Debug: save full render
+    const auto fullRenderPath = u"%1/fullrender_page%2.png"_s.arg(m_outputPath).arg(pageIndex);
+    m_pageCache.fullRender.save(fullRenderPath);
+
     qDebug() << "Imported page" << pageIndex
              << "- render:" << m_pageCache.fullRender.size()
              << "- artboards:" << m_pageCache.artboardRects.size();

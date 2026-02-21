@@ -2,11 +2,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "qpsdtextitem.h"
+#include "qpsdblur_p.h"
 
+#include <QtCore/QCborMap>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
 #include <QtGui/QScreen>
 #include <QtGui/QWindow>
+#include <QtMath>
 
 QT_BEGIN_NAMESPACE
 
@@ -71,6 +74,20 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         painter->setCompositionMode(compositionMode);
         // Apply both opacity and fill opacity for text content
         painter->setOpacity(layer->opacity() * layer->fillOpacity());
+    }
+
+    // Drop shadow support: redirect drawing to temp image if shadow present
+    const auto shadowMap = layer->dropShadow();
+    const bool hasShadow = !shadowMap.isEmpty() && !useCustomBlend;
+    QImage shadowTextImage;
+    QPainter shadowTextPainter;
+    if (hasShadow) {
+        const QRectF br = boundingRect();
+        shadowTextImage = QImage(br.size().toSize(), QImage::Format_ARGB32);
+        shadowTextImage.fill(Qt::transparent);
+        shadowTextPainter.begin(&shadowTextImage);
+        shadowTextPainter.setRenderHints(p->renderHints());
+        p = &shadowTextPainter;
     }
 
     const bool isPointText = (layer->textType() == QPsdTextLayerItem::TextType::PointText);
@@ -190,22 +207,98 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
                 continue;
             }
 
-            // Concatenate all chunks in the line (for wrapping to work correctly)
-            // and draw with the first chunk's style
-            // TODO: support mixed-style lines with wrapping
-            QString lineText;
+            // Check if the line fits without wrapping
+            qreal totalLineWidth = 0;
             for (const auto &chunk : line)
-                lineText += chunk.text;
+                totalLineWidth += chunk.width;
 
             const auto hAlign = static_cast<Qt::Alignment>(line.first().alignment & Qt::AlignHorizontal_Mask);
-            const QRectF lineRect(drawLeft, currentY, drawWidth, fm.height() * 100);
 
-            p->setFont(line.first().font);
-            p->setPen(line.first().color);
-            QRectF boundingRect;
-            p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
-            currentY += boundingRect.height();
+            if (line.size() > 1 && totalLineWidth <= drawWidth) {
+                // Mixed-style line that fits: draw each chunk with its own style
+                qreal x = drawLeft;
+                if (hAlign == Qt::AlignHCenter)
+                    x = drawLeft + (drawWidth - totalLineWidth) / 2;
+                else if (hAlign == Qt::AlignRight)
+                    x = drawLeft + drawWidth - totalLineWidth;
+
+                for (const auto &chunk : line) {
+                    p->setFont(chunk.font);
+                    p->setPen(chunk.color);
+                    p->drawText(QPointF(x, currentY + QFontMetrics(chunk.font).ascent()), chunk.text);
+                    x += p->fontMetrics().horizontalAdvance(chunk.text);
+                }
+                currentY += lineAdvance;
+            } else {
+                // Single-style line or needs wrapping: draw as one block
+                QString lineText;
+                for (const auto &chunk : line)
+                    lineText += chunk.text;
+
+                const QRectF lineRect(drawLeft, currentY, drawWidth, fm.height() * 100);
+                p->setFont(line.first().font);
+                p->setPen(line.first().color);
+                QRectF boundingRect;
+                p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
+                currentY += boundingRect.height();
+            }
         }
+    }
+
+    // Draw drop shadow and text from temp image
+    if (hasShadow && !shadowTextImage.isNull()) {
+        shadowTextPainter.end();
+
+        const QColor shadowColor(shadowMap.value(QLatin1String("color")).toString());
+        const qreal shadowOpacity = shadowMap.value(QLatin1String("opacity")).toDouble(1.0);
+        const qreal angle = shadowMap.value(QLatin1String("angle")).toDouble(0);
+        const qreal distance = shadowMap.value(QLatin1String("distance")).toDouble(0);
+        const qreal blur = shadowMap.value(QLatin1String("size")).toDouble(0);
+
+        const qreal angleRad = qDegreesToRadians(angle);
+        const QPointF offset(qCos(angleRad) * distance, qSin(angleRad) * distance);
+
+        // Create shadow image from text alpha
+        // Fill ALL pixels with shadow color RGB, keeping their alpha
+        // This prevents black-fringe artifacts when blur spreads alpha
+        // into previously-transparent (black RGB) pixels
+        QImage shadowImage = shadowTextImage;
+        for (int y = 0; y < shadowImage.height(); ++y) {
+            QRgb *scanLine = reinterpret_cast<QRgb *>(shadowImage.scanLine(y));
+            for (int x = 0; x < shadowImage.width(); ++x) {
+                scanLine[x] = qRgba(shadowColor.red(), shadowColor.green(), shadowColor.blue(),
+                                     qAlpha(scanLine[x]));
+            }
+        }
+
+        // Apply blur (3-pass box blur approximates gaussian)
+        const QColor transparentShadow(shadowColor.red(), shadowColor.green(), shadowColor.blue(), 0);
+        if (blur > 0) {
+            const int blurRadius = qMax(1, static_cast<int>(blur));
+            const int margin = blurRadius * 2;
+            QImage expanded(shadowImage.width() + margin * 2,
+                            shadowImage.height() + margin * 2,
+                            QImage::Format_ARGB32);
+            expanded.fill(transparentShadow);
+            QPainter ep(&expanded);
+            ep.drawImage(margin, margin, shadowImage);
+            ep.end();
+            boxBlurAlpha(expanded, blurRadius);
+            boxBlurAlpha(expanded, blurRadius);
+            boxBlurAlpha(expanded, blurRadius);
+            painter->save();
+            painter->setOpacity(shadowOpacity);
+            painter->drawImage(offset.toPoint() - QPoint(margin, margin), expanded);
+            painter->restore();
+        } else {
+            painter->save();
+            painter->setOpacity(shadowOpacity);
+            painter->drawImage(offset.toPoint(), shadowImage);
+            painter->restore();
+        }
+
+        // Draw the text on top of the shadow
+        painter->drawImage(0, 0, shadowTextImage);
     }
 
     // Blend temp image back to backbuffer using custom blend mode
