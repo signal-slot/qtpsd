@@ -49,6 +49,68 @@ inline void boxBlurAlpha(QImage &img, int radius)
     }
 }
 
+// Separable Gaussian blur on all RGBA channels
+inline void gaussianBlurRgba(QImage &img, qreal sigma)
+{
+    if (sigma <= 0 || img.isNull())
+        return;
+    img = img.convertToFormat(QImage::Format_ARGB32);
+    const int w = img.width();
+    const int h = img.height();
+
+    // Build 1D Gaussian kernel (truncate at 3*sigma)
+    const int radius = qMax(1, static_cast<int>(std::ceil(sigma * 3.0)));
+    const int ksize = 2 * radius + 1;
+    QVector<qreal> kernel(ksize);
+    qreal sum = 0;
+    for (int i = 0; i < ksize; ++i) {
+        const qreal x = i - radius;
+        kernel[i] = std::exp(-x * x / (2.0 * sigma * sigma));
+        sum += kernel[i];
+    }
+    for (int i = 0; i < ksize; ++i)
+        kernel[i] /= sum;
+
+    QImage temp(w, h, QImage::Format_ARGB32);
+    temp.fill(Qt::transparent);
+
+    // Horizontal pass
+    for (int y = 0; y < h; ++y) {
+        const QRgb *src = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+        QRgb *dst = reinterpret_cast<QRgb *>(temp.scanLine(y));
+        for (int x = 0; x < w; ++x) {
+            qreal r = 0, g = 0, b = 0, a = 0;
+            for (int k = -radius; k <= radius; ++k) {
+                const QRgb px = src[qBound(0, x + k, w - 1)];
+                const qreal weight = kernel[k + radius];
+                r += qRed(px) * weight;
+                g += qGreen(px) * weight;
+                b += qBlue(px) * weight;
+                a += qAlpha(px) * weight;
+            }
+            dst[x] = qRgba(qBound(0, qRound(r), 255), qBound(0, qRound(g), 255),
+                            qBound(0, qRound(b), 255), qBound(0, qRound(a), 255));
+        }
+    }
+    // Vertical pass
+    for (int x = 0; x < w; ++x) {
+        for (int y = 0; y < h; ++y) {
+            qreal r = 0, g = 0, b = 0, a = 0;
+            for (int k = -radius; k <= radius; ++k) {
+                const QRgb px = reinterpret_cast<const QRgb *>(temp.constScanLine(qBound(0, y + k, h - 1)))[x];
+                const qreal weight = kernel[k + radius];
+                r += qRed(px) * weight;
+                g += qGreen(px) * weight;
+                b += qBlue(px) * weight;
+                a += qAlpha(px) * weight;
+            }
+            reinterpret_cast<QRgb *>(img.scanLine(y))[x] = qRgba(
+                qBound(0, qRound(r), 255), qBound(0, qRound(g), 255),
+                qBound(0, qRound(b), 255), qBound(0, qRound(a), 255));
+        }
+    }
+}
+
 QT_END_NAMESPACE
 
 #endif // QPSDBLUR_P_H
