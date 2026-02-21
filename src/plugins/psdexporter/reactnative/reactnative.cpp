@@ -214,6 +214,24 @@ bool QPsdExporterReactNativePlugin::outputShape(const QModelIndex &shapeIndex, E
     const auto path = shape->pathInfo();
 
     switch (path.type) {
+    case QPsdAbstractLayerItem::PathInfo::None: {
+        element->type = "View"_L1;
+        if (!outputBase(shapeIndex, element))
+            return false;
+
+        // Background color
+        const QGradient *g = effectiveGradient(shape);
+        if (g) {
+            if (!g->stops().isEmpty()) {
+                element->styles.append({"backgroundColor"_L1, colorValue(g->stops().first().second)});
+            }
+        } else {
+            if (shape->brush() != Qt::NoBrush) {
+                element->styles.append({"backgroundColor"_L1, colorValue(shape->brush().color())});
+            }
+        }
+        break;
+    }
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
         element->type = "View"_L1;

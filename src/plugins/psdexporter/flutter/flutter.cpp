@@ -534,7 +534,7 @@ bool QPsdExporterFlutterPlugin::outputGradient(const QGradient *gradient, const 
         return true;
     }
     default:
-        qFatal() << "Unsupported gradient type"_L1 << gradient->type();
+        break;
     }
 
     QVariantList stops;

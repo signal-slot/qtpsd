@@ -304,13 +304,71 @@ bool QPsdExporterLvglPlugin::outputShape(const QModelIndex &shapeIndex, Element 
     const auto path = shape->pathInfo();
 
     switch (path.type) {
+    case QPsdAbstractLayerItem::PathInfo::None: {
+        // Fill layers (GdFl, SoCo without vector mask)
+        const QGradient *g = effectiveGradient(shape);
+        if (g) {
+            const auto stops = g->stops();
+            if (!stops.isEmpty()) {
+                // Determine gradient direction: for linear, use dominant axis; others default to vertical
+                QString gradDir = u"ver"_s;
+                if (g->type() == QGradient::LinearGradient) {
+                    const auto *linear = static_cast<const QLinearGradient *>(g);
+                    const qreal dx = linear->finalStop().x() - linear->start().x();
+                    const qreal dy = linear->finalStop().y() - linear->start().y();
+                    gradDir = (qAbs(dy) >= qAbs(dx)) ? u"ver"_s : u"hor"_s;
+                }
+                element->type = "lv_obj";
+                if (!outputBase(shapeIndex, element))
+                    return false;
+                QColor startColor = stops.first().second;
+                QColor endColor = stops.last().second;
+                element->attributes.insert("style_bg_color", u"0x%1"_s.arg(startColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+                element->attributes.insert("style_bg_opa", QString::number(startColor.alpha()));
+                element->attributes.insert("style_bg_grad_dir", gradDir);
+                element->attributes.insert("style_bg_grad_color", u"0x%1"_s.arg(endColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+                element->attributes.insert("style_bg_grad_opa", QString::number(endColor.alpha()));
+                element->attributes.insert("style_bg_main_stop", QString::number(qRound(stops.first().first * 255)));
+                element->attributes.insert("style_bg_grad_stop", QString::number(qRound(stops.last().first * 255)));
+            }
+        } else if (shape->brush() != Qt::NoBrush) {
+            // Solid color fill
+            element->type = "lv_obj";
+            if (!outputBase(shapeIndex, element))
+                return false;
+            QColor color = shape->brush().color();
+            element->attributes.insert("style_bg_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+            element->attributes.insert("style_bg_opa", QString::number(color.alpha()));
+        }
+        break; }
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
         element->type = "lv_obj";
         if (!outputBase(shapeIndex, element))
             return false;
 
-        if (shape->brush() != Qt::NoBrush) {
+        const QGradient *g = effectiveGradient(shape);
+        if (g) {
+            const auto stops = g->stops();
+            if (!stops.isEmpty()) {
+                QString gradDir = u"ver"_s;
+                if (g->type() == QGradient::LinearGradient) {
+                    const auto *linear = static_cast<const QLinearGradient *>(g);
+                    const qreal dx = linear->finalStop().x() - linear->start().x();
+                    const qreal dy = linear->finalStop().y() - linear->start().y();
+                    gradDir = (qAbs(dy) >= qAbs(dx)) ? u"ver"_s : u"hor"_s;
+                }
+                QColor startColor = stops.first().second;
+                QColor endColor = stops.last().second;
+                element->attributes.insert("style_bg_color", u"0x%1"_s.arg(startColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+                element->attributes.insert("style_bg_opa", QString::number(startColor.alpha()));
+                element->attributes.insert("style_bg_grad_dir", gradDir);
+                element->attributes.insert("style_bg_grad_color", u"0x%1"_s.arg(endColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+                element->attributes.insert("style_bg_grad_opa", QString::number(endColor.alpha()));
+                element->attributes.insert("style_bg_main_stop", QString::number(qRound(stops.first().first * 255)));
+                element->attributes.insert("style_bg_grad_stop", QString::number(qRound(stops.last().first * 255)));
+            }
+        } else if (shape->brush() != Qt::NoBrush) {
             QColor color = shape->brush().color();
             element->attributes.insert("style_bg_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
             element->attributes.insert("style_bg_opa", QString::number(color.alpha()));

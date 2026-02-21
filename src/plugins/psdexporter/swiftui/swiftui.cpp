@@ -373,6 +373,22 @@ bool QPsdExporterSwiftUIPlugin::outputGradient(const QGradient *gradient, const 
             .arg(radial->radius() * unitScale, 0, 'f', 1));
         break;
     }
+    case QGradient::ConicalGradient: {
+        const QConicalGradient *conical = static_cast<const QConicalGradient*>(gradient);
+
+        QStringList colors;
+        for (const auto &stop : conical->stops()) {
+            colors.append(colorValue(stop.second));
+        }
+
+        element->modifiers.append(u".fill(AngularGradient(colors: [%1], center: UnitPoint(x: %2, y: %3), startAngle: .degrees(%4), endAngle: .degrees(%5)))"_s
+            .arg(colors.join(", "))
+            .arg(conical->center().x() / rect.width(), 0, 'f', 2)
+            .arg(conical->center().y() / rect.height(), 0, 'f', 2)
+            .arg(conical->angle(), 0, 'f', 1)
+            .arg(conical->angle() + 360.0, 0, 'f', 1));
+        break;
+    }
     default:
         qWarning() << "Unsupported gradient type" << gradient->type();
         return false;
@@ -420,6 +436,24 @@ bool QPsdExporterSwiftUIPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
     qreal centerY = (rect.y() + rect.height() / 2.0) * verticalScale;
 
     switch (pathInfo.type) {
+    case QPsdAbstractLayerItem::PathInfo::None: {
+        element->type = "Rectangle";
+
+        // Fill
+        const QGradient *g = effectiveGradient(shape);
+
+        if (g) {
+            outputGradient(g, rect, element);
+        } else if (shape->brush() != Qt::NoBrush) {
+            element->modifiers.append(u".fill(%1)"_s.arg(colorValue(shape->brush().color())));
+        }
+
+        element->modifiers.append(u".frame(width: %1, height: %2)"_s
+            .arg(rect.width() * horizontalScale, 0, 'f', 1)
+            .arg(rect.height() * verticalScale, 0, 'f', 1));
+        element->modifiers.append(u".position(x: %1, y: %2)"_s.arg(centerX, 0, 'f', 1).arg(centerY, 0, 'f', 1));
+        break;
+    }
     case QPsdAbstractLayerItem::PathInfo::Rectangle: {
         element->type = "Rectangle";
 

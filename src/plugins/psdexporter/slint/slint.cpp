@@ -591,7 +591,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 element2.properties.insert("background", gradString);
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                break;
             }
         } else {
             if (shape->brush() != Qt::NoBrush)
@@ -645,7 +645,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 element->properties.insert("fill", gradString);
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << pathGrad->type();
+                break;
             }
         } else {
             element->properties.insert("stroke-width", u"%1px"_s.ARGF(shape->pen().width() * unitScale));
@@ -701,7 +701,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 element2.properties.insert("background", gradString);
                 break; }
             default:
-                qFatal() << "Unsupported gradient type" << g->type();
+                break;
             }
         } else {
             if (shape->brush() != Qt::NoBrush)
