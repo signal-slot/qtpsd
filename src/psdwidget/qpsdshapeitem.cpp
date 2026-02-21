@@ -119,17 +119,27 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     // so we can apply per-pixel alpha masking (same technique as QPsdImageItem)
     const QImage layerMask = layer->layerMask();
     const bool hasMask = !layerMask.isNull();
-    const bool needTempImage = hasMask || useCustomBlend;
+    const qreal blurRadius = layer->layerBlur();
+    const bool hasLayerBlur = blurRadius > 0;
+    const bool needTempImage = hasMask || useCustomBlend || hasLayerBlur;
+
+    // For layer blur, expand temp image by blur margin
+    const int blurMargin = hasLayerBlur ? qMax(1, static_cast<int>(blurRadius + 0.5)) * 3 : 0;
 
     QImage tempImage;
     QPainter tempPainterObj;
     QPainter *p = painter;
 
     if (needTempImage) {
-        tempImage = QImage(layer->rect().size(), QImage::Format_ARGB32);
+        const QSize imgSize = hasLayerBlur
+            ? QSize(layer->rect().width() + blurMargin * 2, layer->rect().height() + blurMargin * 2)
+            : layer->rect().size();
+        tempImage = QImage(imgSize, QImage::Format_ARGB32);
         tempImage.fill(Qt::transparent);
         tempPainterObj.begin(&tempImage);
         tempPainterObj.setRenderHint(QPainter::Antialiasing);
+        if (hasLayerBlur)
+            tempPainterObj.translate(blurMargin, blurMargin);
         p = &tempPainterObj;
     }
 
@@ -372,6 +382,14 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
     if (needTempImage) {
         tempPainterObj.end();
 
+        // Apply layer blur (Gaussian approximation via 3-pass box blur)
+        if (hasLayerBlur) {
+            const int br = qMax(1, static_cast<int>(blurRadius / 3.0 + 0.5));
+            boxBlurRgba(tempImage, br);
+            boxBlurRgba(tempImage, br);
+            boxBlurRgba(tempImage, br);
+        }
+
         // Apply raster layer mask if present
         if (hasMask) {
             const QRect maskRect = layer->layerMaskRect();
@@ -424,10 +442,10 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                     painter->restore();
                 }
             } else {
-                painter->drawImage(0, 0, tempImage);
+                painter->drawImage(-blurMargin, -blurMargin, tempImage);
             }
         } else {
-            painter->drawImage(0, 0, tempImage);
+            painter->drawImage(-blurMargin, -blurMargin, tempImage);
         }
     }
 }
