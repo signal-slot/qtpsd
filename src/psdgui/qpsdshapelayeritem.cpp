@@ -94,7 +94,11 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
         const QPointF center(rect.width() / 2, rect.height() / 2);
         gradient.setCenter(center);
         gradient.setAngle(angl.value());
-        gradient.setStops(stops);
+        // PSD sweeps clockwise, Qt sweeps counter-clockwise — reverse stops
+        QGradientStops reversedStops;
+        for (const auto &stop : stops)
+            reversedStops.prepend({1.0 - stop.first, stop.second});
+        gradient.setStops(reversedStops);
         return QBrush(gradient);
     } else {
         qWarning() << "GdFl gradient type" << typeValue << "not supported";
