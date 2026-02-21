@@ -1043,10 +1043,18 @@ private:
                 && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1);
             folderItem->setRect(rect);
 
+            // Extract corner radius for frames/components
+            const qreal frameCornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
+
             if (nodeJson.value("clipsContent"_L1).toBool(false)) {
                 QPsdAbstractLayerItem::PathInfo clipMask;
-                clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
+                if (frameCornerRadius > 0) {
+                    clipMask.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
+                    clipMask.radius = frameCornerRadius;
+                } else {
+                    clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                }
                 folderItem->setVectorMask(clipMask);
             }
 
@@ -1102,8 +1110,13 @@ private:
                 bgShape->setRect(rect);
                 bgShape->setBrush(frameBrush);
                 QPsdAbstractLayerItem::PathInfo bgPath;
-                bgPath.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 bgPath.rect = QRectF(0, 0, rect.width(), rect.height());
+                if (frameCornerRadius > 0) {
+                    bgPath.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
+                    bgPath.radius = frameCornerRadius;
+                } else {
+                    bgPath.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                }
                 bgShape->setPathInfo(bgPath);
 
                 bgNode.layerItem = bgShape;
@@ -1519,11 +1532,70 @@ private:
         if (type == "GRADIENT_LINEAR"_L1) {
             QLinearGradient gradient(x0, y0, x1, y1);
             gradient.setStops(stops);
+            // Figma interpolates gradient colors in straight (non-premultiplied) alpha
+            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
-        } else if (type == "GRADIENT_RADIAL"_L1 || type == "GRADIENT_DIAMOND"_L1) {
+        } else if (type == "GRADIENT_DIAMOND"_L1) {
+            // Diamond gradient: iso-lines are diamond-shaped (manhattan distance)
+            // h0 = center, h1 = primary axis end, h2 = secondary axis end
+            const qreal dx1 = x1 - x0, dy1 = y1 - y0;
+            const qreal r1 = std::sqrt(dx1 * dx1 + dy1 * dy1);
+            qreal dx2 = 0, dy2 = 0, r2 = r1;
+            if (handles.size() >= 3) {
+                const auto h2 = handles[2].toObject();
+                const qreal x2 = h2["x"_L1].toDouble() * rect.width();
+                const qreal y2 = h2["y"_L1].toDouble() * rect.height();
+                dx2 = x2 - x0; dy2 = y2 - y0;
+                r2 = std::sqrt(dx2 * dx2 + dy2 * dy2);
+            } else {
+                // Perpendicular to primary axis
+                dx2 = -dy1; dy2 = dx1;
+            }
+            if (r1 < 0.001 || r2 < 0.001)
+                return QBrush();
+            // Unit vectors along primary and secondary axes
+            const qreal ux1 = dx1 / r1, uy1 = dy1 / r1;
+            const qreal ux2 = dx2 / r2, uy2 = dy2 / r2;
+            // Render diamond gradient into an image
+            QImage img(rect.size(), QImage::Format_ARGB32);
+            for (int py = 0; py < rect.height(); ++py) {
+                QRgb *line = reinterpret_cast<QRgb *>(img.scanLine(py));
+                for (int px = 0; px < rect.width(); ++px) {
+                    const qreal dx = px - x0, dy = py - y0;
+                    // Project onto primary and secondary axes, use manhattan distance
+                    const qreal t = qAbs(dx * ux1 + dy * uy1) / r1
+                                  + qAbs(dx * ux2 + dy * uy2) / r2;
+                    // Sample gradient color at position t
+                    QColor c;
+                    if (t <= stops.first().first) {
+                        c = stops.first().second;
+                    } else if (t >= stops.last().first) {
+                        c = stops.last().second;
+                    } else {
+                        for (int i = 1; i < stops.size(); ++i) {
+                            if (t <= stops[i].first) {
+                                const qreal f = (t - stops[i-1].first) / (stops[i].first - stops[i-1].first);
+                                const QColor &c0 = stops[i-1].second;
+                                const QColor &c1 = stops[i].second;
+                                // Straight alpha interpolation (matches Figma)
+                                c = QColor::fromRgbF(
+                                    c0.redF() + (c1.redF() - c0.redF()) * f,
+                                    c0.greenF() + (c1.greenF() - c0.greenF()) * f,
+                                    c0.blueF() + (c1.blueF() - c0.blueF()) * f,
+                                    c0.alphaF() + (c1.alphaF() - c0.alphaF()) * f);
+                                break;
+                            }
+                        }
+                    }
+                    line[px] = c.rgba();
+                }
+            }
+            return QBrush(img);
+        } else if (type == "GRADIENT_RADIAL"_L1) {
             const qreal radius = std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
             QRadialGradient gradient(x0, y0, radius);
             gradient.setStops(stops);
+            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
         } else if (type == "GRADIENT_ANGULAR"_L1) {
             const qreal angle = std::atan2(y1 - y0, x1 - x0) * 180.0 / M_PI;
@@ -1535,6 +1607,7 @@ private:
                 cwStops.append({pos, stops[i].second});
             }
             gradient.setStops(cwStops);
+            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
         }
         return QBrush();

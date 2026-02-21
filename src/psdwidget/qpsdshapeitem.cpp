@@ -55,28 +55,36 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         const qreal angle = shadow.value(QLatin1String("angle")).toDouble(0);
         const qreal distance = shadow.value(QLatin1String("distance")).toDouble(0);
         const qreal blur = shadow.value(QLatin1String("size")).toDouble(0);
+        const qreal spread = shadow.value(QLatin1String("spread")).toDouble(0);
 
         const qreal angleRad = qDegreesToRadians(angle);
         const QPointF offset(qCos(angleRad) * distance, qSin(angleRad) * distance);
 
-        // Render shape silhouette with shadow color
-        // Fill with shadow color at zero alpha so blur edge pixels inherit
-        // the correct RGB (otherwise transparent pixels are black)
+        // Render shape silhouette with shadow color, expanded by spread
         const QSize shapeSize = layer->rect().size();
         const QColor transparentShadow(shadowColor.red(), shadowColor.green(), shadowColor.blue(), 0);
-        QImage silhouette(shapeSize, QImage::Format_ARGB32);
+        const int spreadPx = qRound(spread);
+        QImage silhouette(shapeSize + QSize(spreadPx * 2, spreadPx * 2), QImage::Format_ARGB32);
         silhouette.fill(transparentShadow);
         {
             QPainter sp(&silhouette);
             sp.setRenderHint(QPainter::Antialiasing);
             sp.setPen(Qt::NoPen);
             sp.setBrush(shadowColor);
+            // Offset and expand the shape path by spread amount
+            sp.translate(spreadPx, spreadPx);
+            if (spread > 0) {
+                QPen spreadPen(shadowColor, spread * 2.0);
+                spreadPen.setJoinStyle(Qt::MiterJoin);
+                sp.setPen(spreadPen);
+            }
             drawShapePath(&sp, pathInfo);
         }
 
         // Apply blur (3-pass box blur approximates gaussian)
+        // Figma "radius" = CSS blur-radius ≈ 2σ, so halve for box blur radius
         if (blur > 0) {
-            const int blurRadius = qMax(1, static_cast<int>(blur));
+            const int blurRadius = qMax(1, static_cast<int>(blur / 2.0 + 0.5));
             const int margin = blurRadius * 2;
             QImage expanded(silhouette.width() + margin * 2,
                             silhouette.height() + margin * 2,
@@ -90,12 +98,12 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             boxBlurAlpha(expanded, blurRadius);
             painter->save();
             painter->setOpacity(shadowOpacity);
-            painter->drawImage(offset.toPoint() - QPoint(margin, margin), expanded);
+            painter->drawImage(offset.toPoint() - QPoint(margin + spreadPx, margin + spreadPx), expanded);
             painter->restore();
         } else {
             painter->save();
             painter->setOpacity(shadowOpacity);
-            painter->drawImage(offset.toPoint(), silhouette);
+            painter->drawImage(offset.toPoint() - QPoint(spreadPx, spreadPx), silhouette);
             painter->restore();
         }
     }
