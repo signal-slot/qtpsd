@@ -28,11 +28,11 @@ Item {
                 focalX: 100
                 focalY: 100
                 GradientStop {
-                    color: "#ff0000"
+                    color: "#ffff0000"
                     position: 0
                 }
                 GradientStop {
-                    color: "#0000ff"
+                    color: "#ff0000ff"
                     position: 1
                 }
             }

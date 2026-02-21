@@ -30,7 +30,7 @@ Item {
             x: 49
             y: 29
             Rectangle {
-                color: "#ffffff"
+                color: "#ffffffff"
                 height: 240
                 width: 300
                 x: 1
@@ -38,7 +38,7 @@ Item {
             }
         }
         Text {
-            color: "#1e1e1e"
+            color: "#ff1e1e1e"
             font.family: "Roboto"
             font.pixelSize: 20
             height: 26
@@ -50,7 +50,7 @@ Item {
             y: 59
         }
         Text {
-            color: "#505050"
+            color: "#ff505050"
             font.family: "Roboto"
             font.pixelSize: 12
             height: 121

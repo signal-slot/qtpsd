@@ -24,57 +24,64 @@ Item {
                 spacing: 0
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: "😀"
                     verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Sans"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: ""
                     verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: "🚀"
                     verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Sans"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: ""
                     verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: "❤"
                     verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Sans"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: ""
                     verticalAlignment: Text.AlignBottom
                 }
                 Text {
                     Layout.fillHeight: true
-                    color: "#000000"
+                    color: "#ff000000"
                     font.family: "Noto Color Emoji"
                     font.pixelSize: 36
+                    horizontalAlignment: Text.AlignLeft
                     text: "🌟"
                     verticalAlignment: Text.AlignBottom
                 }

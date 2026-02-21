@@ -20,7 +20,7 @@ Item {
         y: 50
     }
     Text {
-        color: "#000000"
+        color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 28
         height: 37
@@ -37,7 +37,7 @@ Item {
         x: 199
         y: 49
         Rectangle {
-            color: "#0064c8"
+            color: "#ff0064c8"
             height: 150
             width: 170
             x: 1

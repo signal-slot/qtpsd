@@ -20,7 +20,7 @@ Item {
         y: 0
     }
     Text {
-        color: "#ffffff"
+        color: "#ffffffff"
         font.family: "Roboto"
         font.pixelSize: 36
         height: 48

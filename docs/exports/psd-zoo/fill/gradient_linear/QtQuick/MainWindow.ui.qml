@@ -18,11 +18,11 @@ Item {
         y: 0
         gradient: Gradient {
             GradientStop {
-                color: "#000000"
+                color: "#ff000000"
                 position: 0
             }
             GradientStop {
-                color: "#ffffff"
+                color: "#ffffffff"
                 position: 1
             }
         }

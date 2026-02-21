@@ -16,7 +16,7 @@ class MainWindow extends StatelessWidget {
             top: 0,
             width: 300,
             child: Container(
-              decoration: (
+              decoration: BoxDecoration(
                 color: Color.fromARGB(255, 200, 200, 200),
               ),
             ),

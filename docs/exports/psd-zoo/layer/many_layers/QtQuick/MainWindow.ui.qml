@@ -12,7 +12,7 @@ Item {
         y: 0
     }
     Text {
-        color: "#ff0000"
+        color: "#ffff0000"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -24,7 +24,7 @@ Item {
         y: 5
     }
     Text {
-        color: "#00ff00"
+        color: "#ff00ff00"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -36,7 +36,7 @@ Item {
         y: 30
     }
     Text {
-        color: "#0000ff"
+        color: "#ff0000ff"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -48,7 +48,7 @@ Item {
         y: 55
     }
     Text {
-        color: "#ff8000"
+        color: "#ffff8000"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -60,7 +60,7 @@ Item {
         y: 80
     }
     Text {
-        color: "#8000ff"
+        color: "#ff8000ff"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -72,7 +72,7 @@ Item {
         y: 105
     }
     Text {
-        color: "#008080"
+        color: "#ff008080"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -84,7 +84,7 @@ Item {
         y: 130
     }
     Text {
-        color: "#808000"
+        color: "#ff808000"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -96,7 +96,7 @@ Item {
         y: 155
     }
     Text {
-        color: "#404040"
+        color: "#ff404040"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -108,7 +108,7 @@ Item {
         y: 180
     }
     Text {
-        color: "#c000c0"
+        color: "#ffc000c0"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19
@@ -120,7 +120,7 @@ Item {
         y: 205
     }
     Text {
-        color: "#00c000"
+        color: "#ff00c000"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 19

@@ -141,6 +141,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
     }
 
     switch (type) {
+    case QPsdExporterTreeItemModel::ExportHint::None:
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
         element.id = id;
@@ -577,6 +578,18 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
                 break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(g);
+                QStringList grad = { "@conic-gradient(from " +
+                    QString::number(conical->angle() + 90.0) + "deg" };
+                const auto qtStops = conical->stops();
+                for (int i = qtStops.size() - 1; i >= 0; --i) {
+                    grad.append(qtStops.at(i).second.name() + " " +
+                        QString::number((1.0 - qtStops.at(i).first) * 360) + "deg");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element2.properties.insert("background", gradString);
+                break; }
             default:
                 qFatal() << "Unsupported gradient type" << g->type();
             }
@@ -619,6 +632,18 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const QString gradString = grad.join(", ") + ")";
                 element->properties.insert("fill", gradString);
                 break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(pathGrad);
+                QStringList grad = { "@conic-gradient(from " +
+                    QString::number(conical->angle() + 90.0) + "deg" };
+                const auto qtStops = conical->stops();
+                for (int i = qtStops.size() - 1; i >= 0; --i) {
+                    grad.append(qtStops.at(i).second.name() + " " +
+                        QString::number((1.0 - qtStops.at(i).first) * 360) + "deg");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element->properties.insert("fill", gradString);
+                break; }
             default:
                 qFatal() << "Unsupported gradient type" << pathGrad->type();
             }
@@ -632,6 +657,57 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
         }
         if (!outputPath(path.path, element))
             return false;
+        break; }
+    case QPsdAbstractLayerItem::PathInfo::None: {
+        element->type = base;
+        if (!outputBase(shapeIndex, element, imports))
+            return false;
+        Element element2;
+        element2.type = "Rectangle";
+        if (!outputBase(shapeIndex, &element2, imports))
+            return false;
+        const auto *g = effectiveGradient(shape);
+        if (g) {
+            switch (g->type()) {
+            case QGradient::LinearGradient: {
+                const auto linear = reinterpret_cast<const QLinearGradient *>(g);
+                const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
+                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0 ) + "deg" };
+                for (const auto &stop : linear->stops()) {
+                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element2.properties.insert("background", gradString);
+                break; }
+            case QGradient::RadialGradient: {
+                const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                QStringList grad = { "@radial-gradient(circle" };
+                for (const auto &stop : radial->stops()) {
+                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element2.properties.insert("background", gradString);
+                break; }
+            case QGradient::ConicalGradient: {
+                const auto conical = reinterpret_cast<const QConicalGradient *>(g);
+                QStringList grad = { "@conic-gradient(from " +
+                    QString::number(conical->angle() + 90.0) + "deg" };
+                const auto qtStops = conical->stops();
+                for (int i = qtStops.size() - 1; i >= 0; --i) {
+                    grad.append(qtStops.at(i).second.name() + " " +
+                        QString::number((1.0 - qtStops.at(i).first) * 360) + "deg");
+                }
+                const QString gradString = grad.join(", ") + ")";
+                element2.properties.insert("background", gradString);
+                break; }
+            default:
+                qFatal() << "Unsupported gradient type" << g->type();
+            }
+        } else {
+            if (shape->brush() != Qt::NoBrush)
+                element2.properties.insert("background", shape->brush().color().name());
+        }
+        element->children.append(element2);
         break; }
     default:
         break;

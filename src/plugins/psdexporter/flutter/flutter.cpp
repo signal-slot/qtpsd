@@ -513,6 +513,26 @@ bool QPsdExporterFlutterPlugin::outputGradient(const QGradient *gradient, const 
 
         break;
     }
+    case QGradient::ConicalGradient: {
+        element->type = "SweepGradient";
+        const auto conical = reinterpret_cast<const QConicalGradient *>(gradient);
+        element->properties.insert("center", u"Alignment(%1, %2)"_s
+            .arg((conical->center().x() * 2 - rect.width()) / rect.width())
+            .arg((conical->center().y() * 2 - rect.height()) / rect.height()));
+        element->properties.insert("startAngle", conical->angle() * M_PI / 180.0);
+        element->properties.insert("endAngle", conical->angle() * M_PI / 180.0 + 2 * M_PI);
+        // Un-reverse stops (Qt CCW → Flutter CW)
+        QVariantList stops;
+        QVariantList colors;
+        const auto qtStops = conical->stops();
+        for (int i = qtStops.size() - 1; i >= 0; --i) {
+            stops.append(1.0 - qtStops.at(i).first);
+            colors.append(colorValue(qtStops.at(i).second));
+        }
+        element->properties.insert("stops", stops);
+        element->properties.insert("colors", colors);
+        return true;
+    }
     default:
         qFatal() << "Unsupported gradient type"_L1 << gradient->type();
     }
@@ -610,7 +630,7 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             decorationElement.properties.insert("borderRadius"_L1, u"BorderRadius.circular(%1)"_s.arg(path.radius * unitScale));
         }
         break;
-    case QPsdAbstractLayerItem::PathInfo::Path:
+    case QPsdAbstractLayerItem::PathInfo::Path: {
         decorationElement.type = "ShapeDecoration"_L1;
         Element borderElement;
         borderElement.type = "QtPsdPathBorder"_L1;
@@ -621,6 +641,9 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         outputPathProp(path.path, &borderElement, imports, exports);
         decorationElement.properties.insert("shape"_L1, QVariant::fromValue(borderElement));
+        break; }
+    case QPsdAbstractLayerItem::PathInfo::None:
+        decorationElement.type = "BoxDecoration"_L1;
         break;
     }
 
@@ -746,6 +769,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
         type = hintOverload;
     }
     switch (type) {
+    case QPsdExporterTreeItemModel::ExportHint::None:
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
         Element positionedElement;
@@ -916,6 +940,8 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
             outputImage(index, &component);
             existsPositioned = outputPositioned(index, &positionedElement);
             break; }
+        default:
+            break;
         }
 
         Element base;

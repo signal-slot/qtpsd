@@ -6,14 +6,14 @@ Item {
     Item {
         anchors.fill: parent
         Rectangle {
-            color: "#ffffff"
+            color: "#ffffffff"
             height: 400
             width: 400
             x: 0
             y: 0
         }
         Rectangle {
-            color: "#ffffff"
+            color: "#ffffffff"
             height: 400
             width: 400
             x: 0

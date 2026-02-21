@@ -12,7 +12,7 @@ Item {
         y: 0
     }
     Text {
-        color: "#000000"
+        color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
         height: 32
@@ -24,7 +24,7 @@ Item {
         y: 25
     }
     Text {
-        color: "#000000"
+        color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
         height: 32
@@ -36,7 +36,7 @@ Item {
         y: 125
     }
     Text {
-        color: "#000000"
+        color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
         height: 32

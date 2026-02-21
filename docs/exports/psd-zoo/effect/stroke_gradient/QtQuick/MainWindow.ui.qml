@@ -12,7 +12,7 @@ Item {
         y: 0
     }
     Rectangle {
-        border.color: "#000000"
+        border.color: "#ff000000"
         border.width: 5
         color: "transparent"
         height: 200

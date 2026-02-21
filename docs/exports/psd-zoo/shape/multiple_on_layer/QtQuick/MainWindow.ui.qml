@@ -18,12 +18,12 @@ Item {
         x: 19
         y: 29
         ShapePath {
-            fillColor: "#ff8000"
+            fillColor: "#ffff8000"
             strokeColor: "transparent"
             strokeWidth: 1
         }
         ShapePath {
-            fillColor: "#ff8000"
+            fillColor: "#ffff8000"
             fillRule: ShapePath.OddEvenFill
             strokeColor: "transparent"
             strokeWidth: 1

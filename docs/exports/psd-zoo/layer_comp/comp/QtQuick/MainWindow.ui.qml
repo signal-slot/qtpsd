@@ -15,6 +15,7 @@ Item {
         fillMode: Image.PreserveAspectFit
         height: 200
         source: "images/state_a.png"
+        visible: false
         width: 200
         x: 0
         y: 0

@@ -26,11 +26,11 @@ Item {
                 y1: 100
                 y2: 100
                 GradientStop {
-                    color: "#000080"
+                    color: "#ff000080"
                     position: 0
                 }
                 GradientStop {
-                    color: "#800000"
+                    color: "#ff800000"
                     position: 1
                 }
             }

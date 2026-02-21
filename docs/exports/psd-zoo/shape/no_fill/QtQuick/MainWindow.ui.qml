@@ -17,8 +17,9 @@ Item {
         x: 27
         y: 27
         Rectangle {
-            border.color: "#ff0000"
+            border.color: "#ffff0000"
             border.width: 3
+            color: "transparent"
             height: 143
             width: 143
             x: 1.5

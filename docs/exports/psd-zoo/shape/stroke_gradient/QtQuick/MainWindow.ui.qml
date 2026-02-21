@@ -17,9 +17,9 @@ Item {
         x: 26
         y: 26
         Rectangle {
-            border.color: "#000000"
+            border.color: "#ff000000"
             border.width: 5
-            color: "#e6e6e6"
+            color: "#ffe6e6e6"
             height: 145
             width: 145
             x: 1.5

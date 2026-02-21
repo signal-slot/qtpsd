@@ -4,14 +4,14 @@ Item {
     height: 200
     width: 300
     Rectangle {
-        color: "#000000"
+        color: "#ff000000"
         height: 200
         width: 300
         x: 0
         y: 0
     }
     Text {
-        color: "#ffffff"
+        color: "#ffffffff"
         font.family: "Roboto"
         font.pixelSize: 36
         height: 48

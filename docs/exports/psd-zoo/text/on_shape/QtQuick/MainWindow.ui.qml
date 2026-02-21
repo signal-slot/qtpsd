@@ -17,7 +17,7 @@ Item {
         x: 19
         y: 19
         Rectangle {
-            color: "#0064c8"
+            color: "#ff0064c8"
             height: 160
             width: 260
             x: 0.999999
@@ -25,7 +25,7 @@ Item {
         }
     }
     Text {
-        color: "#ffffff"
+        color: "#ffffffff"
         font.family: "Roboto"
         font.pixelSize: 24
         height: 32
