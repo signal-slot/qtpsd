@@ -301,6 +301,8 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             p->drawPath(pathInfo.path);
             break;
         }
+    } else if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::None) {
+        p->drawRect(layer->rect());
     } else {
         // For "center" stroke (or no stroke): Qt centers stroke on path boundary by default
         drawShapePath(p, pathInfo);
