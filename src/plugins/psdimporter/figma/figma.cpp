@@ -1077,15 +1077,15 @@ private:
                     needsGradientBg = true;
             }
 
-            // QPsdScene doesn't apply folder-level opacity to children,
-            // so propagate the folder's opacity to its children instead
-            folderItem->setOpacity(1.0);
+            // Keep folder's own opacity — QPsdScene applies it via QGraphicsOpacityEffect
+            // which composites children first, then fades the group as a whole
+            folderItem->setOpacity(nodeJson.value("opacity"_L1).toDouble(1.0));
             node.layerItem = folderItem;
             node.folderType = FolderType::OpenFolder;
 
             const auto children = nodeJson["children"_L1].toArray();
             for (int ci = children.size() - 1; ci >= 0; --ci) {
-                quintptr childId = processNode(children.at(ci).toObject(), nodeId, opacity);
+                quintptr childId = processNode(children.at(ci).toObject(), nodeId, 1.0);
                 if (childId != 0)
                     node.childIds.append(childId);
             }

@@ -12,6 +12,7 @@
 
 #include <QtPsdGui/QPsdAbstractLayerItem>
 #include <QtGui/QPainter>
+#include <QtWidgets/QGraphicsOpacityEffect>
 #include <QtWidgets/QGraphicsPixmapItem>
 
 QT_BEGIN_NAMESPACE
@@ -193,6 +194,13 @@ void QPsdScene::reset()
                 const auto blendMode = layer->record().blendMode();
                 if (blendMode != QPsdBlend::PassThrough && blendMode != QPsdBlend::Invalid) {
                     nextGroupMode = QtPsdGui::compositionMode(blendMode);
+                }
+                // Apply folder opacity as a compositing effect: render children first,
+                // then fade the whole group — correct for Figma group opacity
+                if (layer->opacity() < 1.0) {
+                    auto *effect = new QGraphicsOpacityEffect();
+                    effect->setOpacity(layer->opacity());
+                    item->setGraphicsEffect(effect);
                 }
                 break; }
             default:
