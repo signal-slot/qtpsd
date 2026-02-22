@@ -12,7 +12,7 @@
 
 #include <QtPsdGui/QPsdAbstractLayerItem>
 #include <QtGui/QPainter>
-#include <QtWidgets/QGraphicsOpacityEffect>
+#include <QtWidgets/QGraphicsEffect>
 #include <QtWidgets/QGraphicsPixmapItem>
 
 QT_BEGIN_NAMESPACE
@@ -209,6 +209,14 @@ void QPsdScene::reset()
 
             if (groupMode != QPainter::CompositionMode_SourceOver) {
                 item->setGroupCompositionMode(groupMode);
+            }
+
+            // Apply layer blur as a graphics effect
+            if (layer->layerBlur() > 0 && !item->graphicsEffect()) {
+                auto *blurEffect = new QGraphicsBlurEffect();
+                blurEffect->setBlurRadius(layer->layerBlur());
+                blurEffect->setBlurHints(QGraphicsBlurEffect::QualityHint);
+                item->setGraphicsEffect(blurEffect);
             }
 
             if (parent == nullptr) {
