@@ -241,12 +241,18 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
                 element->modifiers.append(u".multilineTextAlignment(%1)"_s.arg(hAlign));
         }
 
-        if (run.font.bold()) {
+        if (run.font.bold() || run.fauxBold)
             element->modifiers.append(".fontWeight(.bold)");
-        }
-        if (run.font.italic()) {
+        if (run.font.italic() || run.fauxItalic)
             element->modifiers.append(".italic()");
-        }
+        if (run.underline)
+            element->modifiers.append(".underline()");
+        if (run.strikethrough)
+            element->modifiers.append(".strikethrough()");
+        if (run.fontCaps == 1)
+            element->modifiers.append(".textCase(.lowercase)");
+        else if (run.fontCaps == 2)
+            element->modifiers.append(".textCase(.uppercase)");
     } else {
         // Multiple runs - use VStack with HStack
         element->type = "VStack";
@@ -278,12 +284,18 @@ bool QPsdExporterSwiftUIPlugin::outputText(const QModelIndex &textIndex, Element
                     .arg(qRound(run.font.pointSizeF() * fontScaleFactor)));
                 textElement.modifiers.append(u".foregroundStyle(%1)"_s.arg(colorValue(run.color)));
 
-                if (run.font.bold()) {
+                if (run.font.bold() || run.fauxBold)
                     textElement.modifiers.append(".fontWeight(.bold)");
-                }
-                if (run.font.italic()) {
+                if (run.font.italic() || run.fauxItalic)
                     textElement.modifiers.append(".italic()");
-                }
+                if (run.underline)
+                    textElement.modifiers.append(".underline()");
+                if (run.strikethrough)
+                    textElement.modifiers.append(".strikethrough()");
+                if (run.fontCaps == 1)
+                    textElement.modifiers.append(".textCase(.lowercase)");
+                else if (run.fontCaps == 2)
+                    textElement.modifiers.append(".textCase(.uppercase)");
 
                 currentHStack.children.append(textElement);
             }

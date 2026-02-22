@@ -21,6 +21,23 @@ public:
         QColor color;
         Qt::Alignment alignment = Qt::AlignVCenter;
         qreal lineHeight = -1;  // px; -1 = use QFontMetrics::height()
+
+        // Character-level properties
+        bool fauxBold = false;
+        bool fauxItalic = false;
+        bool underline = false;
+        bool strikethrough = false;
+        int fontCaps = 0;          // 0=none, 1=smallCaps, 2=allCaps
+        qreal baselineShift = 0;   // scaled points; positive = up
+        qreal horizontalScale = 1.0; // 1.0 = 100%
+        qreal verticalScale = 1.0;   // 1.0 = 100%
+
+        // Paragraph-level properties
+        qreal firstLineIndent = 0;  // scaled points
+        qreal startIndent = 0;      // scaled points
+        qreal endIndent = 0;        // scaled points
+        qreal spaceBefore = 0;      // scaled points
+        qreal spaceAfter = 0;       // scaled points
     };
     enum class TextType {
         PointText,

@@ -147,12 +147,18 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
         element->styles.append({"fontSize"_L1, qRound(run.font.pointSizeF() * fontScaleFactor)});
         element->styles.append({"color"_L1, colorValue(run.color)});
 
-        if (run.font.bold()) {
+        if (run.font.bold() || run.fauxBold) {
             element->styles.append({"fontWeight"_L1, "'bold'"_L1});
         }
-        if (run.font.italic()) {
+        if (run.font.italic() || run.fauxItalic) {
             element->styles.append({"fontStyle"_L1, "'italic'"_L1});
         }
+        if (run.underline)
+            element->styles.append({"textDecorationLine"_L1, "'underline'"_L1});
+        if (run.strikethrough)
+            element->styles.append({"textDecorationLine"_L1, "'line-through'"_L1});
+        if (run.fontCaps == 2)
+            element->styles.append({"textTransform"_L1, "'uppercase'"_L1});
 
         element->styles.append({"textAlign"_L1,
             horizontalAlignmentString(run.alignment, {"'left'"_L1, "'right'"_L1, "'center'"_L1, "'justify'"_L1})});
@@ -172,12 +178,18 @@ bool QPsdExporterReactNativePlugin::outputText(const QModelIndex &textIndex, Ele
                 textElement.styles.append({"fontFamily"_L1, u"'%1'"_s.arg(run.font.family())});
                 textElement.styles.append({"fontSize"_L1, qRound(run.font.pointSizeF() * fontScaleFactor)});
                 textElement.styles.append({"color"_L1, colorValue(run.color)});
-                if (run.font.bold()) {
+                if (run.font.bold() || run.fauxBold) {
                     textElement.styles.append({"fontWeight"_L1, "'bold'"_L1});
                 }
-                if (run.font.italic()) {
+                if (run.font.italic() || run.fauxItalic) {
                     textElement.styles.append({"fontStyle"_L1, "'italic'"_L1});
                 }
+                if (run.underline)
+                    textElement.styles.append({"textDecorationLine"_L1, "'underline'"_L1});
+                if (run.strikethrough)
+                    textElement.styles.append({"textDecorationLine"_L1, "'line-through'"_L1});
+                if (run.fontCaps == 2)
+                    textElement.styles.append({"textTransform"_L1, "'uppercase'"_L1});
                 element->children.append(textElement);
             }
         }

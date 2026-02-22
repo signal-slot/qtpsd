@@ -2,14 +2,11 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 #include "qpsdtextitem.h"
-#include "qpsdblur_p.h"
 
-#include <QtCore/QCborMap>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
 #include <QtGui/QScreen>
 #include <QtGui/QWindow>
-#include <QtMath>
 
 QT_BEGIN_NAMESPACE
 
@@ -76,20 +73,6 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         painter->setOpacity(layer->opacity() * layer->fillOpacity());
     }
 
-    // Drop shadow support: redirect drawing to temp image if shadow present
-    const auto shadowMap = layer->dropShadow();
-    const bool hasShadow = !shadowMap.isEmpty() && !useCustomBlend;
-    QImage shadowTextImage;
-    QPainter shadowTextPainter;
-    if (hasShadow) {
-        const QRectF br = boundingRect();
-        shadowTextImage = QImage(br.size().toSize(), QImage::Format_ARGB32);
-        shadowTextImage.fill(Qt::transparent);
-        shadowTextPainter.begin(&shadowTextImage);
-        shadowTextPainter.setRenderHints(p->renderHints());
-        p = &shadowTextPainter;
-    }
-
     const bool isPointText = (layer->textType() == QPsdTextLayerItem::TextType::PointText);
     const bool hasParagraphFrame = !isPointText && !layer->textFrame().isEmpty();
 
@@ -101,6 +84,16 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         Qt::Alignment alignment;
         qreal width;
         qreal lineHeight = -1;
+        qreal baselineShift = 0;
+        qreal horizontalScale = 1.0;
+        qreal verticalScale = 1.0;
+        int fontCaps = 0;
+        bool fauxItalic = false;
+        qreal spaceBefore = 0;
+        qreal spaceAfter = 0;
+        qreal firstLineIndent = 0;
+        qreal startIndent = 0;
+        qreal endIndent = 0;
     };
 
     // Split runs into lines by newlines
@@ -122,13 +115,42 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             const qreal dpiScale = QGuiApplication::primaryScreen()->logicalDotsPerInchY() / 72.0;
             chunk.font.setPointSizeF(run.font.pointSizeF() / dpiScale);
             chunk.font.setStyleStrategy(QFont::PreferTypoLineMetrics);
+
+            // Apply faux styles to font
+            if (run.fauxBold)
+                chunk.font.setWeight(QFont::Bold);
+            // Faux italic: use shear transform like Photoshop, not font italic
+            // (Photoshop shears regular glyphs; Qt italic loads different glyphs)
+            chunk.fauxItalic = run.fauxItalic;
+            if (run.underline)
+                chunk.font.setUnderline(true);
+            if (run.strikethrough)
+                chunk.font.setStrikeOut(true);
+
             chunk.color = run.color;
             chunk.text = part;
             chunk.alignment = run.alignment;
+
+            // Apply allCaps text transform
+            if (run.fontCaps == 2)
+                chunk.text = chunk.text.toUpper();
+
             if (run.lineHeight > 0)
                 chunk.lineHeight = run.lineHeight / dpiScale;
+
+            // Copy scaled properties (already in scaled points, divide by dpiScale)
+            chunk.baselineShift = run.baselineShift / dpiScale;
+            chunk.horizontalScale = run.horizontalScale;
+            chunk.verticalScale = run.verticalScale;
+            chunk.fontCaps = run.fontCaps;
+            chunk.spaceBefore = run.spaceBefore / dpiScale;
+            chunk.spaceAfter = run.spaceAfter / dpiScale;
+            chunk.firstLineIndent = run.firstLineIndent / dpiScale;
+            chunk.startIndent = run.startIndent / dpiScale;
+            chunk.endIndent = run.endIndent / dpiScale;
+
             p->setFont(chunk.font);
-            chunk.width = p->fontMetrics().horizontalAdvance(part);
+            chunk.width = p->fontMetrics().horizontalAdvance(chunk.text) * chunk.horizontalScale;
             currentLine.append(chunk);
         }
     }
@@ -151,11 +173,19 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         const qreal anchorX = layer->textOrigin().x() - layer->rect().left();
         qreal baselineY = layer->textOrigin().y() - layer->rect().top();
 
+        bool firstLine = true;
         for (const auto &line : lines) {
             const qreal lineAdvance = (!line.isEmpty() && line.first().lineHeight > 0)
                 ? line.first().lineHeight : fm.height();
+
+            // Add spaceBefore at paragraph boundaries (each line after a newline split)
+            if (!firstLine && !line.isEmpty()) {
+                baselineY += line.first().spaceBefore;
+            }
+
             if (line.isEmpty()) {
                 baselineY += lineAdvance;
+                firstLine = false;
                 continue;
             }
 
@@ -175,10 +205,58 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             for (const auto &chunk : line) {
                 p->setFont(chunk.font);
                 p->setPen(chunk.color);
-                p->drawText(QPointF(x, baselineY), chunk.text);
-                x += p->fontMetrics().horizontalAdvance(chunk.text);
+                const qreal adjustedY = baselineY - chunk.baselineShift;
+
+                // Photoshop faux italic: shear regular glyphs by ~12°
+                constexpr qreal fauxItalicShear = -0.2126; // tan(12°)
+                const bool needsTransform = chunk.fauxItalic || chunk.horizontalScale != 1.0;
+
+                if (chunk.fontCaps == 1) {
+                    // Small caps: draw character by character
+                    qreal cx = x;
+                    for (const QChar &ch : chunk.text) {
+                        QFont f = chunk.font;
+                        const QString drawChar = QString(ch.toUpper());
+                        if (ch.isLower())
+                            f.setPointSizeF(f.pointSizeF() * 0.7);
+                        p->setFont(f);
+                        if (needsTransform) {
+                            p->save();
+                            p->translate(cx, adjustedY);
+                            if (chunk.fauxItalic)
+                                p->shear(fauxItalicShear, 0);
+                            if (chunk.horizontalScale != 1.0)
+                                p->scale(chunk.horizontalScale, 1.0);
+                            p->drawText(QPointF(0, 0), drawChar);
+                            p->restore();
+                        } else {
+                            p->drawText(QPointF(cx, adjustedY), drawChar);
+                        }
+                        cx += QFontMetricsF(f).horizontalAdvance(drawChar) * chunk.horizontalScale;
+                    }
+                    x = cx;
+                } else if (needsTransform) {
+                    p->save();
+                    p->translate(x, adjustedY);
+                    if (chunk.fauxItalic)
+                        p->shear(fauxItalicShear, 0);
+                    if (chunk.horizontalScale != 1.0)
+                        p->scale(chunk.horizontalScale, 1.0);
+                    p->drawText(QPointF(0, 0), chunk.text);
+                    p->restore();
+                    x += chunk.width;
+                } else {
+                    p->drawText(QPointF(x, adjustedY), chunk.text);
+                    x += chunk.width;
+                }
             }
             baselineY += lineAdvance;
+
+            // Add spaceAfter at the end of each line
+            if (!line.isEmpty())
+                baselineY += line.first().spaceAfter;
+
+            firstLine = false;
         }
     } else {
         // Paragraph text: draw line by line with proper Y advancement
@@ -199,106 +277,61 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
         }
 
         qreal currentY = drawTop;
-        for (const auto &line : lines) {
+        bool isFirstLineOfParagraph = true;
+        for (int i = 0; i < lines.size(); ++i) {
+            const auto &line = lines.at(i);
             const qreal lineAdvance = (!line.isEmpty() && line.first().lineHeight > 0)
                 ? line.first().lineHeight : fm.height();
             if (line.isEmpty()) {
                 currentY += lineAdvance;
+                isFirstLineOfParagraph = true;
                 continue;
             }
 
-            // Check if the line fits without wrapping
-            qreal totalLineWidth = 0;
+            const auto &firstChunk = line.first();
+
+            // Add spaceBefore at paragraph boundaries
+            if (isFirstLineOfParagraph)
+                currentY += firstChunk.spaceBefore;
+
+            // Calculate indent-adjusted rect
+            qreal indentLeft = firstChunk.startIndent;
+            qreal indentRight = firstChunk.endIndent;
+            if (isFirstLineOfParagraph)
+                indentLeft += firstChunk.firstLineIndent;
+            const QRectF lineRect(drawLeft + indentLeft, currentY,
+                                  drawWidth - indentLeft - indentRight, fm.height() * 100);
+
+            // Concatenate all chunks in the line (for wrapping to work correctly)
+            // and draw with the first chunk's style
+            // TODO: support mixed-style lines with wrapping
+            QString lineText;
             for (const auto &chunk : line)
-                totalLineWidth += chunk.width;
+                lineText += chunk.text;
 
-            const auto hAlign = static_cast<Qt::Alignment>(line.first().alignment & Qt::AlignHorizontal_Mask);
+            // Apply allCaps for paragraph text as well (already applied in chunk creation)
+            const auto hAlign = static_cast<Qt::Alignment>(firstChunk.alignment & Qt::AlignHorizontal_Mask);
 
-            if (line.size() > 1 && totalLineWidth <= drawWidth) {
-                // Mixed-style line that fits: draw each chunk with its own style
-                qreal x = drawLeft;
-                if (hAlign == Qt::AlignHCenter)
-                    x = drawLeft + (drawWidth - totalLineWidth) / 2;
-                else if (hAlign == Qt::AlignRight)
-                    x = drawLeft + drawWidth - totalLineWidth;
-
-                for (const auto &chunk : line) {
-                    p->setFont(chunk.font);
-                    p->setPen(chunk.color);
-                    p->drawText(QPointF(x, currentY + QFontMetrics(chunk.font).ascent()), chunk.text);
-                    x += p->fontMetrics().horizontalAdvance(chunk.text);
-                }
-                currentY += lineAdvance;
-            } else {
-                // Single-style line or needs wrapping: draw as one block
-                QString lineText;
-                for (const auto &chunk : line)
-                    lineText += chunk.text;
-
-                const QRectF lineRect(drawLeft, currentY, drawWidth, fm.height() * 100);
-                p->setFont(line.first().font);
-                p->setPen(line.first().color);
-                QRectF boundingRect;
+            p->setFont(firstChunk.font);
+            p->setPen(firstChunk.color);
+            QRectF boundingRect;
+            if (firstChunk.fauxItalic) {
+                constexpr qreal fauxItalicShear = -0.2126;
+                p->save();
+                p->shear(fauxItalicShear, 0);
                 p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
-                currentY += boundingRect.height();
+                p->restore();
+            } else {
+                p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
             }
+            currentY += boundingRect.height();
+
+            // Add spaceAfter at end of paragraph
+            currentY += firstChunk.spaceAfter;
+
+            // Next line after a newline boundary is a new paragraph
+            isFirstLineOfParagraph = true;
         }
-    }
-
-    // Draw drop shadow and text from temp image
-    if (hasShadow && !shadowTextImage.isNull()) {
-        shadowTextPainter.end();
-
-        const QColor shadowColor(shadowMap.value(QLatin1String("color")).toString());
-        const qreal shadowOpacity = shadowMap.value(QLatin1String("opacity")).toDouble(1.0);
-        const qreal angle = shadowMap.value(QLatin1String("angle")).toDouble(0);
-        const qreal distance = shadowMap.value(QLatin1String("distance")).toDouble(0);
-        const qreal blur = shadowMap.value(QLatin1String("size")).toDouble(0);
-
-        const qreal angleRad = qDegreesToRadians(angle);
-        const QPointF offset(qCos(angleRad) * distance, qSin(angleRad) * distance);
-
-        // Create shadow image from text alpha
-        // Fill ALL pixels with shadow color RGB, keeping their alpha
-        // This prevents black-fringe artifacts when blur spreads alpha
-        // into previously-transparent (black RGB) pixels
-        QImage shadowImage = shadowTextImage;
-        for (int y = 0; y < shadowImage.height(); ++y) {
-            QRgb *scanLine = reinterpret_cast<QRgb *>(shadowImage.scanLine(y));
-            for (int x = 0; x < shadowImage.width(); ++x) {
-                scanLine[x] = qRgba(shadowColor.red(), shadowColor.green(), shadowColor.blue(),
-                                     qAlpha(scanLine[x]));
-            }
-        }
-
-        // Apply blur (3-pass box blur approximates gaussian)
-        const QColor transparentShadow(shadowColor.red(), shadowColor.green(), shadowColor.blue(), 0);
-        if (blur > 0) {
-            const int blurRadius = qMax(1, static_cast<int>(blur));
-            const int margin = blurRadius * 2;
-            QImage expanded(shadowImage.width() + margin * 2,
-                            shadowImage.height() + margin * 2,
-                            QImage::Format_ARGB32);
-            expanded.fill(transparentShadow);
-            QPainter ep(&expanded);
-            ep.drawImage(margin, margin, shadowImage);
-            ep.end();
-            boxBlurAlpha(expanded, blurRadius);
-            boxBlurAlpha(expanded, blurRadius);
-            boxBlurAlpha(expanded, blurRadius);
-            painter->save();
-            painter->setOpacity(shadowOpacity);
-            painter->drawImage(offset.toPoint() - QPoint(margin, margin), expanded);
-            painter->restore();
-        } else {
-            painter->save();
-            painter->setOpacity(shadowOpacity);
-            painter->drawImage(offset.toPoint(), shadowImage);
-            painter->restore();
-        }
-
-        // Draw the text on top of the shadow
-        painter->drawImage(0, 0, shadowTextImage);
     }
 
     // Blend temp image back to backbuffer using custom blend mode

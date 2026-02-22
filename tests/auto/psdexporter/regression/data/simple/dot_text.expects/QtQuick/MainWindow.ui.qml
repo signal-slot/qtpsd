@@ -16,13 +16,13 @@ Item {
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 44
+            height: 33
             horizontalAlignment: Text.AlignHCenter
             text: "."
             verticalAlignment: Text.AlignVCenter
             width: 9
             x: 125
-            y: 71
+            y: 79
         }
     }
 }

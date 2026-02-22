@@ -80,37 +80,61 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     const auto runArray = styleRun.value("RunArray"_L1).toArray();
     const auto runLengthArray = styleRun.value("RunLengthArray"_L1).toArray();
 
-    // Parse paragraph-level alignment for horizontal alignment
+    // Parse paragraph-level properties (alignment, indents, spacing, auto-leading)
     const auto paragraphRun = engineDict.value("ParagraphRun"_L1).toMap();
     const auto paragraphRunArray = paragraphRun.value("RunArray"_L1).toArray();
-    Qt::Alignment defaultHorizontalAlignment = Qt::AlignLeft; // Default to left alignment
+    const auto paragraphRunLengthArray = paragraphRun.value("RunLengthArray"_L1).toArray();
 
-    if (!paragraphRunArray.isEmpty()) {
-        const auto firstParagraph = paragraphRunArray.first().toMap();
-        const auto paragraphSheet = firstParagraph.value("ParagraphSheet"_L1).toMap();
-        const auto paragraphProperties = paragraphSheet.value("Properties"_L1).toMap();
+    struct ParagraphProps {
+        Qt::Alignment alignment = Qt::AlignLeft;
+        qreal autoLeadingRatio = 1.2;
+        qreal firstLineIndent = 0;
+        qreal startIndent = 0;
+        qreal endIndent = 0;
+        qreal spaceBefore = 0;
+        qreal spaceAfter = 0;
+    };
+    QList<ParagraphProps> paragraphPropsList;
+    QList<int> paragraphStartPositions;
+    {
+        int pos = 0;
+        const int paraCount = qMin(paragraphRunLengthArray.size(), paragraphRunArray.size());
+        for (int pi = 0; pi < paraCount; pi++) {
+            ParagraphProps pp;
+            const auto para = paragraphRunArray.at(pi).toMap();
+            const auto paragraphSheet = para.value("ParagraphSheet"_L1).toMap();
+            const auto props = paragraphSheet.value("Properties"_L1).toMap();
 
-        if (paragraphProperties.contains("Justification"_L1)) {
-            const auto justification = paragraphProperties.value("Justification"_L1).toInteger();
-            switch (justification) {
-            case 0: // left
-                defaultHorizontalAlignment = Qt::AlignLeft;
-                break;
-            case 1: // right
-                defaultHorizontalAlignment = Qt::AlignRight;
-                break;
-            case 2: // center
-                defaultHorizontalAlignment = Qt::AlignHCenter;
-                break;
-            case 3: // justify
-                defaultHorizontalAlignment = Qt::AlignJustify;
-                break;
-            default:
-                qDebug() << "Unknown justification:" << justification;
-                break;
+            if (props.contains("Justification"_L1)) {
+                switch (props.value("Justification"_L1).toInteger()) {
+                case 0: pp.alignment = Qt::AlignLeft; break;
+                case 1: pp.alignment = Qt::AlignRight; break;
+                case 2: pp.alignment = Qt::AlignHCenter; break;
+                default: pp.alignment = Qt::AlignJustify; break; // 3-6: justify variants
+                }
             }
+            if (props.contains("AutoLeading"_L1))
+                pp.autoLeadingRatio = props.value("AutoLeading"_L1).toDouble();
+            pp.firstLineIndent = props.value("FirstLineIndent"_L1).toDouble() * transform.m22();
+            pp.startIndent = props.value("StartIndent"_L1).toDouble() * transform.m22();
+            pp.endIndent = props.value("EndIndent"_L1).toDouble() * transform.m22();
+            pp.spaceBefore = props.value("SpaceBefore"_L1).toDouble() * transform.m22();
+            pp.spaceAfter = props.value("SpaceAfter"_L1).toDouble() * transform.m22();
+
+            paragraphStartPositions.append(pos);
+            paragraphPropsList.append(pp);
+            pos += qMax(0, paragraphRunLengthArray.at(pi).toInteger());
         }
     }
+
+    auto findParagraphProps = [&](int textPosition) -> const ParagraphProps& {
+        for (int i = paragraphStartPositions.size() - 1; i >= 0; i--) {
+            if (textPosition >= paragraphStartPositions.at(i))
+                return paragraphPropsList.at(i);
+        }
+        static const ParagraphProps defaultProps;
+        return paragraphPropsList.isEmpty() ? defaultProps : paragraphPropsList.first();
+    };
 
     const QCborMap baseStyleSheetData =
         styleSheetSet.isEmpty()
@@ -165,14 +189,40 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
         }
         const auto fontSize = styleSheetData.value("FontSize"_L1).toDouble();
         run.font.setPointSizeF(transform.m22() * fontSize);
+
+        // Character-level properties
+        run.fauxBold = styleSheetData.value("FauxBold"_L1).toBool();
+        run.fauxItalic = styleSheetData.value("FauxItalic"_L1).toBool();
+        run.underline = styleSheetData.value("Underline"_L1).toBool();
+        run.strikethrough = styleSheetData.value("Strikethrough"_L1).toBool();
+        run.fontCaps = styleSheetData.value("FontCaps"_L1).toInteger();
+        run.baselineShift = styleSheetData.value("BaselineShift"_L1).toDouble() * transform.m22();
+        run.horizontalScale = styleSheetData.value("HorizontalScale"_L1).toDouble(1.0);
+        run.verticalScale = styleSheetData.value("VerticalScale"_L1).toDouble(1.0);
+
+        // Paragraph lookup and leading
+        const auto &paraProps = findParagraphProps(start);
+        const auto autoLeadingBool = styleSheetData.value("AutoLeading"_L1).toBool();
+        if (!autoLeadingBool && styleSheetData.contains("Leading"_L1)) {
+            run.lineHeight = styleSheetData.value("Leading"_L1).toDouble() * transform.m22();
+        }
+        // When AutoLeading is true (default), leave lineHeight as -1
+        // so the renderer uses Qt's QFontMetrics::height() which gives
+        // better results than computing fontSize * autoLeadingRatio
+
         const auto runLength = qMax(0, runLengthArray.at(i).toInteger());
         // replace 0x03 (ETX) to newline for Shift+Enter in Photoshop
         // https://community.adobe.com/t5/photoshop-ecosystem-discussions/replacing-quot-shift-enter-quot-aka-etx-aka-lt-0x03-gt-aka-end-of-transmission-character-within-text/td-p/12517124
         run.text = text.mid(start, runLength).replace('\x03'_L1, '\n'_L1);
         start += runLength;
 
-        // Set horizontal alignment from paragraph justification
-        run.alignment = defaultHorizontalAlignment;
+        // Set alignment and paragraph properties
+        run.alignment = paraProps.alignment;
+        run.firstLineIndent = paraProps.firstLineIndent;
+        run.startIndent = paraProps.startIndent;
+        run.endIndent = paraProps.endIndent;
+        run.spaceBefore = paraProps.spaceBefore;
+        run.spaceAfter = paraProps.spaceAfter;
 
         // Parse vertical alignment from StyleRunAlignment
         if (styleSheetData.contains("StyleRunAlignment"_L1)) {
@@ -208,7 +258,7 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
 
     if (d->runs.isEmpty() && !text.isEmpty()) {
         appendFallbackRun(text);
-        d->runs.last().alignment = defaultHorizontalAlignment | Qt::AlignVCenter;
+        d->runs.last().alignment = findParagraphProps(0).alignment | Qt::AlignVCenter;
     }
 
     if (d->runs.isEmpty())
@@ -223,7 +273,16 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
                 previousRun = run;
                 continue;
             }
-            if (previousRun.font.toString() == run.font.toString() && previousRun.color == run.color && previousRun.alignment == run.alignment) {
+            if (previousRun.font.toString() == run.font.toString() && previousRun.color == run.color && previousRun.alignment == run.alignment
+                && previousRun.lineHeight == run.lineHeight
+                && previousRun.fauxBold == run.fauxBold && previousRun.fauxItalic == run.fauxItalic
+                && previousRun.underline == run.underline && previousRun.strikethrough == run.strikethrough
+                && previousRun.fontCaps == run.fontCaps
+                && previousRun.baselineShift == run.baselineShift
+                && previousRun.horizontalScale == run.horizontalScale && previousRun.verticalScale == run.verticalScale
+                && previousRun.firstLineIndent == run.firstLineIndent && previousRun.startIndent == run.startIndent
+                && previousRun.endIndent == run.endIndent
+                && previousRun.spaceBefore == run.spaceBefore && previousRun.spaceAfter == run.spaceAfter) {
                 previousRun.text += run.text;
             } else {
                 runs.append(previousRun);

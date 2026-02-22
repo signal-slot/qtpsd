@@ -26,19 +26,19 @@ Item {
             color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 44
+            height: 33
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
             verticalAlignment: Text.AlignVCenter
             width: 160
             x: 2
-            y: 1
+            y: 9
         }
         Item {
-            height: 44
+            height: 33
             width: 144
             x: 169
-            y: 1
+            y: 9
             Column {
                 anchors.centerIn: parent
                 RowLayout {
@@ -100,13 +100,13 @@ Item {
             color: "#ffeac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 30
-            height: 44
+            height: 33
             horizontalAlignment: Text.AlignHCenter
             text: "Shift\n+改行"
             verticalAlignment: Text.AlignVCenter
             width: 86
             x: 25
-            y: 101
+            y: 109
         }
         Text {
             color: "#ffeac3c3"

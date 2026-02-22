@@ -422,10 +422,17 @@ bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run r
     textStyleElement.properties.insert("fontFamily",  u"\"%1\""_s.arg(run.font.family()));
     textStyleElement.properties.insert("fontSize", run.font.pointSizeF() * fontScaleFactor);
     textStyleElement.properties.insert("height", 1.0);
-    int weight = run.font.bold() ? 800 : 600;
+    int weight = (run.font.bold() || run.fauxBold) ? 800 : 600;
     textStyleElement.properties.insert("fontVariations", u"[FontVariation.weight(%1)]"_s.arg(weight));
-    //TODO italic
+    if (run.fauxItalic)
+        textStyleElement.properties.insert("fontStyle", "FontStyle.italic"_L1);
     textStyleElement.properties.insert("color", colorValue(run.color));
+    if (run.underline && run.strikethrough)
+        textStyleElement.properties.insert("decoration", "TextDecoration.combine([TextDecoration.underline, TextDecoration.lineThrough])"_L1);
+    else if (run.underline)
+        textStyleElement.properties.insert("decoration", "TextDecoration.underline"_L1);
+    else if (run.strikethrough)
+        textStyleElement.properties.insert("decoration", "TextDecoration.lineThrough"_L1);
     
     element->properties.insert("textAlign"_L1,
         horizontalAlignmentString(run.alignment, {"TextAlign.left"_L1, "TextAlign.right"_L1, "TextAlign.center"_L1, "TextAlign.justify"_L1}));

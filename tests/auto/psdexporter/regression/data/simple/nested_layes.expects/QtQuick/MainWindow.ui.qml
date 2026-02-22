@@ -61,13 +61,13 @@ Item {
                 color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
-                height: 44
+                height: 33
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50
-                y: 54
+                y: 62
             }
         }
         Item {
@@ -119,13 +119,13 @@ Item {
                 color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
-                height: 44
+                height: 33
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
                 width: 160
                 x: 50
-                y: 134
+                y: 142
             }
         }
     }

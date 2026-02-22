@@ -536,10 +536,20 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
-        if (run.font.bold())
+        if (run.font.bold() || run.fauxBold)
             element->properties.insert("font.bold", true);
-        if (run.font.italic())
+        if (run.font.italic() || run.fauxItalic)
             element->properties.insert("font.italic", true);
+        if (run.underline)
+            element->properties.insert("font.underline", true);
+        if (run.strikethrough)
+            element->properties.insert("font.strikeout", true);
+        if (run.fontCaps == 1)
+            element->properties.insert("font.capitalization", "Font.SmallCaps"_L1);
+        else if (run.fontCaps == 2)
+            element->properties.insert("font.capitalization", "Font.AllUppercase"_L1);
+        if (run.lineHeight > 0)
+            element->properties.insert("lineHeight", run.lineHeight / run.font.pointSizeF());
         element->properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
         element->properties.insert("horizontalAlignment",
             horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
@@ -591,10 +601,20 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 textElement.properties.insert("text", u"\"%1\""_s.arg(text));
                 textElement.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
-                if (run.font.bold())
+                if (run.font.bold() || run.fauxBold)
                     textElement.properties.insert("font.bold", true);
-                if (run.font.italic())
+                if (run.font.italic() || run.fauxItalic)
                     textElement.properties.insert("font.italic", true);
+                if (run.underline)
+                    textElement.properties.insert("font.underline", true);
+                if (run.strikethrough)
+                    textElement.properties.insert("font.strikeout", true);
+                if (run.fontCaps == 1)
+                    textElement.properties.insert("font.capitalization", "Font.SmallCaps"_L1);
+                else if (run.fontCaps == 2)
+                    textElement.properties.insert("font.capitalization", "Font.AllUppercase"_L1);
+                if (run.lineHeight > 0)
+                    textElement.properties.insert("lineHeight", run.lineHeight / run.font.pointSizeF());
                 textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
                 textElement.properties.insert("Layout.fillHeight", true);
                 if (isParagraph) {
