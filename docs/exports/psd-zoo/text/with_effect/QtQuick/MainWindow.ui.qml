@@ -12,6 +12,7 @@ Item {
         y: 0
     }
     Text {
+        clip: true
         color: "#ffc83232"
         font.family: "Roboto"
         font.pixelSize: 48

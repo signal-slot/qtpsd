@@ -22,6 +22,8 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
+        layer.enabled: true
+        property string blendMode: "lighterColor"
         source: "images/lighter_color.png"
         width: 200
         x: 0

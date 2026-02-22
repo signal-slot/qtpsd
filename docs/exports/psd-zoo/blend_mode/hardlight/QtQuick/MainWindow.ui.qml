@@ -14,6 +14,8 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
+        layer.enabled: true
+        property string blendMode: "hardLight"
         source: "images/hard_light_layer.png"
         width: 200
         x: 0

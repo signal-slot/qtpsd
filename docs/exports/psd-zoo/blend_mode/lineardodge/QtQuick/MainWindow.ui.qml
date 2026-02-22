@@ -14,6 +14,8 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
+        layer.enabled: true
+        property string blendMode: "linearDodge"
         source: "images/linear_dodge_layer.png"
         width: 200
         x: 0
