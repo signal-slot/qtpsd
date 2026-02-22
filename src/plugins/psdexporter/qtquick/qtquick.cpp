@@ -218,52 +218,57 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
         const bool isShapeLayer = dynamic_cast<const QPsdShapeLayerItem *>(item) != nullptr;
         const auto mask = item->vectorMask();
         if (mask.type != QPsdAbstractLayerItem::PathInfo::None && !isShapeLayer) {
-            Element effect;
-            if (effectMode() == Qt5Effects) {
-                imports->insert("Qt5Compat.GraphicalEffects as GE");
-                effect.type = "GE.OpacityMask";
+            // Simple filled rectangle with no radius → use clip: true (lightweight)
+            const bool filled = (mask.rect.topLeft() == QPointF(0, 0) && mask.rect.size() == item->rect().size());
+            if (filled && mask.type == QPsdAbstractLayerItem::PathInfo::Rectangle && mask.radius <= 0) {
+                element->properties.insert("clip"_L1, true);
             } else {
-                imports->insert("QtQuick.Effects");
-                effect.type = "MultiEffect";
-                effect.properties.insert("maskEnabled", true);
-            }
-            switch (mask.type) {
-            case QPsdAbstractLayerItem::PathInfo::Rectangle:
-            case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
-                bool filled = (mask.rect.topLeft() == QPointF(0, 0) && mask.rect.size() == item->rect().size());
-                Element maskSource;
-                Element rectangle;
-                if (!filled) {
-                    maskSource.type = "maskSource: Item";
-                    maskSource.properties.insert("width", item->rect().width() * horizontalScale);
-                    maskSource.properties.insert("height", item->rect().height() * verticalScale);
-                    rectangle.type = "Rectangle";
+                Element effect;
+                if (effectMode() == Qt5Effects) {
+                    imports->insert("Qt5Compat.GraphicalEffects as GE");
+                    effect.type = "GE.OpacityMask";
                 } else {
-                    rectangle.type = "maskSource: Rectangle";
+                    imports->insert("QtQuick.Effects");
+                    effect.type = "MultiEffect";
+                    effect.properties.insert("maskEnabled", true);
                 }
-                if (mask.radius > 0)
-                    rectangle.properties.insert("radius", mask.radius * unitScale);
-                outputRect(mask.rect, &rectangle);
-                if (!filled) {
-                    maskSource.children.append(rectangle);
+                switch (mask.type) {
+                case QPsdAbstractLayerItem::PathInfo::Rectangle:
+                case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
+                    Element maskSource;
+                    Element rectangle;
+                    if (!filled) {
+                        maskSource.type = "maskSource: Item";
+                        maskSource.properties.insert("width", item->rect().width() * horizontalScale);
+                        maskSource.properties.insert("height", item->rect().height() * verticalScale);
+                        rectangle.type = "Rectangle";
+                    } else {
+                        rectangle.type = "maskSource: Rectangle";
+                    }
+                    if (mask.radius > 0)
+                        rectangle.properties.insert("radius", mask.radius * unitScale);
+                    outputRect(mask.rect, &rectangle);
+                    if (!filled) {
+                        maskSource.children.append(rectangle);
+                        effect.children.append(maskSource);
+                    } else {
+                        effect.children.append(rectangle);
+                    }
+                    break; }
+                case QPsdAbstractLayerItem::PathInfo::Path: {
+                    imports->insert("QtQuick.Shapes");
+                    Element maskSource;
+                    maskSource.type = "maskSource: Shape";
+                    Element shapePath;
+                    shapePath.type = "ShapePath";
+                    if (!outputPath(mask.path, &shapePath))
+                        return false;
+                    maskSource.children.append(shapePath);
                     effect.children.append(maskSource);
-                } else {
-                    effect.children.append(rectangle);
+                    break; }
                 }
-                break; }
-            case QPsdAbstractLayerItem::PathInfo::Path: {
-                imports->insert("QtQuick.Shapes");
-                Element maskSource;
-                maskSource.type = "maskSource: Shape";
-                Element shapePath;
-                shapePath.type = "ShapePath";
-                if (!outputPath(mask.path, &shapePath))
-                    return false;
-                maskSource.children.append(shapePath);
-                effect.children.append(maskSource);
-                break; }
+                element->layers.append(effect);
             }
-            element->layers.append(effect);
         }
 
         const auto shadow = parseDropShadow(item->dropShadow());
