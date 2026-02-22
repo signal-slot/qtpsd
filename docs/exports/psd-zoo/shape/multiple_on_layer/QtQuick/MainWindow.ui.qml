@@ -19,9 +19,14 @@ Item {
         y: 29
         ShapePath {
             fillColor: "#ffff8000"
+            strokeColor: "transparent"
+            strokeWidth: 1
+        }
+        ShapePath {
+            fillColor: "#ffff8000"
             fillRule: ShapePath.OddEvenFill
             strokeColor: "transparent"
-            strokeWidth: 0
+            strokeWidth: 1
             PathMove {
                 x: 0.999999
                 y: 0.999995

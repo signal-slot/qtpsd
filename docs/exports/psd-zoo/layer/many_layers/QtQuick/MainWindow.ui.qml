@@ -12,7 +12,6 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ffff0000"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -25,7 +24,6 @@ Item {
         y: 5
     }
     Text {
-        clip: true
         color: "#ff00ff00"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -38,7 +36,6 @@ Item {
         y: 30
     }
     Text {
-        clip: true
         color: "#ff0000ff"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -51,7 +48,6 @@ Item {
         y: 55
     }
     Text {
-        clip: true
         color: "#ffff8000"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -64,7 +60,6 @@ Item {
         y: 80
     }
     Text {
-        clip: true
         color: "#ff8000ff"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -77,7 +72,6 @@ Item {
         y: 105
     }
     Text {
-        clip: true
         color: "#ff008080"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -90,7 +84,6 @@ Item {
         y: 130
     }
     Text {
-        clip: true
         color: "#ff808000"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -103,7 +96,6 @@ Item {
         y: 155
     }
     Text {
-        clip: true
         color: "#ff404040"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -116,7 +108,6 @@ Item {
         y: 180
     }
     Text {
-        clip: true
         color: "#ffc000c0"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -129,7 +120,6 @@ Item {
         y: 205
     }
     Text {
-        clip: true
         color: "#ff00c000"
         font.family: "Roboto"
         font.pixelSize: 14

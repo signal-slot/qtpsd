@@ -12,7 +12,6 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
@@ -25,7 +24,6 @@ Item {
         y: 25
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
@@ -38,7 +36,6 @@ Item {
         y: 125
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24

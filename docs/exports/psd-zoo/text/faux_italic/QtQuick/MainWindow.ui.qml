@@ -12,9 +12,9 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
+        font.italic: true
         font.pixelSize: 30
         height: 39
         horizontalAlignment: Text.AlignLeft

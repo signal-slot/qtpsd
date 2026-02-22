@@ -28,7 +28,7 @@ class MainWindow extends StatelessWidget {
             top: 0,
             width: 200,
             child: Container(
-              decoration: BoxDecoration(
+              decoration: (
                 gradient: LinearGradient(
                   begin: Alignment(0, 1),
                   colors: [

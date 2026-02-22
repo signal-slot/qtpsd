@@ -22,9 +22,7 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
-        layer.enabled: true
         opacity: 0.352357
-        property string blendMode: "overlay"
         source: "images/combined.png"
         width: 200
         x: 0

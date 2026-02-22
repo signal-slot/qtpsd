@@ -38,7 +38,6 @@ Item {
             }
         }
         Text {
-            clip: true
             color: "#ff1e1e1e"
             font.family: "Roboto"
             font.pixelSize: 20
@@ -51,7 +50,6 @@ Item {
             y: 59
         }
         Text {
-            clip: true
             color: "#ff505050"
             font.family: "Roboto"
             font.pixelSize: 12

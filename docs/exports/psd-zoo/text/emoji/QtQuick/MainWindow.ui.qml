@@ -13,7 +13,6 @@ Item {
         y: 0
     }
     Item {
-        clip: true
         height: 36
         width: 203
         x: 30

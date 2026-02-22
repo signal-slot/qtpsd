@@ -14,8 +14,6 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
-        layer.enabled: true
-        property string blendMode: "hue"
         source: "images/hue_layer.png"
         width: 200
         x: 0

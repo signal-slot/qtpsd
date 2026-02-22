@@ -22,8 +22,6 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
-        layer.enabled: true
-        property string blendMode: "darkerColor"
         source: "images/darker_color.png"
         width: 200
         x: 0

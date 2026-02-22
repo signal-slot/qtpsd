@@ -33,6 +33,7 @@ class MainWindow extends StatelessWidget {
               textScaler: TextScaler.linear(1),
               style: TextStyle(
                 color: Color.fromARGB(255, 0, 0, 0),
+                decoration: TextDecoration.lineThrough,
                 fontFamily: "Roboto",
                 fontSize: 30,
                 fontVariations: [FontVariation.weight(600)],

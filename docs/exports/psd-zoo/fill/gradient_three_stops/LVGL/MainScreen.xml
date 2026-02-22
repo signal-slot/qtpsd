@@ -2,6 +2,6 @@
 <component>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
     <lv_image height="200" src="background" width="300" x="0" y="0"/>
-    <lv_obj height="200" style_bg_color="0xff0000" style_bg_grad_color="0x0000ff" style_bg_grad_dir="hor" style_bg_grad_opa="255" style_bg_grad_stop="255" style_bg_main_stop="0" style_bg_opa="255" width="300" x="0" y="0"/>
+    <lv_image height="200" src="3_color_stops" width="300" x="0" y="0"/>
   </view>
 </component>

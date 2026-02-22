@@ -19,11 +19,11 @@ Item {
         gradient: Gradient {
             GradientStop {
                 color: "#ff000000"
-                position: 1
+                position: 0
             }
             GradientStop {
                 color: "#ffffffff"
-                position: 0
+                position: 1
             }
         }
     }

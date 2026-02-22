@@ -12,10 +12,10 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 36
+        font.underline: true
         height: 48
         horizontalAlignment: Text.AlignLeft
         text: "Underline"

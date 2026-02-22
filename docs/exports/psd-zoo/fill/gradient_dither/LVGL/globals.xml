@@ -2,5 +2,6 @@
 <globals>
   <images>
     <file name="background" src_path="A:images/background.png"/>
+    <file name="dithered_gradient" src_path="A:images/dithered_gradient.png"/>
   </images>
 </globals>

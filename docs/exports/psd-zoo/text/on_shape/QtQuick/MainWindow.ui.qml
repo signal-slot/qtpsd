@@ -25,7 +25,6 @@ Item {
         }
     }
     Text {
-        clip: true
         color: "#ffffffff"
         font.family: "Roboto"
         font.pixelSize: 24

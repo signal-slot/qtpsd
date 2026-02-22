@@ -12,12 +12,11 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 14
         height: 181
-        horizontalAlignment: Text.AlignLeft
+        horizontalAlignment: Text.AlignJustify
         text: "This text is fully justified including the last line of each paragraph."
         verticalAlignment: Text.AlignBottom
         width: 283
