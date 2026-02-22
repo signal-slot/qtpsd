@@ -12,6 +12,7 @@ Item {
         y: 0
     }
     Text {
+        clip: true
         color: "#ff000000"
         font.capitalization: Font.AllUppercase
         font.family: "Roboto"

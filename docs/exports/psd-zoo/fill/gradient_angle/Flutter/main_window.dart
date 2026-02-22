@@ -7,39 +7,38 @@ class MainWindow extends StatelessWidget {
   Widget build(BuildContext context) {
     return SizedBox(
       height: 200,
-      width: 300,
+      width: 200,
       child: Stack(
         children: [
           Positioned(
             height: 200,
             left: 0,
             top: 0,
-            width: 300,
+            width: 200,
             child: Image.asset(
               "assets/images/background.png", 
               fit: BoxFit.contain,
               height: 200,
-              width: 300,
+              width: 200,
             ),
           ),
           Positioned(
             height: 200,
             left: 0,
             top: 0,
-            width: 300,
+            width: 200,
             child: Container(
               decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment(1, 0),
+                gradient: SweepGradient(
+                  center: Alignment(0, 0),
                   colors: [
-                    Color.fromARGB(255, 255, 0, 0),
-                    Color.fromARGB(255, 0, 255, 0),
-                    Color.fromARGB(255, 0, 0, 255),
+                    Color.fromARGB(255, 255, 255, 0),
+                    Color.fromARGB(255, 0, 128, 0),
                   ],
-                  end: Alignment(-1, 0),
+                  endAngle: 6.28319,
+                  startAngle: 0,
                   stops: [
                     0,
-                    0.5,
                     1,
                   ],
                 ),

@@ -1,6 +1,4 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <globals>
-  <images>
-    <file name="layer_0" src_path="A:images/layer_0.png"/>
-  </images>
+  <images/>
 </globals>

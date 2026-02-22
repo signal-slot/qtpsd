@@ -14,6 +14,8 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
+        layer.enabled: true
+        property string blendMode: "multiply"
         source: "images/multiply_layer.png"
         width: 200
         x: 0
