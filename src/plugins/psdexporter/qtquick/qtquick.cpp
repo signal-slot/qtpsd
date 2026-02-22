@@ -629,18 +629,25 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
-                bool simpleVertical = linear->start().x() == linear->finalStop().x();
-                Element gradient;
-                gradient.type = "gradient: Gradient";
-                for (const auto &stop : linear->stops()) {
-                    Element stopElement;
-                    stopElement.type = "GradientStop";
-                    stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
-                    gradient.children.append(stopElement);
-                }
+                const bool simpleVertical = linear->start().x() == linear->finalStop().x();
+                const bool simpleHorizontal = linear->start().y() == linear->finalStop().y();
 
-                if (simpleVertical) {
+                if (simpleVertical || simpleHorizontal) {
+                    // Gradient position 0=top/left, 1=bottom/right; invert if PSD direction is reversed
+                    const bool reversed = simpleHorizontal
+                        ? (linear->start().x() > linear->finalStop().x())
+                        : (linear->start().y() > linear->finalStop().y());
+                    Element gradient;
+                    gradient.type = "gradient: Gradient";
+                    if (simpleHorizontal)
+                        gradient.properties.insert("orientation", "Gradient.Horizontal"_L1);
+                    for (const auto &stop : linear->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", reversed ? 1.0 - stop.first : stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        gradient.children.append(stopElement);
+                    }
                     element->type = "Rectangle";
                     if (!outputBase(shapeIndex, element, imports))
                         return false;
@@ -653,7 +660,16 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                         return false;
                     effect.properties.insert("start", QPointF(linear->start().x() * horizontalScale, linear->start().y() * verticalScale));
                     effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
-                    effect.children.append(gradient);
+                    Element effectGradient;
+                    effectGradient.type = "gradient: Gradient";
+                    for (const auto &stop : linear->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        effectGradient.children.append(stopElement);
+                    }
+                    effect.children.append(effectGradient);
                     *element = effect;
                 } else {
                     imports->insert("QtQuick.Shapes");
@@ -837,18 +853,24 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
-                bool simpleVertical = linear->start().x() == linear->finalStop().x();
-                Element gradient;
-                gradient.type = "gradient: Gradient";
-                for (const auto &stop : linear->stops()) {
-                    Element stopElement;
-                    stopElement.type = "GradientStop";
-                    stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
-                    gradient.children.append(stopElement);
-                }
+                const bool simpleVertical = linear->start().x() == linear->finalStop().x();
+                const bool simpleHorizontal = linear->start().y() == linear->finalStop().y();
 
-                if (simpleVertical) {
+                if (simpleVertical || simpleHorizontal) {
+                    const bool reversed = simpleHorizontal
+                        ? (linear->start().x() > linear->finalStop().x())
+                        : (linear->start().y() > linear->finalStop().y());
+                    Element gradient;
+                    gradient.type = "gradient: Gradient";
+                    if (simpleHorizontal)
+                        gradient.properties.insert("orientation", "Gradient.Horizontal"_L1);
+                    for (const auto &stop : linear->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", reversed ? 1.0 - stop.first : stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        gradient.children.append(stopElement);
+                    }
                     element->type = "Rectangle";
                     element->children.append(gradient);
                 } else if (effectMode() == Qt5Effects) {
@@ -863,7 +885,16 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     }
                     effect.properties.insert("start", QPointF(linear->start().x() * horizontalScale, linear->start().y() * verticalScale));
                     effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
-                    effect.children.append(gradient);
+                    Element effectGradient;
+                    effectGradient.type = "gradient: Gradient";
+                    for (const auto &stop : linear->stops()) {
+                        Element stopElement;
+                        stopElement.type = "GradientStop";
+                        stopElement.properties.insert("position", stop.first);
+                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        effectGradient.children.append(stopElement);
+                    }
+                    effect.children.append(effectGradient);
                     if (filled)
                         *element = effect;
                     else
