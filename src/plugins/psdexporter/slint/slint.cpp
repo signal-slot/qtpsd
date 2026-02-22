@@ -92,6 +92,7 @@ bool QPsdExporterSlintPlugin::outputBase(const QModelIndex &index, Element *elem
     if (auto opac = displayOpacity(model()->layerItem(index)))
         element->properties.insert("opacity", *opac);
     outputRect(rect, element, true);
+
     return true;
 };
 
@@ -114,11 +115,20 @@ bool QPsdExporterSlintPlugin::outputFolder(const QModelIndex &folderIndex, Eleme
     if (!outputBase(folderIndex, element, imports))
         return false;
 
+    const auto *folderItem = model()->layerItem(folderIndex);
+    const auto mask = folderItem->vectorMask();
+    if (mask.type != QPsdAbstractLayerItem::PathInfo::None) {
+        const bool filled = (mask.rect.topLeft() == QPointF(0, 0) && mask.rect.size() == folderItem->rect().size());
+        if (filled && mask.type == QPsdAbstractLayerItem::PathInfo::Rectangle && mask.radius <= 0) {
+            element->properties.insert("clip", true);
+        }
+    }
+
     if (folder->artboardRect().isValid() && folder->artboardBackground() != Qt::transparent) {
         Element artboard;
         artboard.type = "Rectangle"_L1;
         outputRect(folder->artboardRect(), &artboard);
-        artboard.properties.insert("color"_L1, folder->artboardBackground().name());
+        artboard.properties.insert("background"_L1, folder->artboardBackground().name());
         element->children.append(artboard);
     }
 
@@ -152,9 +162,31 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
             if (!id.isEmpty()) {
                 generated = outputFolder(index, &element, imports, exports);
             } else {
-                if (!outputFolder(index, parent, imports, exports))
-                    return false;
-                return true;
+                // Check if this folder needs clipping — if so, create a wrapper Rectangle
+                const auto mask = item->vectorMask();
+                const bool needsClip = mask.type == QPsdAbstractLayerItem::PathInfo::Rectangle
+                    && mask.radius <= 0
+                    && mask.rect.topLeft() == QPointF(0, 0)
+                    && mask.rect.size() == item->rect().size();
+                if (needsClip) {
+                    generated = outputFolder(index, &element, imports, exports);
+                } else {
+                    // Flatten into parent: just add artboard background and children
+                    const auto *f = dynamic_cast<const QPsdFolderLayerItem *>(item);
+                    if (f && f->artboardRect().isValid() && f->artboardBackground() != Qt::transparent) {
+                        Element artboard;
+                        artboard.type = "Rectangle"_L1;
+                        outputRect(f->artboardRect(), &artboard);
+                        artboard.properties.insert("background"_L1, f->artboardBackground().name());
+                        parent->children.append(artboard);
+                    }
+                    for (int i = model()->rowCount(index) - 1; i >= 0; i--) {
+                        QModelIndex childIndex = model()->index(i, 0, index);
+                        if (!traverseTree(childIndex, parent, imports, exports, QPsdExporterTreeItemModel::ExportHint::None))
+                            return false;
+                    }
+                    return true;
+                }
             }
             break; }
         case QPsdAbstractLayerItem::Text: {
@@ -562,7 +594,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
-                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0 ) + "deg" };
+                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0, 'f', 3) + "deg" };
                 for (const auto &stop : linear->stops()) {
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
@@ -581,7 +613,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::ConicalGradient: {
                 const auto conical = reinterpret_cast<const QConicalGradient *>(g);
                 QStringList grad = { "@conic-gradient(from " +
-                    QString::number(conical->angle() + 90.0) + "deg" };
+                    QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
                     grad.append(qtStops.at(i).second.name() + " " +
@@ -616,7 +648,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(pathGrad);
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
-                QStringList grad { "@linear-gradient(" + QString::number(180.0 - (angle) * 180.0 / M_PI) + "deg " };
+                QStringList grad { "@linear-gradient(" + QString::number(180.0 - angle * 180.0 / M_PI, 'f', 3) + "deg " };
                 for (const auto &stop : linear->stops()) {
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
@@ -635,7 +667,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::ConicalGradient: {
                 const auto conical = reinterpret_cast<const QConicalGradient *>(pathGrad);
                 QStringList grad = { "@conic-gradient(from " +
-                    QString::number(conical->angle() + 90.0) + "deg" };
+                    QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
                     grad.append(qtStops.at(i).second.name() + " " +
@@ -672,7 +704,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
-                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0 ) + "deg" };
+                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0, 'f', 3) + "deg" };
                 for (const auto &stop : linear->stops()) {
                     grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
                 }
@@ -691,7 +723,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::ConicalGradient: {
                 const auto conical = reinterpret_cast<const QConicalGradient *>(g);
                 QStringList grad = { "@conic-gradient(from " +
-                    QString::number(conical->angle() + 90.0) + "deg" };
+                    QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
                     grad.append(qtStops.at(i).second.name() + " " +
