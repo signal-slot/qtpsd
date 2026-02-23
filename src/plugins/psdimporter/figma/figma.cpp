@@ -2024,6 +2024,46 @@ public:
             nodeId.clear();  // Page selected explicitly — import all frames
         }
 
+        // Enumerate artboards in the selected page and let user choose
+        {
+            const auto pageObj = pages.at(pageIndex).toObject();
+            const auto pageChildren = pageObj["children"_L1].toArray();
+            struct ArtboardInfo { QString id; QString name; };
+            QList<ArtboardInfo> artboards;
+            for (const auto &child : pageChildren) {
+                const auto obj = child.toObject();
+                const auto type = obj["type"_L1].toString();
+                if (type == "FRAME"_L1 || type == "COMPONENT"_L1)
+                    artboards.append({obj["id"_L1].toString(), obj["name"_L1].toString()});
+            }
+
+            if (artboards.size() >= 2) {
+                QDialog abDlg;
+                abDlg.setWindowTitle(tr("Select Artboard"));
+                auto *abLayout = new QFormLayout(&abDlg);
+                auto *abCombo = new QComboBox(&abDlg);
+                abCombo->addItem(tr("All Artboards"));
+                int preselect = 0;
+                for (int i = 0; i < artboards.size(); ++i) {
+                    abCombo->addItem(artboards[i].name, artboards[i].id);
+                    if (!nodeId.isEmpty() && artboards[i].id == nodeId)
+                        preselect = i + 1;  // +1 for "All Artboards" at index 0
+                }
+                abCombo->setCurrentIndex(preselect);
+                abLayout->addRow(tr("Artboard:"), abCombo);
+                auto *abBtnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &abDlg);
+                abLayout->addRow(abBtnBox);
+                QObject::connect(abBtnBox, &QDialogButtonBox::accepted, &abDlg, &QDialog::accept);
+                QObject::connect(abBtnBox, &QDialogButtonBox::rejected, &abDlg, &QDialog::reject);
+                if (abDlg.exec() != QDialog::Accepted)
+                    return false;
+                if (abCombo->currentIndex() == 0)
+                    nodeId.clear();  // "All Artboards" selected
+                else
+                    nodeId = abCombo->currentData().toString();
+            }
+        }
+
         FigmaLayerTreeItemModel figmaModel;
         figmaModel.buildFromFigmaJson(fileJson, nodeId, pageIndex);
 

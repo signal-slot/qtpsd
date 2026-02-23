@@ -300,8 +300,11 @@ QList<QPersistentModelIndex> QPsdExporterTreeItemModel::groupIndexes(const QMode
 QFileInfo QPsdExporterTreeItemModel::fileInfo() const
 {
     auto *model = dynamic_cast<QPsdLayerTreeItemModel *>(sourceModel());
-    if (model)
-        return model->fileInfo();
+    if (model) {
+        const auto fi = model->fileInfo();
+        if (!fi.filePath().isEmpty())
+            return fi;
+    }
     return d->fallbackFileInfo;
 }
 
@@ -314,8 +317,11 @@ void QPsdExporterTreeItemModel::setFileInfo(const QFileInfo &fileInfo)
 QString QPsdExporterTreeItemModel::fileName() const
 {
     auto *model = dynamic_cast<QPsdLayerTreeItemModel *>(sourceModel());
-    if (model)
-        return model->fileName();
+    if (model) {
+        const auto fn = model->fileName();
+        if (!fn.isEmpty())
+            return fn;
+    }
     return d->fallbackFileName;
 }
 
