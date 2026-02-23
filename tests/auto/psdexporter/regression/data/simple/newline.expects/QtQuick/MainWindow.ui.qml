@@ -15,6 +15,7 @@ Item {
         }
         Text {
             anchors.fill: parent
+            clip: true
             color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 50
@@ -23,6 +24,7 @@ Item {
             verticalAlignment: Text.AlignVCenter
         }
         Text {
+            clip: true
             color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
@@ -35,6 +37,7 @@ Item {
             y: 9
         }
         Item {
+            clip: true
             height: 33
             width: 144
             x: 169
@@ -97,6 +100,7 @@ Item {
             }
         }
         Text {
+            clip: true
             color: "#ffeac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 30
@@ -109,6 +113,7 @@ Item {
             y: 109
         }
         Text {
+            clip: true
             color: "#ffeac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 24

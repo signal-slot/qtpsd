@@ -21,14 +21,9 @@ Item {
             y: 74
             ShapePath {
                 fillColor: "#ff5a6f0e"
-                strokeColor: "transparent"
-                strokeWidth: 1
-            }
-            ShapePath {
-                fillColor: "#ff5a6f0e"
                 fillRule: ShapePath.WindingFill
                 strokeColor: "transparent"
-                strokeWidth: 1
+                strokeWidth: 0
                 PathMove {
                     x: 66.5
                     y: 2

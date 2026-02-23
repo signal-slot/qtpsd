@@ -852,10 +852,14 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
 
         if (exporter->key() == "figma") {
             msgBox.setInformativeText(
-                tr("To import into Figma:\n"
+                tr("To set up the Figma plugin:\n"
                    "1. Open Figma Desktop\n"
-                   "2. Plugins \u2192 Development \u2192 PSD to Figma Importer\n"
-                   "3. Select this file and click Import"));
+                   "2. Menu \u2192 Plugins \u2192 Development \u2192 Import plugin from manifest...\n"
+                   "3. Select manifest.json in the tools/figma-plugin folder\n"
+                   "\n"
+                   "To import this file:\n"
+                   "1. Plugins \u2192 Development \u2192 PSD to Figma Importer\n"
+                   "2. Select the exported .figma.json file and click Import"));
         }
 
         auto *copyPathBtn = msgBox.addButton(tr("Copy Path"), QMessageBox::ActionRole);

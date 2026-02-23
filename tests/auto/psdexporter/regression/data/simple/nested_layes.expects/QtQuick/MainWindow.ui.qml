@@ -58,6 +58,7 @@ Item {
                 }
             }
             Text {
+                clip: true
                 color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
@@ -116,6 +117,7 @@ Item {
                 }
             }
             Text {
+                clip: true
                 color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30

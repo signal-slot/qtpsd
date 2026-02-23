@@ -22,7 +22,7 @@ class QPsdExporterFigmaPlugin : public QPsdExporterPlugin
 public:
     int priority() const override { return 900; }
     QIcon icon() const override {
-        return QIcon::fromTheme("application-json"_L1);
+        return QIcon(":/figma/figma.png");
     }
     QString name() const override {
         return tr("&Figma");

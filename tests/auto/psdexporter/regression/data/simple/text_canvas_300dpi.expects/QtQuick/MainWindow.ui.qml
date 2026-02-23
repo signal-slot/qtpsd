@@ -13,6 +13,7 @@ Item {
             y: 0
         }
         Text {
+            clip: true
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 50
@@ -25,6 +26,7 @@ Item {
             y: 29
         }
         Text {
+            clip: true
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 150
