@@ -75,6 +75,7 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
 {
     const auto gdfl = gdflVariant.value<QPsdDescriptor>().data();
     const auto grad = gdfl.value("Grad").value<QPsdDescriptor>().data();
+    const auto intr = grad.contains("Intr") ? grad.value("Intr").toDouble() : 4096.0;
 
     // Parse transparency stops
     QList<QPair<double, double>> transparencies;
@@ -97,7 +98,16 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
         // Interpolate opacity at this color stop position and apply as alpha
         const double opacityPercent = interpolateOpacity(transparencies, lctn);
         color.setAlphaF(opacityPercent / 100.0);
-        stops.append({lctn / 4096, color});
+        stops.append({lctn / intr, color});
+    }
+
+    // Handle reverse flag
+    const auto rvrs = gdfl.value("Rvrs").toBool();
+    if (rvrs) {
+        QGradientStops reversedStops;
+        for (int i = stops.size() - 1; i >= 0; --i)
+            reversedStops.append({1.0 - stops[i].first, stops[i].second});
+        stops = reversedStops;
     }
 
     // Determine gradient type
@@ -111,9 +121,11 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
     if (typeValue == "Lnr ") {
         QLinearGradient gradient;
         const QPointF center(rect.width() / 2, rect.height() / 2);
-        gradient.setStart(center.x() + std::cos(angle) * rect.width() / 2,
+        // PSD angle is in screen coordinates (0°=right, 90°=down).
+        // Position 0 is at the start (opposite end of gradient direction).
+        gradient.setStart(center.x() - std::cos(angle) * rect.width() / 2,
                           center.y() + std::sin(angle) * rect.height() / 2);
-        gradient.setFinalStop(center.x() - std::cos(angle) * rect.width() / 2,
+        gradient.setFinalStop(center.x() + std::cos(angle) * rect.width() / 2,
                               center.y() - std::sin(angle) * rect.height() / 2);
         gradient.setStops(stops);
         return QBrush(gradient);

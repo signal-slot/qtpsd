@@ -30,13 +30,13 @@ class MainWindow extends StatelessWidget {
             child: Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  begin: Alignment(1, 0),
+                  begin: Alignment(-1, 0),
                   colors: [
                     Color.fromARGB(255, 255, 0, 0),
                     Color.fromARGB(255, 0, 255, 0),
                     Color.fromARGB(255, 0, 0, 255),
                   ],
-                  end: Alignment(-1, 0),
+                  end: Alignment(1, 0),
                   stops: [
                     0,
                     0.5,

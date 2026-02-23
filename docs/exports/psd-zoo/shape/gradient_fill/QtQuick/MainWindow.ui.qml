@@ -26,8 +26,8 @@ Item {
                 strokeColor: "transparent"
                 strokeWidth: 0
                 fillGradient: LinearGradient {
-                    x1: 121.205
-                    x2: 20.7954
+                    x1: 20.7954
+                    x2: 121.205
                     y1: 121.205
                     y2: 20.7954
                     GradientStop {

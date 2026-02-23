@@ -19,12 +19,12 @@ Item {
         gradient: Gradient {
             orientation: Gradient.Horizontal
             GradientStop {
-                color: "#ff000080"
-                position: 1
-            }
-            GradientStop {
                 color: "#ff800000"
                 position: 0
+            }
+            GradientStop {
+                color: "#ff000080"
+                position: 1
             }
         }
     }

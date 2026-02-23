@@ -501,8 +501,14 @@ QPsdExporterLvglPlugin::GradientDef QPsdExporterLvglPlugin::makeGradientDef(cons
         def.type = "conical"_L1;
         const auto *cg = static_cast<const QConicalGradient *>(gradient);
         def.attributes.insert("center"_L1, u"%1 %2"_s.arg(qRound(cg->center().x())).arg(qRound(cg->center().y())));
-        int startAngle = qRound(cg->angle());
-        def.attributes.insert("angle"_L1, u"%1 %2"_s.arg(startAngle).arg(startAngle + 360));
+        // LVGL uses tenths of degrees (0-3600 range)
+        int startAngle = qRound(cg->angle()) * 10;
+        def.attributes.insert("angle"_L1, u"%1 %2"_s.arg(startAngle).arg(startAngle + 3600));
+        // LVGL uses clockwise like PSD, but Qt uses counter-clockwise.
+        // brushFromGdFl reversed the stops for Qt — undo for LVGL.
+        for (auto &stop : def.stops)
+            stop.offset = 255 - stop.offset;
+        std::reverse(def.stops.begin(), def.stops.end());
         break; }
     default:
         def.type = "linear"_L1;

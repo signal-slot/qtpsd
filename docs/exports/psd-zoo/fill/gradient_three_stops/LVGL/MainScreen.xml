@@ -2,9 +2,9 @@
 <component>
   <gradients>
     <linear name="3_color_stops_0" end="300 100" extend="pad" start="0 100">
-      <stop color="0x0000ff" offset="0" opa="255"/>
-      <stop color="0x00ff00" offset="127" opa="255"/>
-      <stop color="0xff0000" offset="255" opa="255"/>
+      <stop color="0xff0000" offset="0" opa="255"/>
+      <stop color="0x00ff00" offset="128" opa="255"/>
+      <stop color="0x0000ff" offset="255" opa="255"/>
     </linear>
   </gradients>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">

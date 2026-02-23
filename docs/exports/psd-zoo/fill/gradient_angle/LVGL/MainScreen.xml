@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component>
   <gradients>
-    <conical name="angle_gradient_0" angle="0 360" center="100 100">
-      <stop color="0x008000" offset="0" opa="255"/>
-      <stop color="0xffff00" offset="255" opa="255"/>
+    <conical name="angle_gradient_0" angle="0 3600" center="100 100">
+      <stop color="0xffff00" offset="0" opa="255"/>
+      <stop color="0x008000" offset="255" opa="255"/>
     </conical>
   </gradients>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">

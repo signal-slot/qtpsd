@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component>
   <gradients>
-    <linear name="gradient_shape_0" end="121 121" extend="pad" start="21 21">
-      <stop color="0x0000ff" offset="0" opa="255"/>
-      <stop color="0xff0000" offset="255" opa="255"/>
+    <linear name="gradient_shape_0" end="121 21" extend="pad" start="21 121">
+      <stop color="0xff0000" offset="0" opa="255"/>
+      <stop color="0x0000ff" offset="255" opa="255"/>
     </linear>
   </gradients>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">

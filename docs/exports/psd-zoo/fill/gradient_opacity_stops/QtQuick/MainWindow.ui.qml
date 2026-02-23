@@ -12,11 +12,11 @@ Item {
             orientation: Gradient.Horizontal
             GradientStop {
                 color: "#ffff0000"
-                position: 1
+                position: 0
             }
             GradientStop {
                 color: "#00ff0000"
-                position: 0
+                position: 1
             }
         }
     }

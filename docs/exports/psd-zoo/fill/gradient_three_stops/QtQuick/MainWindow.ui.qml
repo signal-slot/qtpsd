@@ -20,7 +20,7 @@ Item {
             orientation: Gradient.Horizontal
             GradientStop {
                 color: "#ffff0000"
-                position: 1
+                position: 0
             }
             GradientStop {
                 color: "#ff00ff00"
@@ -28,7 +28,7 @@ Item {
             }
             GradientStop {
                 color: "#ff0000ff"
-                position: 0
+                position: 1
             }
         }
     }
