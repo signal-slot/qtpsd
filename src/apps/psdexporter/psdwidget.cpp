@@ -16,6 +16,7 @@
 #include <QtCore/QSettings>
 
 #include <QtGui/QClipboard>
+#include <QtGui/QDesktopServices>
 #include <QtGui/QPainter>
 
 #include <QtWidgets/QApplication>
@@ -832,7 +833,44 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
 
     updateExportHint(exporter->key(), hint);
     save();
-    exporter->exportTo(&d->model, to, hint);
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const bool ok = exporter->exportTo(&d->model, to, hint);
+    QApplication::restoreOverrideCursor();
+
+    if (!ok) {
+        QMessageBox::critical(this, tr("Export Failed"),
+            tr("Failed to export to %1").arg(QFileInfo(to).fileName()));
+        return;
+    }
+
+    if (exporter->exportType() == QPsdExporterPlugin::File) {
+        QMessageBox msgBox(this);
+        msgBox.setIcon(QMessageBox::Information);
+        msgBox.setWindowTitle(tr("Export Complete"));
+        msgBox.setText(tr("Exported successfully to:\n%1").arg(to));
+
+        if (exporter->key() == "figma") {
+            msgBox.setInformativeText(
+                tr("To import into Figma:\n"
+                   "1. Open Figma Desktop\n"
+                   "2. Plugins \u2192 Development \u2192 PSD to Figma Importer\n"
+                   "3. Select this file and click Import"));
+        }
+
+        auto *copyPathBtn = msgBox.addButton(tr("Copy Path"), QMessageBox::ActionRole);
+        auto *showInFolderBtn = msgBox.addButton(tr("Show in Folder"), QMessageBox::ActionRole);
+        msgBox.addButton(QMessageBox::Ok);
+        msgBox.setDefaultButton(QMessageBox::Ok);
+        msgBox.exec();
+
+        if (msgBox.clickedButton() == copyPathBtn) {
+            QApplication::clipboard()->setText(to);
+        } else if (msgBox.clickedButton() == showInFolderBtn) {
+            QDesktopServices::openUrl(
+                QUrl::fromLocalFile(QFileInfo(to).absolutePath()));
+        }
+    }
 }
 
 bool PsdWidget::importFrom(QPsdImporterPlugin *importer)
