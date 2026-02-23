@@ -8,23 +8,29 @@ fi
 
 input_xml="$(realpath -m "$1")"
 output_png="$(realpath -m "$2")"
-script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-renderer_py="${script_dir}/lvgl2png.py"
+export_dir="$(dirname "${input_xml}")"
 
 if [[ ! -f "${input_xml}" ]]; then
   echo "LVGL XML file is missing: ${input_xml}" >&2
   exit 1
 fi
 
-if [[ ! -f "${renderer_py}" ]]; then
-  echo "Renderer script is missing: ${renderer_py}" >&2
-  exit 1
-fi
+# Find the lvgl_capture binary
+lvgl_capture=""
+for candidate in \
+  /usr/local/bin/lvgl_capture \
+  "$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)/tools/lvgl_capture/build/lvgl_capture"
+do
+  if [[ -x "${candidate}" ]]; then
+    lvgl_capture="${candidate}"
+    break
+  fi
+done
 
-if ! command -v python3 >/dev/null 2>&1; then
-  echo "python3 command is not found" >&2
+if [[ -z "${lvgl_capture}" ]]; then
+  echo "lvgl_capture binary not found" >&2
   exit 1
 fi
 
 mkdir -p "$(dirname "${output_png}")"
-python3 "${renderer_py}" "${input_xml}" "${output_png}"
+"${lvgl_capture}" "${export_dir}" "${output_png}"

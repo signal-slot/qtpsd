@@ -8,8 +8,11 @@
 #include <QtCore/QDir>
 #include <QtCore/QXmlStreamWriter>
 #include <QtGui/QBrush>
+#include <QtGui/QConicalGradient>
 #include <QtGui/QFontMetrics>
+#include <QtGui/QLinearGradient>
 #include <QtGui/QPen>
+#include <QtGui/QRadialGradient>
 
 #include <QtPsdGui/QPsdBorder>
 
@@ -41,6 +44,20 @@ private:
 
     mutable QList<QPair<QString, QString>> exportedImages; // name, filename
 
+    struct GradientStop {
+        int offset; // 0-255
+        QString color; // "0xRRGGBB"
+        int opa; // 0-255
+    };
+    struct GradientDef {
+        QString name;
+        QString type; // "linear", "radial", "conical"
+        QMap<QString, QString> attributes;
+        QList<GradientStop> stops;
+    };
+    mutable QList<GradientDef> exportedGradients;
+    mutable int gradientCounter = 0;
+
     using ExportData = QList<QPair<QString, QString>>; // id, type for API props
 
     bool traverseTree(const QModelIndex &index, Element *parent, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const;
@@ -52,6 +69,9 @@ private:
     bool outputShape(const QModelIndex &shapeIndex, Element *element) const;
     bool outputImage(const QModelIndex &imageIndex, Element *element) const;
 
+    QString generateGradientName(const QString &layerName) const;
+    GradientDef makeGradientDef(const QString &name, const QGradient *gradient) const;
+
     bool saveComponentXml(const QString &baseName, Element *element, const ExportData &exports) const;
     bool saveGlobalsXml() const;
 };
@@ -62,6 +82,8 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
         return false;
     }
     exportedImages.clear();
+    exportedGradients.clear();
+    gradientCounter = 0;
     const QSize targetSize = hint.value("resolution", model->size()).toSize();
 
     ExportData exports;
@@ -303,42 +325,44 @@ bool QPsdExporterLvglPlugin::outputShape(const QModelIndex &shapeIndex, Element 
     const auto *shape = dynamic_cast<const QPsdShapeLayerItem *>(model()->layerItem(shapeIndex));
     const auto path = shape->pathInfo();
 
-    switch (path.type) {
-    case QPsdAbstractLayerItem::PathInfo::None: {
-        // Fill layers (GdFl, SoCo without vector mask)
+    auto outputGradientOrSolid = [&](Element *el) {
         const QGradient *g = effectiveGradient(shape);
         if (g) {
-            const auto stops = g->stops();
-            if (!stops.isEmpty()) {
-                // Determine gradient direction: for linear, use dominant axis; others default to vertical
-                QString gradDir = u"ver"_s;
-                if (g->type() == QGradient::LinearGradient) {
-                    const auto *linear = static_cast<const QLinearGradient *>(g);
-                    const qreal dx = linear->finalStop().x() - linear->start().x();
-                    const qreal dy = linear->finalStop().y() - linear->start().y();
-                    gradDir = (qAbs(dy) >= qAbs(dx)) ? u"ver"_s : u"hor"_s;
-                }
-                element->type = "lv_obj";
-                if (!outputBase(shapeIndex, element))
-                    return false;
-                QColor startColor = stops.first().second;
-                QColor endColor = stops.last().second;
-                element->attributes.insert("style_bg_color", u"0x%1"_s.arg(startColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
-                element->attributes.insert("style_bg_opa", QString::number(startColor.alpha()));
-                element->attributes.insert("style_bg_grad_dir", gradDir);
-                element->attributes.insert("style_bg_grad_color", u"0x%1"_s.arg(endColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
-                element->attributes.insert("style_bg_grad_opa", QString::number(endColor.alpha()));
-                element->attributes.insert("style_bg_main_stop", QString::number(qRound(stops.first().first * 255)));
-                element->attributes.insert("style_bg_grad_stop", QString::number(qRound(stops.last().first * 255)));
-            }
+            el->attributes.insert("style_bg_opa", "255");
+            QString gradName = generateGradientName(shape->name());
+            exportedGradients.append(makeGradientDef(gradName, g));
+            el->attributes.insert("style_bg_grad", gradName);
         } else if (shape->brush() != Qt::NoBrush) {
-            // Solid color fill
+            QColor color = shape->brush().color();
+            el->attributes.insert("style_bg_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
+            el->attributes.insert("style_bg_opa", QString::number(color.alpha()));
+        }
+        // Remove default LVGL theme border for fill/shape elements
+        el->attributes.insert("style_border_width", "0");
+    };
+
+    switch (path.type) {
+    case QPsdAbstractLayerItem::PathInfo::None: {
+        const QGradient *g = effectiveGradient(shape);
+        if (g || shape->brush() != Qt::NoBrush) {
             element->type = "lv_obj";
             if (!outputBase(shapeIndex, element))
                 return false;
-            QColor color = shape->brush().color();
-            element->attributes.insert("style_bg_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
-            element->attributes.insert("style_bg_opa", QString::number(color.alpha()));
+            outputGradientOrSolid(element);
+        } else {
+            // No gradient and no brush — fall back to image
+            QPsdImageStore imageStore(dir, "images"_L1);
+            QImage qimage = shape->image();
+            if (!qimage.isNull()) {
+                QString name = imageStore.save(imageFileName(shape->name(), "PNG"_L1), qimage, "PNG");
+                QFileInfo fi(name);
+                QString imageName = fi.completeBaseName();
+                exportedImages.append(qMakePair(imageName, name));
+                element->type = "lv_image";
+                if (!outputBase(shapeIndex, element))
+                    return false;
+                element->attributes.insert("src", imageName);
+            }
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
@@ -347,32 +371,7 @@ bool QPsdExporterLvglPlugin::outputShape(const QModelIndex &shapeIndex, Element 
         if (!outputBase(shapeIndex, element))
             return false;
 
-        const QGradient *g = effectiveGradient(shape);
-        if (g) {
-            const auto stops = g->stops();
-            if (!stops.isEmpty()) {
-                QString gradDir = u"ver"_s;
-                if (g->type() == QGradient::LinearGradient) {
-                    const auto *linear = static_cast<const QLinearGradient *>(g);
-                    const qreal dx = linear->finalStop().x() - linear->start().x();
-                    const qreal dy = linear->finalStop().y() - linear->start().y();
-                    gradDir = (qAbs(dy) >= qAbs(dx)) ? u"ver"_s : u"hor"_s;
-                }
-                QColor startColor = stops.first().second;
-                QColor endColor = stops.last().second;
-                element->attributes.insert("style_bg_color", u"0x%1"_s.arg(startColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
-                element->attributes.insert("style_bg_opa", QString::number(startColor.alpha()));
-                element->attributes.insert("style_bg_grad_dir", gradDir);
-                element->attributes.insert("style_bg_grad_color", u"0x%1"_s.arg(endColor.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
-                element->attributes.insert("style_bg_grad_opa", QString::number(endColor.alpha()));
-                element->attributes.insert("style_bg_main_stop", QString::number(qRound(stops.first().first * 255)));
-                element->attributes.insert("style_bg_grad_stop", QString::number(qRound(stops.last().first * 255)));
-            }
-        } else if (shape->brush() != Qt::NoBrush) {
-            QColor color = shape->brush().color();
-            element->attributes.insert("style_bg_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
-            element->attributes.insert("style_bg_opa", QString::number(color.alpha()));
-        }
+        outputGradientOrSolid(element);
 
         if (path.radius > 0)
             element->attributes.insert("style_radius", QString::number(qRound(path.radius)));
@@ -441,6 +440,78 @@ bool QPsdExporterLvglPlugin::outputImage(const QModelIndex &imageIndex, Element 
     return true;
 }
 
+QString QPsdExporterLvglPlugin::generateGradientName(const QString &layerName) const
+{
+    QString base = toSnakeCase(layerName);
+    if (base.isEmpty())
+        base = "grad"_L1;
+    return u"%1_%2"_s.arg(base).arg(gradientCounter++);
+}
+
+QPsdExporterLvglPlugin::GradientDef QPsdExporterLvglPlugin::makeGradientDef(const QString &name, const QGradient *gradient) const
+{
+    GradientDef def;
+    def.name = name;
+
+    // Convert stops
+    for (const auto &stop : gradient->stops()) {
+        GradientStop gs;
+        gs.offset = qRound(stop.first * 255);
+        gs.color = u"0x%1"_s.arg(stop.second.rgb() & 0xFFFFFF, 6, 16, QChar('0'));
+        gs.opa = stop.second.alpha();
+        def.stops.append(gs);
+    }
+
+    switch (gradient->type()) {
+    case QGradient::LinearGradient: {
+        def.type = "linear"_L1;
+        const auto *lg = static_cast<const QLinearGradient *>(gradient);
+        QPointF s = lg->start();
+        QPointF e = lg->finalStop();
+        // LVGL's software renderer requires start <= end for proper rendering.
+        // If the gradient direction is reversed, swap start/end and invert stop offsets.
+        bool needsReverse = false;
+        if (qFuzzyCompare(s.x(), e.x())) {
+            // Vertical gradient: check y direction
+            needsReverse = (s.y() > e.y());
+        } else {
+            // Use the dominant axis
+            needsReverse = (s.x() > e.x());
+        }
+        if (needsReverse) {
+            std::swap(s, e);
+            for (auto &stop : def.stops)
+                stop.offset = 255 - stop.offset;
+            std::reverse(def.stops.begin(), def.stops.end());
+        }
+        def.attributes.insert("start"_L1, u"%1 %2"_s.arg(qRound(s.x())).arg(qRound(s.y())));
+        def.attributes.insert("end"_L1, u"%1 %2"_s.arg(qRound(e.x())).arg(qRound(e.y())));
+        def.attributes.insert("extend"_L1, "pad"_L1);
+        break; }
+    case QGradient::RadialGradient: {
+        def.type = "radial"_L1;
+        const auto *rg = static_cast<const QRadialGradient *>(gradient);
+        def.attributes.insert("center"_L1, u"%1 %2"_s.arg(qRound(rg->center().x())).arg(qRound(rg->center().y())));
+        // edge point: center + radius in the x direction
+        int edgeX = qRound(rg->center().x() + rg->radius());
+        int edgeY = qRound(rg->center().y());
+        def.attributes.insert("edge"_L1, u"%1 %2"_s.arg(edgeX).arg(edgeY));
+        break; }
+    case QGradient::ConicalGradient: {
+        def.type = "conical"_L1;
+        const auto *cg = static_cast<const QConicalGradient *>(gradient);
+        def.attributes.insert("center"_L1, u"%1 %2"_s.arg(qRound(cg->center().x())).arg(qRound(cg->center().y())));
+        int startAngle = qRound(cg->angle());
+        def.attributes.insert("angle"_L1, u"%1 %2"_s.arg(startAngle).arg(startAngle + 360));
+        break; }
+    default:
+        def.type = "linear"_L1;
+        break;
+    }
+
+    return def;
+}
+
 bool QPsdExporterLvglPlugin::saveComponentXml(const QString &baseName, Element *element, const ExportData &exports) const
 {
     QFile file(dir.absoluteFilePath(baseName + ".xml"));
@@ -465,6 +536,29 @@ bool QPsdExporterLvglPlugin::saveComponentXml(const QString &baseName, Element *
             xml.writeEndElement();
         }
         xml.writeEndElement(); // api
+    }
+
+    // Write gradient definitions (must be in component scope for LVGL XML lookup)
+    if (!exportedGradients.isEmpty()) {
+        xml.writeStartElement("gradients");
+        for (const auto &grad : exportedGradients) {
+            xml.writeStartElement(grad.type);
+            xml.writeAttribute("name", grad.name);
+            QStringList gkeys = grad.attributes.keys();
+            gkeys.sort();
+            for (const QString &key : gkeys) {
+                xml.writeAttribute(key, grad.attributes.value(key));
+            }
+            for (const auto &stop : grad.stops) {
+                xml.writeStartElement("stop");
+                xml.writeAttribute("color", stop.color);
+                xml.writeAttribute("offset", QString::number(stop.offset));
+                xml.writeAttribute("opa", QString::number(stop.opa));
+                xml.writeEndElement();
+            }
+            xml.writeEndElement();
+        }
+        xml.writeEndElement(); // gradients
     }
 
     // Write view and children
@@ -520,6 +614,7 @@ bool QPsdExporterLvglPlugin::saveGlobalsXml() const
     }
 
     xml.writeEndElement(); // images
+
     xml.writeEndElement(); // globals
     xml.writeEndDocument();
 

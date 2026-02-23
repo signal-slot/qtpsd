@@ -49,10 +49,42 @@ Qt::PenCapStyle strokeStyleLineCapTypeToQt(const QPsdEnum &data)
     qFatal() << value << "not implemented";
     return Qt::FlatCap;
 }
+double interpolateOpacity(const QList<QPair<double, double>> &transparencies, double position)
+{
+    if (transparencies.isEmpty())
+        return 100.0;
+    if (position <= transparencies.first().first)
+        return transparencies.first().second;
+    if (position >= transparencies.last().first)
+        return transparencies.last().second;
+    for (int i = 0; i < transparencies.size() - 1; ++i) {
+        const auto &a = transparencies.at(i);
+        const auto &b = transparencies.at(i + 1);
+        if (position >= a.first && position <= b.first) {
+            const double range = b.first - a.first;
+            if (range <= 0)
+                return a.second;
+            const double t = (position - a.first) / range;
+            return a.second + t * (b.second - a.second);
+        }
+    }
+    return transparencies.last().second;
+}
+
 QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
 {
     const auto gdfl = gdflVariant.value<QPsdDescriptor>().data();
     const auto grad = gdfl.value("Grad").value<QPsdDescriptor>().data();
+
+    // Parse transparency stops
+    QList<QPair<double, double>> transparencies;
+    const auto trns = grad.value("Trns").toList();
+    for (const auto &tln : trns) {
+        const auto trnS = tln.value<QPsdDescriptor>().data();
+        const auto lctn = trnS.value("Lctn").toDouble();
+        const auto opct = trnS.value("Opct").value<QPsdUnitFloat>();
+        transparencies.append({lctn, opct.value()});
+    }
 
     // Parse color stops
     QGradientStops stops;
@@ -61,7 +93,11 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
         const auto clr = c.value<QPsdDescriptor>().data();
         const auto lctn = clr.value("Lctn").toDouble();
         const auto clrDescriptor = clr.value("Clr ").value<QPsdDescriptor>();
-        stops.append({lctn / 4096, colorFromDescriptor(clrDescriptor)});
+        QColor color = colorFromDescriptor(clrDescriptor);
+        // Interpolate opacity at this color stop position and apply as alpha
+        const double opacityPercent = interpolateOpacity(transparencies, lctn);
+        color.setAlphaF(opacityPercent / 100.0);
+        stops.append({lctn / 4096, color});
     }
 
     // Determine gradient type

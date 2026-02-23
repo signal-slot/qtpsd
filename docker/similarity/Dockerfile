@@ -66,6 +66,13 @@ RUN mkdir -p ${PUB_CACHE} \
     && chmod -R a+rwX ${PUB_CACHE}
 RUN cargo install slint-viewer --locked
 
+# Build LVGL headless capture tool
+COPY tools/lvgl_capture /tmp/lvgl_capture_src
+RUN cmake -S /tmp/lvgl_capture_src -B /tmp/lvgl_capture_build -G Ninja \
+    && cmake --build /tmp/lvgl_capture_build \
+    && cp /tmp/lvgl_capture_build/lvgl_capture /usr/local/bin/lvgl_capture \
+    && rm -rf /tmp/lvgl_capture_build /tmp/lvgl_capture_src
+
 WORKDIR /workspace
 
 ENTRYPOINT ["/bin/bash"]
