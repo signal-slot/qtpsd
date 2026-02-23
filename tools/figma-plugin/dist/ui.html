@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 13px;
+      color: #333;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    h2 {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 12px;
+    }
+    .input-group {
+      margin-bottom: 12px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #666;
+      margin-bottom: 4px;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 8px;
+      font-family: 'SF Mono', 'Monaco', monospace;
+      font-size: 11px;
+      resize: vertical;
+      outline: none;
+    }
+    textarea:focus {
+      border-color: #18a0fb;
+      box-shadow: 0 0 0 1px #18a0fb;
+    }
+    .file-input-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    input[type="file"] {
+      font-size: 12px;
+    }
+    .file-name {
+      font-size: 12px;
+      color: #666;
+    }
+    .buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: auto;
+      padding-top: 12px;
+    }
+    button {
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: #18a0fb;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #0d8de5;
+    }
+    .btn-primary:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .btn-secondary {
+      background: #f0f0f0;
+      color: #333;
+    }
+    .btn-secondary:hover {
+      background: #e0e0e0;
+    }
+    .or-divider {
+      text-align: center;
+      color: #999;
+      font-size: 12px;
+      margin: 8px 0;
+    }
+  </style>
+</head>
+<body>
+  <h2>PSD to Figma Importer</h2>
+
+  <div class="input-group">
+    <label>Upload .figma.json file</label>
+    <div class="file-input-wrapper">
+      <input type="file" id="fileInput" accept=".json,.figma.json">
+      <span class="file-name" id="fileName"></span>
+    </div>
+  </div>
+
+  <div class="or-divider">— or paste JSON below —</div>
+
+  <div class="input-group">
+    <label>JSON content</label>
+    <textarea id="jsonInput" placeholder='{"document": {"type": "DOCUMENT", ...}}'></textarea>
+  </div>
+
+  <div class="buttons">
+    <button class="btn-secondary" id="cancelBtn">Cancel</button>
+    <button class="btn-primary" id="importBtn">Import</button>
+  </div>
+
+  <script>"use strict";
+(() => {
+  // src/ui.ts
+  var jsonInput = document.getElementById("jsonInput");
+  var fileInput = document.getElementById("fileInput");
+  var fileName = document.getElementById("fileName");
+  var importBtn = document.getElementById("importBtn");
+  var cancelBtn = document.getElementById("cancelBtn");
+  var loadedJson = "";
+  fileInput.addEventListener("change", () => {
+    var _a;
+    const file = (_a = fileInput.files) == null ? void 0 : _a[0];
+    if (!file) return;
+    fileName.textContent = file.name;
+    const reader = new FileReader();
+    reader.onload = () => {
+      loadedJson = reader.result;
+      jsonInput.value = loadedJson;
+    };
+    reader.readAsText(file);
+  });
+  importBtn.addEventListener("click", () => {
+    const data = jsonInput.value.trim() || loadedJson;
+    if (!data) {
+      alert("Please paste JSON or upload a file.");
+      return;
+    }
+    try {
+      JSON.parse(data);
+    } catch (e) {
+      alert("Invalid JSON format. Please check the input.");
+      return;
+    }
+    parent.postMessage({ pluginMessage: { type: "import", data } }, "*");
+  });
+  cancelBtn.addEventListener("click", () => {
+    parent.postMessage({ pluginMessage: { type: "cancel" } }, "*");
+  });
+  jsonInput.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    jsonInput.style.borderColor = "#18a0fb";
+  });
+  jsonInput.addEventListener("dragleave", () => {
+    jsonInput.style.borderColor = "#ddd";
+  });
+  jsonInput.addEventListener("drop", (e) => {
+    var _a;
+    e.preventDefault();
+    jsonInput.style.borderColor = "#ddd";
+    const file = (_a = e.dataTransfer) == null ? void 0 : _a.files[0];
+    if (file) {
+      fileName.textContent = file.name;
+      const reader = new FileReader();
+      reader.onload = () => {
+        loadedJson = reader.result;
+        jsonInput.value = loadedJson;
+      };
+      reader.readAsText(file);
+    }
+  });
+})();
+</script>
+</body>
+</html>
