@@ -90,6 +90,8 @@
     <property name="title">
      <string>&amp;Help</string>
     </property>
+    <addaction name="saveFigmaPlugin"/>
+    <addaction name="separator"/>
     <addaction name="aboutQt"/>
    </widget>
    <addaction name="menu_File"/>
@@ -191,6 +193,11 @@
   <action name="fontMapping">
    <property name="text">
     <string>&amp;Font Mapping...</string>
+   </property>
+  </action>
+  <action name="saveFigmaPlugin">
+   <property name="text">
+    <string>Save &amp;Figma Plugin...</string>
    </property>
   </action>
  </widget>

@@ -17,3 +17,14 @@ qt_add_resources(QPsdExporterFigmaPlugin "figma_icon"
     FILES
         figma.png
 )
+
+set(FIGMA_PLUGIN_DIR "${PROJECT_SOURCE_DIR}/tools/figma-plugin")
+
+qt_add_resources(QPsdExporterFigmaPlugin "figma_plugin"
+    PREFIX "/figma/plugin"
+    BASE "${FIGMA_PLUGIN_DIR}"
+    FILES
+        "${FIGMA_PLUGIN_DIR}/manifest.json"
+        "${FIGMA_PLUGIN_DIR}/dist/main.js"
+        "${FIGMA_PLUGIN_DIR}/dist/ui.html"
+)

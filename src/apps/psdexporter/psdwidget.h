@@ -29,6 +29,8 @@ public:
     // Get list of fonts used in the PSD
     QStringList fontsUsed() const;
 
+    static void saveFigmaPlugin(QWidget *parent);
+
 public slots:
     void load(const QString &fileName);
     void reload();

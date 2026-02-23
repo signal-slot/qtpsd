@@ -214,6 +214,10 @@ MainWindow::Private::Private(::MainWindow *parent)
         psdWidget->showFontMappingDialog();
     });
 
+    connect(saveFigmaPlugin, &QAction::triggered, q, [this]() {
+        PsdWidget::saveFigmaPlugin(q);
+    });
+
     connect(tabWidget, &QTabWidget::currentChanged, q, [this](int index) {
         if (index < 0) {
             q->setWindowModified(false);

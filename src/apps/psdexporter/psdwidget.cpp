@@ -850,16 +850,9 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
         msgBox.setWindowTitle(tr("Export Complete"));
         msgBox.setText(tr("Exported successfully to:\n%1").arg(to));
 
+        QPushButton *saveFigmaPluginBtn = nullptr;
         if (exporter->key() == "figma") {
-            msgBox.setInformativeText(
-                tr("To set up the Figma plugin:\n"
-                   "1. Open Figma Desktop\n"
-                   "2. Menu \u2192 Plugins \u2192 Development \u2192 Import plugin from manifest...\n"
-                   "3. Select manifest.json in the tools/figma-plugin folder\n"
-                   "\n"
-                   "To import this file:\n"
-                   "1. Plugins \u2192 Development \u2192 PSD to Figma Importer\n"
-                   "2. Select the exported .figma.json file and click Import"));
+            saveFigmaPluginBtn = msgBox.addButton(tr("Save Figma Plugin..."), QMessageBox::ActionRole);
         }
 
         auto *copyPathBtn = msgBox.addButton(tr("Copy Path"), QMessageBox::ActionRole);
@@ -868,7 +861,9 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
         msgBox.setDefaultButton(QMessageBox::Ok);
         msgBox.exec();
 
-        if (msgBox.clickedButton() == copyPathBtn) {
+        if (msgBox.clickedButton() == saveFigmaPluginBtn) {
+            saveFigmaPlugin(this);
+        } else if (msgBox.clickedButton() == copyPathBtn) {
             QApplication::clipboard()->setText(to);
         } else if (msgBox.clickedButton() == showInFolderBtn) {
             QDesktopServices::openUrl(
@@ -999,4 +994,44 @@ void PsdWidget::showFontMappingDialog()
         // Reload to apply new font mappings
         reload();
     }
+}
+
+void PsdWidget::saveFigmaPlugin(QWidget *parent)
+{
+    const QString dir = QFileDialog::getExistingDirectory(
+        parent, tr("Save Figma Plugin to..."));
+    if (dir.isEmpty())
+        return;
+
+    struct { const char *resource; const char *relative; } files[] = {
+        { ":/figma/plugin/manifest.json", "manifest.json" },
+        { ":/figma/plugin/dist/main.js",  "dist/main.js" },
+        { ":/figma/plugin/dist/ui.html",  "dist/ui.html" },
+    };
+
+    QDir destDir(dir);
+    if (!destDir.mkpath("dist"_L1)) {
+        QMessageBox::critical(parent, tr("Error"),
+            tr("Failed to create directory:\n%1").arg(destDir.filePath("dist"_L1)));
+        return;
+    }
+
+    for (const auto &f : files) {
+        QFile src(QString::fromLatin1(f.resource));
+        if (!src.open(QIODevice::ReadOnly)) {
+            QMessageBox::critical(parent, tr("Error"),
+                tr("Failed to read resource:\n%1").arg(QLatin1StringView(f.resource)));
+            return;
+        }
+        const QString destPath = destDir.filePath(QString::fromLatin1(f.relative));
+        QFile dest(destPath);
+        if (!dest.open(QIODevice::WriteOnly)) {
+            QMessageBox::critical(parent, tr("Error"),
+                tr("Failed to write file:\n%1").arg(destPath));
+            return;
+        }
+        dest.write(src.readAll());
+    }
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dir));
 }
