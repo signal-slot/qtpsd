@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component>
+  <gradients>
+    <conical name="angle_gradient_0" angle="0 360" center="100 100">
+      <stop color="0x008000" offset="0" opa="255"/>
+      <stop color="0xffff00" offset="255" opa="255"/>
+    </conical>
+  </gradients>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">
     <lv_image height="200" src="background" width="200" x="0" y="0"/>
-    <lv_obj height="200" style_bg_color="0x008000" style_bg_grad_color="0xffff00" style_bg_grad_dir="ver" style_bg_grad_opa="255" style_bg_grad_stop="255" style_bg_main_stop="0" style_bg_opa="255" width="200" x="0" y="0"/>
+    <lv_obj height="200" style_bg_grad="angle_gradient_0" style_bg_opa="255" style_border_width="0" width="200" x="0" y="0"/>
   </view>
 </component>

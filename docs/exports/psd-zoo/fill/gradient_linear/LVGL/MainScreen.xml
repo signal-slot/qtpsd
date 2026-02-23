@@ -1,7 +1,13 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component>
+  <gradients>
+    <linear name="linear_gradient_0" end="100 200" extend="pad" start="100 0">
+      <stop color="0xffffff" offset="0" opa="255"/>
+      <stop color="0x000000" offset="255" opa="255"/>
+    </linear>
+  </gradients>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="200" x="0" y="0">
     <lv_image height="200" src="background" width="200" x="0" y="0"/>
-    <lv_obj height="200" style_bg_color="0x000000" style_bg_grad_color="0xffffff" style_bg_grad_dir="ver" style_bg_grad_opa="255" style_bg_grad_stop="255" style_bg_main_stop="0" style_bg_opa="255" width="200" x="0" y="0"/>
+    <lv_obj height="200" style_bg_grad="linear_gradient_0" style_bg_opa="255" style_border_width="0" width="200" x="0" y="0"/>
   </view>
 </component>

@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component>
+  <gradients>
+    <linear name="opacity_gradient_0" end="300 100" extend="pad" start="0 100">
+      <stop color="0xff0000" offset="0" opa="0"/>
+      <stop color="0xff0000" offset="255" opa="255"/>
+    </linear>
+  </gradients>
   <view extends="lv_obj" height="200" scrollbar_mode="off" style_pad_all="0" width="300" x="0" y="0">
-    <lv_obj height="200" style_bg_color="0xff0000" style_bg_grad_color="0xff0000" style_bg_grad_dir="hor" style_bg_grad_opa="255" style_bg_grad_stop="255" style_bg_main_stop="0" style_bg_opa="255" width="300" x="0" y="0"/>
+    <lv_obj height="200" style_bg_grad="opacity_gradient_0" style_bg_opa="255" style_border_width="0" width="300" x="0" y="0"/>
   </view>
 </component>

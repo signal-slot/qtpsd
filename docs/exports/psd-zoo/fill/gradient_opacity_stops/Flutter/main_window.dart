@@ -21,7 +21,7 @@ class MainWindow extends StatelessWidget {
                   begin: Alignment(1, 0),
                   colors: [
                     Color.fromARGB(255, 255, 0, 0),
-                    Color.fromARGB(255, 255, 0, 0),
+                    Color.fromARGB(0, 255, 0, 0),
                   ],
                   end: Alignment(-1, 0),
                   stops: [
