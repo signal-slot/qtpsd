@@ -56,11 +56,6 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         return 1;
     }
 
-    if (plugin->exportType() != QPsdExporterPlugin::Directory) {
-        qCritical() << "Exporter" << type << "does not support directory export";
-        return 1;
-    }
-
     // Apply plugin-specific properties from CLI (e.g., --effect-mode nogpu)
     const auto mo = plugin->metaObject();
     for (const auto &arg : propertyArgs) {
@@ -131,8 +126,16 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     hint.insert("imageScaling", false);
     hint.insert("makeCompact", makeCompact);
 
-    qInfo() << "Exporting" << input << "to" << outdir << "using" << type << "at" << outputSize;
-    if (!plugin->exportTo(&model, outdir, hint)) {
+    // For File-type exporters, construct the output file path from outdir
+    QString exportTarget = outdir;
+    if (plugin->exportType() == QPsdExporterPlugin::File) {
+        const auto filters = plugin->filters();
+        QString extension = filters.isEmpty() ? ".out"_L1 : filters.values().at(0);
+        exportTarget = outDir.filePath(inputInfo.completeBaseName() + extension);
+    }
+
+    qInfo() << "Exporting" << input << "to" << exportTarget << "using" << type << "at" << outputSize;
+    if (!plugin->exportTo(&model, exportTarget, hint)) {
         qCritical() << "Export failed";
         return 1;
     }

@@ -1,0 +1,75 @@
+{
+    "document": {
+        "children": [
+            {
+                "children": [
+                    {
+                        "absoluteBoundingBox": {
+                            "height": 240,
+                            "width": 320,
+                            "x": 0,
+                            "y": 0
+                        },
+                        "blendMode": "NORMAL",
+                        "children": [
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 96,
+                                    "width": 134,
+                                    "x": 64,
+                                    "y": 74
+                                },
+                                "blendMode": "NORMAL",
+                                "fillGeometry": [
+                                    {
+                                        "path": "M 66.5 2 C 66.5 2 119.027 20.4198 119.027 20.4198 C 119.027 20.4198 132 61.8087 132 61.8087 C 132 61.8087 95.6502 95 95.6502 95 C 95.6502 95 37.3498 95 37.3498 95 C 37.3498 95 1 61.8087 1 61.8087 C 1 61.8087 13.9731 20.4198 13.9731 20.4198 C 13.9731 20.4198 66.5 2 66.5 2 Z",
+                                        "windingRule": "NONZERO"
+                                    }
+                                ],
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.054901961237192154,
+                                            "g": 0.43529412150382996,
+                                            "r": 0.3529411852359772
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "5",
+                                "name": "多角形 1",
+                                "opacity": 0.3686274509803922,
+                                "type": "VECTOR",
+                                "visible": true
+                            }
+                        ],
+                        "clipsContent": true,
+                        "fills": [
+                            {
+                                "color": {
+                                    "a": 1,
+                                    "b": 0.9529411792755127,
+                                    "g": 0.772549033164978,
+                                    "r": 0.5607843399047852
+                                },
+                                "opacity": 1,
+                                "type": "SOLID",
+                                "visible": true
+                            }
+                        ],
+                        "id": "3",
+                        "name": "アートボード 1",
+                        "type": "FRAME",
+                        "visible": true
+                    }
+                ],
+                "name": "Page 1",
+                "type": "CANVAS"
+            }
+        ],
+        "type": "DOCUMENT"
+    }
+}

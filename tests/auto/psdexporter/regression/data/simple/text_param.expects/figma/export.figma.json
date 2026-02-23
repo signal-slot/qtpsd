@@ -1,0 +1,206 @@
+{
+    "document": {
+        "children": [
+            {
+                "children": [
+                    {
+                        "absoluteBoundingBox": {
+                            "height": 240,
+                            "width": 320,
+                            "x": 0,
+                            "y": 0
+                        },
+                        "blendMode": "NORMAL",
+                        "children": [
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 52,
+                                    "width": 237,
+                                    "x": 31,
+                                    "y": 24
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "shooting\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0,
+                                            "g": 0,
+                                            "r": 0
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "6",
+                                "name": "shooting",
+                                "style": {
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 50,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "shooting\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0,
+                                                    "g": 0,
+                                                    "r": 0
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 50,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 52,
+                                    "width": 242,
+                                    "x": 29,
+                                    "y": 19
+                                },
+                                "blendMode": "NORMAL",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.9647058844566345,
+                                            "g": 0.3921568691730499,
+                                            "r": 0.49803921580314636
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "8",
+                                "name": "長方形 2",
+                                "type": "RECTANGLE",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 100,
+                                    "width": 242,
+                                    "x": 29,
+                                    "y": 19
+                                },
+                                "blendMode": "NORMAL",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.929411768913269,
+                                            "g": 0.9647058844566345,
+                                            "r": 0.658823549747467
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "7",
+                                "name": "長方形 1",
+                                "type": "RECTANGLE",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 0,
+                                    "width": 0,
+                                    "x": 0,
+                                    "y": 0
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0,
+                                            "g": 0,
+                                            "r": 0
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "5",
+                                "name": "レイヤー 1",
+                                "style": {
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 50,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0,
+                                                    "g": 0,
+                                                    "r": 0
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 50,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            }
+                        ],
+                        "clipsContent": true,
+                        "fills": [
+                            {
+                                "color": {
+                                    "a": 1,
+                                    "b": 0.5411764979362488,
+                                    "g": 0.5254902243614197,
+                                    "r": 0.10588235408067703
+                                },
+                                "opacity": 1,
+                                "type": "SOLID",
+                                "visible": true
+                            }
+                        ],
+                        "id": "3",
+                        "name": "アートボード 1",
+                        "type": "FRAME",
+                        "visible": true
+                    }
+                ],
+                "name": "Page 1",
+                "type": "CANVAS"
+            }
+        ],
+        "type": "DOCUMENT"
+    }
+}

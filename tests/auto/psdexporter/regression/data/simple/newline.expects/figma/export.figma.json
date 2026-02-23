@@ -1,0 +1,379 @@
+{
+    "document": {
+        "children": [
+            {
+                "children": [
+                    {
+                        "absoluteBoundingBox": {
+                            "height": 240,
+                            "width": 320,
+                            "x": 0,
+                            "y": 0
+                        },
+                        "blendMode": "NORMAL",
+                        "children": [
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 107,
+                                    "width": 146,
+                                    "x": 167,
+                                    "y": 110
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "段落テキストは折り返される\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.7629052996635437,
+                                            "g": 0.7629052996635437,
+                                            "r": 0.9176470637321472
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "11",
+                                "name": "段落テキストは折り返される",
+                                "style": {
+                                    "fontFamily": "KozGoPr6N-Regular",
+                                    "fontSize": 24,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "NONE"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "段落テキストは折り返される\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontSize": 24,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 80,
+                                    "width": 84,
+                                    "x": 26,
+                                    "y": 112
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "Shift\n+改行\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.7629052996635437,
+                                            "g": 0.7629052996635437,
+                                            "r": 0.9176470637321472
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "9",
+                                "name": "Shift +改行",
+                                "style": {
+                                    "fontFamily": "KozGoPr6N-Regular",
+                                    "fontSize": 30,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "Shift\n+改行\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontSize": 30,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 82,
+                                    "width": 141,
+                                    "x": 170,
+                                    "y": 10
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "文字列中に\n別フォント\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.7629052996635437,
+                                            "g": 0.7629052996635437,
+                                            "r": 0.9176470637321472
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "7",
+                                "name": "文字列中に 別フォント",
+                                "style": {
+                                    "fontFamily": "KozGoPr6N-Regular",
+                                    "fontSize": 30,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "文字列",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontSize": 30,
+                                        "fontWeight": 400
+                                    },
+                                    {
+                                        "characters": "中",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontSize": 16,
+                                        "fontWeight": 400
+                                    },
+                                    {
+                                        "characters": "に\n別",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontSize": 30,
+                                        "fontWeight": 400
+                                    },
+                                    {
+                                        "characters": "フォント\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 18,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 82,
+                                    "width": 157,
+                                    "x": 2,
+                                    "y": 10
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "文字列中に\n改行\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.7629052996635437,
+                                            "g": 0.7629052996635437,
+                                            "r": 0.9176470637321472
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "6",
+                                "name": "文字列中に 改行",
+                                "style": {
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 30,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "文字列中に\n改行\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 30,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 0,
+                                    "width": 0,
+                                    "x": 0,
+                                    "y": 0
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0.7629052996635437,
+                                            "g": 0.7629052996635437,
+                                            "r": 0.9176470637321472
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "5",
+                                "name": "レイヤー 1",
+                                "style": {
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 50,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.7629052996635437,
+                                                    "g": 0.7629052996635437,
+                                                    "r": 0.9176470637321472
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 50,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            }
+                        ],
+                        "clipsContent": true,
+                        "fills": [
+                            {
+                                "color": {
+                                    "a": 1,
+                                    "b": 0.003921568859368563,
+                                    "g": 0.1411764770746231,
+                                    "r": 0.003921568859368563
+                                },
+                                "opacity": 1,
+                                "type": "SOLID",
+                                "visible": true
+                            }
+                        ],
+                        "id": "3",
+                        "name": "アートボード 1",
+                        "type": "FRAME",
+                        "visible": true
+                    }
+                ],
+                "name": "Page 1",
+                "type": "CANVAS"
+            }
+        ],
+        "type": "DOCUMENT"
+    }
+}

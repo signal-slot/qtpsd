@@ -3,6 +3,7 @@
 
 add_subdirectory(json)
 add_subdirectory(images)
+add_subdirectory(figma)
 
 # These plugins have resource targets that cause CMake export issues
 # Skip them for WASM builds or when explicitly disabled

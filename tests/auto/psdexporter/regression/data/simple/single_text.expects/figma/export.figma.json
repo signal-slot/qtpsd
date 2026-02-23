@@ -1,0 +1,98 @@
+{
+    "document": {
+        "children": [
+            {
+                "children": [
+                    {
+                        "absoluteBoundingBox": {
+                            "height": 240,
+                            "width": 320,
+                            "x": 0,
+                            "y": 0
+                        },
+                        "blendMode": "NORMAL",
+                        "children": [
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 32,
+                                    "width": 155,
+                                    "x": 53,
+                                    "y": 81
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "Example1\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 0,
+                                            "g": 0,
+                                            "r": 0
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "5",
+                                "name": "Example1",
+                                "style": {
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 29.999999999999996,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "Example1\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0,
+                                                    "g": 0,
+                                                    "r": 0
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 29.999999999999996,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            }
+                        ],
+                        "clipsContent": true,
+                        "fills": [
+                            {
+                                "color": {
+                                    "a": 1,
+                                    "b": 0.5647059082984924,
+                                    "g": 0.9058823585510254,
+                                    "r": 0.9686274528503418
+                                },
+                                "opacity": 1,
+                                "type": "SOLID",
+                                "visible": true
+                            }
+                        ],
+                        "id": "3",
+                        "name": "アートボード 1",
+                        "type": "FRAME",
+                        "visible": true
+                    }
+                ],
+                "name": "Page 1",
+                "type": "CANVAS"
+            }
+        ],
+        "type": "DOCUMENT"
+    }
+}
