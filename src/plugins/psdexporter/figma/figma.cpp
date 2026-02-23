@@ -578,9 +578,10 @@ QJsonObject QPsdExporterFigmaPlugin::buildFolderNode(const QPsdFolderLayerItem *
         }
     }
 
-    // Children
+    // Children (reversed: PSD model is top-to-bottom, Figma is bottom-to-top)
     QJsonArray children;
-    for (int i = 0; i < model->rowCount(index); i++) {
+    const int childCount = model->rowCount(index);
+    for (int i = childCount - 1; i >= 0; i--) {
         const auto childIndex = model->index(i, 0, index);
         QJsonObject child = buildNode(childIndex, model, images);
         if (!child.isEmpty())
@@ -652,10 +653,11 @@ bool QPsdExporterFigmaPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     QJsonObject images;
 
-    // Build top-level children
+    // Build top-level children (reversed: PSD model is top-to-bottom, Figma is bottom-to-top)
     QJsonArray topChildren;
     QModelIndex rootIndex;
-    for (int i = 0; i < model->rowCount(rootIndex); i++) {
+    const int topCount = model->rowCount(rootIndex);
+    for (int i = topCount - 1; i >= 0; i--) {
         const auto childIndex = model->index(i, 0, rootIndex);
         QJsonObject child = buildNode(childIndex, model, images);
         if (!child.isEmpty())
