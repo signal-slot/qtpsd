@@ -10,6 +10,7 @@
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QRegularExpression>
 #include <QtPsdExporter/QPsdExporterPlugin>
+#include <QtPsdImporter/QPsdImporterPlugin>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 
 static QSize parseResolution(const QString &resolution, const QSize &originalSize)
@@ -144,6 +145,48 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     return 0;
 }
 
+static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale)
+{
+    auto plugin = QPsdImporterPlugin::plugin(importType.toUtf8());
+    if (!plugin) {
+        qCritical() << "Unknown importer type:" << importType;
+        qCritical() << "Available types:" << QPsdImporterPlugin::keys();
+        return 1;
+    }
+
+    QVariantMap options;
+    options["source"] = source;
+
+    QString key = apiKey;
+    if (key.isEmpty()) {
+        QSettings settings;
+        settings.beginGroup("Importers/Figma");
+        key = settings.value("apiKey").toString();
+    }
+    if (key.isEmpty())
+        key = qEnvironmentVariable("FIGMA_API_KEY");
+    if (key.isEmpty())
+        key = qEnvironmentVariable("FIGMA_ACCESS_TOKEN");
+    if (!key.isEmpty())
+        options["apiKey"] = key;
+    options["imageScale"] = imageScale;
+
+    QPsdWidgetTreeItemModel widgetModel;
+    PsdTreeItemModel model;
+    model.setSourceModel(&widgetModel);
+
+    qInfo() << "Importing from" << source << "using" << importType;
+    if (!plugin->importFrom(&model, options)) {
+        qCritical() << "Import failed";
+        return 1;
+    }
+
+    qInfo() << "Import completed successfully";
+    qInfo() << "File name:" << model.fileName();
+    qInfo() << "Size:" << model.size();
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     qSetMessagePattern("[%{if-debug}D%{endif}%{if-info}I%{endif}%{if-warning}W%{endif}%{if-critical}C%{endif}%{if-fatal}F%{endif}] %{function}:%{line} - %{message}");
@@ -193,6 +236,27 @@ int main(int argc, char *argv[])
                                   "List available exporter types");
     parser.addOption(listOption);
 
+    QCommandLineOption importTypeOption(QStringList() << "import-type",
+                                        "Importer type (e.g., figma)",
+                                        "type");
+    parser.addOption(importTypeOption);
+
+    QCommandLineOption importSourceOption(QStringList() << "import-source",
+                                          "Import source (e.g., Figma URL)",
+                                          "source");
+    parser.addOption(importSourceOption);
+
+    QCommandLineOption importApiKeyOption(QStringList() << "import-api-key",
+                                          "API key for import (or set FIGMA_API_KEY env var)",
+                                          "key");
+    parser.addOption(importApiKeyOption);
+
+    QCommandLineOption importScaleOption(QStringList() << "import-scale",
+                                         "Image scale for import (default: 2)",
+                                         "scale",
+                                         "2");
+    parser.addOption(importScaleOption);
+
     parser.process(app);
 
     if (parser.isSet(listOption)) {
@@ -203,6 +267,18 @@ int main(int argc, char *argv[])
             qInfo().noquote() << "  " << key << "-" << plugin->name() << "(" << typeStr << ")";
         }
         return 0;
+    }
+
+    // Handle --import-type / --import-source
+    if (parser.isSet(importTypeOption) || parser.isSet(importSourceOption)) {
+        if (!parser.isSet(importTypeOption) || !parser.isSet(importSourceOption)) {
+            qCritical() << "Auto import requires both: --import-type and --import-source";
+            return 1;
+        }
+        return runAutoImport(parser.value(importTypeOption),
+                             parser.value(importSourceOption),
+                             parser.value(importApiKeyOption),
+                             parser.value(importScaleOption).toInt());
     }
 
     bool hasInput = parser.isSet(inputOption);

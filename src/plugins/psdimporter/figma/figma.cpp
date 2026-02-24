@@ -801,21 +801,24 @@ private:
         bool isMask = false;
     };
 
-    quintptr processNode(const QJsonObject &nodeJson, quintptr parentId, qreal inheritedOpacity = 1.0)
+    quintptr processNode(const QJsonObject &nodeJson, quintptr parentId, QPoint parentOffset = {})
     {
         const QString figmaId = nodeJson["id"_L1].toString();
         const QString name = nodeJson["name"_L1].toString();
         const QString nodeType = nodeJson["type"_L1].toString();
         const bool visible = nodeJson.value("visible"_L1).toBool(true);
-        const qreal opacity = nodeJson.value("opacity"_L1).toDouble(1.0) * inheritedOpacity;
+        const qreal opacity = nodeJson.value("opacity"_L1).toDouble(1.0);
 
         if (!visible) return 0;
 
         quint32 layerId = qHash(figmaId);
 
+        // Get bounding box (absolute coordinates from REST API), normalized to canvas origin
+        // Then subtract parentOffset so coordinates are relative to the parent folder
         const auto bbox = nodeJson["absoluteBoundingBox"_L1].toObject();
-        QRect rect(qRound(bbox["x"_L1].toDouble()) - m_canvasOrigin.x(),
-                   qRound(bbox["y"_L1].toDouble()) - m_canvasOrigin.y(),
+        const int absX = qRound(bbox["x"_L1].toDouble()) - m_canvasOrigin.x();
+        const int absY = qRound(bbox["y"_L1].toDouble()) - m_canvasOrigin.y();
+        QRect rect(absX - parentOffset.x(), absY - parentOffset.y(),
                    qRound(bbox["width"_L1].toDouble()), qRound(bbox["height"_L1].toDouble()));
 
         const auto blendMode = blendModeFromFigma(nodeJson.value("blendMode"_L1).toString());
@@ -1012,18 +1015,21 @@ private:
             QFontMetrics fm(adjustedFont);
             const qreal capHeightOffset = fm.ascent() - fm.capHeight();
 
+            // textFrame must use absolute coordinates (absX/absY) because
+            // cloneLayerItem creates items from PSD records with absolute rects.
+            // Using parent-relative rect.x()/rect.y() here would mismatch.
             const auto textAutoResize = style["textAutoResize"_L1].toString();
             if (textAutoResize != "WIDTH_AND_HEIGHT"_L1) {
                 // Fixed-width text box (NONE, HEIGHT, TRUNCATE, or absent):
                 // use ParagraphText with word wrapping at bbox width
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
-                textItem->setTextFrame(QRectF(rect.x(), rect.y() + capHeightOffset,
+                textItem->setTextFrame(QRectF(absX, absY + capHeightOffset,
                                               rect.width(), rect.height()));
             } else {
                 // Auto-resize text: use ParagraphText but with extra width to
                 // prevent unwanted wrapping from font metric differences
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
-                textItem->setTextFrame(QRectF(rect.x(), rect.y() + capHeightOffset,
+                textItem->setTextFrame(QRectF(absX, absY + capHeightOffset,
                                               rect.width() + 100, rect.height()));
             }
 
@@ -1050,12 +1056,12 @@ private:
 
             const bool isTopLevelFrame = (parentId == 0)
                 && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1);
-            folderItem->setRect(rect);
+            folderItem->setRect(isTopLevelFrame ? QRect() : rect);
 
             // Extract corner radius for frames/components
             const qreal frameCornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
 
-            if (nodeJson.value("clipsContent"_L1).toBool(false)) {
+            if (!isTopLevelFrame && nodeJson.value("clipsContent"_L1).toBool(false)) {
                 QPsdAbstractLayerItem::PathInfo clipMask;
                 clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
                 if (frameCornerRadius > 0) {
@@ -1086,15 +1092,16 @@ private:
                     needsGradientBg = true;
             }
 
-            // Keep folder's own opacity — QPsdScene applies it via QGraphicsOpacityEffect
-            // which composites children first, then fades the group as a whole
-            folderItem->setOpacity(nodeJson.value("opacity"_L1).toDouble(1.0));
             node.layerItem = folderItem;
             node.folderType = FolderType::OpenFolder;
 
+            // Process children (reverse: Figma back-to-front → PSD front-to-back)
+            // Pass absolute position so children use parent-relative coords.
+            // flattenFigmaTree converts back to absolute for PSD records.
+            const QPoint childOffset(absX, absY);
             const auto children = nodeJson["children"_L1].toArray();
             for (int ci = children.size() - 1; ci >= 0; --ci) {
-                quintptr childId = processNode(children.at(ci).toObject(), nodeId, 1.0);
+                quintptr childId = processNode(children.at(ci).toObject(), nodeId, childOffset);
                 if (childId != 0)
                     node.childIds.append(childId);
             }
@@ -1319,56 +1326,31 @@ private:
                     pathInfo.path = pp;
                 }
             }
-            // Apply rotation for shapes built from basic parameters.
-            // Skip for fillGeometry-based paths (POLYGON, STAR, VECTOR, etc.)
-            // because their geometry already reflects the node's transforms.
-            const bool needsRotation = (nodeType == "RECTANGLE"_L1
-                                        || nodeType == "ELLIPSE"_L1);
-            const qreal rotationRad = nodeJson.value("rotation"_L1).toDouble(0.0);
-            const qreal rotation = rotationRad * 180.0 / M_PI; // convert to degrees
-            if (needsRotation && std::abs(rotation) > 0.01
-                && pathInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
-                // Get original (pre-rotation) dimensions from Figma's size property
-                const auto sizeObj = nodeJson["size"_L1].toObject();
-                qreal origW = sizeObj["x"_L1].toDouble(0);
-                qreal origH = sizeObj["y"_L1].toDouble(0);
-                if (origW <= 0 || origH <= 0) {
-                    // Fallback: compute from bbox and rotation angle
-                    const qreal rad = std::abs(rotationRad);
-                    const qreal c = std::abs(std::cos(rad));
-                    const qreal s = std::abs(std::sin(rad));
-                    const qreal denom = c * c - s * s;
-                    if (std::abs(denom) > 0.001) {
-                        origW = (w * c - h * s) / denom;
-                        origH = (h * c - w * s) / denom;
-                    } else {
-                        // ~45° case, assume square
-                        origW = origH = w / std::sqrt(2.0);
+            // Apply rotation/scale from relativeTransform to the parsed path.
+            // Figma's fillGeometry/strokeGeometry paths are in the node's local
+            // coordinate space (pre-transform), but absoluteBoundingBox gives
+            // post-transform bounds. Transform the path to match.
+            if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::Path) {
+                const auto transform = nodeJson["relativeTransform"_L1].toArray();
+                if (transform.size() == 2) {
+                    const auto row0 = transform[0].toArray();
+                    const auto row1 = transform[1].toArray();
+                    if (row0.size() >= 2 && row1.size() >= 2) {
+                        const qreal a = row0[0].toDouble();
+                        const qreal b = row0[1].toDouble();
+                        const qreal c = row1[0].toDouble();
+                        const qreal d = row1[1].toDouble();
+                        // Check for non-identity rotation/scale
+                        if (qAbs(a - 1.0) > 1e-4 || qAbs(d - 1.0) > 1e-4
+                            || qAbs(b) > 1e-4 || qAbs(c) > 1e-4) {
+                            QTransform xform(a, c, b, d, 0, 0);
+                            pathInfo.path = xform.map(pathInfo.path);
+                            const QRectF bounds = pathInfo.path.boundingRect();
+                            if (!bounds.isNull())
+                                pathInfo.path.translate(-bounds.x(), -bounds.y());
+                        }
                     }
                 }
-
-                // Build the original path at pre-rotation size
-                QPainterPath pp;
-                if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::Rectangle) {
-                    pp.addRect(0, 0, origW, origH);
-                } else if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::RoundedRectangle) {
-                    pp.addRoundedRect(0, 0, origW, origH, pathInfo.radius, pathInfo.radius);
-                } else {
-                    // Path type (including ellipses already converted to paths)
-                    pp = pathInfo.path;
-                    origW = w;
-                    origH = h;
-                }
-
-                // Rotate around shape center, then center in bounding box
-                QTransform t;
-                t.translate(w / 2.0, h / 2.0);
-                t.rotate(-rotation);
-                t.translate(-origW / 2.0, -origH / 2.0);
-
-                pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
-                pathInfo.path = t.map(pp);
-                pathInfo.rect = QRectF(0, 0, w, h);
             }
 
             shapeItem->setPathInfo(pathInfo);
@@ -1747,7 +1729,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
 static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
                               const QModelIndex &parent,
                               QList<QPsdLayerRecord> &records,
-                              QHash<quint32, const QPsdAbstractLayerItem *> &layerItemMap)
+                              QHash<quint32, const QPsdAbstractLayerItem *> &layerItemMap,
+                              QPoint absOffset = {})
 {
     const int n = figmaModel->rowCount(parent);
 
@@ -1781,6 +1764,11 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
         // Layers above the mask (processed after in reverse iteration) are NonBase
         const bool isClipped = masking && !isMask;
 
+        // Convert parent-relative rect to absolute (document) coordinates.
+        // QPsdWidgetTreeItemModel expects absolute coords and converts to parent-relative internally.
+        const QRect absRect(rect.x() + absOffset.x(), rect.y() + absOffset.y(),
+                            rect.width(), rect.height());
+
         if (folderType != FigmaLayerTreeItemModel::FolderType::NotFolder) {
             QPsdLayerRecord closeRecord;
             closeRecord.setName(QByteArray("</Layer group>"));
@@ -1792,10 +1780,10 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             closeRecord.setAdditionalLayerInformation(closeALI);
             records.append(closeRecord);
 
-            flattenFigmaTree(figmaModel, index, records, layerItemMap);
+            flattenFigmaTree(figmaModel, index, records, layerItemMap, absRect.topLeft());
 
             QPsdLayerRecord folderRecord;
-            folderRecord.setRect(rect);
+            folderRecord.setRect(absRect);
             folderRecord.setName(name.toUtf8());
             folderRecord.setBlendMode(blendMode);
             folderRecord.setOpacity(qRound(item->opacity() * 255.0));
@@ -1816,7 +1804,7 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             layerItemMap.insert(layerId, item);
         } else {
             QPsdLayerRecord leafRecord;
-            leafRecord.setRect(rect);
+            leafRecord.setRect(absRect);
             leafRecord.setName(name.toUtf8());
             leafRecord.setBlendMode(blendMode == QPsdBlend::PassThrough ? QPsdBlend::Normal : blendMode);
             leafRecord.setOpacity(qRound(item->opacity() * 255.0));
@@ -1980,41 +1968,40 @@ public:
         const int imageScale = options.value("imageScale"_L1, 2).toInt();
 
         QString fileKey = source;
-        QString nodeId;
 
         if (source.contains("figma.com"_L1)) {
             static const QRegularExpression reKey(u"figma\\.com/(?:file|design)/([a-zA-Z0-9]+)"_s);
             auto match = reKey.match(source);
             if (match.hasMatch())
                 fileKey = match.captured(1);
-
-            static const QRegularExpression reNode(u"node-id=([0-9]+[-:][0-9]+)"_s);
-            auto nodeMatch = reNode.match(source);
-            if (nodeMatch.hasMatch())
-                nodeId = nodeMatch.captured(1).replace('-'_L1, ':'_L1);
         }
 
-        if (fileKey.isEmpty())
+        if (fileKey.isEmpty()) {
+            qWarning() << "Figma import: fileKey is empty";
             return false;
+        }
 
         FigmaClient client;
         const QString token = options.value("apiKey"_L1).toString();
         if (!token.isEmpty())
             client.setToken(token);
 
-        if (client.token().isEmpty())
+        if (client.token().isEmpty()) {
+            qWarning() << "Figma import: API token is empty";
             return false;
+        }
 
         const auto fileJson = client.fetchFile(fileKey);
-        if (fileJson.contains("error"_L1))
+        if (fileJson.contains("error"_L1)) {
+            qWarning() << "Figma import: API error:" << fileJson["error"_L1];
             return false;
+        }
 
         // Enumerate pages and let user choose if multiple exist
         int pageIndex = 0;
         const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
         if (options.contains("pageIndex"_L1)) {
             pageIndex = options.value("pageIndex"_L1).toInt();
-            nodeId.clear();
         } else if (pages.size() > 1) {
             QDialog pageDlg;
             pageDlg.setWindowTitle(tr("Select Page"));
@@ -2030,53 +2017,10 @@ public:
             if (pageDlg.exec() != QDialog::Accepted)
                 return false;
             pageIndex = pageCombo->currentData().toInt();
-            nodeId.clear();  // Page selected explicitly — import all frames
-        }
-
-        // Enumerate artboards in the selected page and let user choose
-        {
-            const auto pageObj = pages.at(pageIndex).toObject();
-            const auto pageChildren = pageObj["children"_L1].toArray();
-            struct ArtboardInfo { QString id; QString name; };
-            QList<ArtboardInfo> artboards;
-            for (const auto &child : pageChildren) {
-                const auto obj = child.toObject();
-                const auto type = obj["type"_L1].toString();
-                if (type == "FRAME"_L1 || type == "COMPONENT"_L1)
-                    artboards.append({obj["id"_L1].toString(), obj["name"_L1].toString()});
-            }
-
-            if (options.contains("artboardId"_L1)) {
-                nodeId = options.value("artboardId"_L1).toString();
-            } else if (artboards.size() >= 2 && !options.contains("pageIndex"_L1)) {
-                QDialog abDlg;
-                abDlg.setWindowTitle(tr("Select Artboard"));
-                auto *abLayout = new QFormLayout(&abDlg);
-                auto *abCombo = new QComboBox(&abDlg);
-                abCombo->addItem(tr("All Artboards"));
-                int preselect = 0;
-                for (int i = 0; i < artboards.size(); ++i) {
-                    abCombo->addItem(artboards[i].name, artboards[i].id);
-                    if (!nodeId.isEmpty() && artboards[i].id == nodeId)
-                        preselect = i + 1;  // +1 for "All Artboards" at index 0
-                }
-                abCombo->setCurrentIndex(preselect);
-                abLayout->addRow(tr("Artboard:"), abCombo);
-                auto *abBtnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &abDlg);
-                abLayout->addRow(abBtnBox);
-                QObject::connect(abBtnBox, &QDialogButtonBox::accepted, &abDlg, &QDialog::accept);
-                QObject::connect(abBtnBox, &QDialogButtonBox::rejected, &abDlg, &QDialog::reject);
-                if (abDlg.exec() != QDialog::Accepted)
-                    return false;
-                if (abCombo->currentIndex() == 0)
-                    nodeId.clear();  // "All Artboards" selected
-                else
-                    nodeId = abCombo->currentData().toString();
-            }
         }
 
         FigmaLayerTreeItemModel figmaModel;
-        figmaModel.buildFromFigmaJson(fileJson, nodeId, pageIndex);
+        figmaModel.buildFromFigmaJson(fileJson, {}, pageIndex);
 
         // Download images before building the widget model (cloning includes images)
         const auto allImageIds = figmaModel.imageNodeIds();
