@@ -895,6 +895,8 @@ private:
                     run.text = applyTextCase(segObj["characters"_L1].toString(),
                                              segObj["textCase"_L1].toString());
                     run.font = fontFromStyle(segObj);
+                    if (segObj["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                        run.font.setCapitalization(QFont::SmallCaps);
                     run.originalFontName = segObj["fontFamily"_L1].toString();
                     run.color = !segFills.isEmpty() ? colorFromFills(segFills) : colorFromFills(fills);
                     run.alignment = alignmentFromStyle(style);
@@ -925,6 +927,8 @@ private:
                     QPsdTextLayerItem::Run run;
                     run.text = applyTextCase(characters, style["textCase"_L1].toString());
                     run.font = fontFromStyle(style);
+                    if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                        run.font.setCapitalization(QFont::SmallCaps);
                     run.originalFontName = style["fontFamily"_L1].toString();
                     run.color = colorFromFills(fills);
                     run.alignment = alignmentFromStyle(style);
@@ -953,6 +957,8 @@ private:
 
                         run.text = applyTextCase(rawText, effectiveStyle["textCase"_L1].toString());
                         run.font = fontFromStyle(effectiveStyle);
+                        if (effectiveStyle["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                            run.font.setCapitalization(QFont::SmallCaps);
                         run.originalFontName = effectiveStyle["fontFamily"_L1].toString();
                         run.color = colorFromFills(effectiveStyle.contains("fills"_L1)
                                                      ? effectiveStyle["fills"_L1].toArray()
@@ -967,6 +973,8 @@ private:
                         QPsdTextLayerItem::Run run;
                         run.text = applyTextCase(characters.mid(pos), style["textCase"_L1].toString());
                         run.font = fontFromStyle(style);
+                        if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                            run.font.setCapitalization(QFont::SmallCaps);
                         run.originalFontName = style["fontFamily"_L1].toString();
                         run.color = colorFromFills(fills);
                         run.alignment = alignmentFromStyle(style);
@@ -1005,8 +1013,9 @@ private:
             const qreal capHeightOffset = fm.ascent() - fm.capHeight();
 
             const auto textAutoResize = style["textAutoResize"_L1].toString();
-            if (textAutoResize == "NONE"_L1 || textAutoResize == "HEIGHT"_L1) {
-                // Fixed-width text box: use ParagraphText with word wrapping
+            if (textAutoResize != "WIDTH_AND_HEIGHT"_L1) {
+                // Fixed-width text box (NONE, HEIGHT, TRUNCATE, or absent):
+                // use ParagraphText with word wrapping at bbox width
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
                 textItem->setTextFrame(QRectF(rect.x(), rect.y() + capHeightOffset,
                                               rect.width(), rect.height()));
@@ -2037,7 +2046,9 @@ public:
                     artboards.append({obj["id"_L1].toString(), obj["name"_L1].toString()});
             }
 
-            if (artboards.size() >= 2) {
+            if (options.contains("artboardId"_L1)) {
+                nodeId = options.value("artboardId"_L1).toString();
+            } else if (artboards.size() >= 2 && !options.contains("pageIndex"_L1)) {
                 QDialog abDlg;
                 abDlg.setWindowTitle(tr("Select Artboard"));
                 auto *abLayout = new QFormLayout(&abDlg);
