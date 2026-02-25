@@ -141,33 +141,18 @@ MainWindow::Private::Private(::MainWindow *parent)
         if (options.isEmpty())
             return;
 
-        // Create a loading tab with progress bar immediately
-        auto *loadingWidget = new QWidget(q);
-        auto *loadingLayout = new QVBoxLayout(loadingWidget);
-        loadingLayout->setAlignment(Qt::AlignCenter);
-        auto *progressLabel = new QLabel(tr("Importing from %1...").arg(importer->name()));
-        progressLabel->setAlignment(Qt::AlignCenter);
-        auto *progressBar = new QProgressBar();
-        progressBar->setRange(0, 0); // indeterminate
-        progressBar->setFixedWidth(300);
-        loadingLayout->addWidget(progressLabel);
-        loadingLayout->addWidget(progressBar);
-        int index = tabWidget->addTab(loadingWidget, importer->icon(), tr("Importing..."));
-        tabWidget->setCurrentIndex(index);
+        // Determine page indices to import
+        QList<int> pageIndices;
+        if (options.contains("pageIndices"_L1)) {
+            const auto list = options.value("pageIndices"_L1).toList();
+            for (const auto &v : list)
+                pageIndices.append(v.toInt());
+        }
+        if (pageIndices.isEmpty())
+            pageIndices.append(options.value("pageIndex"_L1, 0).toInt());
 
-        // Run import - UI stays responsive during network I/O
-        // (Figma plugin uses QEventLoop internally which processes events)
-        QApplication::setOverrideCursor(Qt::BusyCursor);
-        auto viewer = new PsdWidget(q);
-        const bool ok = viewer->importFrom(importer, options);
-        QApplication::restoreOverrideCursor();
-
-        // Replace loading tab with result
-        tabWidget->removeTab(index);
-        loadingWidget->deleteLater();
-
-        if (ok) {
-            index = tabWidget->insertTab(index, viewer, viewer->windowIcon(), viewer->windowTitle());
+        // Helper to connect viewer signals
+        auto connectViewer = [this](PsdWidget *viewer) {
             connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
                 for (int i = 0; i < tabWidget->count(); i++) {
                     if (tabWidget->widget(i) == viewer)
@@ -191,10 +176,48 @@ MainWindow::Private::Private(::MainWindow *parent)
                     scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
                 }
             });
+        };
+
+        for (int pageIdx : pageIndices) {
+            // Create a loading tab with progress bar
+            auto *loadingWidget = new QWidget(q);
+            auto *loadingLayout = new QVBoxLayout(loadingWidget);
+            loadingLayout->setAlignment(Qt::AlignCenter);
+            auto *progressLabel = new QLabel(tr("Importing from %1...").arg(importer->name()));
+            progressLabel->setAlignment(Qt::AlignCenter);
+            auto *progressBar = new QProgressBar();
+            progressBar->setRange(0, 0); // indeterminate
+            progressBar->setFixedWidth(300);
+            loadingLayout->addWidget(progressLabel);
+            loadingLayout->addWidget(progressBar);
+            int index = tabWidget->addTab(loadingWidget, importer->icon(), tr("Importing..."));
             tabWidget->setCurrentIndex(index);
-            updateFileMenus();
-        } else {
-            delete viewer;
+
+            // Prepare per-page options
+            QVariantMap pageOptions = options;
+            pageOptions["pageIndex"_L1] = pageIdx;
+
+            QApplication::setOverrideCursor(Qt::BusyCursor);
+            auto viewer = new PsdWidget(q);
+            const bool ok = viewer->importFrom(importer, pageOptions);
+            QApplication::restoreOverrideCursor();
+
+            // Replace loading tab with result
+            tabWidget->removeTab(index);
+            loadingWidget->deleteLater();
+
+            if (ok) {
+                index = tabWidget->insertTab(index, viewer, viewer->windowIcon(), viewer->windowTitle());
+                connectViewer(viewer);
+                tabWidget->setCurrentIndex(index);
+                updateFileMenus();
+            } else {
+                const QString err = importer->errorMessage();
+                if (!err.isEmpty())
+                    QMessageBox::critical(q, tr("Import Failed"), err);
+                delete viewer;
+                break;
+            }
         }
     });
 

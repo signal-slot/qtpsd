@@ -20,8 +20,13 @@
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
 #include <QtWidgets/QFormLayout>
+#include <QtWidgets/QHBoxLayout>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
+#include <QtWidgets/QListWidget>
+#include <QtWidgets/QMessageBox>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QVBoxLayout>
 #include <QtPsdCore/QPsdParser>
 #include <QtPsdCore/QPsdFileHeader>
 #include <QtPsdCore/QPsdLayerInfo>
@@ -1961,8 +1966,12 @@ public:
     int priority() const override { return 10; }
     QString name() const override { return u"&Figma..."_s; }
 
+    mutable QJsonObject m_cachedFileJson;
+    mutable QString m_cachedFileKey;
+
     QVariantMap execImportDialog(QWidget *parent) const override
     {
+        // --- First dialog: URL, API key, scale ---
         QDialog dialog(parent);
         dialog.setWindowTitle(tr("Import from Figma"));
         dialog.setMinimumWidth(480);
@@ -2026,6 +2035,157 @@ public:
         options["source"_L1] = urlEdit->text().trimmed();
         options["apiKey"_L1] = apiKeyEdit->text().trimmed();
         options["imageScale"_L1] = scaleCombo->currentData().toInt();
+
+        // Extract fileKey from source URL
+        QString source = urlEdit->text().trimmed();
+        QString fileKey = source;
+        if (source.contains("figma.com"_L1)) {
+            static const QRegularExpression reKey(u"figma\\.com/(?:file|design)/([a-zA-Z0-9]+)"_s);
+            auto match = reKey.match(source);
+            if (match.hasMatch())
+                fileKey = match.captured(1);
+        }
+        if (fileKey.isEmpty()) {
+            QMessageBox::critical(parent, tr("Import from Figma"),
+                                  tr("No valid Figma file URL or key provided."));
+            return {};
+        }
+
+        // Fetch file JSON
+        FigmaClient client;
+        client.setToken(apiKeyEdit->text().trimmed());
+
+        QGuiApplication::setOverrideCursor(Qt::BusyCursor);
+        const auto fileJson = client.fetchFile(fileKey);
+        QGuiApplication::restoreOverrideCursor();
+
+        if (fileJson.contains("error"_L1)) {
+            const auto error = fileJson["error"_L1].toVariant().toString();
+            QMessageBox::critical(parent, tr("Import from Figma"),
+                                  tr("Figma API error: %1").arg(error));
+            return {};
+        }
+
+        // Cache the file JSON for importFrom()
+        m_cachedFileKey = fileKey;
+        m_cachedFileJson = fileJson;
+
+        // Enumerate pages
+        const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
+        QVariantList pageIndices;
+
+        if (pages.size() <= 1) {
+            pageIndices.append(0);
+        } else {
+            // Fetch page thumbnails in one batch
+            QStringList pageNodeIds;
+            for (const auto &page : pages)
+                pageNodeIds.append(page.toObject()["id"_L1].toString());
+
+            QGuiApplication::setOverrideCursor(Qt::BusyCursor);
+            const auto thumbResult = client.fetchImages(fileKey, pageNodeIds, u"png"_s, 1);
+            const auto thumbUrls = thumbResult["images"_L1].toObject();
+
+            QHash<QString, QImage> thumbnails;
+            for (const auto &nodeId : pageNodeIds) {
+                const auto url = thumbUrls[nodeId].toString();
+                if (!url.isEmpty()) {
+                    QImage img = client.downloadImage(QUrl(url));
+                    if (!img.isNull())
+                        thumbnails[nodeId] = img;
+                }
+            }
+            QGuiApplication::restoreOverrideCursor();
+
+            // --- Second dialog: Page selector with thumbnails ---
+            QDialog pageDlg(parent);
+            pageDlg.setWindowTitle(tr("Select Pages"));
+            pageDlg.setMinimumSize(640, 480);
+
+            auto *vLayout = new QVBoxLayout(&pageDlg);
+            vLayout->addWidget(new QLabel(tr("Select pages to import:"), &pageDlg));
+
+            auto *listWidget = new QListWidget(&pageDlg);
+            listWidget->setViewMode(QListView::IconMode);
+            listWidget->setIconSize(QSize(160, 120));
+            listWidget->setResizeMode(QListView::Adjust);
+            listWidget->setSpacing(8);
+            listWidget->setMovement(QListView::Static);
+
+            for (int i = 0; i < pages.size(); ++i) {
+                const auto pageObj = pages[i].toObject();
+                const QString pageName = pageObj["name"_L1].toString();
+                const QString nodeId = pageObj["id"_L1].toString();
+
+                auto *item = new QListWidgetItem(pageName, listWidget);
+                item->setData(Qt::UserRole, i);
+                item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
+                item->setCheckState(Qt::Checked);
+
+                if (thumbnails.contains(nodeId)) {
+                    const auto &thumb = thumbnails[nodeId];
+                    item->setIcon(QIcon(QPixmap::fromImage(
+                        thumb.scaled(160, 120, Qt::KeepAspectRatio, Qt::SmoothTransformation))));
+                } else {
+                    QPixmap placeholder(160, 120);
+                    placeholder.fill(Qt::lightGray);
+                    item->setIcon(QIcon(placeholder));
+                }
+            }
+
+            vLayout->addWidget(listWidget);
+
+            auto *btnLayout = new QHBoxLayout();
+            auto *selectAllBtn = new QPushButton(tr("Select All"), &pageDlg);
+            auto *deselectAllBtn = new QPushButton(tr("Deselect All"), &pageDlg);
+            btnLayout->addWidget(selectAllBtn);
+            btnLayout->addWidget(deselectAllBtn);
+            btnLayout->addStretch();
+            vLayout->addLayout(btnLayout);
+
+            auto *pageBtnBox = new QDialogButtonBox(
+                QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &pageDlg);
+            pageBtnBox->button(QDialogButtonBox::Ok)->setText(tr("Import Selected"));
+            vLayout->addWidget(pageBtnBox);
+
+            auto updateImportButton = [&]() {
+                bool anyChecked = false;
+                for (int i = 0; i < listWidget->count(); ++i) {
+                    if (listWidget->item(i)->checkState() == Qt::Checked) {
+                        anyChecked = true;
+                        break;
+                    }
+                }
+                pageBtnBox->button(QDialogButtonBox::Ok)->setEnabled(anyChecked);
+            };
+
+            QObject::connect(selectAllBtn, &QPushButton::clicked, &pageDlg, [&]() {
+                for (int i = 0; i < listWidget->count(); ++i)
+                    listWidget->item(i)->setCheckState(Qt::Checked);
+                updateImportButton();
+            });
+            QObject::connect(deselectAllBtn, &QPushButton::clicked, &pageDlg, [&]() {
+                for (int i = 0; i < listWidget->count(); ++i)
+                    listWidget->item(i)->setCheckState(Qt::Unchecked);
+                updateImportButton();
+            });
+            QObject::connect(listWidget, &QListWidget::itemChanged, &pageDlg, [&]() {
+                updateImportButton();
+            });
+
+            QObject::connect(pageBtnBox, &QDialogButtonBox::accepted, &pageDlg, &QDialog::accept);
+            QObject::connect(pageBtnBox, &QDialogButtonBox::rejected, &pageDlg, &QDialog::reject);
+
+            if (pageDlg.exec() != QDialog::Accepted)
+                return {};
+
+            for (int i = 0; i < listWidget->count(); ++i) {
+                if (listWidget->item(i)->checkState() == Qt::Checked)
+                    pageIndices.append(listWidget->item(i)->data(Qt::UserRole).toInt());
+            }
+        }
+
+        options["pageIndices"_L1] = pageIndices;
         return options;
     }
 
@@ -2034,6 +2194,7 @@ public:
     {
         const QString source = options.value("source"_L1).toString();
         const int imageScale = options.value("imageScale"_L1, 2).toInt();
+        const int pageIndex = options.value("pageIndex"_L1, 0).toInt();
 
         QString fileKey = source;
 
@@ -2046,6 +2207,7 @@ public:
 
         if (fileKey.isEmpty()) {
             qWarning() << "Figma import: fileKey is empty";
+            setErrorMessage(tr("No Figma file URL or key provided."));
             return false;
         }
 
@@ -2056,35 +2218,24 @@ public:
 
         if (client.token().isEmpty()) {
             qWarning() << "Figma import: API token is empty";
+            setErrorMessage(tr("No Figma API token configured. Set it in Settings or the FIGMA_API_KEY environment variable."));
             return false;
         }
 
-        const auto fileJson = client.fetchFile(fileKey);
-        if (fileJson.contains("error"_L1)) {
-            qWarning() << "Figma import: API error:" << fileJson["error"_L1];
-            return false;
-        }
-
-        // Enumerate pages and let user choose if multiple exist
-        int pageIndex = 0;
-        const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
-        if (options.contains("pageIndex"_L1)) {
-            pageIndex = options.value("pageIndex"_L1).toInt();
-        } else if (pages.size() > 1) {
-            QDialog pageDlg;
-            pageDlg.setWindowTitle(tr("Select Page"));
-            auto *pageLayout = new QFormLayout(&pageDlg);
-            auto *pageCombo = new QComboBox(&pageDlg);
-            for (int i = 0; i < pages.size(); ++i)
-                pageCombo->addItem(pages[i].toObject()["name"_L1].toString(), i);
-            pageLayout->addRow(tr("Page:"), pageCombo);
-            auto *pageBtnBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &pageDlg);
-            pageLayout->addRow(pageBtnBox);
-            QObject::connect(pageBtnBox, &QDialogButtonBox::accepted, &pageDlg, &QDialog::accept);
-            QObject::connect(pageBtnBox, &QDialogButtonBox::rejected, &pageDlg, &QDialog::reject);
-            if (pageDlg.exec() != QDialog::Accepted)
+        // Use cached file JSON if available for this fileKey
+        QJsonObject fileJson;
+        if (m_cachedFileKey == fileKey && !m_cachedFileJson.isEmpty()) {
+            fileJson = m_cachedFileJson;
+        } else {
+            fileJson = client.fetchFile(fileKey);
+            if (fileJson.contains("error"_L1)) {
+                const auto error = fileJson["error"_L1].toVariant().toString();
+                qWarning() << "Figma import: API error:" << error;
+                setErrorMessage(tr("Figma API error: %1").arg(error));
                 return false;
-            pageIndex = pageCombo->currentData().toInt();
+            }
+            m_cachedFileKey = fileKey;
+            m_cachedFileJson = fileJson;
         }
 
         FigmaLayerTreeItemModel figmaModel;
@@ -2115,8 +2266,15 @@ public:
         model->setSourceModel(widgetModel);
         model->setSize(figmaModel.size());
 
+        // Include page name in title for multi-page files
+        const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
         const auto fileName = fileJson["name"_L1].toString();
-        model->setFileName(fileName);
+        if (pages.size() > 1 && pageIndex < pages.size()) {
+            const auto pageName = pages[pageIndex].toObject()["name"_L1].toString();
+            model->setFileName(u"%1 - %2"_s.arg(fileName, pageName));
+        } else {
+            model->setFileName(fileName);
+        }
 
         const auto hintFile = options.value("hintFile"_L1).toString();
         if (!hintFile.isEmpty())

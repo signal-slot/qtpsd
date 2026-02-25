@@ -146,7 +146,7 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     return 0;
 }
 
-static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale)
+static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale, const QList<int> &pageIndices)
 {
     auto plugin = QPsdImporterPlugin::plugin(importType.toUtf8());
     if (!plugin) {
@@ -155,8 +155,8 @@ static int runAutoImport(const QString &importType, const QString &source, const
         return 1;
     }
 
-    QVariantMap options;
-    options["source"] = source;
+    QVariantMap baseOptions;
+    baseOptions["source"] = source;
 
     QString key = apiKey;
     if (key.isEmpty()) {
@@ -169,22 +169,29 @@ static int runAutoImport(const QString &importType, const QString &source, const
     if (key.isEmpty())
         key = qEnvironmentVariable("FIGMA_ACCESS_TOKEN");
     if (!key.isEmpty())
-        options["apiKey"] = key;
-    options["imageScale"] = imageScale;
+        baseOptions["apiKey"] = key;
+    baseOptions["imageScale"] = imageScale;
 
-    QPsdWidgetTreeItemModel widgetModel;
-    PsdTreeItemModel model;
-    model.setSourceModel(&widgetModel);
+    for (int pageIdx : pageIndices) {
+        QPsdWidgetTreeItemModel widgetModel;
+        PsdTreeItemModel model;
+        model.setSourceModel(&widgetModel);
 
-    qInfo() << "Importing from" << source << "using" << importType;
-    if (!plugin->importFrom(&model, options)) {
-        qCritical() << "Import failed";
-        return 1;
+        QVariantMap options = baseOptions;
+        options["pageIndex"] = pageIdx;
+
+        qInfo() << "Importing from" << source << "page" << pageIdx << "using" << importType;
+        if (!plugin->importFrom(&model, options)) {
+            const QString err = plugin->errorMessage();
+            qCritical() << "Import failed:" << (err.isEmpty() ? u"unknown error"_s : err);
+            return 1;
+        }
+
+        qInfo() << "Import completed successfully";
+        qInfo() << "File name:" << model.fileName();
+        qInfo() << "Size:" << model.size();
     }
 
-    qInfo() << "Import completed successfully";
-    qInfo() << "File name:" << model.fileName();
-    qInfo() << "Size:" << model.size();
     return 0;
 }
 
@@ -263,6 +270,12 @@ int main(int argc, char *argv[])
                                          "2");
     parser.addOption(importScaleOption);
 
+    QCommandLineOption importPageIndexOption(QStringList() << "import-page-index",
+                                             "Page index(es) for import (comma-separated, default: 0)",
+                                             "indices",
+                                             "0");
+    parser.addOption(importPageIndexOption);
+
     parser.process(app);
 
     if (parser.isSet(listOption)) {
@@ -281,10 +294,18 @@ int main(int argc, char *argv[])
             qCritical() << "Auto import requires both: --import-type and --import-source";
             return 1;
         }
+        // Parse comma-separated page indices
+        QList<int> pageIndices;
+        const auto parts = parser.value(importPageIndexOption).split(','_L1, Qt::SkipEmptyParts);
+        for (const auto &part : parts)
+            pageIndices.append(part.trimmed().toInt());
+        if (pageIndices.isEmpty())
+            pageIndices.append(0);
         return runAutoImport(parser.value(importTypeOption),
                              parser.value(importSourceOption),
                              parser.value(importApiKeyOption),
-                             parser.value(importScaleOption).toInt());
+                             parser.value(importScaleOption).toInt(),
+                             pageIndices);
     }
 
     bool hasInput = parser.isSet(inputOption);
