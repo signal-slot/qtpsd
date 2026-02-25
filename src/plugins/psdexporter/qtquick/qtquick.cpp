@@ -8,6 +8,8 @@
 #include <QtCore/QDir>
 #include <QtCore/QQueue>
 
+#include <optional>
+
 #include <QtGui/QBrush>
 #include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
@@ -109,7 +111,7 @@ private:
     bool outputShape(const QModelIndex &shapeIndex, Element *element, ImportData *imports) const;
     bool outputImage(const QModelIndex &imageIndex, Element *element, ImportData *imports) const;
 
-    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
+    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
     void applyBlendModes(Element *element, ImportData *imports) const;
 
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
@@ -135,7 +137,7 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &window, &imports, &exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, &window, &imports, &exports, std::nullopt))
             return false;
     }
 
@@ -386,7 +388,7 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     }
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
-        if (!traverseTree(childIndex, element, imports, exports, QPsdExporterTreeItemModel::ExportHint::None, nextGroupBlendMode))
+        if (!traverseTree(childIndex, element, imports, exports, std::nullopt, nextGroupBlendMode))
             return false;
     }
     if (effectMode() != NoGPU)
@@ -1646,14 +1648,14 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     return true;
 }
 
-bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload, QPsdBlend::Mode groupBlendMode) const
+bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload, QPsdBlend::Mode groupBlendMode) const
 {
     const QPsdAbstractLayerItem *item = model()->layerItem(index);
     const auto hint = model()->layerHint(index);;
     const auto id = toLowerCamelCase(hint.id);
     auto type = hint.type;
-    if (hintOverload != QPsdExporterTreeItemModel::ExportHint::None) {
-        type = hintOverload;
+    if (hintOverload.has_value()) {
+        type = *hintOverload;
     }
 
     switch (type) {
@@ -1702,14 +1704,6 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             }
         }
 
-        if (indexMergeMap.contains(index)) {
-            const auto &list = indexMergeMap.values(index);
-            for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                if (!traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed))
-                    return false;
-            }
-        }
-
         const bool hasRenderableContent = !element.type.isEmpty()
                                           || !element.children.isEmpty()
                                           || !element.layers.isEmpty();
@@ -1717,7 +1711,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             return true;
 
         if (!id.isEmpty()) {
-            if (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea) {
+            if (hint.interactive) {
                 Element touchArea { "MouseArea", id };
                 outputBase(index, &touchArea, imports);
                 touchArea.layers.clear();
@@ -1743,17 +1737,15 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             element.type = "Rectangle";
             break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
-            element.type = "MouseArea";
-            break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
             imports->insert("QtQuick.Controls");
             element.type = "Button";
             element.properties.insert("highlighted", (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted));
             if (indexMergeMap.contains(index)) {
-                for (auto it = indexMergeMap.constBegin(); it != indexMergeMap.constEnd(); it++) {
-                    const QPsdAbstractLayerItem *i = model()->layerItem(it.value());
+                const auto &mergedLayers = indexMergeMap.values(index);
+                for (const auto &mergedIndex : mergedLayers) {
+                    const QPsdAbstractLayerItem *i = model()->layerItem(mergedIndex);
                     switch (i->type()) {
                     case QPsdAbstractLayerItem::Text: {
                         const auto *textItem = reinterpret_cast<const QPsdTextLayerItem *>(i);
@@ -1816,9 +1808,6 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             component.type = "Item";
             break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
-            component.type = "MouseArea";
-            break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
             i.insert("QtQuick.Controls");
@@ -1843,7 +1832,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         parent->children.append(element);
         break;
                             }
-    case QPsdExporterTreeItemModel::ExportHint::Merge:
+    case QPsdExporterTreeItemModel::ExportHint::Merged:
     case QPsdExporterTreeItemModel::ExportHint::Skip:
         return true;
     }

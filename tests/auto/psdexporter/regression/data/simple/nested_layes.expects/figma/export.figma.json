@@ -23,133 +23,10 @@
                                 "children": [
                                     {
                                         "absoluteBoundingBox": {
-                                            "height": 32,
-                                            "width": 155,
-                                            "x": 53,
-                                            "y": 144
-                                        },
-                                        "blendMode": "NORMAL",
-                                        "characters": "Example1\n",
-                                        "fills": [
-                                            {
-                                                "color": {
-                                                    "a": 1,
-                                                    "b": 0,
-                                                    "g": 0,
-                                                    "r": 0
-                                                },
-                                                "opacity": 1,
-                                                "type": "SOLID",
-                                                "visible": true
-                                            }
-                                        ],
-                                        "id": "21",
-                                        "name": "Example1",
-                                        "style": {
-                                            "fontFamily": "SourceHanSans-Medium",
-                                            "fontSize": 29.999999999999996,
-                                            "fontWeight": 400,
-                                            "textAlignHorizontal": "CENTER",
-                                            "textAlignVertical": "CENTER",
-                                            "textAutoResize": "WIDTH_AND_HEIGHT"
-                                        },
-                                        "styledTextSegments": [
-                                            {
-                                                "characters": "Example1\n",
-                                                "fills": [
-                                                    {
-                                                        "color": {
-                                                            "a": 1,
-                                                            "b": 0,
-                                                            "g": 0,
-                                                            "r": 0
-                                                        },
-                                                        "opacity": 1,
-                                                        "type": "SOLID",
-                                                        "visible": true
-                                                    }
-                                                ],
-                                                "fontFamily": "SourceHanSans-Medium",
-                                                "fontSize": 29.999999999999996,
-                                                "fontWeight": 400
-                                            }
-                                        ],
-                                        "type": "TEXT",
-                                        "visible": true
-                                    },
-                                    {
-                                        "absoluteBoundingBox": {
-                                            "height": 0,
-                                            "width": 0,
-                                            "x": 0,
-                                            "y": 0
-                                        },
-                                        "blendMode": "NORMAL",
-                                        "children": [
-                                            {
-                                                "absoluteBoundingBox": {
-                                                    "height": 14,
-                                                    "width": 25,
-                                                    "x": 179,
-                                                    "y": 166
-                                                },
-                                                "blendMode": "NORMAL",
-                                                "fills": [
-                                                    {
-                                                        "color": {
-                                                            "a": 1,
-                                                            "b": 0.9058823585510254,
-                                                            "g": 0.5333333611488342,
-                                                            "r": 0.3686274588108063
-                                                        },
-                                                        "opacity": 1,
-                                                        "type": "SOLID",
-                                                        "visible": true
-                                                    }
-                                                ],
-                                                "id": "19",
-                                                "name": "長方形 3",
-                                                "type": "RECTANGLE",
-                                                "visible": true
-                                            },
-                                            {
-                                                "absoluteBoundingBox": {
-                                                    "height": 12,
-                                                    "width": 139,
-                                                    "x": 72,
-                                                    "y": 174
-                                                },
-                                                "blendMode": "NORMAL",
-                                                "fills": [
-                                                    {
-                                                        "color": {
-                                                            "a": 1,
-                                                            "b": 0.0117647061124444,
-                                                            "g": 0.4745098054409027,
-                                                            "r": 0.12941177189350128
-                                                        },
-                                                        "opacity": 1,
-                                                        "type": "SOLID",
-                                                        "visible": true
-                                                    }
-                                                ],
-                                                "id": "18",
-                                                "name": "長方形 2",
-                                                "type": "RECTANGLE",
-                                                "visible": true
-                                            }
-                                        ],
-                                        "id": "20",
-                                        "name": "グループ 1b",
-                                        "type": "GROUP",
-                                        "visible": true
-                                    },
-                                    {
-                                        "absoluteBoundingBox": {
                                             "height": 52,
                                             "width": 182,
                                             "x": 39,
-                                            "y": 134
+                                            "y": 49
                                         },
                                         "blendMode": "NORMAL",
                                         "cornerRadius": 20,
@@ -166,7 +43,7 @@
                                                 "visible": true
                                             }
                                         ],
-                                        "id": "16",
+                                        "id": "8",
                                         "name": "長方形 1",
                                         "rectangleCornerRadii": [
                                             20,
@@ -176,22 +53,74 @@
                                         ],
                                         "type": "RECTANGLE",
                                         "visible": true
-                                    }
-                                ],
-                                "id": "22",
-                                "name": "グループ 2b",
-                                "type": "GROUP",
-                                "visible": true
-                            },
-                            {
-                                "absoluteBoundingBox": {
-                                    "height": 0,
-                                    "width": 0,
-                                    "x": 0,
-                                    "y": 0
-                                },
-                                "blendMode": "NORMAL",
-                                "children": [
+                                    },
+                                    {
+                                        "absoluteBoundingBox": {
+                                            "height": 0,
+                                            "width": 0,
+                                            "x": 0,
+                                            "y": 0
+                                        },
+                                        "blendMode": "NORMAL",
+                                        "children": [
+                                            {
+                                                "absoluteBoundingBox": {
+                                                    "height": 13,
+                                                    "width": 139,
+                                                    "x": 72,
+                                                    "y": 89
+                                                },
+                                                "blendMode": "NORMAL",
+                                                "fills": [
+                                                    {
+                                                        "color": {
+                                                            "a": 1,
+                                                            "b": 0.0117647061124444,
+                                                            "g": 0.4745098054409027,
+                                                            "r": 0.12941177189350128
+                                                        },
+                                                        "opacity": 1,
+                                                        "type": "SOLID",
+                                                        "visible": true
+                                                    }
+                                                ],
+                                                "id": "9",
+                                                "name": "長方形 2",
+                                                "type": "RECTANGLE",
+                                                "visible": true
+                                            },
+                                            {
+                                                "absoluteBoundingBox": {
+                                                    "height": 14,
+                                                    "width": 25,
+                                                    "x": 79,
+                                                    "y": 81
+                                                },
+                                                "blendMode": "NORMAL",
+                                                "fills": [
+                                                    {
+                                                        "color": {
+                                                            "a": 1,
+                                                            "b": 0.9058823585510254,
+                                                            "g": 0.5333333611488342,
+                                                            "r": 0.3686274588108063
+                                                        },
+                                                        "opacity": 1,
+                                                        "type": "SOLID",
+                                                        "visible": true
+                                                    }
+                                                ],
+                                                "id": "12",
+                                                "name": "長方形 3",
+                                                "type": "RECTANGLE",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "id": "10",
+                                        "name": "グループ 1a",
+                                        "type": "GROUP",
+                                        "visible": true
+                                    },
                                     {
                                         "absoluteBoundingBox": {
                                             "height": 32,
@@ -247,80 +176,28 @@
                                         ],
                                         "type": "TEXT",
                                         "visible": true
-                                    },
-                                    {
-                                        "absoluteBoundingBox": {
-                                            "height": 0,
-                                            "width": 0,
-                                            "x": 0,
-                                            "y": 0
-                                        },
-                                        "blendMode": "NORMAL",
-                                        "children": [
-                                            {
-                                                "absoluteBoundingBox": {
-                                                    "height": 14,
-                                                    "width": 25,
-                                                    "x": 79,
-                                                    "y": 81
-                                                },
-                                                "blendMode": "NORMAL",
-                                                "fills": [
-                                                    {
-                                                        "color": {
-                                                            "a": 1,
-                                                            "b": 0.9058823585510254,
-                                                            "g": 0.5333333611488342,
-                                                            "r": 0.3686274588108063
-                                                        },
-                                                        "opacity": 1,
-                                                        "type": "SOLID",
-                                                        "visible": true
-                                                    }
-                                                ],
-                                                "id": "12",
-                                                "name": "長方形 3",
-                                                "type": "RECTANGLE",
-                                                "visible": true
-                                            },
-                                            {
-                                                "absoluteBoundingBox": {
-                                                    "height": 13,
-                                                    "width": 139,
-                                                    "x": 72,
-                                                    "y": 89
-                                                },
-                                                "blendMode": "NORMAL",
-                                                "fills": [
-                                                    {
-                                                        "color": {
-                                                            "a": 1,
-                                                            "b": 0.0117647061124444,
-                                                            "g": 0.4745098054409027,
-                                                            "r": 0.12941177189350128
-                                                        },
-                                                        "opacity": 1,
-                                                        "type": "SOLID",
-                                                        "visible": true
-                                                    }
-                                                ],
-                                                "id": "9",
-                                                "name": "長方形 2",
-                                                "type": "RECTANGLE",
-                                                "visible": true
-                                            }
-                                        ],
-                                        "id": "10",
-                                        "name": "グループ 1a",
-                                        "type": "GROUP",
-                                        "visible": true
-                                    },
+                                    }
+                                ],
+                                "id": "13",
+                                "name": "グループ 2a",
+                                "type": "GROUP",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 0,
+                                    "width": 0,
+                                    "x": 0,
+                                    "y": 0
+                                },
+                                "blendMode": "NORMAL",
+                                "children": [
                                     {
                                         "absoluteBoundingBox": {
                                             "height": 52,
                                             "width": 182,
                                             "x": 39,
-                                            "y": 49
+                                            "y": 134
                                         },
                                         "blendMode": "NORMAL",
                                         "cornerRadius": 20,
@@ -337,7 +214,7 @@
                                                 "visible": true
                                             }
                                         ],
-                                        "id": "8",
+                                        "id": "16",
                                         "name": "長方形 1",
                                         "rectangleCornerRadii": [
                                             20,
@@ -347,10 +224,133 @@
                                         ],
                                         "type": "RECTANGLE",
                                         "visible": true
+                                    },
+                                    {
+                                        "absoluteBoundingBox": {
+                                            "height": 0,
+                                            "width": 0,
+                                            "x": 0,
+                                            "y": 0
+                                        },
+                                        "blendMode": "NORMAL",
+                                        "children": [
+                                            {
+                                                "absoluteBoundingBox": {
+                                                    "height": 12,
+                                                    "width": 139,
+                                                    "x": 72,
+                                                    "y": 174
+                                                },
+                                                "blendMode": "NORMAL",
+                                                "fills": [
+                                                    {
+                                                        "color": {
+                                                            "a": 1,
+                                                            "b": 0.0117647061124444,
+                                                            "g": 0.4745098054409027,
+                                                            "r": 0.12941177189350128
+                                                        },
+                                                        "opacity": 1,
+                                                        "type": "SOLID",
+                                                        "visible": true
+                                                    }
+                                                ],
+                                                "id": "18",
+                                                "name": "長方形 2",
+                                                "type": "RECTANGLE",
+                                                "visible": true
+                                            },
+                                            {
+                                                "absoluteBoundingBox": {
+                                                    "height": 14,
+                                                    "width": 25,
+                                                    "x": 179,
+                                                    "y": 166
+                                                },
+                                                "blendMode": "NORMAL",
+                                                "fills": [
+                                                    {
+                                                        "color": {
+                                                            "a": 1,
+                                                            "b": 0.9058823585510254,
+                                                            "g": 0.5333333611488342,
+                                                            "r": 0.3686274588108063
+                                                        },
+                                                        "opacity": 1,
+                                                        "type": "SOLID",
+                                                        "visible": true
+                                                    }
+                                                ],
+                                                "id": "19",
+                                                "name": "長方形 3",
+                                                "type": "RECTANGLE",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "id": "20",
+                                        "name": "グループ 1b",
+                                        "type": "GROUP",
+                                        "visible": true
+                                    },
+                                    {
+                                        "absoluteBoundingBox": {
+                                            "height": 32,
+                                            "width": 155,
+                                            "x": 53,
+                                            "y": 144
+                                        },
+                                        "blendMode": "NORMAL",
+                                        "characters": "Example1\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0,
+                                                    "g": 0,
+                                                    "r": 0
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "id": "21",
+                                        "name": "Example1",
+                                        "style": {
+                                            "fontFamily": "SourceHanSans-Medium",
+                                            "fontSize": 29.999999999999996,
+                                            "fontWeight": 400,
+                                            "textAlignHorizontal": "CENTER",
+                                            "textAlignVertical": "CENTER",
+                                            "textAutoResize": "WIDTH_AND_HEIGHT"
+                                        },
+                                        "styledTextSegments": [
+                                            {
+                                                "characters": "Example1\n",
+                                                "fills": [
+                                                    {
+                                                        "color": {
+                                                            "a": 1,
+                                                            "b": 0,
+                                                            "g": 0,
+                                                            "r": 0
+                                                        },
+                                                        "opacity": 1,
+                                                        "type": "SOLID",
+                                                        "visible": true
+                                                    }
+                                                ],
+                                                "fontFamily": "SourceHanSans-Medium",
+                                                "fontSize": 29.999999999999996,
+                                                "fontWeight": 400
+                                            }
+                                        ],
+                                        "type": "TEXT",
+                                        "visible": true
                                     }
                                 ],
-                                "id": "13",
-                                "name": "グループ 2a",
+                                "id": "22",
+                                "name": "グループ 2b",
                                 "type": "GROUP",
                                 "visible": true
                             }

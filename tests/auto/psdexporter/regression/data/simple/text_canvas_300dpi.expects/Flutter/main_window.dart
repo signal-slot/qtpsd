@@ -17,9 +17,9 @@ class MainWindow extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned(
-                  height: 56,
+                  height: 72,
                   left: 30,
-                  top: 29,
+                  top: 16,
                   width: 120,
                   child: Text(
                     "12pt", 
@@ -35,9 +35,9 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 168,
+                  height: 217,
                   left: 150,
-                  top: 56,
+                  top: 18,
                   width: 478,
                   child: Text(
                     "150px", 

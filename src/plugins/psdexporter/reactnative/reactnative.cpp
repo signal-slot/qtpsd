@@ -8,6 +8,8 @@
 #include <QtCore/QDir>
 #include <QtCore/QQueue>
 
+#include <optional>
+
 #include <QtGui/QBrush>
 #include <QtGui/QPen>
 
@@ -68,7 +70,7 @@ private:
     bool outputImage(const QModelIndex &imageIndex, Element *element, ImportData *imports) const;
     QString outputPathData(const QPainterPath &path) const;
 
-    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const;
+    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt) const;
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
 
@@ -123,7 +125,7 @@ bool QPsdExporterReactNativePlugin::outputFolder(const QModelIndex &folderIndex,
 
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
-        if (!traverseTree(childIndex, element, imports, exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, element, imports, exports, std::nullopt))
             return false;
     }
     return true;
@@ -353,14 +355,14 @@ bool QPsdExporterReactNativePlugin::outputImage(const QModelIndex &imageIndex, E
     return true;
 }
 
-bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const
+bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload) const
 {
     const auto *item = model()->layerItem(index);
     const auto hint = model()->layerHint(index);
     const auto id = toLowerCamelCase(hint.id);
     auto type = hint.type;
-    if (hintOverload != QPsdExporterTreeItemModel::ExportHint::None) {
-        type = hintOverload;
+    if (hintOverload.has_value()) {
+        type = *hintOverload;
     }
 
     switch (type) {
@@ -385,19 +387,7 @@ bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Eleme
             break;
         }
 
-        if (indexMergeMap.contains(index)) {
-            const auto &list = indexMergeMap.values(index);
-            for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
-            }
-        }
-
-        if (!hint.visible) {
-            // Skip invisible elements or wrap in conditional
-            // For now, we'll add a comment style
-        }
-
-        if (!id.isEmpty() && hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea) {
+        if (!id.isEmpty() && hint.interactive) {
             Element touchable;
             touchable.type = "TouchableOpacity"_L1;
             touchable.id = id;
@@ -441,11 +431,6 @@ bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Eleme
             element.type = "View"_L1;
             outputBase(index, &element);
             break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
-            element.type = "TouchableOpacity"_L1;
-            outputBase(index, &element);
-            exports->append({"() => void"_L1, u"on%1Press"_s.arg(toUpperCamelCase(hint.id)), QVariant()});
-            break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
             element.type = "TouchableOpacity"_L1;
@@ -453,24 +438,25 @@ bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Eleme
             exports->append({"() => void"_L1, u"on%1Press"_s.arg(toUpperCamelCase(hint.id)), QVariant()});
 
             if (indexMergeMap.contains(index)) {
-                for (auto it = indexMergeMap.constBegin(); it != indexMergeMap.constEnd(); it++) {
-                    const auto *i = model()->layerItem(it.value());
+                const auto &mergedLayers = indexMergeMap.values(index);
+                for (const auto &mergedIndex : mergedLayers) {
+                    const auto *i = model()->layerItem(mergedIndex);
                     switch (i->type()) {
                     case QPsdAbstractLayerItem::Text: {
                         Element textElem;
-                        outputText(it.value(), &textElem, imports);
+                        outputText(mergedIndex, &textElem, imports);
                         element.children.append(textElem);
                         break;
                     }
                     case QPsdAbstractLayerItem::Image: {
                         Element imageElem;
-                        outputImage(it.value(), &imageElem, imports);
+                        outputImage(mergedIndex, &imageElem, imports);
                         element.children.append(imageElem);
                         break;
                     }
                     case QPsdAbstractLayerItem::Shape: {
                         Element shapeElem;
-                        outputShape(it.value(), &shapeElem, imports);
+                        outputShape(mergedIndex, &shapeElem, imports);
                         element.children.append(shapeElem);
                         break;
                     }
@@ -480,10 +466,6 @@ bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Eleme
                 }
             }
             break;
-        }
-
-        if (!hint.visible) {
-            // Could add visible prop handling
         }
 
         parent->children.append(element);
@@ -514,7 +496,6 @@ bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Eleme
 
         // Handle base element wrapping
         switch (hint.baseElement) {
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted: {
             Element wrapper;
@@ -550,9 +531,8 @@ bool QPsdExporterReactNativePlugin::traverseTree(const QModelIndex &index, Eleme
         parent->children.append(element);
         break;
     }
-    case QPsdExporterTreeItemModel::ExportHint::Merge:
+    case QPsdExporterTreeItemModel::ExportHint::Merged:
     case QPsdExporterTreeItemModel::ExportHint::Skip:
-    case QPsdExporterTreeItemModel::ExportHint::None:
         return true;
     }
 
@@ -825,7 +805,7 @@ bool QPsdExporterReactNativePlugin::exportTo(const QPsdExporterTreeItemModel *mo
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &root, &imports, &exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, &root, &imports, &exports, std::nullopt))
             return false;
     }
 

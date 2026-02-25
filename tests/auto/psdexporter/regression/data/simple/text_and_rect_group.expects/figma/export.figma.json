@@ -23,6 +23,58 @@
                                 "children": [
                                     {
                                         "absoluteBoundingBox": {
+                                            "height": 62,
+                                            "width": 163,
+                                            "x": 48,
+                                            "y": 79
+                                        },
+                                        "blendMode": "NORMAL",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.929411768913269,
+                                                    "g": 0.9607843160629272,
+                                                    "r": 0.9607843160629272
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "id": "10",
+                                        "name": "長方形 1",
+                                        "type": "RECTANGLE",
+                                        "visible": true
+                                    },
+                                    {
+                                        "absoluteBoundingBox": {
+                                            "height": 34,
+                                            "width": 157,
+                                            "x": 52,
+                                            "y": 80
+                                        },
+                                        "blendMode": "NORMAL",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 0.5647059082984924,
+                                                    "g": 0.9058823585510254,
+                                                    "r": 0.9686274528503418
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "id": "13",
+                                        "name": "長方形 2",
+                                        "type": "RECTANGLE",
+                                        "visible": true
+                                    },
+                                    {
+                                        "absoluteBoundingBox": {
                                             "height": 32,
                                             "width": 155,
                                             "x": 53,
@@ -75,58 +127,6 @@
                                             }
                                         ],
                                         "type": "TEXT",
-                                        "visible": true
-                                    },
-                                    {
-                                        "absoluteBoundingBox": {
-                                            "height": 34,
-                                            "width": 157,
-                                            "x": 52,
-                                            "y": 80
-                                        },
-                                        "blendMode": "NORMAL",
-                                        "fills": [
-                                            {
-                                                "color": {
-                                                    "a": 1,
-                                                    "b": 0.5647059082984924,
-                                                    "g": 0.9058823585510254,
-                                                    "r": 0.9686274528503418
-                                                },
-                                                "opacity": 1,
-                                                "type": "SOLID",
-                                                "visible": true
-                                            }
-                                        ],
-                                        "id": "13",
-                                        "name": "長方形 2",
-                                        "type": "RECTANGLE",
-                                        "visible": true
-                                    },
-                                    {
-                                        "absoluteBoundingBox": {
-                                            "height": 62,
-                                            "width": 163,
-                                            "x": 48,
-                                            "y": 79
-                                        },
-                                        "blendMode": "NORMAL",
-                                        "fills": [
-                                            {
-                                                "color": {
-                                                    "a": 1,
-                                                    "b": 0.929411768913269,
-                                                    "g": 0.9607843160629272,
-                                                    "r": 0.9607843160629272
-                                                },
-                                                "opacity": 1,
-                                                "type": "SOLID",
-                                                "visible": true
-                                            }
-                                        ],
-                                        "id": "10",
-                                        "name": "長方形 1",
-                                        "type": "RECTANGLE",
                                         "visible": true
                                     }
                                 ],

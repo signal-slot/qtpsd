@@ -57,9 +57,9 @@ const styles = StyleSheet.create({
   style2: {
     position: 'absolute',
     left: 2,
-    top: 9,
+    top: 1,
     width: 160,
-    height: 33,
+    height: 44,
     fontFamily: 'Source Han Sans',
     fontSize: 30,
     color: '#EAC3C3',
@@ -68,9 +68,9 @@ const styles = StyleSheet.create({
   style3: {
     position: 'absolute',
     left: 169,
-    top: 9,
+    top: 1,
     width: 144,
-    height: 33,
+    height: 44,
   },
   style4: {
     fontFamily: 'Koz Go Pr6N',
@@ -100,9 +100,9 @@ const styles = StyleSheet.create({
   style9: {
     position: 'absolute',
     left: 25,
-    top: 109,
+    top: 101,
     width: 86,
-    height: 33,
+    height: 44,
     fontFamily: 'Koz Go Pr6N',
     fontSize: 30,
     color: '#EAC3C3',

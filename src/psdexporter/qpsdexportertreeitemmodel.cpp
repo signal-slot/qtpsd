@@ -10,6 +10,7 @@
 
 #include <QtCore/QDir>
 #include <QtCore/QFileInfo>
+#include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtGui/QBrush>
 #include <QtGui/QIcon>
@@ -48,6 +49,65 @@ public:
 #define HINTFILE_EXPORT_HINTS_KEY "exports"_L1
 #define HINTFILE_FONT_MAPPING_KEY "fontMapping"_L1
 
+QJsonObject QPsdExporterTreeItemModel::ExportHint::toJson() const
+{
+    QJsonObject object;
+    if (!id.isEmpty())
+        object.insert("id"_L1, id);
+    object.insert("type"_L1, static_cast<int>(type));
+    if (!componentName.isEmpty())
+        object.insert("componentName"_L1, componentName);
+    object.insert("native"_L1, static_cast<int>(baseElement));
+    object.insert("visible"_L1, visible);
+    if (interactive)
+        object.insert("interactive"_L1, true);
+    if (!properties.isEmpty()) {
+        QStringList propList = properties.values();
+        std::sort(propList.begin(), propList.end(), std::less<QString>());
+        object.insert("properties"_L1, QJsonArray::fromStringList(propList));
+    }
+    if (!textSource.isEmpty())
+        object.insert("textSource"_L1, textSource);
+    return object;
+}
+
+QPsdExporterTreeItemModel::ExportHint QPsdExporterTreeItemModel::ExportHint::fromJson(const QJsonObject &obj)
+{
+    QStringList propList = obj.value("properties"_L1).toVariant().toStringList();
+    int rawType = obj.value("type"_L1).toInt();
+
+    // Migration: old None(5) → Embed(0)
+    if (rawType == 5)
+        rawType = 0;
+
+    int rawNative = obj.value("native"_L1).toInt();
+    bool interactive = obj.value("interactive"_L1).toBool(false);
+
+    // Migration: old TouchArea(1) → interactive=true, baseElement=Container
+    if (rawNative == 1) { // old TouchArea enum value
+        if (rawType == Embed && !interactive)
+            interactive = true;
+        rawNative = Container;
+    }
+    auto nativeComponent = static_cast<NativeComponent>(rawNative);
+
+    // Backward compat: read "componentName" with "name" fallback
+    QString componentName = obj.value("componentName"_L1).toString();
+    if (componentName.isEmpty())
+        componentName = obj.value("name"_L1).toString();
+
+    return ExportHint {
+        obj.value("id"_L1).toString(),
+        static_cast<Type>(rawType),
+        componentName,
+        nativeComponent,
+        obj.value("visible"_L1).toBool(true),
+        interactive,
+        QSet<QString>(propList.begin(), propList.end()),
+        obj.value("textSource"_L1).toString(),
+    };
+}
+
 QPsdExporterTreeItemModel::Private::Private(const ::QPsdExporterTreeItemModel *model) : q(model)
 {
 }
@@ -82,17 +142,7 @@ void QPsdExporterTreeItemModel::Private::loadHintFile()
         QJsonObject root = hintDoc.object();
         QJsonObject layerHintsJson = root.value(HINTFILE_LAYER_HINTS_KEY).toObject();
         for (const auto &idstr: layerHintsJson.keys()) {
-            QVariantMap settings = layerHintsJson.value(idstr).toObject().toVariantMap();
-            QStringList properties = settings.value("properties"_L1).toStringList();
-            ExportHint exportHint {
-                settings.value("id"_L1).toString(),
-                static_cast<ExportHint::Type>(settings.value("type"_L1).toInt()),
-                settings.value("name"_L1).toString(),
-                static_cast<ExportHint::NativeComponent>(settings.value("native"_L1).toInt()),
-                settings.value("visible"_L1).toBool(),
-                QSet<QString>(properties.begin(), properties.end()),
-            };
-            layerHints.insert(idstr, exportHint);
+            layerHints.insert(idstr, ExportHint::fromJson(layerHintsJson.value(idstr).toObject()));
         }
 
         QJsonObject exportHintsJson = root.value(HINTFILE_EXPORT_HINTS_KEY).toObject();
@@ -343,44 +393,34 @@ void QPsdExporterTreeItemModel::load(const QString &fileName)
         model->load(fileName);
 }
 
-void QPsdExporterTreeItemModel::save()
+static QJsonObject serializeLayerHints(QPsdExporterTreeItemModel *self)
 {
-    QJsonDocument doc;
-    QJsonObject layerHints;
+    QJsonObject layerHintsJson;
     std::function<void(const QModelIndex &)> traverse = [&](const QModelIndex &index) {
         if (index.isValid()) {
-            const auto layer = layerItem(index);
-            const auto lyid = layer->id();
-            const auto idstr = QString::number(lyid);
-
-            const auto exportHint = layerHint(index);
-            if (!exportHint.isDefaultValue()) {
-                QStringList propList = exportHint.properties.values();
-                std::sort(propList.begin(), propList.end(), std::less<QString>());
-                QJsonObject object;
-                if (!exportHint.id.isEmpty()) {
-                    object.insert("id"_L1, exportHint.id);
-                }
-                object.insert("type"_L1, static_cast<int>(exportHint.type));
-                if (!exportHint.componentName.isEmpty()) {
-                    object.insert("name"_L1, exportHint.componentName);
-                }
-                object.insert("native"_L1, static_cast<int>(exportHint.baseElement));
-                object.insert("visible"_L1, exportHint.visible);
-                if (!propList.isEmpty())
-                    object.insert("properties"_L1, QJsonArray::fromStringList(propList));
-                layerHints.insert(idstr, object);
-            }
+            const auto layer = self->layerItem(index);
+            if (!layer)
+                return;
+            const auto idstr = QString::number(layer->id());
+            const auto hint = self->layerHint(index);
+            if (!hint.isDefaultValue())
+                layerHintsJson.insert(idstr, hint.toJson());
         }
-        for (int i = 0; i < rowCount(index); i++) {
-            traverse(this->index(i, 0, index));
+        for (int i = 0; i < self->rowCount(index); i++) {
+            traverse(self->index(i, 0, index));
         }
     };
     traverse({});
+    return layerHintsJson;
+}
 
-    QJsonObject exportHints;
+void QPsdExporterTreeItemModel::save()
+{
+    QJsonObject layerHintsJson = serializeLayerHints(this);
+
+    QJsonObject exportHintsJson;
     for (const auto &exporterKey : d->exportHints.keys()) {
-        exportHints.insert(exporterKey, QJsonObject::fromVariantMap(d->exportHints.value(exporterKey)));
+        exportHintsJson.insert(exporterKey, QJsonObject::fromVariantMap(d->exportHints.value(exporterKey)));
     }
 
     // Get font mappings for this PSD file
@@ -389,12 +429,13 @@ void QPsdExporterTreeItemModel::save()
 
     QJsonObject root;
     root.insert(HINTFILE_MAGIC_KEY, HINTFILE_MAGIC_VERSION);
-    root.insert(HINTFILE_LAYER_HINTS_KEY, layerHints);
-    root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHints);
+    root.insert(HINTFILE_LAYER_HINTS_KEY, layerHintsJson);
+    root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHintsJson);
     if (!fontMappingJson.isEmpty()) {
         root.insert(HINTFILE_FONT_MAPPING_KEY, fontMappingJson);
     }
 
+    QJsonDocument doc;
     doc.setObject(root);
 
     QFile file(d->hintFileInfo.absoluteFilePath());
@@ -413,38 +454,7 @@ void QPsdExporterTreeItemModel::loadHints(const QString &hintFilePath)
 
 void QPsdExporterTreeItemModel::saveHints(const QString &hintFilePath)
 {
-    QJsonDocument doc;
-    QJsonObject layerHintsJson;
-    std::function<void(const QModelIndex &)> traverse = [&](const QModelIndex &index) {
-        if (index.isValid()) {
-            const auto layer = layerItem(index);
-            if (!layer)
-                return;
-            const auto lyid = layer->id();
-            const auto idstr = QString::number(lyid);
-
-            const auto exportHint_ = layerHint(index);
-            if (!exportHint_.isDefaultValue()) {
-                QStringList propList = exportHint_.properties.values();
-                std::sort(propList.begin(), propList.end(), std::less<QString>());
-                QJsonObject object;
-                if (!exportHint_.id.isEmpty())
-                    object.insert("id"_L1, exportHint_.id);
-                object.insert("type"_L1, static_cast<int>(exportHint_.type));
-                if (!exportHint_.componentName.isEmpty())
-                    object.insert("name"_L1, exportHint_.componentName);
-                object.insert("native"_L1, static_cast<int>(exportHint_.baseElement));
-                object.insert("visible"_L1, exportHint_.visible);
-                if (!propList.isEmpty())
-                    object.insert("properties"_L1, QJsonArray::fromStringList(propList));
-                layerHintsJson.insert(idstr, object);
-            }
-        }
-        for (int i = 0; i < rowCount(index); i++) {
-            traverse(this->index(i, 0, index));
-        }
-    };
-    traverse({});
+    QJsonObject layerHintsJson = serializeLayerHints(this);
 
     QJsonObject exportHintsJson;
     for (const auto &exporterKey : d->exportHints.keys()) {
@@ -456,6 +466,7 @@ void QPsdExporterTreeItemModel::saveHints(const QString &hintFilePath)
     root.insert(HINTFILE_LAYER_HINTS_KEY, layerHintsJson);
     root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHintsJson);
 
+    QJsonDocument doc;
     doc.setObject(root);
 
     QFile file(hintFilePath);

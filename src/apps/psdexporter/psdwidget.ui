@@ -70,23 +70,13 @@
         </widget>
        </item>
        <item row="1" column="0">
-        <widget class="QRadioButton" name="typeMerge">
-         <property name="text">
-          <string>&amp;Merge to </string>
-         </property>
-        </widget>
-       </item>
-       <item row="1" column="1">
-        <widget class="QComboBox" name="merge"/>
-       </item>
-       <item row="2" column="0">
         <widget class="QRadioButton" name="typeComponent">
          <property name="text">
           <string>C&amp;omponent</string>
          </property>
         </widget>
        </item>
-       <item row="2" column="1">
+       <item row="1" column="1">
         <layout class="QHBoxLayout" name="horizontalLayout_2">
          <item>
           <widget class="QCheckBox" name="customEnabled">
@@ -103,24 +93,24 @@
          </item>
         </layout>
        </item>
-       <item row="3" column="0">
+       <item row="2" column="0">
         <widget class="QRadioButton" name="typeNative">
          <property name="text">
           <string>&amp;Native</string>
          </property>
         </widget>
        </item>
-       <item row="3" column="1">
+       <item row="2" column="1">
         <widget class="QComboBox" name="nativeBase"/>
        </item>
-       <item row="4" column="0">
+       <item row="3" column="0">
         <widget class="QRadioButton" name="typeSkip">
          <property name="text">
           <string>&amp;Skip</string>
          </property>
         </widget>
        </item>
-       <item row="4" column="1">
+       <item row="3" column="1">
         <widget class="QWidget" name="widget" native="true"/>
        </item>
       </layout>

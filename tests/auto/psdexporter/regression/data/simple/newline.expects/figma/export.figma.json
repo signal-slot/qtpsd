@@ -14,13 +14,13 @@
                         "children": [
                             {
                                 "absoluteBoundingBox": {
-                                    "height": 107,
-                                    "width": 146,
-                                    "x": 167,
-                                    "y": 110
+                                    "height": 0,
+                                    "width": 0,
+                                    "x": 0,
+                                    "y": 0
                                 },
                                 "blendMode": "NORMAL",
-                                "characters": "段落テキストは折り返される\n",
+                                "characters": "\n",
                                 "fills": [
                                     {
                                         "color": {
@@ -34,19 +34,19 @@
                                         "visible": true
                                     }
                                 ],
-                                "id": "11",
-                                "name": "段落テキストは折り返される",
+                                "id": "5",
+                                "name": "レイヤー 1",
                                 "style": {
-                                    "fontFamily": "KozGoPr6N-Regular",
-                                    "fontSize": 24,
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 50,
                                     "fontWeight": 400,
                                     "textAlignHorizontal": "CENTER",
                                     "textAlignVertical": "CENTER",
-                                    "textAutoResize": "NONE"
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
                                 },
                                 "styledTextSegments": [
                                     {
-                                        "characters": "段落テキストは折り返される\n",
+                                        "characters": "\n",
                                         "fills": [
                                             {
                                                 "color": {
@@ -60,8 +60,8 @@
                                                 "visible": true
                                             }
                                         ],
-                                        "fontFamily": "KozGoPr6N-Regular",
-                                        "fontSize": 24,
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 50,
                                         "fontWeight": 400
                                     }
                                 ],
@@ -70,13 +70,13 @@
                             },
                             {
                                 "absoluteBoundingBox": {
-                                    "height": 80,
-                                    "width": 84,
-                                    "x": 26,
-                                    "y": 112
+                                    "height": 82,
+                                    "width": 157,
+                                    "x": 2,
+                                    "y": 10
                                 },
                                 "blendMode": "NORMAL",
-                                "characters": "Shift\n+改行\n",
+                                "characters": "文字列中に\n改行\n",
                                 "fills": [
                                     {
                                         "color": {
@@ -90,10 +90,10 @@
                                         "visible": true
                                     }
                                 ],
-                                "id": "9",
-                                "name": "Shift +改行",
+                                "id": "6",
+                                "name": "文字列中に 改行",
                                 "style": {
-                                    "fontFamily": "KozGoPr6N-Regular",
+                                    "fontFamily": "SourceHanSans-Medium",
                                     "fontSize": 30,
                                     "fontWeight": 400,
                                     "textAlignHorizontal": "CENTER",
@@ -102,7 +102,7 @@
                                 },
                                 "styledTextSegments": [
                                     {
-                                        "characters": "Shift\n+改行\n",
+                                        "characters": "文字列中に\n改行\n",
                                         "fills": [
                                             {
                                                 "color": {
@@ -116,7 +116,7 @@
                                                 "visible": true
                                             }
                                         ],
-                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontFamily": "SourceHanSans-Medium",
                                         "fontSize": 30,
                                         "fontWeight": 400
                                     }
@@ -239,13 +239,13 @@
                             },
                             {
                                 "absoluteBoundingBox": {
-                                    "height": 82,
-                                    "width": 157,
-                                    "x": 2,
-                                    "y": 10
+                                    "height": 80,
+                                    "width": 84,
+                                    "x": 26,
+                                    "y": 112
                                 },
                                 "blendMode": "NORMAL",
-                                "characters": "文字列中に\n改行\n",
+                                "characters": "Shift\n+改行\n",
                                 "fills": [
                                     {
                                         "color": {
@@ -259,10 +259,10 @@
                                         "visible": true
                                     }
                                 ],
-                                "id": "6",
-                                "name": "文字列中に 改行",
+                                "id": "9",
+                                "name": "Shift +改行",
                                 "style": {
-                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontFamily": "KozGoPr6N-Regular",
                                     "fontSize": 30,
                                     "fontWeight": 400,
                                     "textAlignHorizontal": "CENTER",
@@ -271,7 +271,7 @@
                                 },
                                 "styledTextSegments": [
                                     {
-                                        "characters": "文字列中に\n改行\n",
+                                        "characters": "Shift\n+改行\n",
                                         "fills": [
                                             {
                                                 "color": {
@@ -285,7 +285,7 @@
                                                 "visible": true
                                             }
                                         ],
-                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontFamily": "KozGoPr6N-Regular",
                                         "fontSize": 30,
                                         "fontWeight": 400
                                     }
@@ -295,13 +295,13 @@
                             },
                             {
                                 "absoluteBoundingBox": {
-                                    "height": 0,
-                                    "width": 0,
-                                    "x": 0,
-                                    "y": 0
+                                    "height": 107,
+                                    "width": 146,
+                                    "x": 167,
+                                    "y": 110
                                 },
                                 "blendMode": "NORMAL",
-                                "characters": "\n",
+                                "characters": "段落テキストは折り返される\n",
                                 "fills": [
                                     {
                                         "color": {
@@ -315,19 +315,19 @@
                                         "visible": true
                                     }
                                 ],
-                                "id": "5",
-                                "name": "レイヤー 1",
+                                "id": "11",
+                                "name": "段落テキストは折り返される",
                                 "style": {
-                                    "fontFamily": "SourceHanSans-Medium",
-                                    "fontSize": 50,
+                                    "fontFamily": "KozGoPr6N-Regular",
+                                    "fontSize": 24,
                                     "fontWeight": 400,
                                     "textAlignHorizontal": "CENTER",
                                     "textAlignVertical": "CENTER",
-                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                    "textAutoResize": "NONE"
                                 },
                                 "styledTextSegments": [
                                     {
-                                        "characters": "\n",
+                                        "characters": "段落テキストは折り返される\n",
                                         "fills": [
                                             {
                                                 "color": {
@@ -341,8 +341,8 @@
                                                 "visible": true
                                             }
                                         ],
-                                        "fontFamily": "SourceHanSans-Medium",
-                                        "fontSize": 50,
+                                        "fontFamily": "KozGoPr6N-Regular",
+                                        "fontSize": 24,
                                         "fontWeight": 400
                                     }
                                 ],

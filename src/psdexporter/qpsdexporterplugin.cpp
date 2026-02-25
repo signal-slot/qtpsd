@@ -59,13 +59,31 @@ void QPsdExporterPlugin::Private::generateIndexMap(const QPersistentModelIndex &
         childTopLeft = contentRect.topLeft();
 
         const auto hint = model->layerHint(index);
-        if (hint.type == QPsdExporterTreeItemModel::ExportHint::Merge) {
-            const auto groupIndexes = model->groupIndexes(index);
-            for (const auto &i : groupIndexes) {
+        // New format: Button (Native) pulls text from textSource sibling
+        if (hint.type == QPsdExporterTreeItemModel::ExportHint::Native
+            && (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button
+                || hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted)
+            && !hint.textSource.isEmpty()) {
+            const auto parentIndex = model->parent(index);
+            for (int si = 0; si < model->rowCount(parentIndex); ++si) {
+                const auto i = model->index(si, 0, parentIndex);
+                if (i == index)
+                    continue;
+                if (model->layerName(i) == hint.textSource) {
+                    q->indexMergeMap.insert(index, i);  // button → textLayer
+                }
+            }
+        }
+        // Backward compat: old Merged + componentName (push model)
+        if (hint.type == QPsdExporterTreeItemModel::ExportHint::Merged
+            && !hint.componentName.isEmpty()) {
+            const auto parentIndex = model->parent(index);
+            for (int si = 0; si < model->rowCount(parentIndex); ++si) {
+                const auto i = model->index(si, 0, parentIndex);
                 if (i == index)
                     continue;
                 if (model->layerName(i) == hint.componentName) {
-                    q->indexMergeMap.insert(i, index);
+                    q->indexMergeMap.insert(i, index);  // target ← source
                 }
             }
         }
@@ -317,7 +335,7 @@ std::optional<qreal> QPsdExporterPlugin::displayOpacity(const QPsdAbstractLayerI
 
 QRect QPsdExporterPlugin::adjustRectForMerge(const QModelIndex &index, QRect rect) const
 {
-    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
+    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merged) {
         auto parentIndex = indexMergeMap.key(index);
         while (parentIndex.isValid()) {
             const auto *parent = model()->layerItem(parentIndex);

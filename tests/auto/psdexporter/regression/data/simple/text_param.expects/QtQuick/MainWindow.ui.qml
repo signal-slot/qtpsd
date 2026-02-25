@@ -53,14 +53,14 @@ Item {
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
-            height: 56
+            height: 72
             horizontalAlignment: Text.AlignHCenter
             lineHeight: 0.24
             text: "shooting"
             verticalAlignment: Text.AlignVCenter
             width: 239
             x: 30
-            y: 19
+            y: 6
         }
     }
 }

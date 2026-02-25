@@ -26,6 +26,7 @@
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QComboBox>
 #include <QtWidgets/QStyledItemDelegate>
 
 class NameDelegate : public QStyledItemDelegate
@@ -89,6 +90,7 @@ public:
 
     void updateAttributes();
     void applyAttributes();
+    void populateTextSourceCombo();
 
     QPsdWidgetTreeItemModel widgetModel;
     PsdTreeItemModel model;
@@ -96,6 +98,7 @@ public:
     QString errorMessage;
     QSettings settings;
     QString windowTitle;
+    QComboBox *textSourceCombo = nullptr;
 
 private:
     ::PsdWidget *q;
@@ -218,7 +221,6 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         });
     }
     types.setId(typeEmbed, QPsdExporterTreeItemModel::ExportHint::Embed);
-    types.setId(typeMerge, QPsdExporterTreeItemModel::ExportHint::Merge);
     types.setId(typeComponent, QPsdExporterTreeItemModel::ExportHint::Component);
     types.setId(typeNative, QPsdExporterTreeItemModel::ExportHint::Native);
     types.setId(typeSkip, QPsdExporterTreeItemModel::ExportHint::Skip);
@@ -228,7 +230,6 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         nativeBase->addItem(QPsdExporterTreeItemModel::ExportHint::nativeCode2Name(QPsdExporterTreeItemModel::ExportHint::x), QPsdExporterTreeItemModel::ExportHint::NativeComponent::x)
 
     ADDITEM(Container);
-    ADDITEM(TouchArea);
     ADDITEM(Button);
     ADDITEM(Button_Highlighted);
 #undef ADDITEM
@@ -248,17 +249,6 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     });
     embedWithTouch->setEnabled(typeEmbed->isChecked());
     connect(embedWithTouch, &QCheckBox::checkStateChanged, q, [=]() {
-        if (isReset())
-            changed();
-    });
-
-    connect(typeMerge, &QRadioButton::toggled, q, [=](bool checked) {
-        merge->setEnabled(checked);
-        if (isReset())
-            changed();
-    });
-    merge->setEnabled(typeMerge->isChecked());
-    connect(merge, &QComboBox::currentIndexChanged, q, [=]() {
         if (isReset())
             changed();
     });
@@ -297,6 +287,36 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         if (isReset())
             changed();
     });
+
+    // Text source combo for Button native elements
+    textSourceCombo = new QComboBox(q);
+    textSourceCombo->hide();
+    auto *propertiesGrid = qobject_cast<QGridLayout *>(properties->layout());
+    propertiesGrid->addWidget(textSourceCombo, 4, 1);
+    connect(textSourceCombo, &QComboBox::currentIndexChanged, q, [=]() {
+        if (isReset())
+            changed();
+    });
+
+    auto updateTextSourceVisibility = [this]() {
+        const bool isNative = typeNative->isChecked();
+        const auto base = static_cast<QPsdExporterTreeItemModel::ExportHint::NativeComponent>(
+            nativeBase->currentData().toInt());
+        const bool isButton = isNative
+            && (base == QPsdExporterTreeItemModel::ExportHint::Button
+                || base == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted);
+        if (isButton) {
+            populateTextSourceCombo();
+            textSourceCombo->show();
+            textValue->hide();
+            text->setEnabled(true);
+        } else {
+            textSourceCombo->hide();
+            textValue->show();
+        }
+    };
+    connect(typeNative, &QRadioButton::toggled, q, [=]() { updateTextSourceVisibility(); });
+    connect(nativeBase, &QComboBox::currentIndexChanged, q, [=]() { updateTextSourceVisibility(); });
 
     const auto propertyCheckBoxes = properties->findChildren<QCheckBox *>();
     for (auto *checkBox : propertyCheckBoxes) {
@@ -508,30 +528,38 @@ void PsdWidget::Private::updateAttributes()
         { QPsdAbstractLayerItem::Image, { "image" } }
     };
 
-    UniqueOrNot<QPsdExporterTreeItemModel::ExportHint::Type> itemTypes(QPsdExporterTreeItemModel::ExportHint::None);
+    UniqueOrNot<QPsdExporterTreeItemModel::ExportHint::Type> itemTypes(static_cast<QPsdExporterTreeItemModel::ExportHint::Type>(-1));
     UniqueOrNot<Qt::CheckState> itemWithTouch(Qt::PartiallyChecked);
-    UniqueOrNot<QList<QPersistentModelIndex>> itemMergeGroup;
-    QSet<const QPersistentModelIndex> excludeFromMergeGroup;
     UniqueOrNot<QString> itemComponentName;
     UniqueOrNot<QString> itemCustom;
     UniqueOrNot<QPsdExporterTreeItemModel::ExportHint::NativeComponent> itemCustomBase;
+    UniqueOrNot<QString> itemTextSource;
     QHash<QString, UniqueOrNot<Qt::CheckState>> itemProperties;
+
+    // If any Merged layer is in multi-selection, disable editing entirely
+    if (rows.size() > 1) {
+        for (const auto &row : rows) {
+            const auto hint = model.layerHint(row);
+            if (hint.type == QPsdExporterTreeItemModel::ExportHint::Merged) {
+                type->setEnabled(false);
+                properties->setEnabled(false);
+                buttonBox->button(QDialogButtonBox::Discard)->setEnabled(false);
+                buttonBox->button(QDialogButtonBox::Apply)->setEnabled(false);
+                treeView->setEnabled(true);
+                return;
+            }
+        }
+    }
 
     for (const auto &row : rows) {
         const auto *item = model.layerItem(row);
-        const auto groupVariantList = model.groupIndexes(row);
         const auto hint = model.layerHint(row);
         itemTypes.add(hint.type);
-        itemWithTouch.add(hint.baseElement == QPsdExporterTreeItemModel::ExportHint::TouchArea ? Qt::Checked : Qt::Unchecked);
-        qDebug() << hint.baseElement << itemWithTouch.isUnique() << itemWithTouch.value();
-        QList<QPersistentModelIndex> groupIndexList;
-        for (auto &v : groupVariantList) {
-            groupIndexList.append(v);
-        }
-        itemMergeGroup.add(groupIndexList);
-        excludeFromMergeGroup.insert(row);
+        itemWithTouch.add(hint.interactive ? Qt::Checked : Qt::Unchecked);
+        qDebug() << hint.interactive << itemWithTouch.isUnique() << itemWithTouch.value();
         itemComponentName.add(hint.componentName);
         itemCustomBase.add(hint.baseElement);
+        itemTextSource.add(hint.textSource);
 
         for (auto *property : propertyCheckBoxes) {
             const auto name = property->objectName();
@@ -547,7 +575,7 @@ void PsdWidget::Private::updateAttributes()
         }
     }
 
-    if (itemTypes.isUnique()) {
+    if (itemTypes.isUnique() && types.button(itemTypes.value())) {
         types.setExclusive(true);
         types.button(itemTypes.value())->setChecked(true);
     } else {
@@ -559,22 +587,6 @@ void PsdWidget::Private::updateAttributes()
 
     // reset all
     embedWithTouch->setCheckState(Qt::Unchecked);
-    merge->clear();
-    if (itemMergeGroup.isUnique()) {
-        merge->setEnabled(true);
-        for (auto item : itemMergeGroup.value()) {
-            if (excludeFromMergeGroup.contains(item)) {
-                continue;
-            }
-            QString name = model.layerName(item);
-            merge->addItem(name);
-        }
-        merge->setCurrentIndex(-1);
-        typeMerge->setEnabled(merge->count() > 0);
-    } else {
-        merge->setEnabled(false);
-        typeMerge->setEnabled(false);
-    }
     customEnabled->setChecked(rows.length() == 1);
     customEnabled->setEnabled(rows.length() > 1);
     custom->setText(QString());
@@ -582,18 +594,27 @@ void PsdWidget::Private::updateAttributes()
     customBase->setCurrentIndex(-1);
     customBase->setEnabled(false);
     nativeBase->setCurrentIndex(-1);
+    textSourceCombo->clear();
+    textSourceCombo->hide();
+    textValue->show();
+
+    // Merged layers: grey out type group and properties (not user-selectable)
+    if (itemTypes.isUnique() && itemTypes.value() == QPsdExporterTreeItemModel::ExportHint::Merged) {
+        type->setEnabled(false);
+        properties->setEnabled(false);
+    } else {
+        type->setEnabled(true);
+        properties->setEnabled(true);
+    }
 
     switch (itemTypes.value()) {
-    case QPsdExporterTreeItemModel::ExportHint::None:
-        break;
     case QPsdExporterTreeItemModel::ExportHint::Embed:
         embedWithTouch->setEnabled(true);
         qDebug() << itemWithTouch.value() << embedWithTouch->checkState();
         embedWithTouch->setCheckState(itemWithTouch.value());
         qDebug() << itemWithTouch.value() << embedWithTouch->checkState();
         break;
-    case QPsdExporterTreeItemModel::ExportHint::Merge:
-        merge->setCurrentText(itemComponentName.value());
+    case QPsdExporterTreeItemModel::ExportHint::Merged:
         break;
     case QPsdExporterTreeItemModel::ExportHint::Component:
         customEnabled->setChecked(itemComponentName.isUnique());
@@ -608,6 +629,25 @@ void PsdWidget::Private::updateAttributes()
     case QPsdExporterTreeItemModel::ExportHint::Native:
         if (itemCustomBase.isUnique()) {
             nativeBase->setCurrentText(QPsdExporterTreeItemModel::ExportHint::nativeCode2Name(itemCustomBase.value()));
+        }
+        // Populate textSourceCombo for Button native elements
+        if (rows.size() == 1 && itemCustomBase.isUnique()) {
+            const auto base = itemCustomBase.value();
+            if (base == QPsdExporterTreeItemModel::ExportHint::Button
+                || base == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted) {
+                populateTextSourceCombo();
+                if (itemTextSource.isUnique() && !itemTextSource.value().isEmpty()) {
+                    for (int i = 0; i < textSourceCombo->count(); ++i) {
+                        if (textSourceCombo->itemData(i).toString() == itemTextSource.value()) {
+                            textSourceCombo->setCurrentIndex(i);
+                            break;
+                        }
+                    }
+                }
+                textSourceCombo->show();
+                textValue->hide();
+                text->setEnabled(true);
+            }
         }
         break;
     case QPsdExporterTreeItemModel::ExportHint::Skip:
@@ -646,45 +686,134 @@ void PsdWidget::Private::applyAttributes()
 
     for (const auto &row : rows) {
         auto hint = model.layerHint(row);
+
+        // Skip Merged layers — they are not user-editable
+        if (hint.type == QPsdExporterTreeItemModel::ExportHint::Merged)
+            continue;
+
         if (type > -1)
             hint.type = static_cast<QPsdExporterTreeItemModel::ExportHint::Type>(type);
+        // Remember old textSource to revert Merged layer if changed
+        const QString oldTextSource = hint.textSource;
+
         switch (type) {
         case QPsdExporterTreeItemModel::ExportHint::Embed:
             hint.type = QPsdExporterTreeItemModel::ExportHint::Embed;
+            hint.textSource.clear();
             switch (withTouch) {
             case Qt::Checked:
-                hint.baseElement = QPsdExporterTreeItemModel::ExportHint::TouchArea;
+                hint.interactive = true;
                 break;
             case Qt::Unchecked:
-                hint.baseElement = QPsdExporterTreeItemModel::ExportHint::Container;
+                hint.interactive = false;
                 break;
             default:
                 break;
             }
             break;
-        case QPsdExporterTreeItemModel::ExportHint::Merge:
-            hint.type = QPsdExporterTreeItemModel::ExportHint::Merge;
-            hint.componentName = merge->currentText();
-            break;
         case QPsdExporterTreeItemModel::ExportHint::Component:
             hint.type = QPsdExporterTreeItemModel::ExportHint::Component;
+            hint.textSource.clear();
             if (customEnabled->isEnabled()) {
                 hint.componentName = custom->text();
                 hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(customBase->currentText());
             }
             break;
-        case QPsdExporterTreeItemModel::ExportHint::Native:
+        case QPsdExporterTreeItemModel::ExportHint::Native: {
             hint.type = QPsdExporterTreeItemModel::ExportHint::Native;
             hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(nativeBase->currentText());
-            break;
+            const bool isButton = (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button
+                                   || hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted);
+            if (isButton)
+                hint.textSource = textSourceCombo->currentData().toString();
+            else
+                hint.textSource.clear();
+            break; }
         case QPsdExporterTreeItemModel::ExportHint::Skip:
             hint.type = QPsdExporterTreeItemModel::ExportHint::Skip;
+            hint.textSource.clear();
+            break;
+        default:
             break;
         }
 
         hint.properties = propertiesChecked;
-
         model.setLayerHint(row, hint);
+
+        // Auto-set/revert Merged type on text source layers
+        if (oldTextSource != hint.textSource) {
+            const QModelIndex parentIndex = row.parent();
+            // Revert old text source layer from Merged to Embed
+            if (!oldTextSource.isEmpty()) {
+                for (int si = 0; si < model.rowCount(parentIndex); ++si) {
+                    const QModelIndex gi = model.index(si, 0, parentIndex);
+                    if (model.layerName(gi) == oldTextSource) {
+                        auto srcHint = model.layerHint(gi);
+                        if (srcHint.type == QPsdExporterTreeItemModel::ExportHint::Merged) {
+                            srcHint.type = QPsdExporterTreeItemModel::ExportHint::Embed;
+                            model.setLayerHint(gi, srcHint);
+                        }
+                    }
+                }
+            }
+            // Set new text source layer to Merged
+            if (!hint.textSource.isEmpty()) {
+                for (int si = 0; si < model.rowCount(parentIndex); ++si) {
+                    const QModelIndex gi = model.index(si, 0, parentIndex);
+                    if (model.layerName(gi) == hint.textSource) {
+                        auto srcHint = model.layerHint(gi);
+                        srcHint.type = QPsdExporterTreeItemModel::ExportHint::Merged;
+                        model.setLayerHint(gi, srcHint);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void PsdWidget::Private::populateTextSourceCombo()
+{
+    const QString oldSelection = textSourceCombo->currentData().toString();
+    textSourceCombo->clear();
+    textSourceCombo->addItem(QString()); // empty = no text source
+
+    const auto rows = treeView->selectionModel()->selectedRows();
+    if (rows.size() != 1)
+        return;
+
+    const QModelIndex parentIndex = rows.first().parent();
+    for (int i = 0; i < model.rowCount(parentIndex); ++i) {
+        const QModelIndex gi = model.index(i, 0, parentIndex);
+        if (gi == rows.first())
+            continue;
+        const auto *layerItem = model.layerItem(gi);
+        if (!layerItem || layerItem->type() != QPsdAbstractLayerItem::Text)
+            continue;
+        const auto *textItem = dynamic_cast<const QPsdTextLayerItem *>(layerItem);
+        QString displayText;
+        if (textItem) {
+            QStringList texts;
+            for (const auto &run : textItem->runs())
+                texts.append(run.text);
+            displayText = texts.join(QString()).trimmed();
+            if (displayText.length() > 30)
+                displayText = displayText.left(27) + "..."_L1;
+            displayText.replace(u'\n', u' ');
+        }
+        const QString layerName = model.layerName(gi);
+        const QString label = displayText.isEmpty() ? layerName : displayText;
+        textSourceCombo->addItem(label, layerName);
+        textSourceCombo->setItemData(textSourceCombo->count() - 1, layerName, Qt::ToolTipRole);
+    }
+
+    // Restore previous selection if possible
+    if (!oldSelection.isEmpty()) {
+        for (int i = 0; i < textSourceCombo->count(); ++i) {
+            if (textSourceCombo->itemData(i).toString() == oldSelection) {
+                textSourceCombo->setCurrentIndex(i);
+                return;
+            }
+        }
     }
 }
 

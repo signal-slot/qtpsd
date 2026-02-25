@@ -14,106 +14,22 @@
                         "children": [
                             {
                                 "absoluteBoundingBox": {
-                                    "height": 40,
-                                    "width": 32,
-                                    "x": 240,
-                                    "y": 152
-                                },
-                                "blendMode": "NORMAL",
-                                "fills": [
-                                    {
-                                        "imageRef": "31",
-                                        "scaleMode": "FILL",
-                                        "type": "IMAGE",
-                                        "visible": true
-                                    }
-                                ],
-                                "id": "31",
-                                "name": "flutter pixeled",
-                                "type": "RECTANGLE",
-                                "visible": true
-                            },
-                            {
-                                "absoluteBoundingBox": {
-                                    "height": 40,
-                                    "width": 32,
-                                    "x": 240,
-                                    "y": 82
-                                },
-                                "blendMode": "NORMAL",
-                                "fills": [
-                                    {
-                                        "imageRef": "29",
-                                        "scaleMode": "FILL",
-                                        "type": "IMAGE",
-                                        "visible": true
-                                    }
-                                ],
-                                "id": "29",
-                                "name": "flutter",
-                                "type": "RECTANGLE",
-                                "visible": true
-                            },
-                            {
-                                "absoluteBoundingBox": {
-                                    "height": 48,
-                                    "width": 36,
-                                    "x": 150,
-                                    "y": 149
-                                },
-                                "blendMode": "NORMAL",
-                                "fills": [
-                                    {
-                                        "imageRef": "32",
-                                        "scaleMode": "FILL",
-                                        "type": "IMAGE",
-                                        "visible": true
-                                    }
-                                ],
-                                "id": "32",
-                                "name": "slint ピクセル化",
-                                "type": "RECTANGLE",
-                                "visible": true
-                            },
-                            {
-                                "absoluteBoundingBox": {
-                                    "height": 48,
-                                    "width": 36,
-                                    "x": 150,
-                                    "y": 79
-                                },
-                                "blendMode": "NORMAL",
-                                "fills": [
-                                    {
-                                        "imageRef": "27",
-                                        "scaleMode": "FILL",
-                                        "type": "IMAGE",
-                                        "visible": true
-                                    }
-                                ],
-                                "id": "27",
-                                "name": "slint",
-                                "type": "RECTANGLE",
-                                "visible": true
-                            },
-                            {
-                                "absoluteBoundingBox": {
                                     "height": 46,
                                     "width": 64,
                                     "x": 40,
-                                    "y": 150
+                                    "y": 80
                                 },
                                 "blendMode": "NORMAL",
                                 "fills": [
                                     {
-                                        "imageRef": "34",
+                                        "imageRef": "25",
                                         "scaleMode": "FILL",
                                         "type": "IMAGE",
                                         "visible": true
                                     }
                                 ],
-                                "id": "34",
-                                "name": "ロゴ",
+                                "id": "25",
+                                "name": "同名別画像",
                                 "type": "RECTANGLE",
                                 "visible": true
                             },
@@ -143,19 +59,103 @@
                                     "height": 46,
                                     "width": 64,
                                     "x": 40,
-                                    "y": 80
+                                    "y": 150
                                 },
                                 "blendMode": "NORMAL",
                                 "fills": [
                                     {
-                                        "imageRef": "25",
+                                        "imageRef": "34",
                                         "scaleMode": "FILL",
                                         "type": "IMAGE",
                                         "visible": true
                                     }
                                 ],
-                                "id": "25",
-                                "name": "同名別画像",
+                                "id": "34",
+                                "name": "ロゴ",
+                                "type": "RECTANGLE",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 48,
+                                    "width": 36,
+                                    "x": 150,
+                                    "y": 79
+                                },
+                                "blendMode": "NORMAL",
+                                "fills": [
+                                    {
+                                        "imageRef": "27",
+                                        "scaleMode": "FILL",
+                                        "type": "IMAGE",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "27",
+                                "name": "slint",
+                                "type": "RECTANGLE",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 48,
+                                    "width": 36,
+                                    "x": 150,
+                                    "y": 149
+                                },
+                                "blendMode": "NORMAL",
+                                "fills": [
+                                    {
+                                        "imageRef": "32",
+                                        "scaleMode": "FILL",
+                                        "type": "IMAGE",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "32",
+                                "name": "slint ピクセル化",
+                                "type": "RECTANGLE",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 40,
+                                    "width": 32,
+                                    "x": 240,
+                                    "y": 82
+                                },
+                                "blendMode": "NORMAL",
+                                "fills": [
+                                    {
+                                        "imageRef": "29",
+                                        "scaleMode": "FILL",
+                                        "type": "IMAGE",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "29",
+                                "name": "flutter",
+                                "type": "RECTANGLE",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 40,
+                                    "width": 32,
+                                    "x": 240,
+                                    "y": 152
+                                },
+                                "blendMode": "NORMAL",
+                                "fills": [
+                                    {
+                                        "imageRef": "31",
+                                        "scaleMode": "FILL",
+                                        "type": "IMAGE",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "31",
+                                "name": "flutter pixeled",
                                 "type": "RECTANGLE",
                                 "visible": true
                             }

@@ -6,6 +6,8 @@
 
 #include <QtCore/QCborMap>
 #include <QtCore/QDir>
+
+#include <optional>
 #include <QtCore/QXmlStreamWriter>
 #include <QtGui/QBrush>
 #include <QtGui/QConicalGradient>
@@ -60,7 +62,7 @@ private:
 
     using ExportData = QList<QPair<QString, QString>>; // id, type for API props
 
-    bool traverseTree(const QModelIndex &index, Element *parent, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const;
+    bool traverseTree(const QModelIndex &index, Element *parent, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt) const;
 
     bool outputRect(const QRect &rect, Element *element) const;
     bool outputBase(const QModelIndex &index, Element *element, QRect rectBounds = {}) const;
@@ -97,7 +99,7 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &view, &exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, &view, &exports, std::nullopt))
             return false;
     }
 
@@ -162,20 +164,20 @@ bool QPsdExporterLvglPlugin::outputFolder(const QModelIndex &folderIndex, Elemen
 
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
-        if (!traverseTree(childIndex, element, exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, element, exports, std::nullopt))
             return false;
     }
     return true;
 }
 
-bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *parent, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const
+bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *parent, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload) const
 {
     const QPsdAbstractLayerItem *item = model()->layerItem(index);
     const auto hint = model()->layerHint(index);
     const auto id = toSnakeCase(hint.id);
     auto type = hint.type;
-    if (hintOverload != QPsdExporterTreeItemModel::ExportHint::None) {
-        type = hintOverload;
+    if (hintOverload.has_value()) {
+        type = *hintOverload;
     }
 
     switch (type) {
@@ -205,23 +207,14 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
             break;
         }
 
-        const bool hasRenderableElement = !element.type.isEmpty();
-        Element *mergeParent = hasRenderableElement ? &element : parent;
-        if (indexMergeMap.contains(index)) {
-            const auto &list = indexMergeMap.values(index);
-            for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, mergeParent, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
-            }
-        }
-
-        if (!hasRenderableElement)
+        if (element.type.isEmpty())
             return true;
 
         if (!hint.visible)
             element.attributes.insert("hidden", "true");
 
         if (!id.isEmpty()) {
-            if (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::TouchArea) {
+            if (hint.interactive) {
                 Element touchArea;
                 touchArea.type = "lv_button";
                 touchArea.id = element.id;
@@ -281,9 +274,8 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
             exports->append({id, "bool"});
         parent->children.append(element);
         break; }
-    case QPsdExporterTreeItemModel::ExportHint::Merge:
+    case QPsdExporterTreeItemModel::ExportHint::Merged:
     case QPsdExporterTreeItemModel::ExportHint::Skip:
-    case QPsdExporterTreeItemModel::ExportHint::None:
         return true;
     }
     return true;

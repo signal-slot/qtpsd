@@ -8,6 +8,7 @@
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 
 #include <QtCore/QIdentityProxyModel>
+#include <QtCore/QJsonObject>
 
 QT_BEGIN_NAMESPACE
 
@@ -31,16 +32,14 @@ public:
     struct ExportHint {
         enum Type {
             Embed,
-            Merge,
+            Merged,
             Component,
             Native,
             Skip,
-            None,
         };
         enum NativeComponent {
             Container,
-            TouchArea,
-            Button,
+            Button = 2,
             Button_Highlighted,
         };
 
@@ -49,11 +48,18 @@ public:
         QString componentName;
         NativeComponent baseElement = Container;
         bool visible = true;
+        bool interactive = false;
         QSet<QString> properties;
+        QString textSource;
 
         bool isDefaultValue() const {
-            return id.isEmpty() && type == Embed && componentName.isEmpty() && baseElement == Container;
+            return id.isEmpty() && type == Embed && componentName.isEmpty()
+                   && baseElement == Container && visible && !interactive
+                   && properties.isEmpty() && textSource.isEmpty();
         }
+
+        QJsonObject toJson() const;
+        static ExportHint fromJson(const QJsonObject &obj);
 
         static NativeComponent nativeName2Code(const QString &name) {
 
@@ -61,7 +67,6 @@ public:
             return x; \
             else
             IF(Container)
-            IF(TouchArea)
             IF(Button)
             IF(Button_Highlighted)
 #undef IF
@@ -83,7 +88,6 @@ public:
             switch (code) {
 #define CASE(x) case x: return parentheses(u###x##_s)
             CASE(Container);
-            CASE(TouchArea);
             CASE(Button);
             CASE(Button_Highlighted);
 #undef CASE

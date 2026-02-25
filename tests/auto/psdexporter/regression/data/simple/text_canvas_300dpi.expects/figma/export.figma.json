@@ -14,62 +14,6 @@
                         "children": [
                             {
                                 "absoluteBoundingBox": {
-                                    "height": 143,
-                                    "width": 464,
-                                    "x": 162,
-                                    "y": 82
-                                },
-                                "blendMode": "NORMAL",
-                                "characters": "150px\n",
-                                "fills": [
-                                    {
-                                        "color": {
-                                            "a": 1,
-                                            "b": 1,
-                                            "g": 1,
-                                            "r": 1
-                                        },
-                                        "opacity": 1,
-                                        "type": "SOLID",
-                                        "visible": true
-                                    }
-                                ],
-                                "id": "6",
-                                "name": "150px",
-                                "style": {
-                                    "fontFamily": "SourceHanSans-Medium",
-                                    "fontSize": 150,
-                                    "fontWeight": 400,
-                                    "textAlignHorizontal": "CENTER",
-                                    "textAlignVertical": "CENTER",
-                                    "textAutoResize": "WIDTH_AND_HEIGHT"
-                                },
-                                "styledTextSegments": [
-                                    {
-                                        "characters": "150px\n",
-                                        "fills": [
-                                            {
-                                                "color": {
-                                                    "a": 1,
-                                                    "b": 1,
-                                                    "g": 1,
-                                                    "r": 1
-                                                },
-                                                "opacity": 1,
-                                                "type": "SOLID",
-                                                "visible": true
-                                            }
-                                        ],
-                                        "fontFamily": "SourceHanSans-Medium",
-                                        "fontSize": 150,
-                                        "fontWeight": 400
-                                    }
-                                ],
-                                "type": "TEXT",
-                                "visible": true
-                            },
-                            {
-                                "absoluteBoundingBox": {
                                     "height": 48,
                                     "width": 115,
                                     "x": 34,
@@ -118,6 +62,62 @@
                                         ],
                                         "fontFamily": "SourceHanSans-Medium",
                                         "fontSize": 50,
+                                        "fontWeight": 400
+                                    }
+                                ],
+                                "type": "TEXT",
+                                "visible": true
+                            },
+                            {
+                                "absoluteBoundingBox": {
+                                    "height": 143,
+                                    "width": 464,
+                                    "x": 162,
+                                    "y": 82
+                                },
+                                "blendMode": "NORMAL",
+                                "characters": "150px\n",
+                                "fills": [
+                                    {
+                                        "color": {
+                                            "a": 1,
+                                            "b": 1,
+                                            "g": 1,
+                                            "r": 1
+                                        },
+                                        "opacity": 1,
+                                        "type": "SOLID",
+                                        "visible": true
+                                    }
+                                ],
+                                "id": "6",
+                                "name": "150px",
+                                "style": {
+                                    "fontFamily": "SourceHanSans-Medium",
+                                    "fontSize": 150,
+                                    "fontWeight": 400,
+                                    "textAlignHorizontal": "CENTER",
+                                    "textAlignVertical": "CENTER",
+                                    "textAutoResize": "WIDTH_AND_HEIGHT"
+                                },
+                                "styledTextSegments": [
+                                    {
+                                        "characters": "150px\n",
+                                        "fills": [
+                                            {
+                                                "color": {
+                                                    "a": 1,
+                                                    "b": 1,
+                                                    "g": 1,
+                                                    "r": 1
+                                                },
+                                                "opacity": 1,
+                                                "type": "SOLID",
+                                                "visible": true
+                                            }
+                                        ],
+                                        "fontFamily": "SourceHanSans-Medium",
+                                        "fontSize": 150,
                                         "fontWeight": 400
                                     }
                                 ],

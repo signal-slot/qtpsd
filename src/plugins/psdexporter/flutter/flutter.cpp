@@ -8,6 +8,8 @@
 #include <QtCore/QDir>
 #include <QtCore/QQueue>
 
+#include <optional>
+
 #include <QtGui/QBrush>
 #include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
@@ -89,7 +91,7 @@ private:
     bool outputShape(const QModelIndex &shapeIndex, Element *element, ImportData *imports, ExportData *exports) const;
     bool outputImage(const QModelIndex &imageIndex, Element *element) const;
 
-    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const;
+    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt) const;
 };
 
 Q_DECLARE_METATYPE(QPsdExporterFlutterPlugin::Element)
@@ -342,7 +344,7 @@ bool QPsdExporterFlutterPlugin::outputPositioned(const QModelIndex &index, Eleme
     if (makeCompact) {
         rect = indexRectMap.value(index);
     }
-    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
+    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merged) {
         auto parentIndex = indexMergeMap.key(index);
         while (parentIndex.isValid()) {
             const auto *parent = model()->layerItem(parentIndex);
@@ -370,7 +372,7 @@ bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QModelIndex &in
 {
     const auto *item = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(index));
     QRect rect = computeTextBounds(item);
-    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merge) {
+    if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merged) {
         auto parentIndex = indexMergeMap.key(index);
         while (parentIndex.isValid()) {
             const auto *parent = model()->layerItem(parentIndex);
@@ -403,7 +405,7 @@ bool QPsdExporterFlutterPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     stackElement.type = "Stack";
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
-        if (!traverseTree(childIndex, &stackElement, imports, exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, &stackElement, imports, exports, std::nullopt))
             return false;
     }
 
@@ -604,16 +606,7 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
 
     Element containerElement;
     if (!id.isEmpty()) {
-        switch (hint.baseElement) {
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
-        default:
-            //TODO other NativeComponet are not supported yet
-            containerElement.type = "Container"_L1;
-            break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
-            containerElement.type = "Ink"_L1;
-            break;
-        }
+        containerElement.type = "Container"_L1;
     } else {
         containerElement.type = "Container"_L1;        
     }
@@ -679,7 +672,7 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         listDropShadow.append(QVariant::fromValue(effect));
     }
 
-    if (!id.isEmpty() && hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea) {
+    if (!id.isEmpty() && hint.interactive) {
         PropertyInfo prop {
             "void Function()?"_L1, "on_%1_Tap"_L1, hint.id
         };
@@ -690,17 +683,6 @@ bool QPsdExporterFlutterPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         inkWell.properties.insert("onTap"_L1, prop.name());
         if (path.type == QPsdAbstractLayerItem::PathInfo::RoundedRectangle) {
             inkWell.properties.insert("borderRadius"_L1, u"BorderRadius.circular(%1)"_s.arg(path.radius * unitScale));
-        }
-
-        if (indexMergeMap.contains(shapeIndex)) {
-            Element stackElement;
-            stackElement.type = "Stack"_L1;
-            const auto &list = indexMergeMap.values(shapeIndex);
-            for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, &stackElement, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
-            }
-
-            inkWell.properties.insert("child"_L1, QVariant::fromValue(stackElement));
         }
 
         containerElement.properties.insert("child"_L1, QVariant::fromValue(inkWell));
@@ -766,17 +748,16 @@ bool QPsdExporterFlutterPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     return true;
 }
 
-bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const
+bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload) const
 {
     const auto *item = model()->layerItem(index);
     const auto hint = model()->layerHint(index);
     const auto id = toLowerCamelCase(hint.id);
     auto type = hint.type;
-    if (hintOverload != QPsdExporterTreeItemModel::ExportHint::None) {
-        type = hintOverload;
+    if (hintOverload.has_value()) {
+        type = *hintOverload;
     }
     switch (type) {
-    case QPsdExporterTreeItemModel::ExportHint::None:
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
         Element positionedElement;
@@ -806,7 +787,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
 
         Element materialElement;
         if (!id.isEmpty() && item->type() != QPsdAbstractLayerItem::Shape
-            && hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea) {
+            && hint.interactive) {
             PropertyInfo prop {
                 "void Function()?"_L1, "on_%1_Tap"_L1, hint.id
             };
@@ -856,17 +837,6 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             element.type = "Container"_L1;
             break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea: {
-            PropertyInfo prop {
-                "void Function()?"_L1, "on_%1_Tap"_L1, hint.id
-            };
-            exports->insert(prop.name(), prop);
-
-            element.type = "GestureDetector"_L1;
-            element.properties.insert("onTap"_L1, prop.name());
-            element.properties.insert("behavior"_L1, "HitTestBehavior.opaque"_L1);
-            break;
-        }
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted: {
             PropertyInfo prop {
@@ -881,12 +851,13 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
             element.properties.insert("onPressed"_L1, prop.name());
 
             if (indexMergeMap.contains(index)) {
-                for (auto it = indexMergeMap.constBegin(); it != indexMergeMap.constEnd(); it++) {
-                    const auto *i = model()->layerItem(it.value());
+                const auto &mergedLayers = indexMergeMap.values(index);
+                for (const auto &mergedIndex : mergedLayers) {
+                    const auto *i = model()->layerItem(mergedIndex);
                     switch (i->type()) {
                     case QPsdAbstractLayerItem::Text: {
                         Element textElem;
-                        outputText(it.value(), &textElem);
+                        outputText(mergedIndex, &textElem);
                         element.properties.insert("child", QVariant::fromValue(textElem));
                         break; }
                     default:
@@ -957,16 +928,6 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             base.type = "Container";
             break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea: {
-            PropertyInfo prop {
-                "void Function()?"_L1, "on_%1_Tap"_L1, {}
-            };
-            x.insert(prop.name(), prop);
-            base.type = "InkWell";
-            base.properties.insert("onTap", prop.name());
-            isMaterial = true;
-            break;
-        }
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button: {
             PropertyInfo prop {
                 "void Function()?"_L1, "on_%1_Pressed"_L1, {}
@@ -1039,7 +1000,7 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
 
         break;
     }
-    case QPsdExporterTreeItemModel::ExportHint::Merge:
+    case QPsdExporterTreeItemModel::ExportHint::Merged:
     case QPsdExporterTreeItemModel::ExportHint::Skip:
         return true;
     }
@@ -1066,7 +1027,7 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &container, &imports, &exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))
             return false;
     }
 

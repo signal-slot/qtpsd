@@ -7,6 +7,8 @@
 #include <QtCore/QCborMap>
 #include <QtCore/QCryptographicHash>
 #include <QtCore/QDir>
+
+#include <optional>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QJsonArray>
@@ -63,7 +65,7 @@ private:
     bool outputPath(const QPainterPath &path, Element *element) const;
     bool outputGradient(const QGradient *gradient, const QRectF &rect, Element *element) const;
 
-    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const;
+    bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt) const;
 
     bool traverseElement(QTextStream &out, const Element *element, int level) const;
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
@@ -207,7 +209,7 @@ bool QPsdExporterSwiftUIPlugin::outputFolder(const QModelIndex &folderIndex, Ele
 
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
-        if (!traverseTree(childIndex, element, imports, exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, element, imports, exports, std::nullopt))
             return false;
     }
 
@@ -653,14 +655,14 @@ bool QPsdExporterSwiftUIPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     return true;
 }
 
-bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, QPsdExporterTreeItemModel::ExportHint::Type hintOverload) const
+bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload) const
 {
     const QPsdAbstractLayerItem *item = model()->layerItem(index);
     const auto hint = model()->layerHint(index);
     const auto id = toLowerCamelCase(hint.id);
     auto type = hint.type;
-    if (hintOverload != QPsdExporterTreeItemModel::ExportHint::None) {
-        type = hintOverload;
+    if (hintOverload.has_value()) {
+        type = *hintOverload;
     }
 
     switch (type) {
@@ -685,13 +687,6 @@ bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *
             break;
         }
 
-        if (indexMergeMap.contains(index)) {
-            const auto &list = indexMergeMap.values(index);
-            for (auto it = list.constBegin(); it != list.constEnd(); it++) {
-                traverseTree(*it, &element, imports, exports, QPsdExporterTreeItemModel::ExportHint::Embed);
-            }
-        }
-
         if (!hint.visible) {
             element.modifiers.append(".hidden()");
         }
@@ -710,9 +705,6 @@ bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *
         switch (hint.baseElement) {
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             element.type = "Group";
-            break;
-        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
-            element.type = "Button";
             break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
@@ -775,9 +767,8 @@ bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *
         parent->children.append(element);
         break;
     }
-    case QPsdExporterTreeItemModel::ExportHint::Merge:
+    case QPsdExporterTreeItemModel::ExportHint::Merged:
     case QPsdExporterTreeItemModel::ExportHint::Skip:
-    case QPsdExporterTreeItemModel::ExportHint::None:
         return true;
     }
 
@@ -971,7 +962,7 @@ bool QPsdExporterSwiftUIPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &rootElement, &imports, &exports, QPsdExporterTreeItemModel::ExportHint::None))
+        if (!traverseTree(childIndex, &rootElement, &imports, &exports, std::nullopt))
             return false;
     }
 

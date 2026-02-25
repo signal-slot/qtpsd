@@ -29,9 +29,9 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 33,
+                  height: 44,
                   left: 2,
-                  top: 9,
+                  top: 1,
                   width: 160,
                   child: Text(
                     "文字列中に\n改行", 
@@ -47,9 +47,9 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 33,
+                  height: 44,
                   left: 169,
-                  top: 9,
+                  top: 1,
                   width: 144,
                   child: Column(
                     children: [
@@ -125,9 +125,9 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 33,
+                  height: 44,
                   left: 25,
-                  top: 109,
+                  top: 101,
                   width: 86,
                   child: Text(
                     "Shift\n+改行", 
