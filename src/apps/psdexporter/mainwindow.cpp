@@ -12,8 +12,10 @@
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QMessageBox>
+#include <QtWidgets/QProgressBar>
 #include <QtWidgets/QSlider>
 #include <QtWidgets/QToolButton>
+#include <QtWidgets/QVBoxLayout>
 #include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdImporter/QPsdImporterPlugin>
 
@@ -134,9 +136,38 @@ MainWindow::Private::Private(::MainWindow *parent)
     connect(imports, &QMenu::triggered, q, [this](QAction *action) {
         QPsdImporterPlugin *importer = action->data().value<QPsdImporterPlugin *>();
         Q_ASSERT(importer);
+
+        const auto options = importer->execImportDialog(q);
+        if (options.isEmpty())
+            return;
+
+        // Create a loading tab with progress bar immediately
+        auto *loadingWidget = new QWidget(q);
+        auto *loadingLayout = new QVBoxLayout(loadingWidget);
+        loadingLayout->setAlignment(Qt::AlignCenter);
+        auto *progressLabel = new QLabel(tr("Importing from %1...").arg(importer->name()));
+        progressLabel->setAlignment(Qt::AlignCenter);
+        auto *progressBar = new QProgressBar();
+        progressBar->setRange(0, 0); // indeterminate
+        progressBar->setFixedWidth(300);
+        loadingLayout->addWidget(progressLabel);
+        loadingLayout->addWidget(progressBar);
+        int index = tabWidget->addTab(loadingWidget, importer->icon(), tr("Importing..."));
+        tabWidget->setCurrentIndex(index);
+
+        // Run import - UI stays responsive during network I/O
+        // (Figma plugin uses QEventLoop internally which processes events)
+        QApplication::setOverrideCursor(Qt::BusyCursor);
         auto viewer = new PsdWidget(q);
-        if (viewer->importFrom(importer)) {
-            int index = tabWidget->addTab(viewer, viewer->windowIcon(), viewer->windowTitle());
+        const bool ok = viewer->importFrom(importer, options);
+        QApplication::restoreOverrideCursor();
+
+        // Replace loading tab with result
+        tabWidget->removeTab(index);
+        loadingWidget->deleteLater();
+
+        if (ok) {
+            index = tabWidget->insertTab(index, viewer, viewer->windowIcon(), viewer->windowTitle());
             connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
                 for (int i = 0; i < tabWidget->count(); i++) {
                     if (tabWidget->widget(i) == viewer)

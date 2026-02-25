@@ -36,7 +36,7 @@ public slots:
     void reload();
     void save();
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
-    bool importFrom(QPsdImporterPlugin *importer);
+    bool importFrom(QPsdImporterPlugin *importer, const QVariantMap options);
     void copyViewToClipboard();
     void setViewScale(qreal scale);
     void fitToView();

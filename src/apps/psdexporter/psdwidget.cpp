@@ -871,15 +871,9 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
     }
 }
 
-bool PsdWidget::importFrom(QPsdImporterPlugin *importer)
+bool PsdWidget::importFrom(QPsdImporterPlugin *importer, const QVariantMap options)
 {
-    const auto options = importer->execImportDialog(this);
-    if (options.isEmpty())
-        return false;
-
-    QApplication::setOverrideCursor(Qt::WaitCursor);
     const bool ok = importer->importFrom(&d->model, options);
-    QApplication::restoreOverrideCursor();
 
     if (ok) {
         d->treeView->reset();
