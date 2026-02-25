@@ -32,7 +32,7 @@ public:
     }
     ExportType exportType() const override { return QPsdExporterPlugin::Directory; }
 
-    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const override;
+    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const override;
 
 private:
     struct Element {
@@ -76,15 +76,15 @@ private:
     bool saveGlobalsXml() const;
 };
 
-bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
+bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
 {
-    if (!initializeExport(model, to, hint)) {
+    if (!initializeExport(model, to, config)) {
         return false;
     }
     exportedImages.clear();
     exportedGradients.clear();
     gradientCounter = 0;
-    const QSize targetSize = hint.value("resolution", model->size()).toSize();
+    const QSize targetSize = config.targetSize.isEmpty() ? model->size() : config.targetSize;
 
     ExportData exports;
 

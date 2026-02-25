@@ -188,23 +188,47 @@ bool QPsdExporterPlugin::generateMaps() const
     return true;
 }
 
+QVariantMap QPsdExporterPlugin::ExportConfig::toVariantMap() const
+{
+    QVariantMap map;
+    if (!targetSize.isEmpty())
+        map.insert("resolution"_L1, targetSize);
+    map.insert("fontScaleFactor"_L1, fontScaleFactor);
+    map.insert("makeCompact"_L1, makeCompact);
+    map.insert("imageScaling"_L1, imageScaling);
+    if (!licenseText.isEmpty())
+        map.insert("licenseText"_L1, licenseText);
+    return map;
+}
+
+QPsdExporterPlugin::ExportConfig QPsdExporterPlugin::ExportConfig::fromVariantMap(const QVariantMap &map)
+{
+    ExportConfig config;
+    config.targetSize = map.value("resolution"_L1).toSize();
+    config.fontScaleFactor = map.value("fontScaleFactor"_L1, 1.0).toReal();
+    config.makeCompact = map.value("makeCompact"_L1, false).toBool();
+    config.imageScaling = map.value("imageScaling"_L1, false).toBool();
+    config.licenseText = map.value("licenseText"_L1).toString();
+    return config;
+}
+
 bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model,
                                           const QString &to,
-                                          const QVariantMap &hint,
+                                          const ExportConfig &config,
                                           const QString &imageSubDir) const
 {
     setModel(model);
     dir = QDir(to);
 
     const QSize originalSize = model->size();
-    const QSize targetSize = hint.value("resolution"_L1, originalSize).toSize();
+    const QSize targetSize = config.targetSize.isEmpty() ? originalSize : config.targetSize;
     horizontalScale = targetSize.width() / qreal(originalSize.width());
     verticalScale = targetSize.height() / qreal(originalSize.height());
     unitScale = std::min(horizontalScale, verticalScale);
-    fontScaleFactor = hint.value("fontScaleFactor"_L1, 1.0).toReal() * verticalScale;
-    makeCompact = hint.value("makeCompact"_L1, false).toBool();
-    imageScaling = hint.value("imageScaling"_L1, false).toBool();
-    licenseText = hint.value("licenseText"_L1).toString();
+    fontScaleFactor = config.fontScaleFactor * verticalScale;
+    makeCompact = config.makeCompact;
+    imageScaling = config.imageScaling;
+    licenseText = config.licenseText;
 
     if (!imageSubDir.isEmpty()) {
         imageStore = QPsdImageStore(dir, imageSubDir);

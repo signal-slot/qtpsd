@@ -42,7 +42,7 @@ static QSize parseResolution(const QString &resolution, const QSize &originalSiz
     return QSize(); // Invalid
 }
 
-static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs, bool makeCompact)
+static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs, bool makeCompact, const QString &licenseText)
 {
     QFileInfo inputInfo(input);
     if (!inputInfo.exists()) {
@@ -120,12 +120,12 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         return 1;
     }
 
-    QVariantMap hint;
-    hint.insert("width", outputSize.width());
-    hint.insert("height", outputSize.height());
-    hint.insert("fontScaleFactor", 1.0);
-    hint.insert("imageScaling", false);
-    hint.insert("makeCompact", makeCompact);
+    QPsdExporterPlugin::ExportConfig config;
+    config.targetSize = outputSize;
+    config.fontScaleFactor = 1.0;
+    config.makeCompact = makeCompact;
+    config.imageScaling = false;
+    config.licenseText = licenseText;
 
     // For File-type exporters, construct the output file path from outdir
     QString exportTarget = outdir;
@@ -136,7 +136,7 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     }
 
     qInfo() << "Exporting" << input << "to" << exportTarget << "using" << type << "at" << outputSize;
-    if (!plugin->exportTo(&model, exportTarget, hint)) {
+    if (!plugin->exportTo(&model, exportTarget, config)) {
         qCritical() << "Export failed";
         return 1;
     }
@@ -232,6 +232,11 @@ int main(int argc, char *argv[])
                                          "Enable compact layout");
     parser.addOption(makeCompactOption);
 
+    QCommandLineOption licenseTextOption(QStringList() << "license-text",
+                                         "License text to prepend to generated files",
+                                         "text");
+    parser.addOption(licenseTextOption);
+
     QCommandLineOption listOption(QStringList() << "list",
                                   "List available exporter types");
     parser.addOption(listOption);
@@ -298,7 +303,8 @@ int main(int argc, char *argv[])
                              parser.value(outdirOption),
                              parser.value(resolutionOption),
                              propertyArgs,
-                             parser.isSet(makeCompactOption));
+                             parser.isSet(makeCompactOption),
+                             parser.value(licenseTextOption));
     }
 
     MainWindow window;

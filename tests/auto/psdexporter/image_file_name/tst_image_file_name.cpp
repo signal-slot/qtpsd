@@ -15,7 +15,7 @@ public:
     int priority() const override { return 0; }
     QString name() const override { return {}; }
     ExportType exportType() const override { return File; }
-    bool exportTo(const QPsdExporterTreeItemModel *, const QString &, const QVariantMap &) const override { return false; }
+    bool exportTo(const QPsdExporterTreeItemModel *, const QString &, const ExportConfig &) const override { return false; }
 };
 
 QT_END_NAMESPACE

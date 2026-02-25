@@ -31,7 +31,7 @@ public:
     QHash<QString, QString> filters() const override {
         return {{ tr("Figma JSON (*.figma.json)"), ".figma.json" }};
     }
-    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const override;
+    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const override;
 
 private:
     // Blend mode string conversion
@@ -647,9 +647,9 @@ QJsonObject QPsdExporterFigmaPlugin::buildNode(const QModelIndex &index,
 
 bool QPsdExporterFigmaPlugin::exportTo(const QPsdExporterTreeItemModel *model,
                                         const QString &to,
-                                        const QVariantMap &hint) const
+                                        const ExportConfig &config) const
 {
-    Q_UNUSED(hint)
+    Q_UNUSED(config)
 
     QJsonObject images;
 

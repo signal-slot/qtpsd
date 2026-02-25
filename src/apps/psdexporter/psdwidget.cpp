@@ -814,28 +814,27 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
         settings->endGroup();
         settings->endGroup();
         break; }
-    case QPsdExporterPlugin::Directory:
+    case QPsdExporterPlugin::Directory: {
         ExportDialog dialog(exporter, d->model.size(), exportHint(exporter->key()), this);
         const auto ret = dialog.exec();
         if (ret != QDialog::Accepted)
             return;
         to = dialog.directory();
-        hint.insert("resolution", dialog.resolution());
-        hint.insert("resolutionIndex", dialog.resolutionIndex());
-        hint.insert("width", dialog.width());
-        hint.insert("height", dialog.height());
-        hint.insert("fontScaleFactor", dialog.fontScaleFactor());
-        hint.insert("imageScaling", dialog.imageScaling() == ExportDialog::Scaled);
-        hint.insert("makeCompact", dialog.makeCompact());
-        hint.insert("licenseText", dialog.licenseText());
-        break;
+        auto config = dialog.exportConfig();
+        QVariantMap hintForStorage = config.toVariantMap();
+        hintForStorage.insert("resolutionIndex"_L1, dialog.resolutionIndex());
+        hintForStorage.insert("width"_L1, dialog.width());
+        hintForStorage.insert("height"_L1, dialog.height());
+        hint = hintForStorage;
+        break; }
     }
 
     updateExportHint(exporter->key(), hint);
     save();
 
+    auto config = QPsdExporterPlugin::ExportConfig::fromVariantMap(hint);
     QApplication::setOverrideCursor(Qt::WaitCursor);
-    const bool ok = exporter->exportTo(&d->model, to, hint);
+    const bool ok = exporter->exportTo(&d->model, to, config);
     QApplication::restoreOverrideCursor();
 
     if (!ok) {

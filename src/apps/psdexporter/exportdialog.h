@@ -5,8 +5,7 @@
 #define EXPORTDIALOG_H
 
 #include <QtWidgets/QDialog>
-
-class QPsdExporterPlugin;
+#include <QtPsdExporter/QPsdExporterPlugin>
 
 class ExportDialog : public QDialog
 {
@@ -28,6 +27,8 @@ public:
     int width() const;
     int height() const;
     QString licenseText() const;
+
+    QPsdExporterPlugin::ExportConfig exportConfig() const;
 
 public slots:
     void accept() override;

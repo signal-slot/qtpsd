@@ -35,6 +35,18 @@ public:
         File,
         Directory,
     };
+
+    struct ExportConfig {
+        QSize targetSize;           // empty = original size
+        qreal fontScaleFactor = 1.0;
+        bool makeCompact = false;
+        bool imageScaling = false;
+        QString licenseText;
+
+        QVariantMap toVariantMap() const;
+        static ExportConfig fromVariantMap(const QVariantMap &map);
+    };
+
     explicit QPsdExporterPlugin(QObject *parent = nullptr);
     virtual ~QPsdExporterPlugin();
 
@@ -44,7 +56,7 @@ public:
     virtual ExportType exportType() const = 0;
     virtual QHash<QString, QString> filters() const { return {}; }
 
-    virtual bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const = 0;
+    virtual bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const = 0;
 
     const QPsdExporterTreeItemModel *model() const;
     void setModel(const QPsdExporterTreeItemModel *model) const;
@@ -67,7 +79,7 @@ protected:
 
     bool initializeExport(const QPsdExporterTreeItemModel *model,
                           const QString &to,
-                          const QVariantMap &hint,
+                          const ExportConfig &config,
                           const QString &imageSubDir = {}) const;
 
     static void applyFillOpacity(QImage &image, qreal fillOpacity);

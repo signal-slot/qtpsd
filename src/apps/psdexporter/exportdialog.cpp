@@ -188,3 +188,14 @@ QString ExportDialog::licenseText() const
 {
     return d->licenseText->toPlainText();
 }
+
+QPsdExporterPlugin::ExportConfig ExportDialog::exportConfig() const
+{
+    QPsdExporterPlugin::ExportConfig config;
+    config.targetSize = resolution();
+    config.fontScaleFactor = fontScaleFactor();
+    config.makeCompact = makeCompact();
+    config.imageScaling = (imageScaling() == Scaled);
+    config.licenseText = licenseText();
+    return config;
+}

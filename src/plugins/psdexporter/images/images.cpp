@@ -23,12 +23,12 @@ public:
     }
     ExportType exportType() const override { return QPsdExporterPlugin::Directory; }
 
-    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const override;
+    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const override;
 };
 
-bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
+bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
 {
-    const auto imageScaling = hint.value("imageScaling", false).toBool();
+    const auto imageScaling = config.imageScaling;
     std::function<void(const QModelIndex &, QDir *)> traverseTree;
     traverseTree = [&](const QModelIndex &index, QDir *directory) {
         bool isFolder = false;

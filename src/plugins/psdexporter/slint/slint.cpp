@@ -30,7 +30,7 @@ public:
     }
     ExportType exportType() const override { return QPsdExporterPlugin::Directory; }
 
-    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const override;
+    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const override;
 
 private:
     struct Element {
@@ -62,9 +62,9 @@ private:
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
 
-bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
+bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
 {
-    if (!initializeExport(model, to, hint)) {
+    if (!initializeExport(model, to, config)) {
         return false;
     }
 

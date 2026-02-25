@@ -167,11 +167,8 @@ void tst_QPsdExporter_Regression::exporter() {
     model.setSourceModel(&guiModel);
     model.load(subdir.filePath(psd));
 
-    QVariantMap defaultHint;
-    defaultHint.insert("resolution"_L1, model.size());
-    defaultHint.insert("fontScaleFactor"_L1, 1.0);
-    defaultHint.insert("imageScaling"_L1, false);
-    defaultHint.insert("makeCompact"_L1, false);
+    QPsdExporterPlugin::ExportConfig defaultConfig;
+    defaultConfig.targetSize = model.size();
 
     auto exporter = QPsdExporterPlugin::plugin(pluginKey);
 
@@ -189,7 +186,7 @@ void tst_QPsdExporter_Regression::exporter() {
         break;
     }
 
-    exporter->exportTo(&model, to, defaultHint);
+    exporter->exportTo(&model, to, defaultConfig);
     
     if (updateExpects && toInfo.isDir()) {
         createGitKeep(to);

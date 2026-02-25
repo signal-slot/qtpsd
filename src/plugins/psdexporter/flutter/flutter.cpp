@@ -31,7 +31,7 @@ public:
     }
     ExportType exportType() const override { return QPsdExporterPlugin::Directory; }
 
-    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const override;
+    bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const override;
 
     struct Element {
         QString type;
@@ -1047,9 +1047,9 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
     return true;
 }
 
-bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const QVariantMap &hint) const
+bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
 {
-    if (!initializeExport(model, to, hint, "assets/images"_L1)) {
+    if (!initializeExport(model, to, config, "assets/images"_L1)) {
         return false;
     }
 
