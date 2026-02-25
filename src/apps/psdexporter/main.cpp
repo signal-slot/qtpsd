@@ -9,6 +9,7 @@
 #include <QtCore/QMetaProperty>
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QRegularExpression>
+#include <QtCore/QSettings>
 #include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdImporter/QPsdImporterPlugin>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
