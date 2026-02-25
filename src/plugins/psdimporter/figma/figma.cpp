@@ -1052,21 +1052,34 @@ private:
             QFontMetrics fm(adjustedFont);
             const qreal capHeightOffset = fm.ascent() - fm.capHeight();
 
+            // Figma uses CSS-style half-leading: extra space from lineHeight
+            // is split equally above and below the text glyphs. QPsdTextItem
+            // draws from the top of the frame, so we must offset Y by
+            // (lineHeight - fontHeight) / 2 to match Figma's positioning.
+            qreal halfLeading = 0;
+            if (style.contains("lineHeightPx"_L1)
+                && style["lineHeightUnit"_L1].toString() != "INTRINSIC_%"_L1) {
+                const qreal lineHeightPx = style["lineHeightPx"_L1].toDouble();
+                const qreal fontHeight = fm.height();
+                if (lineHeightPx > fontHeight)
+                    halfLeading = (lineHeightPx - fontHeight) / 2;
+            }
+
             // textFrame must use absolute coordinates (absX/absY) because
             // cloneLayerItem creates items from PSD records with absolute rects.
-            // Using parent-relative rect.x()/rect.y() here would mismatch.
+            const qreal textFrameY = absY + capHeightOffset + halfLeading;
             const auto textAutoResize = style["textAutoResize"_L1].toString();
             if (textAutoResize != "WIDTH_AND_HEIGHT"_L1) {
                 // Fixed-width text box (NONE, HEIGHT, TRUNCATE, or absent):
                 // use ParagraphText with word wrapping at bbox width
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
-                textItem->setTextFrame(QRectF(absX, absY + capHeightOffset,
+                textItem->setTextFrame(QRectF(absX, textFrameY,
                                               rect.width(), rect.height()));
             } else {
                 // Auto-resize text: Figma's absoluteBoundingBox already matches
                 // the text content width, so no extra padding needed.
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
-                textItem->setTextFrame(QRectF(absX, absY + capHeightOffset,
+                textItem->setTextFrame(QRectF(absX, textFrameY,
                                               rect.width(), rect.height()));
             }
 
