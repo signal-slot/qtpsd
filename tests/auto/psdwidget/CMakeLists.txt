@@ -17,3 +17,15 @@ qt_internal_add_test(tst_qpsdview
         Qt::PsdCore
         Qt::PsdWidget
 )
+
+qt_internal_add_test(tst_qpsdshape_inject
+    SOURCES
+        qpsdshapeinject/tst_qpsdshapeinject.cpp
+    LIBRARIES
+        Qt::Test
+        Qt::Gui
+        Qt::Widgets
+        Qt::PsdCore
+        Qt::PsdGui
+        Qt::PsdWidget
+)

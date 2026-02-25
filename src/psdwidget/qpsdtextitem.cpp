@@ -280,10 +280,18 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
         qreal currentY = drawTop;
         bool isFirstLineOfParagraph = true;
+        qreal lastLineHeight = -1;
         for (int i = 0; i < lines.size(); ++i) {
             const auto &line = lines.at(i);
-            const qreal lineAdvance = (!line.isEmpty() && line.first().lineHeight > 0)
-                ? line.first().lineHeight : fm.height();
+            qreal lineAdvance;
+            if (!line.isEmpty() && line.first().lineHeight > 0) {
+                lineAdvance = line.first().lineHeight;
+                lastLineHeight = lineAdvance;
+            } else if (lastLineHeight > 0) {
+                lineAdvance = lastLineHeight;
+            } else {
+                lineAdvance = fm.height();
+            }
             if (line.isEmpty()) {
                 currentY += lineAdvance;
                 isFirstLineOfParagraph = true;
@@ -304,30 +312,47 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
             const QRectF lineRect(drawLeft + indentLeft, currentY,
                                   drawWidth - indentLeft - indentRight, fm.height() * 100);
 
-            // Concatenate all chunks in the line (for wrapping to work correctly)
-            // and draw with the first chunk's style
-            // TODO: support mixed-style lines with wrapping
+            // Concatenate all chunks in the line
             QString lineText;
             for (const auto &chunk : line)
                 lineText += chunk.text;
 
-            // Apply allCaps for paragraph text as well (already applied in chunk creation)
             const auto hAlign = static_cast<Qt::Alignment>(firstChunk.alignment & Qt::AlignHorizontal_Mask);
-
-            p->setFont(firstChunk.font);
-            p->setPen(firstChunk.color);
 
             const bool hasCustomLineHeight = (firstChunk.lineHeight > 0
                 && std::abs(firstChunk.lineHeight - QFontMetrics(firstChunk.font).height()) > 1.0);
-            const qreal textWidth = QFontMetricsF(firstChunk.font).horizontalAdvance(lineText);
 
-            if (hasCustomLineHeight && textWidth > lineRect.width()) {
-                // Wrapping with custom line height: use QTextLayout
+            // Check if line has mixed styles (different fonts or colors)
+            bool hasMixedStyles = false;
+            for (int j = 1; j < line.size(); ++j) {
+                if (line[j].font != firstChunk.font || line[j].color != firstChunk.color) {
+                    hasMixedStyles = true;
+                    break;
+                }
+            }
+
+            if (hasMixedStyles) {
+                // Use QTextLayout with format ranges for per-run font/color
                 QTextLayout layout(lineText, firstChunk.font);
                 QTextOption textOption;
                 textOption.setWrapMode(QTextOption::WordWrap);
                 textOption.setAlignment(hAlign);
                 layout.setTextOption(textOption);
+
+                QList<QTextLayout::FormatRange> formats;
+                int pos = 0;
+                for (const auto &chunk : line) {
+                    QTextLayout::FormatRange range;
+                    range.start = pos;
+                    range.length = chunk.text.length();
+                    QTextCharFormat fmt;
+                    fmt.setFont(chunk.font);
+                    fmt.setForeground(chunk.color);
+                    range.format = fmt;
+                    formats.append(range);
+                    pos += chunk.text.length();
+                }
+                layout.setFormats(formats);
 
                 layout.beginLayout();
                 qreal layoutY = 0;
@@ -341,19 +366,53 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
                 layout.endLayout();
 
                 layout.draw(p, QPointF(lineRect.left(), currentY));
-                currentY += lineAdvance * layout.lineCount();
-            } else {
-                QRectF boundingRect;
-                if (firstChunk.fauxItalic) {
-                    constexpr qreal fauxItalicShear = -0.2126;
-                    p->save();
-                    p->shear(fauxItalicShear, 0);
-                    p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
-                    p->restore();
+
+                const int layoutLineCount = layout.lineCount();
+                if (hasCustomLineHeight || layoutLineCount > 1) {
+                    currentY += lineAdvance * layoutLineCount;
                 } else {
-                    p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
+                    currentY += layout.boundingRect().height();
                 }
-                currentY += hasCustomLineHeight ? lineAdvance : boundingRect.height();
+            } else {
+                // Single-style line: use QPainter::drawText for best positioning
+                p->setFont(firstChunk.font);
+                p->setPen(firstChunk.color);
+
+                const qreal textWidth = QFontMetricsF(firstChunk.font).horizontalAdvance(lineText);
+
+                if (hasCustomLineHeight && textWidth > lineRect.width()) {
+                    QTextLayout layout(lineText, firstChunk.font);
+                    QTextOption textOption;
+                    textOption.setWrapMode(QTextOption::WordWrap);
+                    textOption.setAlignment(hAlign);
+                    layout.setTextOption(textOption);
+
+                    layout.beginLayout();
+                    qreal layoutY = 0;
+                    while (true) {
+                        QTextLine textLine = layout.createLine();
+                        if (!textLine.isValid()) break;
+                        textLine.setLineWidth(lineRect.width());
+                        textLine.setPosition(QPointF(0, layoutY));
+                        layoutY += lineAdvance;
+                    }
+                    layout.endLayout();
+
+                    layout.draw(p, QPointF(lineRect.left(), currentY));
+                    currentY += lineAdvance * layout.lineCount();
+                } else {
+                    QRectF boundingRect;
+                    if (firstChunk.fauxItalic) {
+                        constexpr qreal fauxItalicShear = -0.2126;
+                        p->save();
+                        p->shear(fauxItalicShear, 0);
+                        p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
+                        p->restore();
+                    } else {
+                        p->drawText(lineRect, Qt::TextWordWrap | hAlign | Qt::AlignTop, lineText, &boundingRect);
+                    }
+                    currentY += hasCustomLineHeight ? lineAdvance : boundingRect.height();
+                }
             }
 
             // Add spaceAfter at end of paragraph

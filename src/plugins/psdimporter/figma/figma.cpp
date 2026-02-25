@@ -898,14 +898,39 @@ private:
                     run.text = applyTextCase(segObj["characters"_L1].toString(),
                                              segObj["textCase"_L1].toString());
                     run.font = fontFromStyle(segObj);
-                    if (segObj["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                    if (segObj["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
                         run.font.setCapitalization(QFont::SmallCaps);
+                        run.fontCaps = 1;
+                    }
                     run.originalFontName = segObj["fontFamily"_L1].toString();
                     run.color = !segFills.isEmpty() ? colorFromFills(segFills) : colorFromFills(fills);
                     run.alignment = alignmentFromStyle(style);
-                    if (segObj.contains("lineHeightPx"_L1))
+                    // Parse lineHeight: styledTextSegments uses object format {value, unit}
+                    if (segObj.contains("lineHeight"_L1)) {
+                        const auto lh = segObj["lineHeight"_L1];
+                        if (lh.isObject()) {
+                            const auto lhObj = lh.toObject();
+                            const auto unit = lhObj["unit"_L1].toString();
+                            if (unit == "PIXELS"_L1)
+                                run.lineHeight = lhObj["value"_L1].toDouble() * dpiScale;
+                            else if (unit == "PERCENT"_L1 || unit == "FONT_SIZE_%"_L1)
+                                run.lineHeight = run.font.pointSizeF() * lhObj["value"_L1].toDouble() / 100.0 * dpiScale;
+                        } else if (lh.isDouble()) {
+                            run.lineHeight = lh.toDouble() * dpiScale;
+                        }
+                    } else if (segObj.contains("lineHeightPx"_L1)) {
                         run.lineHeight = segObj["lineHeightPx"_L1].toDouble() * dpiScale;
+                    }
                     runs.append(run);
+                }
+                // Apply line height from top-level style if segments don't include it
+                if (style.contains("lineHeightPx"_L1)
+                    && style["lineHeightUnit"_L1].toString() != "INTRINSIC_%"_L1) {
+                    const qreal topLevelLineHeight = style["lineHeightPx"_L1].toDouble() * dpiScale;
+                    for (auto &run : runs) {
+                        if (run.lineHeight < 0)
+                            run.lineHeight = topLevelLineHeight;
+                    }
                 }
                 // Merge adjacent runs with identical styling
                 QList<QPsdTextLayerItem::Run> mergedRuns;
@@ -930,8 +955,10 @@ private:
                     QPsdTextLayerItem::Run run;
                     run.text = applyTextCase(characters, style["textCase"_L1].toString());
                     run.font = fontFromStyle(style);
-                    if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                    if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
                         run.font.setCapitalization(QFont::SmallCaps);
+                        run.fontCaps = 1;
+                    }
                     run.originalFontName = style["fontFamily"_L1].toString();
                     run.color = colorFromFills(fills);
                     run.alignment = alignmentFromStyle(style);
@@ -960,8 +987,10 @@ private:
 
                         run.text = applyTextCase(rawText, effectiveStyle["textCase"_L1].toString());
                         run.font = fontFromStyle(effectiveStyle);
-                        if (effectiveStyle["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                        if (effectiveStyle["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
                             run.font.setCapitalization(QFont::SmallCaps);
+                            run.fontCaps = 1;
+                        }
                         run.originalFontName = effectiveStyle["fontFamily"_L1].toString();
                         run.color = colorFromFills(effectiveStyle.contains("fills"_L1)
                                                      ? effectiveStyle["fills"_L1].toArray()
@@ -976,8 +1005,10 @@ private:
                         QPsdTextLayerItem::Run run;
                         run.text = applyTextCase(characters.mid(pos), style["textCase"_L1].toString());
                         run.font = fontFromStyle(style);
-                        if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1)
+                        if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
                             run.font.setCapitalization(QFont::SmallCaps);
+                            run.fontCaps = 1;
+                        }
                         run.originalFontName = style["fontFamily"_L1].toString();
                         run.color = colorFromFills(fills);
                         run.alignment = alignmentFromStyle(style);
@@ -1012,6 +1043,7 @@ private:
             QFont adjustedFont = primaryFont;
             adjustedFont.setPointSizeF(adjustedFont.pointSizeF() / dpiScale);
             adjustedFont.setStyleStrategy(QFont::PreferTypoLineMetrics);
+            adjustedFont.setHintingPreference(QFont::PreferNoHinting);
             QFontMetrics fm(adjustedFont);
             const qreal capHeightOffset = fm.ascent() - fm.capHeight();
 
@@ -1429,9 +1461,23 @@ private:
             font.setUnderline(true);
         else if (decoration == "STRIKETHROUGH"_L1)
             font.setStrikeOut(true);
-        const auto letterSpacing = style["letterSpacing"_L1].toDouble(0);
-        if (qAbs(letterSpacing) > 0.01)
-            font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing);
+        // letterSpacing: number (from style) or object {value, unit} (from styledTextSegments)
+        const auto ls = style["letterSpacing"_L1];
+        if (ls.isObject()) {
+            const auto lsObj = ls.toObject();
+            const auto unit = lsObj["unit"_L1].toString();
+            const auto value = lsObj["value"_L1].toDouble(0);
+            if (unit == "PERCENT"_L1) {
+                if (qAbs(value) > 0.01)
+                    font.setLetterSpacing(QFont::PercentageSpacing, 100 + value);
+            } else if (qAbs(value) > 0.01) {
+                font.setLetterSpacing(QFont::AbsoluteSpacing, value);
+            }
+        } else {
+            const auto letterSpacing = ls.toDouble(0);
+            if (qAbs(letterSpacing) > 0.01)
+                font.setLetterSpacing(QFont::AbsoluteSpacing, letterSpacing);
+        }
         return font;
     }
 
@@ -1580,8 +1626,32 @@ private:
             }
             return QBrush(img);
         } else if (type == "GRADIENT_RADIAL"_L1) {
-            const qreal radius = std::sqrt((x1 - x0) * (x1 - x0) + (y1 - y0) * (y1 - y0));
-            QRadialGradient gradient(x0, y0, radius);
+            const qreal dx1 = x1 - x0, dy1 = y1 - y0;
+            const qreal r1 = std::sqrt(dx1 * dx1 + dy1 * dy1);
+            if (handles.size() >= 3 && r1 > 0.001) {
+                // Elliptical radial gradient: h0=center, h1=primary axis, h2=secondary axis
+                const auto h2 = handles[2].toObject();
+                const qreal x2 = h2["x"_L1].toDouble() * rect.width();
+                const qreal y2 = h2["y"_L1].toDouble() * rect.height();
+                const qreal dx2 = x2 - x0, dy2 = y2 - y0;
+                const qreal r2 = std::sqrt(dx2 * dx2 + dy2 * dy2);
+                if (r2 > 0.001) {
+                    // Unit circle gradient transformed to the ellipse
+                    QRadialGradient gradient(0, 0, 1.0);
+                    gradient.setStops(stops);
+                    gradient.setInterpolationMode(QGradient::ComponentInterpolation);
+                    const qreal angle = std::atan2(dy1, dx1) * 180.0 / M_PI;
+                    QTransform t;
+                    t.translate(x0, y0);
+                    t.rotate(angle);
+                    t.scale(r1, r2);
+                    QBrush brush(gradient);
+                    brush.setTransform(t);
+                    return brush;
+                }
+            }
+            // Fallback: circular radial gradient
+            QRadialGradient gradient(x0, y0, r1 > 0.001 ? r1 : 1.0);
             gradient.setStops(stops);
             gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
@@ -1862,7 +1932,8 @@ static QPsdWidgetTreeItemModel *buildQPsdModel(FigmaLayerTreeItemModel *figmaMod
             if (layerItemMap.contains(lid)) {
                 const QPsdLayerRecord *rec = model->layerRecord(index);
                 if (rec) {
-                    auto *clone = cloneLayerItem(layerItemMap.value(lid), *rec);
+                    const auto *src = layerItemMap.value(lid);
+                    auto *clone = cloneLayerItem(src, *rec);
                     if (clone) {
                         model->setLayerItem(index, clone);
                     }
