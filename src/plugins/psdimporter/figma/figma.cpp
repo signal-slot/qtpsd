@@ -1026,11 +1026,11 @@ private:
                 textItem->setTextFrame(QRectF(absX, absY + capHeightOffset,
                                               rect.width(), rect.height()));
             } else {
-                // Auto-resize text: use ParagraphText but with extra width to
-                // prevent unwanted wrapping from font metric differences
+                // Auto-resize text: Figma's absoluteBoundingBox already matches
+                // the text content width, so no extra padding needed.
                 textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
                 textItem->setTextFrame(QRectF(absX, absY + capHeightOffset,
-                                              rect.width() + 100, rect.height()));
+                                              rect.width(), rect.height()));
             }
 
             node.layerItem = textItem;
@@ -1063,13 +1063,8 @@ private:
 
             if (!isTopLevelFrame && nodeJson.value("clipsContent"_L1).toBool(false)) {
                 QPsdAbstractLayerItem::PathInfo clipMask;
+                clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
-                if (frameCornerRadius > 0) {
-                    clipMask.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
-                    clipMask.radius = frameCornerRadius;
-                } else {
-                    clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
-                }
                 folderItem->setVectorMask(clipMask);
             }
 
@@ -1115,7 +1110,8 @@ private:
                 bgNode.figmaId = figmaId + "_bg"_L1;
                 bgNode.name = name + " background"_L1;
                 bgNode.layerId = qHash(bgNode.figmaId);
-                bgNode.rect = rect;
+                const QRect bgRect(0, 0, rect.width(), rect.height());
+                bgNode.rect = bgRect;
                 bgNode.blendMode = QPsdBlend::Normal;
 
                 auto *bgShape = new QPsdShapeLayerItem();
@@ -1123,7 +1119,7 @@ private:
                 bgShape->setName(bgNode.name);
                 bgShape->setVisible(true);
                 bgShape->setOpacity(1.0);
-                bgShape->setRect(rect);
+                bgShape->setRect(bgRect);
                 bgShape->setBrush(frameBrush);
                 QPsdAbstractLayerItem::PathInfo bgPath;
                 bgPath.rect = QRectF(0, 0, rect.width(), rect.height());
@@ -1152,7 +1148,8 @@ private:
                 imgBgNode.figmaId = figmaId + "_imgbg"_L1;
                 imgBgNode.name = name + " image"_L1;
                 imgBgNode.layerId = qHash(imgBgNode.figmaId);
-                imgBgNode.rect = rect;
+                const QRect imgBgRect(0, 0, rect.width(), rect.height());
+                imgBgNode.rect = imgBgRect;
                 imgBgNode.blendMode = QPsdBlend::Normal;
 
                 auto *imgItem = new QPsdImageLayerItem();
@@ -1160,7 +1157,7 @@ private:
                 imgItem->setName(imgBgNode.name);
                 imgItem->setVisible(true);
                 imgItem->setOpacity(1.0);
-                imgItem->setRect(rect);
+                imgItem->setRect(imgBgRect);
 
                 imgBgNode.layerItem = imgItem;
                 imgBgNode.folderType = FolderType::NotFolder;
