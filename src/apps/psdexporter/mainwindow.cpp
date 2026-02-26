@@ -207,10 +207,17 @@ MainWindow::Private::Private(::MainWindow *parent)
             QVariantMap pageOptions = options;
             pageOptions["pageIndex"_L1] = pageIdx;
 
+            importer->setProgressCallback([progressBar](int value, int maximum) {
+                progressBar->setRange(0, maximum);
+                progressBar->setValue(value);
+            });
+
             QApplication::setOverrideCursor(Qt::BusyCursor);
             auto viewer = new PsdWidget(q);
             const bool ok = viewer->importFrom(importer, pageOptions);
             QApplication::restoreOverrideCursor();
+
+            importer->setProgressCallback(nullptr);
 
             // Replace loading tab with result
             tabWidget->removeTab(index);

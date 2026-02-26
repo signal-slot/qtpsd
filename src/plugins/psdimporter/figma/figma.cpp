@@ -2277,6 +2277,8 @@ public:
         // Download images before building the widget model (cloning includes images)
         const auto allImageIds = figmaModel.imageNodeIds();
         if (!allImageIds.isEmpty()) {
+            int downloaded = 0;
+            reportProgress(0, allImageIds.size());
             const int batchSize = 50;
             for (int i = 0; i < allImageIds.size(); i += batchSize) {
                 const auto batch = allImageIds.mid(i, batchSize);
@@ -2289,6 +2291,7 @@ public:
                         if (!img.isNull())
                             figmaModel.setNodeImage(nid, img);
                     }
+                    reportProgress(++downloaded, allImageIds.size());
                 }
             }
         }

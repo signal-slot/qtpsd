@@ -12,6 +12,8 @@
 #include <QtCore/QVariantMap>
 #include <QtGui/QIcon>
 
+#include <functional>
+
 QT_BEGIN_NAMESPACE
 
 QT_FORWARD_DECLARE_CLASS(QWidget)
@@ -39,6 +41,9 @@ public:
 
     QString errorMessage() const { return m_errorMessage; }
 
+    using ProgressCallback = std::function<void(int value, int maximum)>;
+    void setProgressCallback(const ProgressCallback &callback) const { m_progressCallback = callback; }
+
     static QByteArrayList keys() {
         return QPsdAbstractPlugin::keys<QPsdImporterPlugin>(QPsdImporterFactoryInterface_iid, "psdimporter");
     }
@@ -48,9 +53,13 @@ public:
 
 protected:
     void setErrorMessage(const QString &message) const { m_errorMessage = message; }
+    void reportProgress(int value, int maximum) const {
+        if (m_progressCallback) m_progressCallback(value, maximum);
+    }
 
 private:
     mutable QString m_errorMessage;
+    mutable ProgressCallback m_progressCallback;
 };
 
 QT_END_NAMESPACE
