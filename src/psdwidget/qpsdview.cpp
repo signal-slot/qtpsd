@@ -164,8 +164,10 @@ void QPsdView::selectItem(const QModelIndex &index)
     const auto selectedItems = d->scene->selectedItems();
     if (!selectedItems.isEmpty()) {
         const auto item = selectedItems.first();
-        d->rubberBandRect = item->sceneBoundingRect().toRect();
-        ensureVisible(item);
+        const auto rect = item->sceneBoundingRect().toRect();
+        d->rubberBandRect = rect;
+        if (!rect.isEmpty())
+            ensureVisible(item);
         viewport()->update();
     } else {
         d->rubberBandRect = QRect {};
