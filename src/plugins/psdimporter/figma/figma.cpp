@@ -1117,7 +1117,7 @@ private:
 
             const bool isTopLevelFrame = (parentId == 0)
                 && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1);
-            folderItem->setRect(isTopLevelFrame ? QRect() : rect);
+            folderItem->setRect(rect);
 
             // Extract corner radius for frames/components
             const qreal frameCornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);

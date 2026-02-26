@@ -36,6 +36,8 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
+    setMask(painter);
+
     const auto *layer = this->layer<QPsdTextLayerItem>();
 
     // Determine the effective blend mode

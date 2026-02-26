@@ -12,11 +12,16 @@ QPsdFolderItem::QPsdFolderItem(const QModelIndex &index, const QPsdFolderLayerIt
 
 void QPsdFolderItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
     const auto layer = this->layer<QPsdFolderLayerItem>();
     if (layer->artboardRect().isEmpty())
         return;
     if (layer->artboardBackground() == Qt::transparent)
         return;
+
+    setMask(painter);
 
     // Use local coordinates (0,0) since artboardRect() is in absolute canvas coordinates
     // but the painter is in item-local coordinates
