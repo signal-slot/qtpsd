@@ -91,6 +91,7 @@ public:
     void updateAttributes();
     void applyAttributes();
     void populateTextSourceCombo();
+    void populateImageSourceCombo();
 
     QPsdWidgetTreeItemModel widgetModel;
     PsdTreeItemModel model;
@@ -99,6 +100,7 @@ public:
     QSettings settings;
     QString windowTitle;
     QComboBox *textSourceCombo = nullptr;
+    QComboBox *imageSourceCombo = nullptr;
 
 private:
     ::PsdWidget *q;
@@ -288,17 +290,24 @@ PsdWidget::Private::Private(::PsdWidget *parent)
             changed();
     });
 
-    // Text source combo for Button native elements
+    // Text/Image source combos for Button native elements
+    auto *propertiesGrid = qobject_cast<QGridLayout *>(properties->layout());
     textSourceCombo = new QComboBox(q);
     textSourceCombo->hide();
-    auto *propertiesGrid = qobject_cast<QGridLayout *>(properties->layout());
     propertiesGrid->addWidget(textSourceCombo, 4, 1);
     connect(textSourceCombo, &QComboBox::currentIndexChanged, q, [=]() {
         if (isReset())
             changed();
     });
+    imageSourceCombo = new QComboBox(q);
+    imageSourceCombo->hide();
+    propertiesGrid->addWidget(imageSourceCombo, 6, 1);
+    connect(imageSourceCombo, &QComboBox::currentIndexChanged, q, [=]() {
+        if (isReset())
+            changed();
+    });
 
-    auto updateTextSourceVisibility = [this]() {
+    auto updateButtonSourceVisibility = [this]() {
         const bool isNative = typeNative->isChecked();
         const auto base = static_cast<QPsdExporterTreeItemModel::ExportHint::NativeComponent>(
             nativeBase->currentData().toInt());
@@ -310,13 +319,19 @@ PsdWidget::Private::Private(::PsdWidget *parent)
             textSourceCombo->show();
             textValue->hide();
             text->setEnabled(true);
+            populateImageSourceCombo();
+            imageSourceCombo->show();
+            imageValue->hide();
+            image->setEnabled(true);
         } else {
             textSourceCombo->hide();
             textValue->show();
+            imageSourceCombo->hide();
+            imageValue->show();
         }
     };
-    connect(typeNative, &QRadioButton::toggled, q, [=]() { updateTextSourceVisibility(); });
-    connect(nativeBase, &QComboBox::currentIndexChanged, q, [=]() { updateTextSourceVisibility(); });
+    connect(typeNative, &QRadioButton::toggled, q, [=]() { updateButtonSourceVisibility(); });
+    connect(nativeBase, &QComboBox::currentIndexChanged, q, [=]() { updateButtonSourceVisibility(); });
 
     const auto propertyCheckBoxes = properties->findChildren<QCheckBox *>();
     for (auto *checkBox : propertyCheckBoxes) {
@@ -534,6 +549,7 @@ void PsdWidget::Private::updateAttributes()
     UniqueOrNot<QString> itemCustom;
     UniqueOrNot<QPsdExporterTreeItemModel::ExportHint::NativeComponent> itemCustomBase;
     UniqueOrNot<QString> itemTextSource;
+    UniqueOrNot<QString> itemImageSource;
     QHash<QString, UniqueOrNot<Qt::CheckState>> itemProperties;
 
     // If any Merged layer is in multi-selection, disable editing entirely
@@ -560,6 +576,7 @@ void PsdWidget::Private::updateAttributes()
         itemComponentName.add(hint.componentName);
         itemCustomBase.add(hint.baseElement);
         itemTextSource.add(hint.textSource);
+        itemImageSource.add(hint.imageSource);
 
         for (auto *property : propertyCheckBoxes) {
             const auto name = property->objectName();
@@ -597,6 +614,9 @@ void PsdWidget::Private::updateAttributes()
     textSourceCombo->clear();
     textSourceCombo->hide();
     textValue->show();
+    imageSourceCombo->clear();
+    imageSourceCombo->hide();
+    imageValue->show();
 
     // Merged layers: grey out type group and properties (not user-selectable)
     if (itemTypes.isUnique() && itemTypes.value() == QPsdExporterTreeItemModel::ExportHint::Merged) {
@@ -647,6 +667,18 @@ void PsdWidget::Private::updateAttributes()
                 textSourceCombo->show();
                 textValue->hide();
                 text->setEnabled(true);
+                populateImageSourceCombo();
+                if (itemImageSource.isUnique() && !itemImageSource.value().isEmpty()) {
+                    for (int i = 0; i < imageSourceCombo->count(); ++i) {
+                        if (imageSourceCombo->itemData(i).toString() == itemImageSource.value()) {
+                            imageSourceCombo->setCurrentIndex(i);
+                            break;
+                        }
+                    }
+                }
+                imageSourceCombo->show();
+                imageValue->hide();
+                image->setEnabled(true);
             }
         }
         break;
@@ -693,13 +725,15 @@ void PsdWidget::Private::applyAttributes()
 
         if (type > -1)
             hint.type = static_cast<QPsdExporterTreeItemModel::ExportHint::Type>(type);
-        // Remember old textSource to revert Merged layer if changed
+        // Remember old sources to revert Merged layers if changed
         const QString oldTextSource = hint.textSource;
+        const QString oldImageSource = hint.imageSource;
 
         switch (type) {
         case QPsdExporterTreeItemModel::ExportHint::Embed:
             hint.type = QPsdExporterTreeItemModel::ExportHint::Embed;
             hint.textSource.clear();
+            hint.imageSource.clear();
             switch (withTouch) {
             case Qt::Checked:
                 hint.interactive = true;
@@ -714,6 +748,7 @@ void PsdWidget::Private::applyAttributes()
         case QPsdExporterTreeItemModel::ExportHint::Component:
             hint.type = QPsdExporterTreeItemModel::ExportHint::Component;
             hint.textSource.clear();
+            hint.imageSource.clear();
             if (customEnabled->isEnabled()) {
                 hint.componentName = custom->text();
                 hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(customBase->currentText());
@@ -724,14 +759,18 @@ void PsdWidget::Private::applyAttributes()
             hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(nativeBase->currentText());
             const bool isButton = (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button
                                    || hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted);
-            if (isButton)
+            if (isButton) {
                 hint.textSource = textSourceCombo->currentData().toString();
-            else
+                hint.imageSource = imageSourceCombo->currentData().toString();
+            } else {
                 hint.textSource.clear();
+                hint.imageSource.clear();
+            }
             break; }
         case QPsdExporterTreeItemModel::ExportHint::Skip:
             hint.type = QPsdExporterTreeItemModel::ExportHint::Skip;
             hint.textSource.clear();
+            hint.imageSource.clear();
             break;
         default:
             break;
@@ -740,33 +779,42 @@ void PsdWidget::Private::applyAttributes()
         hint.properties = propertiesChecked;
         model.setLayerHint(row, hint);
 
-        // Auto-set/revert Merged type on text source layers
+        // Auto-set/revert Merged type on source layers (siblings + nieces/nephews)
+        const QModelIndex parentIndex = row.parent();
+        auto findByName = [&](const QString &source, auto callback) {
+            if (source.isEmpty()) return;
+            for (int si = 0; si < model.rowCount(parentIndex); ++si) {
+                const QModelIndex gi = model.index(si, 0, parentIndex);
+                if (model.layerName(gi) == source) { callback(gi); return; }
+                for (int ci = 0; ci < model.rowCount(gi); ++ci) {
+                    const QModelIndex ni = model.index(ci, 0, gi);
+                    if (model.layerName(ni) == source) { callback(ni); return; }
+                }
+            }
+        };
+        auto revertMerged = [&](const QString &oldSource) {
+            findByName(oldSource, [&](const QModelIndex &gi) {
+                auto srcHint = model.layerHint(gi);
+                if (srcHint.type == QPsdExporterTreeItemModel::ExportHint::Merged) {
+                    srcHint.type = QPsdExporterTreeItemModel::ExportHint::Embed;
+                    model.setLayerHint(gi, srcHint);
+                }
+            });
+        };
+        auto setMerged = [&](const QString &newSource) {
+            findByName(newSource, [&](const QModelIndex &gi) {
+                auto srcHint = model.layerHint(gi);
+                srcHint.type = QPsdExporterTreeItemModel::ExportHint::Merged;
+                model.setLayerHint(gi, srcHint);
+            });
+        };
         if (oldTextSource != hint.textSource) {
-            const QModelIndex parentIndex = row.parent();
-            // Revert old text source layer from Merged to Embed
-            if (!oldTextSource.isEmpty()) {
-                for (int si = 0; si < model.rowCount(parentIndex); ++si) {
-                    const QModelIndex gi = model.index(si, 0, parentIndex);
-                    if (model.layerName(gi) == oldTextSource) {
-                        auto srcHint = model.layerHint(gi);
-                        if (srcHint.type == QPsdExporterTreeItemModel::ExportHint::Merged) {
-                            srcHint.type = QPsdExporterTreeItemModel::ExportHint::Embed;
-                            model.setLayerHint(gi, srcHint);
-                        }
-                    }
-                }
-            }
-            // Set new text source layer to Merged
-            if (!hint.textSource.isEmpty()) {
-                for (int si = 0; si < model.rowCount(parentIndex); ++si) {
-                    const QModelIndex gi = model.index(si, 0, parentIndex);
-                    if (model.layerName(gi) == hint.textSource) {
-                        auto srcHint = model.layerHint(gi);
-                        srcHint.type = QPsdExporterTreeItemModel::ExportHint::Merged;
-                        model.setLayerHint(gi, srcHint);
-                    }
-                }
-            }
+            revertMerged(oldTextSource);
+            setMerged(hint.textSource);
+        }
+        if (oldImageSource != hint.imageSource) {
+            revertMerged(oldImageSource);
+            setMerged(hint.imageSource);
         }
     }
 }
@@ -781,14 +829,10 @@ void PsdWidget::Private::populateTextSourceCombo()
     if (rows.size() != 1)
         return;
 
-    const QModelIndex parentIndex = rows.first().parent();
-    for (int i = 0; i < model.rowCount(parentIndex); ++i) {
-        const QModelIndex gi = model.index(i, 0, parentIndex);
-        if (gi == rows.first())
-            continue;
+    auto addTextCandidate = [&](const QModelIndex &gi) {
         const auto *layerItem = model.layerItem(gi);
         if (!layerItem || layerItem->type() != QPsdAbstractLayerItem::Text)
-            continue;
+            return;
         const auto *textItem = dynamic_cast<const QPsdTextLayerItem *>(layerItem);
         QString displayText;
         if (textItem) {
@@ -804,6 +848,17 @@ void PsdWidget::Private::populateTextSourceCombo()
         const QString label = displayText.isEmpty() ? layerName : displayText;
         textSourceCombo->addItem(label, layerName);
         textSourceCombo->setItemData(textSourceCombo->count() - 1, layerName, Qt::ToolTipRole);
+    };
+
+    // Iterate siblings and their children (nieces/nephews)
+    const QModelIndex parentIndex = rows.first().parent();
+    for (int i = 0; i < model.rowCount(parentIndex); ++i) {
+        const QModelIndex gi = model.index(i, 0, parentIndex);
+        if (gi == rows.first())
+            continue;
+        addTextCandidate(gi);
+        for (int j = 0; j < model.rowCount(gi); ++j)
+            addTextCandidate(model.index(j, 0, gi));
     }
 
     // Restore previous selection if possible
@@ -811,6 +866,47 @@ void PsdWidget::Private::populateTextSourceCombo()
         for (int i = 0; i < textSourceCombo->count(); ++i) {
             if (textSourceCombo->itemData(i).toString() == oldSelection) {
                 textSourceCombo->setCurrentIndex(i);
+                return;
+            }
+        }
+    }
+}
+
+void PsdWidget::Private::populateImageSourceCombo()
+{
+    const QString oldSelection = imageSourceCombo->currentData().toString();
+    imageSourceCombo->clear();
+    imageSourceCombo->addItem(QString()); // empty = no image source
+
+    const auto rows = treeView->selectionModel()->selectedRows();
+    if (rows.size() != 1)
+        return;
+
+    auto addImageCandidate = [&](const QModelIndex &gi) {
+        const auto *layerItem = model.layerItem(gi);
+        if (!layerItem || (layerItem->type() != QPsdAbstractLayerItem::Image
+                           && layerItem->type() != QPsdAbstractLayerItem::Shape))
+            return;
+        const QString layerName = model.layerName(gi);
+        imageSourceCombo->addItem(layerName, layerName);
+    };
+
+    // Iterate siblings and their children (nieces/nephews)
+    const QModelIndex parentIndex = rows.first().parent();
+    for (int i = 0; i < model.rowCount(parentIndex); ++i) {
+        const QModelIndex gi = model.index(i, 0, parentIndex);
+        if (gi == rows.first())
+            continue;
+        addImageCandidate(gi);
+        for (int j = 0; j < model.rowCount(gi); ++j)
+            addImageCandidate(model.index(j, 0, gi));
+    }
+
+    // Restore previous selection if possible
+    if (!oldSelection.isEmpty()) {
+        for (int i = 0; i < imageSourceCombo->count(); ++i) {
+            if (imageSourceCombo->itemData(i).toString() == oldSelection) {
+                imageSourceCombo->setCurrentIndex(i);
                 return;
             }
         }

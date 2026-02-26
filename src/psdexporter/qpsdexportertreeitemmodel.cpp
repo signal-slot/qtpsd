@@ -68,6 +68,8 @@ QJsonObject QPsdExporterTreeItemModel::ExportHint::toJson() const
     }
     if (!textSource.isEmpty())
         object.insert("textSource"_L1, textSource);
+    if (!imageSource.isEmpty())
+        object.insert("imageSource"_L1, imageSource);
     return object;
 }
 
@@ -105,6 +107,7 @@ QPsdExporterTreeItemModel::ExportHint QPsdExporterTreeItemModel::ExportHint::fro
         interactive,
         QSet<QString>(propList.begin(), propList.end()),
         obj.value("textSource"_L1).toString(),
+        obj.value("imageSource"_L1).toString(),
     };
 }
 

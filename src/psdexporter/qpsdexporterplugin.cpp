@@ -59,19 +59,24 @@ void QPsdExporterPlugin::Private::generateIndexMap(const QPersistentModelIndex &
         childTopLeft = contentRect.topLeft();
 
         const auto hint = model->layerHint(index);
-        // New format: Button (Native) pulls text from textSource sibling
+        // New format: Button (Native) pulls text/image from sibling/nephew layers
         if (hint.type == QPsdExporterTreeItemModel::ExportHint::Native
             && (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button
                 || hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted)
-            && !hint.textSource.isEmpty()) {
+            && (!hint.textSource.isEmpty() || !hint.imageSource.isEmpty())) {
+            auto tryMerge = [&](const QModelIndex &i) {
+                const auto name = model->layerName(i);
+                if (name == hint.textSource || name == hint.imageSource)
+                    q->indexMergeMap.insert(index, i);
+            };
             const auto parentIndex = model->parent(index);
             for (int si = 0; si < model->rowCount(parentIndex); ++si) {
                 const auto i = model->index(si, 0, parentIndex);
                 if (i == index)
                     continue;
-                if (model->layerName(i) == hint.textSource) {
-                    q->indexMergeMap.insert(index, i);  // button → textLayer
-                }
+                tryMerge(i);
+                for (int ci = 0; ci < model->rowCount(i); ++ci)
+                    tryMerge(model->index(ci, 0, i));
             }
         }
         // Backward compat: old Merged + componentName (push model)

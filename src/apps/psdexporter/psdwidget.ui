@@ -64,6 +64,9 @@
        </item>
        <item row="0" column="1">
         <widget class="QCheckBox" name="embedWithTouch">
+         <property name="toolTip">
+          <string>Wrap with a touch/click handler (e.g. TouchArea, GestureDetector, Pressable)</string>
+         </property>
          <property name="text">
           <string>&amp;Interactive</string>
          </property>

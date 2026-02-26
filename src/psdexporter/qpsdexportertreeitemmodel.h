@@ -51,11 +51,13 @@ public:
         bool interactive = false;
         QSet<QString> properties;
         QString textSource;
+        QString imageSource;
 
         bool isDefaultValue() const {
             return id.isEmpty() && type == Embed && componentName.isEmpty()
                    && baseElement == Container && visible && !interactive
-                   && properties.isEmpty() && textSource.isEmpty();
+                   && properties.isEmpty() && textSource.isEmpty()
+                   && imageSource.isEmpty();
         }
 
         QJsonObject toJson() const;
