@@ -1991,6 +1991,7 @@ public:
     {}
 
     int priority() const override { return 10; }
+    QIcon icon() const override { return QIcon(u":/figma/figma.png"_s); }
     QString name() const override { return u"&Figma..."_s; }
 
     mutable QJsonObject m_cachedFileJson;

@@ -16,3 +16,9 @@ qt_internal_add_plugin(QPsdImporterFigmaPlugin
         Qt::PsdWidget
         Qt::PsdImporter
 )
+
+qt_add_resources(QPsdImporterFigmaPlugin "figma_icon"
+    PREFIX "/figma"
+    FILES
+        figma.png
+)
