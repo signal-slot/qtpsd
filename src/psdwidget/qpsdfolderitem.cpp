@@ -28,6 +28,7 @@ void QPsdFolderItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     painter->setPen(Qt::white);
     painter->drawText(localRect.adjusted(0, -10, 0, -10).topLeft(), name());
 
+    painter->setPen(Qt::NoPen);
     painter->setBrush(layer->artboardBackground());
     painter->drawRect(localRect);
 }
