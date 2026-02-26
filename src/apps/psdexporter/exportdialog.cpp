@@ -116,6 +116,13 @@ void ExportDialog::accept()
 {
     d->settings.setValue("directory", d->directory->text());
     d->settings.setValue("licenseText", d->licenseText->toPlainText());
+    d->settings.setValue("resolution", d->resolution->currentIndex());
+    d->settings.setValue("fontScaleFactor", d->fontScaleFactor->value());
+    d->settings.setValue("imageScaling", d->scaled->isChecked() ? Scaled : Original);
+    d->settings.setValue("makeCompact", d->compact->isChecked());
+    d->settings.setValue("artboardToOrigin", d->artboardToOrigin->isChecked());
+    d->settings.setValue("width", d->width->value());
+    d->settings.setValue("height", d->height->value());
 
     const auto mo = d->plugin->metaObject();
     for (int i = mo->propertyOffset(); i < mo->propertyCount(); i++) {
