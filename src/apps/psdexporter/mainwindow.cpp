@@ -99,6 +99,7 @@ MainWindow::Private::Private(::MainWindow *parent)
     std::sort(plugins.begin(), plugins.end(), [](const auto *a, const auto *b) {
         return a->priority() == b->priority() ? a->name() < b->name() : a->priority() < b->priority();;
     });
+    exportToolBar->addWidget(new QLabel(tr("Export:"), q));
     for (auto *plugin : plugins) {
         QString name = plugin->name();
         QIcon icon = plugin->icon();
@@ -106,7 +107,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         action->setData(QVariant::fromValue(plugin));
         exports->addAction(action);
         if (!icon.isNull())
-            toolBar->addAction(action);
+            exportToolBar->addAction(action);
     }
     connect(exports, &QMenu::triggered, q, [this](QAction *action) {
         QPsdExporterPlugin *exporter = action->data().value<QPsdExporterPlugin *>();
@@ -126,12 +127,15 @@ MainWindow::Private::Private(::MainWindow *parent)
     std::sort(importPlugins.begin(), importPlugins.end(), [](const auto *a, const auto *b) {
         return a->priority() == b->priority() ? a->name() < b->name() : a->priority() < b->priority();
     });
+    importToolBar->addWidget(new QLabel(tr("Import:"), q));
     for (auto *plugin : importPlugins) {
         QString name = plugin->name();
         QIcon icon = plugin->icon();
         auto action = new QAction(icon, name);
         action->setData(QVariant::fromValue(plugin));
         imports->addAction(action);
+        if (!icon.isNull())
+            importToolBar->addAction(action);
     }
     connect(imports, &QMenu::triggered, q, [this](QAction *action) {
         QPsdImporterPlugin *importer = action->data().value<QPsdImporterPlugin *>();
