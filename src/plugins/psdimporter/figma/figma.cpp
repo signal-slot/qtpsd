@@ -2002,6 +2002,7 @@ public:
         // --- First dialog: URL, API key, scale ---
         QDialog dialog(parent);
         dialog.setWindowTitle(tr("Import from Figma"));
+        dialog.setWindowIcon(icon());
         dialog.setMinimumWidth(480);
 
         auto *layout = new QFormLayout(&dialog);
@@ -2128,6 +2129,7 @@ public:
             // --- Second dialog: Page selector with thumbnails ---
             QDialog pageDlg(parent);
             pageDlg.setWindowTitle(tr("Select Pages"));
+            pageDlg.setWindowIcon(icon());
             pageDlg.setMinimumSize(640, 480);
 
             auto *vLayout = new QVBoxLayout(&pageDlg);
