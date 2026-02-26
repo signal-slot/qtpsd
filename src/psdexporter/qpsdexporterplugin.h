@@ -36,7 +36,7 @@ public:
         Directory,
     };
 
-    struct ExportConfig {
+    struct Q_PSDEXPORTER_EXPORT ExportConfig {
         QSize targetSize;           // empty = original size
         qreal fontScaleFactor = 1.0;
         bool makeCompact = false;
