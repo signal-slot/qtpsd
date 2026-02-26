@@ -1762,6 +1762,11 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                         }
                         element.properties.insert("text", u"\"%1\""_s.arg(text));
                         break; }
+                    case QPsdAbstractLayerItem::Image:
+                    case QPsdAbstractLayerItem::Shape: {
+                        const QString name = saveLayerImage(i);
+                        element.properties.insert("icon.source", u"\"images/%1\""_s.arg(name));
+                        break; }
                     default:
                         qWarning() << i->type() << "is not supported";
                     }

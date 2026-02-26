@@ -316,6 +316,26 @@ QString QPsdExporterPlugin::saveLayerImage(const QPsdImageLayerItem *image) cons
     return name;
 }
 
+QString QPsdExporterPlugin::saveLayerImage(const QPsdAbstractLayerItem *item) const
+{
+    if (item->type() == QPsdAbstractLayerItem::Image) {
+        return saveLayerImage(dynamic_cast<const QPsdImageLayerItem *>(item));
+    }
+    const qreal fillOpacity = item->fillOpacity();
+    const bool hasEffects = !item->dropShadow().isEmpty() || !item->effects().isEmpty() || item->border();
+    const bool needsFillOpacity = hasEffects && fillOpacity < 1.0;
+
+    QImage qimage = item->image();
+    if (imageScaling) {
+        qimage = qimage.scaled(item->rect().width() * horizontalScale, item->rect().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+    }
+    if (needsFillOpacity) {
+        applyFillOpacity(qimage, fillOpacity);
+    }
+    qimage = item->applyGradient(qimage);
+    return imageStore.save(imageFileName(item->name(), "PNG"_L1), qimage, "PNG");
+}
+
 QPsdExporterPlugin::OpacityResult QPsdExporterPlugin::computeEffectiveOpacity(const QPsdAbstractLayerItem *item)
 {
     const qreal opacity = item->opacity();

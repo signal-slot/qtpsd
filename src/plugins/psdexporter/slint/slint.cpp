@@ -298,6 +298,15 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
                         }
                         element.properties.insert("text", u"\"%1\""_s.arg(text));
                         break; }
+                    case QPsdAbstractLayerItem::Image:
+                    case QPsdAbstractLayerItem::Shape: {
+                        Element imageElem;
+                        const QString name = saveLayerImage(i);
+                        imageElem.type = "Image"_L1;
+                        imageElem.properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
+                        imageElem.properties.insert("image-fit", "contain");
+                        element.children.append(imageElem);
+                        break; }
                     default:
                         qWarning() << i->type() << "is not supported";
                     }

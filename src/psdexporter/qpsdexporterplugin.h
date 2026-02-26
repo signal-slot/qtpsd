@@ -85,6 +85,7 @@ protected:
     static void applyFillOpacity(QImage &image, qreal fillOpacity);
 
     QString saveLayerImage(const QPsdImageLayerItem *image) const;
+    QString saveLayerImage(const QPsdAbstractLayerItem *item) const;
 
     struct OpacityResult {
         qreal opacity;

@@ -860,6 +860,15 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
                         outputText(mergedIndex, &textElem);
                         element.properties.insert("child", QVariant::fromValue(textElem));
                         break; }
+                    case QPsdAbstractLayerItem::Image:
+                    case QPsdAbstractLayerItem::Shape: {
+                        Element imageElem;
+                        const QString name = saveLayerImage(i);
+                        imageElem.type = "Image.asset"_L1;
+                        imageElem.noNamedParam = u"\"%1\""_s.arg(imagePath(name));
+                        imageElem.properties.insert("fit", "BoxFit.contain");
+                        element.properties.insert("child", QVariant::fromValue(imageElem));
+                        break; }
                     default:
                         qWarning() << i->type() << "is not supported";
                     }
