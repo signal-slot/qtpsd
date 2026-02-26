@@ -1311,11 +1311,13 @@ private:
             if (nodeType == "RECTANGLE"_L1) {
                 const auto radiiArray = nodeJson["rectangleCornerRadii"_L1].toArray();
                 const auto cornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
+                // Figma clamps cornerRadius to min(width, height) / 2
+                const qreal maxRadius = qMin(w, h) / 2.0;
                 if (radiiArray.size() == 4) {
-                    const qreal tl = radiiArray[0].toDouble();
-                    const qreal tr = radiiArray[1].toDouble();
-                    const qreal br = radiiArray[2].toDouble();
-                    const qreal bl = radiiArray[3].toDouble();
+                    const qreal tl = qMin(radiiArray[0].toDouble(), maxRadius);
+                    const qreal tr = qMin(radiiArray[1].toDouble(), maxRadius);
+                    const qreal br = qMin(radiiArray[2].toDouble(), maxRadius);
+                    const qreal bl = qMin(radiiArray[3].toDouble(), maxRadius);
                     if (tl != tr || tr != br || br != bl) {
                         pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
                         QPainterPath pp;
@@ -1338,7 +1340,7 @@ private:
                     }
                 } else if (cornerRadius > 0) {
                     pathInfo.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
-                    pathInfo.radius = cornerRadius;
+                    pathInfo.radius = qMin(cornerRadius, maxRadius);
                 } else {
                     pathInfo.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 }
