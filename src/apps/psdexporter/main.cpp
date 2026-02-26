@@ -43,7 +43,7 @@ static QSize parseResolution(const QString &resolution, const QSize &originalSiz
     return QSize(); // Invalid
 }
 
-static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs, bool makeCompact, const QString &licenseText)
+static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs, bool makeCompact, bool artboardToOrigin, const QString &licenseText)
 {
     QFileInfo inputInfo(input);
     if (!inputInfo.exists()) {
@@ -126,6 +126,7 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     config.fontScaleFactor = 1.0;
     config.makeCompact = makeCompact;
     config.imageScaling = false;
+    config.artboardToOrigin = artboardToOrigin;
     config.licenseText = licenseText;
 
     // For File-type exporters, construct the output file path from outdir
@@ -240,6 +241,10 @@ int main(int argc, char *argv[])
                                          "Enable compact layout");
     parser.addOption(makeCompactOption);
 
+    QCommandLineOption artboardOriginOption(QStringList() << "artboard-to-origin",
+                                            "Move artboards to (0,0) and fit window");
+    parser.addOption(artboardOriginOption);
+
     QCommandLineOption licenseTextOption(QStringList() << "license-text",
                                          "License text to prepend to generated files",
                                          "text");
@@ -326,6 +331,7 @@ int main(int argc, char *argv[])
                              parser.value(resolutionOption),
                              propertyArgs,
                              parser.isSet(makeCompactOption),
+                             parser.isSet(artboardOriginOption),
                              parser.value(licenseTextOption));
     }
 

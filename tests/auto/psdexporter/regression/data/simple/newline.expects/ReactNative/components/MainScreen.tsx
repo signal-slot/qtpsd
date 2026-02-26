@@ -32,6 +32,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
+    width: 320,
+    height: 240,
     backgroundColor: '#012401',
   },
   style1: {

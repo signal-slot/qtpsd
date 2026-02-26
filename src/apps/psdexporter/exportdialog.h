@@ -23,6 +23,7 @@ public:
     };
     ImageScaling imageScaling() const;
     bool makeCompact() const;
+    bool artboardToOrigin() const;
     int resolutionIndex() const;
     int width() const;
     int height() const;

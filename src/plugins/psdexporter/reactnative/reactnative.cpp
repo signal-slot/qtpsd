@@ -799,8 +799,8 @@ bool QPsdExporterReactNativePlugin::exportTo(const QPsdExporterTreeItemModel *mo
     root.type = "View"_L1;
     root.id = "root"_L1;
     root.styles.append({"flex"_L1, 1});
-    root.styles.append({"width"_L1, qRound(model->size().width() * horizontalScale)});
-    root.styles.append({"height"_L1, qRound(model->size().height() * verticalScale)});
+    root.styles.append({"width"_L1, qRound(canvasSize().width() * horizontalScale)});
+    root.styles.append({"height"_L1, qRound(canvasSize().height() * verticalScale)});
     root.styles.append({"backgroundColor"_L1, "'#FFFFFF'"_L1});
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {

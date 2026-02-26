@@ -41,6 +41,7 @@ public:
         qreal fontScaleFactor = 1.0;
         bool makeCompact = false;
         bool imageScaling = false;
+        bool artboardToOrigin = false;
         QString licenseText;
 
         QVariantMap toVariantMap() const;
@@ -96,6 +97,7 @@ protected:
 
     QRect adjustRectForMerge(const QModelIndex &index, QRect rect) const;
     QRect computeBaseRect(const QModelIndex &index, QRect rectBounds = {}) const;
+    QSize canvasSize() const;
 
     static QRect computeTextBounds(const QPsdTextLayerItem *text);
 
@@ -165,6 +167,9 @@ protected:
     mutable qreal fontScaleFactor = 1.0;
     mutable bool makeCompact = false;
     mutable bool imageScaling = false;
+    mutable bool artboardToOrigin = false;
+    mutable QPoint artboardOffset;
+    mutable QSize effectiveCanvasSize;
     mutable QString licenseText;
 
     mutable QHash<const QPersistentModelIndex, QRect> childrenRectMap;

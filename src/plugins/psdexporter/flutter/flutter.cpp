@@ -1029,7 +1029,7 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     Element sizedBox;
     sizedBox.type = "SizedBox";
-    outputRectProp(QRect { QPoint { 0, 0 }, model->size() }, &sizedBox);
+    outputRectProp(QRect { QPoint { 0, 0 }, canvasSize() }, &sizedBox);
 
     Element container;
     container.type = "Stack";

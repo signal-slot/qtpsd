@@ -253,6 +253,23 @@
        </property>
       </widget>
      </item>
+     <item row="6" column="0">
+      <widget class="QLabel" name="label_8">
+       <property name="text">
+        <string>Art&amp;board:</string>
+       </property>
+       <property name="buddy">
+        <cstring>artboardToOrigin</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="6" column="1">
+      <widget class="QCheckBox" name="artboardToOrigin">
+       <property name="text">
+        <string>Move to &amp;Origin (0,0)</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>

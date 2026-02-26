@@ -44,7 +44,16 @@ void QPsdExporterPlugin::Private::generateChildrenRectMap(const QPersistentModel
         if (hasChildren) {
             q->childrenRectMap.insert(index, childrenRect);
         } else {
-            q->childrenRectMap.insert(index, model->rect(index));
+            QRect r = model->rect(index);
+            if (r.isEmpty()) {
+                const auto *item = model->layerItem(index);
+                if (item && item->type() == QPsdAbstractLayerItem::Folder) {
+                    const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
+                    if (folder->artboardRect().isValid())
+                        r = folder->artboardRect();
+                }
+            }
+            q->childrenRectMap.insert(index, r);
         }
     }
 }
@@ -219,6 +228,7 @@ QVariantMap QPsdExporterPlugin::ExportConfig::toVariantMap() const
     map.insert("fontScaleFactor"_L1, fontScaleFactor);
     map.insert("makeCompact"_L1, makeCompact);
     map.insert("imageScaling"_L1, imageScaling);
+    map.insert("artboardToOrigin"_L1, artboardToOrigin);
     if (!licenseText.isEmpty())
         map.insert("licenseText"_L1, licenseText);
     return map;
@@ -231,6 +241,7 @@ QPsdExporterPlugin::ExportConfig QPsdExporterPlugin::ExportConfig::fromVariantMa
     config.fontScaleFactor = map.value("fontScaleFactor"_L1, 1.0).toReal();
     config.makeCompact = map.value("makeCompact"_L1, false).toBool();
     config.imageScaling = map.value("imageScaling"_L1, false).toBool();
+    config.artboardToOrigin = map.value("artboardToOrigin"_L1, false).toBool();
     config.licenseText = map.value("licenseText"_L1).toString();
     return config;
 }
@@ -243,10 +254,33 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
     setModel(model);
     dir = QDir(to);
 
+    artboardToOrigin = config.artboardToOrigin;
+    artboardOffset = QPoint();
+    effectiveCanvasSize = QSize();
+
+    if (artboardToOrigin) {
+        QRect artboardUnion;
+        for (int i = 0; i < model->rowCount(); ++i) {
+            auto idx = model->index(i, 0);
+            const auto *layerItem = model->layerItem(idx);
+            if (layerItem && layerItem->type() == QPsdAbstractLayerItem::Folder) {
+                const auto *folder = static_cast<const QPsdFolderLayerItem *>(layerItem);
+                if (folder->artboardRect().isValid())
+                    artboardUnion = artboardUnion.united(folder->artboardRect());
+            }
+        }
+        if (!artboardUnion.isEmpty()) {
+            artboardOffset = -artboardUnion.topLeft();
+            effectiveCanvasSize = artboardUnion.size();
+        }
+    }
+
     const QSize originalSize = model->size();
-    const QSize targetSize = config.targetSize.isEmpty() ? originalSize : config.targetSize;
-    horizontalScale = targetSize.width() / qreal(originalSize.width());
-    verticalScale = targetSize.height() / qreal(originalSize.height());
+    const QSize canvasForScaling = (artboardToOrigin && !effectiveCanvasSize.isEmpty())
+        ? effectiveCanvasSize : originalSize;
+    const QSize targetSize = config.targetSize.isEmpty() ? canvasForScaling : config.targetSize;
+    horizontalScale = targetSize.width() / qreal(canvasForScaling.width());
+    verticalScale = targetSize.height() / qreal(canvasForScaling.height());
     unitScale = std::min(horizontalScale, verticalScale);
     fontScaleFactor = config.fontScaleFactor * verticalScale;
     makeCompact = config.makeCompact;
@@ -377,6 +411,15 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
     QRect rect;
     if (rectBounds.isEmpty()) {
         rect = item->rect();
+        // Figma top-level frames have empty rect but valid artboardRect
+        if (rect.isEmpty() && item->type() == QPsdAbstractLayerItem::Folder) {
+            const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
+            if (folder->artboardRect().isValid())
+                rect = folder->artboardRect();
+        }
+        if (artboardToOrigin && !index.parent().isValid()) {
+            rect.translate(artboardOffset);
+        }
         if (makeCompact) {
             rect = indexRectMap.value(index);
         }
@@ -384,6 +427,13 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
         rect = rectBounds;
     }
     return adjustRectForMerge(index, rect);
+}
+
+QSize QPsdExporterPlugin::canvasSize() const
+{
+    if (artboardToOrigin && !effectiveCanvasSize.isEmpty())
+        return effectiveCanvasSize;
+    return model()->size();
 }
 
 QRect QPsdExporterPlugin::computeTextBounds(const QPsdTextLayerItem *text)

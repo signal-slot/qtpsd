@@ -86,7 +86,7 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
     exportedImages.clear();
     exportedGradients.clear();
     gradientCounter = 0;
-    const QSize targetSize = config.targetSize.isEmpty() ? model->size() : config.targetSize;
+    const QSize targetSize = config.targetSize.isEmpty() ? canvasSize() : config.targetSize;
 
     ExportData exports;
 
@@ -155,7 +155,8 @@ bool QPsdExporterLvglPlugin::outputFolder(const QModelIndex &folderIndex, Elemen
     if (folder->artboardRect().isValid() && folder->artboardBackground() != Qt::transparent) {
         Element artboard;
         artboard.type = "lv_obj";
-        outputRect(folder->artboardRect(), &artboard);
+        QRect bgRect(QPoint(0, 0), folder->artboardRect().size());
+        outputRect(bgRect, &artboard);
         QColor color = folder->artboardBackground();
         artboard.attributes.insert("style_bg_color", u"0x%1"_s.arg(color.rgb() & 0xFFFFFF, 6, 16, QChar('0')));
         artboard.attributes.insert("style_bg_opa", "255");

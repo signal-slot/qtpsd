@@ -5,7 +5,10 @@ Item {
     height: 240
     width: 320
     Item {
-        anchors.fill: parent
+        height: 240
+        width: 320
+        x: 0
+        y: 0
         Rectangle {
             color: "#ff8fc5f3"
             height: 240

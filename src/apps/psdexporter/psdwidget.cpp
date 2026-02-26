@@ -1051,6 +1051,7 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
         hintForStorage.insert("resolutionIndex"_L1, dialog.resolutionIndex());
         hintForStorage.insert("width"_L1, dialog.width());
         hintForStorage.insert("height"_L1, dialog.height());
+        hintForStorage.insert("artboardToOrigin"_L1, config.artboardToOrigin);
         hint = hintForStorage;
         break; }
     }

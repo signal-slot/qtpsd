@@ -132,8 +132,8 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     Element window;
     window.type = "Item";
-    window.properties.insert("width", model->size().width() * horizontalScale);
-    window.properties.insert("height", model->size().height() * verticalScale);
+    window.properties.insert("width", canvasSize().width() * horizontalScale);
+    window.properties.insert("height", canvasSize().height() * verticalScale);
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
@@ -382,7 +382,8 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     if (folder->artboardRect().isValid() && folder->artboardBackground() != Qt::transparent) {
         Element artboard;
         artboard.type = "Rectangle";
-        outputRect(folder->artboardRect(), &artboard);
+        QRect bgRect(QPoint(0, 0), folder->artboardRect().size());
+        outputRect(bgRect, &artboard);
         artboard.properties.insert("color", u"\"%1\""_s.arg(folder->artboardBackground().name(QColor::HexArgb)));
         element->children.append(artboard);
     }

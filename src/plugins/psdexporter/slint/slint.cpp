@@ -75,7 +75,7 @@ bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, c
 
     Element window;
     window.type = "Window";
-    outputRect(QRect { QPoint { 0, 0 }, model->size() }, &window);
+    outputRect(QRect { QPoint { 0, 0 }, canvasSize() }, &window);
     window.properties.insert("title", "\"\""_L1);
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
@@ -129,7 +129,8 @@ bool QPsdExporterSlintPlugin::outputFolder(const QModelIndex &folderIndex, Eleme
     if (folder->artboardRect().isValid() && folder->artboardBackground() != Qt::transparent) {
         Element artboard;
         artboard.type = "Rectangle"_L1;
-        outputRect(folder->artboardRect(), &artboard);
+        QRect bgRect(QPoint(0, 0), folder->artboardRect().size());
+        outputRect(bgRect, &artboard);
         artboard.properties.insert("background"_L1, folder->artboardBackground().name());
         element->children.append(artboard);
     }

@@ -59,6 +59,7 @@ public:
             break;
         }
         compact->setChecked(hint.value("makeCompact", settings.value("makeCompact", false).toBool()).toBool());
+        artboardToOrigin->setChecked(hint.value("artboardToOrigin", settings.value("artboardToOrigin", false).toBool()).toBool());
 
         const auto mo = plugin->metaObject();
         for (int i = mo->propertyOffset(); i < mo->propertyCount(); i++) {
@@ -169,6 +170,11 @@ bool ExportDialog::makeCompact() const
     return d->compact->isChecked();
 }
 
+bool ExportDialog::artboardToOrigin() const
+{
+    return d->artboardToOrigin->isChecked();
+}
+
 int ExportDialog::resolutionIndex() const
 {
     return d->resolution->currentIndex();
@@ -196,6 +202,7 @@ QPsdExporterPlugin::ExportConfig ExportDialog::exportConfig() const
     config.fontScaleFactor = fontScaleFactor();
     config.makeCompact = makeCompact();
     config.imageScaling = (imageScaling() == Scaled);
+    config.artboardToOrigin = artboardToOrigin();
     config.licenseText = licenseText();
     return config;
 }

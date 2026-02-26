@@ -196,10 +196,11 @@ bool QPsdExporterSwiftUIPlugin::outputFolder(const QModelIndex &folderIndex, Ele
         Element background;
         background.type = "Rectangle";
         background.modifiers.append(u".fill(%1)"_s.arg(colorValue(folder->artboardBackground())));
-        outputRect(folder->artboardRect(), &background);
-        // Calculate center position for SwiftUI
-        qreal centerX = (folder->artboardRect().x() + folder->artboardRect().width() / 2.0) * horizontalScale;
-        qreal centerY = (folder->artboardRect().y() + folder->artboardRect().height() / 2.0) * verticalScale;
+        QRect bgRect(QPoint(0, 0), folder->artboardRect().size());
+        outputRect(bgRect, &background);
+        // Calculate center position relative to folder (not absolute)
+        qreal centerX = (folder->artboardRect().width() / 2.0) * horizontalScale;
+        qreal centerY = (folder->artboardRect().height() / 2.0) * verticalScale;
         background.modifiers.append(u".frame(width: %1, height: %2)"_s
             .arg(folder->artboardRect().width() * horizontalScale, 0, 'f', 1)
             .arg(folder->artboardRect().height() * verticalScale, 0, 'f', 1));
@@ -957,8 +958,8 @@ bool QPsdExporterSwiftUIPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     Element rootElement;
     rootElement.type = "ZStack";
-    rootElement.properties.insert("width", model->size().width() * horizontalScale);
-    rootElement.properties.insert("height", model->size().height() * verticalScale);
+    rootElement.properties.insert("width", canvasSize().width() * horizontalScale);
+    rootElement.properties.insert("height", canvasSize().height() * verticalScale);
 
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
