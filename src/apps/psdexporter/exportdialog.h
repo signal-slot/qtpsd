@@ -11,7 +11,7 @@ class ExportDialog : public QDialog
 {
     Q_OBJECT
 public:
-    explicit ExportDialog(QPsdExporterPlugin *plugin, const QSize &size, const QVariantMap &hint, QWidget *parent = nullptr);
+    explicit ExportDialog(QPsdExporterPlugin *plugin, const QSize &size, const QSize &artboardSize, const QVariantMap &hint, QWidget *parent = nullptr);
     ~ExportDialog() override;
 
     QString directory() const;

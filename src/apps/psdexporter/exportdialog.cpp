@@ -13,9 +13,11 @@
 class ExportDialog::Private : public Ui::ExportDialog
 {
 public:
-    Private(QPsdExporterPlugin *plugin, const QSize &size, const QVariantMap &hint, ::ExportDialog *parent)
+    Private(QPsdExporterPlugin *plugin, const QSize &size, const QSize &artboardSize, const QVariantMap &hint, ::ExportDialog *parent)
         : q(parent)
         , plugin(plugin)
+        , canvasSize(size)
+        , artboardSize(artboardSize)
     {
         setupUi(q);
         q->setWindowIcon(plugin->icon());
@@ -60,6 +62,11 @@ public:
         }
         compact->setChecked(hint.value("makeCompact", settings.value("makeCompact", false).toBool()).toBool());
         artboardToOrigin->setChecked(hint.value("artboardToOrigin", settings.value("artboardToOrigin", false).toBool()).toBool());
+        artboardToOrigin->setEnabled(!artboardSize.isEmpty());
+        connect(artboardToOrigin, &QCheckBox::toggled, q, [=](bool checked) {
+            updateOriginalResolution(checked);
+        });
+        updateOriginalResolution(artboardToOrigin->isChecked());
 
         const auto mo = plugin->metaObject();
         for (int i = mo->propertyOffset(); i < mo->propertyCount(); i++) {
@@ -98,16 +105,24 @@ public:
         });
     }
 
+    void updateOriginalResolution(bool useArtboard) {
+        const QSize &s = (useArtboard && !artboardSize.isEmpty()) ? artboardSize : canvasSize;
+        resolution->setItemText(0, tr("Original\t(%1x%2)").arg(s.width()).arg(s.height()));
+        resolution->setItemData(0, s);
+    }
+
 private:
     ::ExportDialog *q;
 public:
     QPsdExporterPlugin *plugin;
     QSettings settings;
+    QSize canvasSize;
+    QSize artboardSize;
 };
 
-ExportDialog::ExportDialog(QPsdExporterPlugin *plugin, const QSize &size, const QVariantMap &hint, QWidget *parent)
+ExportDialog::ExportDialog(QPsdExporterPlugin *plugin, const QSize &size, const QSize &artboardSize, const QVariantMap &hint, QWidget *parent)
     : QDialog(parent)
-    , d(new Private(plugin, size, hint, this))
+    , d(new Private(plugin, size, artboardSize, hint, this))
 {}
 
 ExportDialog::~ExportDialog() = default;

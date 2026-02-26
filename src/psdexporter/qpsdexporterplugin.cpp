@@ -260,18 +260,22 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
 
     if (artboardToOrigin) {
         QRect artboardUnion;
+        QSize firstArtboardSize;
         for (int i = 0; i < model->rowCount(); ++i) {
             auto idx = model->index(i, 0);
             const auto *layerItem = model->layerItem(idx);
             if (layerItem && layerItem->type() == QPsdAbstractLayerItem::Folder) {
                 const auto *folder = static_cast<const QPsdFolderLayerItem *>(layerItem);
-                if (folder->artboardRect().isValid())
+                if (folder->artboardRect().isValid()) {
+                    if (firstArtboardSize.isEmpty())
+                        firstArtboardSize = folder->artboardRect().size();
                     artboardUnion = artboardUnion.united(folder->artboardRect());
+                }
             }
         }
         if (!artboardUnion.isEmpty()) {
             artboardOffset = -artboardUnion.topLeft();
-            effectiveCanvasSize = artboardUnion.size();
+            effectiveCanvasSize = firstArtboardSize;
         }
     }
 

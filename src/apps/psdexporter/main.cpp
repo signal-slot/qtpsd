@@ -11,6 +11,7 @@
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSettings>
 #include <QtPsdExporter/QPsdExporterPlugin>
+#include <QtPsdGui/QPsdFolderLayerItem>
 #include <QtPsdImporter/QPsdImporterPlugin>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 
@@ -114,7 +115,21 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         return 1;
     }
 
-    QSize outputSize = parseResolution(resolution, model.size());
+    QSize originalSize = model.size();
+    if (artboardToOrigin) {
+        for (int i = 0; i < model.rowCount(); ++i) {
+            auto idx = model.index(i, 0);
+            const auto *item = model.layerItem(idx);
+            if (item && item->type() == QPsdAbstractLayerItem::Folder) {
+                const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
+                if (folder->artboardRect().isValid()) {
+                    originalSize = folder->artboardRect().size();
+                    break;
+                }
+            }
+        }
+    }
+    QSize outputSize = parseResolution(resolution, originalSize);
     if (outputSize.isEmpty()) {
         qCritical() << "Invalid resolution:" << resolution;
         qCritical() << "Use preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT format";
