@@ -183,7 +183,7 @@ MainWindow::Private::Private(::MainWindow *parent)
             auto *loadingWidget = new QWidget(q);
             auto *loadingLayout = new QVBoxLayout(loadingWidget);
             loadingLayout->setAlignment(Qt::AlignCenter);
-            auto *progressLabel = new QLabel(tr("Importing from %1...").arg(importer->name()));
+            auto *progressLabel = new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
             progressLabel->setAlignment(Qt::AlignCenter);
             auto *progressBar = new QProgressBar();
             progressBar->setRange(0, 0); // indeterminate
