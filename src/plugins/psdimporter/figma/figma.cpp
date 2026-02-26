@@ -633,6 +633,7 @@ public:
     }
 
     QSize size() const { return m_size; }
+    QColor canvasColor() const { return m_canvasColor; }
 
     struct ArtboardInfo {
         QString figmaId;
@@ -664,6 +665,16 @@ public:
         // Select page by index
         const auto page = children.at(qBound(0, pageIndex, children.size() - 1)).toObject();
         const auto pageChildren = page["children"_L1].toArray();
+
+        // Extract page background color
+        const auto bgColor = page["backgroundColor"_L1].toObject();
+        if (!bgColor.isEmpty()) {
+            m_canvasColor = QColor::fromRgbF(
+                bgColor["r"_L1].toDouble(),
+                bgColor["g"_L1].toDouble(),
+                bgColor["b"_L1].toDouble(),
+                bgColor["a"_L1].toDouble(1.0));
+        }
 
         QRect canvasRect;
         for (const auto &child : pageChildren) {
@@ -1751,6 +1762,7 @@ private:
     QList<quintptr> m_rootIds;
     quintptr m_nextId = 1;
     QSize m_size;
+    QColor m_canvasColor;
     QPoint m_canvasOrigin;
     QSize m_fullCanvasSize;
     QPoint m_fullCanvasOrigin;
@@ -2280,6 +2292,7 @@ public:
 
         model->setSourceModel(widgetModel);
         model->setSize(figmaModel.size());
+        model->setCanvasColor(figmaModel.canvasColor());
 
         // Include page name in title for multi-page files
         const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();

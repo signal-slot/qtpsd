@@ -7,6 +7,7 @@
 #include <QtPsdWidget/qpsdwidgetglobal.h>
 
 #include <QtCore/QModelIndex>
+#include <QtGui/QColor>
 #include <QtGui/QImage>
 #include <QtWidgets/QGraphicsScene>
 
@@ -25,8 +26,10 @@ public:
     QPsdWidgetTreeItemModel *model() const;
     QImage patternImage(const QString &patternId) const;
     bool showChecker() const;
+    QColor canvasColor() const;
 
 protected:
+    void drawBackground(QPainter *painter, const QRectF &rect) override;
     void drawForeground(QPainter *painter, const QRectF &rect) override;
 
 public slots:
@@ -35,6 +38,7 @@ public slots:
     void selectItem(const QModelIndex &index);
     void reset();
     void setShowChecker(bool showChecker);
+    void setCanvasColor(const QColor &color);
 
 signals:
     void itemSelected(const QModelIndex &index);

@@ -39,6 +39,7 @@ public:
 
     // Fallback members for non-PSD data sources
     QSize size;
+    QColor canvasColor;
     QFileInfo fallbackFileInfo;
     QString fallbackFileName;
 };
@@ -296,6 +297,16 @@ QSize QPsdExporterTreeItemModel::size() const
 void QPsdExporterTreeItemModel::setSize(const QSize &size)
 {
     d->size = size;
+}
+
+QColor QPsdExporterTreeItemModel::canvasColor() const
+{
+    return d->canvasColor;
+}
+
+void QPsdExporterTreeItemModel::setCanvasColor(const QColor &canvasColor)
+{
+    d->canvasColor = canvasColor;
 }
 
 const QPsdAbstractLayerItem *QPsdExporterTreeItemModel::layerItem(const QModelIndex &index) const

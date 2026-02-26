@@ -33,6 +33,7 @@ public:
     QMetaObject::Connection modelConnection;
     bool showChecker = false;
     QImage documentAlphaMask;
+    QColor canvasColor;
 };
 
 QPsdScene::Private::Private(QPsdScene *parent)
@@ -91,6 +92,19 @@ QImage QPsdScene::patternImage(const QString &patternId) const
 bool QPsdScene::showChecker() const
 {
     return d->showChecker;
+}
+
+QColor QPsdScene::canvasColor() const
+{
+    return d->canvasColor;
+}
+
+void QPsdScene::setCanvasColor(const QColor &color)
+{
+    if (d->canvasColor == color)
+        return;
+    d->canvasColor = color;
+    invalidate(sceneRect(), QGraphicsScene::BackgroundLayer);
 }
 
 void QPsdScene::setItemVisible(quint32 id, bool visible)
@@ -248,6 +262,14 @@ void QPsdScene::reset()
     }
 
     setSceneRect(QRect{ QPoint{}, d->model->size() });
+}
+
+void QPsdScene::drawBackground(QPainter *painter, const QRectF &rect)
+{
+    QGraphicsScene::drawBackground(painter, rect);
+    if (d->canvasColor.isValid() && d->canvasColor.alpha() > 0) {
+        painter->fillRect(sceneRect().intersected(rect), d->canvasColor);
+    }
 }
 
 void QPsdScene::drawForeground(QPainter *painter, const QRectF &rect)

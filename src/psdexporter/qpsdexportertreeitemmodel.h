@@ -9,6 +9,7 @@
 
 #include <QtCore/QIdentityProxyModel>
 #include <QtCore/QJsonObject>
+#include <QtGui/QColor>
 
 QT_BEGIN_NAMESPACE
 
@@ -117,6 +118,9 @@ public:
 
     QSize size() const;
     void setSize(const QSize &size);
+
+    QColor canvasColor() const;
+    void setCanvasColor(const QColor &canvasColor);
 
     bool isVisible(const QModelIndex &index) const;
     void setVisible(const QModelIndex &index, bool visible);

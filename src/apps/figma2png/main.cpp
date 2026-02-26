@@ -97,7 +97,9 @@ int main(int argc, char *argv[])
 
     const QSize size = model.size();
     QImage image(size, QImage::Format_ARGB32_Premultiplied);
-    image.fill(Qt::transparent);
+    const QColor canvasColor = model.canvasColor();
+    image.fill(canvasColor.isValid() && canvasColor.alpha() > 0
+               ? canvasColor.rgba() : qRgba(0, 0, 0, 0));
 
     QPainter painter(&image);
     scene.render(&painter);

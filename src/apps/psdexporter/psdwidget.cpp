@@ -9,6 +9,7 @@
 
 #include <QtPsdGui/QPsdTextLayerItem>
 #include <QtPsdWidget/QPsdFontMappingDialog>
+#include <QtPsdWidget/QPsdScene>
 #include <QtPsdImporter/QPsdImporterPlugin>
 
 #include <QtCore/QCryptographicHash>
@@ -1103,6 +1104,9 @@ bool PsdWidget::importFrom(QPsdImporterPlugin *importer, const QVariantMap optio
     if (ok) {
         d->treeView->reset();
         d->psdView->setModel(d->model.widgetModel());
+
+        if (auto *scene = qobject_cast<QPsdScene *>(d->psdView->scene()))
+            scene->setCanvasColor(d->model.canvasColor());
 
         d->windowTitle = d->model.fileName();
         setWindowTitle(d->windowTitle);
