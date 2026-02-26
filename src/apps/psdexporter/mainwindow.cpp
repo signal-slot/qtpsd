@@ -151,6 +151,13 @@ MainWindow::Private::Private(::MainWindow *parent)
         if (pageIndices.isEmpty())
             pageIndices.append(options.value("pageIndex"_L1, 0).toInt());
 
+        QStringList pageNames;
+        if (options.contains("pageNames"_L1)) {
+            const auto list = options.value("pageNames"_L1).toList();
+            for (const auto &v : list)
+                pageNames.append(v.toString());
+        }
+
         // Helper to connect viewer signals
         auto connectViewer = [this](PsdWidget *viewer) {
             connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
@@ -190,7 +197,10 @@ MainWindow::Private::Private(::MainWindow *parent)
             progressBar->setFixedWidth(300);
             loadingLayout->addWidget(progressLabel);
             loadingLayout->addWidget(progressBar);
-            int index = tabWidget->addTab(loadingWidget, importer->icon(), tr("Importing..."));
+            const QString tabTitle = (pageIdx < pageNames.size())
+                ? tr("Importing %1...").arg(pageNames.at(pageIdx))
+                : tr("Importing...");
+            int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
             tabWidget->setCurrentIndex(index);
 
             // Prepare per-page options

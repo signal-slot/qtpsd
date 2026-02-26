@@ -2213,6 +2213,12 @@ public:
         }
 
         options["pageIndices"_L1] = pageIndices;
+
+        QVariantList pageNames;
+        for (const auto &page : pages)
+            pageNames.append(page.toObject()["name"_L1].toString());
+        options["pageNames"_L1] = pageNames;
+
         return options;
     }
 
