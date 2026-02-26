@@ -1122,7 +1122,7 @@ private:
             // Extract corner radius for frames/components
             const qreal frameCornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
 
-            if (!isTopLevelFrame && nodeJson.value("clipsContent"_L1).toBool(false)) {
+            if (nodeJson.value("clipsContent"_L1).toBool(false)) {
                 QPsdAbstractLayerItem::PathInfo clipMask;
                 clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
                 clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
