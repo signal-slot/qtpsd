@@ -37,12 +37,20 @@ public:
     virtual bool importFrom(QPsdExporterTreeItemModel *model,
                             const QVariantMap &options) const = 0;
 
+    QString errorMessage() const { return m_errorMessage; }
+
     static QByteArrayList keys() {
         return QPsdAbstractPlugin::keys<QPsdImporterPlugin>(QPsdImporterFactoryInterface_iid, "psdimporter");
     }
     static QPsdImporterPlugin *plugin(const QByteArray &key) {
         return QPsdAbstractPlugin::plugin<QPsdImporterPlugin>(QPsdImporterFactoryInterface_iid, "psdimporter", key);
     }
+
+protected:
+    void setErrorMessage(const QString &message) const { m_errorMessage = message; }
+
+private:
+    mutable QString m_errorMessage;
 };
 
 QT_END_NAMESPACE
