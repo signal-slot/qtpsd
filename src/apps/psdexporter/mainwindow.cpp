@@ -206,6 +206,7 @@ MainWindow::Private::Private(::MainWindow *parent)
                 : tr("Importing...");
             int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
             tabWidget->setCurrentIndex(index);
+            updateFileMenus();
 
             // Prepare per-page options
             QVariantMap pageOptions = options;
@@ -299,6 +300,7 @@ MainWindow::Private::Private(::MainWindow *parent)
             q->setWindowTitle(applicationName);
             statusbar->clearMessage();
             scaleSlider->setEnabled(false);
+            updateFileMenus();
             return;
         }
         q->setWindowModified(tabWidget->currentWidget()->isWindowModified());
@@ -315,6 +317,7 @@ MainWindow::Private::Private(::MainWindow *parent)
             scaleSlider->blockSignals(false);
             scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
         }
+        updateFileMenus();
     }, Qt::QueuedConnection); // first addTab changes its index before tooltip is set
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, q, [this](int index) {
@@ -540,13 +543,16 @@ void MainWindow::Private::updateRecentFiles(const QString &fileName)
 
 void MainWindow::Private::updateFileMenus()
 {
-    bool enabled = tabWidget->count() > 0;
-    exports->setEnabled(enabled);
-    reload->setEnabled(enabled);
-    save->setEnabled(enabled && q->isWindowModified());
-    close->setEnabled(enabled);
-    copyView->setEnabled(enabled);
-    fontMapping->setEnabled(enabled);
+    bool hasTabs = tabWidget->count() > 0;
+    bool hasPsdWidget = hasTabs
+        && qobject_cast<PsdWidget *>(tabWidget->currentWidget()) != nullptr;
+    exports->setEnabled(hasPsdWidget);
+    exportToolBar->setEnabled(hasPsdWidget);
+    reload->setEnabled(hasPsdWidget);
+    save->setEnabled(hasPsdWidget && q->isWindowModified());
+    close->setEnabled(hasTabs);
+    copyView->setEnabled(hasPsdWidget);
+    fontMapping->setEnabled(hasPsdWidget);
     imports->setEnabled(true); // imports always enabled since they create new tabs
 }
 
