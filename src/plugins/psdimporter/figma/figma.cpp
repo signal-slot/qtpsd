@@ -1087,11 +1087,25 @@ private:
                 textItem->setTextFrame(QRectF(absX, textFrameY,
                                               rect.width(), rect.height()));
             } else {
-                // Auto-resize text: Figma's absoluteBoundingBox already matches
-                // the text content width, so no extra padding needed.
-                textItem->setTextType(QPsdTextLayerItem::TextType::ParagraphText);
-                textItem->setTextFrame(QRectF(absX, textFrameY,
-                                              rect.width(), rect.height()));
+                // Auto-width text: Figma imposes no width constraint (bbox is a
+                // measured rendering result, not input). Use PointText so Qt
+                // renders without word-wrap, avoiding wrapping caused by minor
+                // glyph advance differences between Figma and Qt text engines.
+                textItem->setTextType(QPsdTextLayerItem::TextType::PointText);
+
+                // PointText anchor: baseline position in absolute coordinates
+                // (matching how flattenFigmaTree converts rect to absolute).
+                const auto alignment = alignmentFromStyle(style);
+                const auto hAlign = alignment & Qt::AlignHorizontal_Mask;
+                qreal originX = absX;
+                if (hAlign == Qt::AlignHCenter)
+                    originX = absX + rect.width() / 2.0;
+                else if (hAlign == Qt::AlignRight)
+                    originX = absX + rect.width();
+
+                // Vertical: baseline = absY + halfLeading + ascent
+                textItem->setTextOrigin(QPointF(originX,
+                                                absY + halfLeading + fm.ascent()));
             }
 
             node.layerItem = textItem;
@@ -1783,6 +1797,7 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setRuns(s->runs());
         d->setTextType(s->textType());
         d->setTextFrame(s->textFrame());
+        d->setTextOrigin(s->textOrigin());
         d->setDropShadow(s->dropShadow());
         d->setInnerShadow(s->innerShadow());
         d->setLayerBlur(s->layerBlur());
