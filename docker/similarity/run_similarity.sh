@@ -50,7 +50,7 @@ if [[ ! -x "${lvgl_capture_script}" ]]; then
 fi
 
 start_xvfb() {
-  Xvfb "${xvfb_display}" -screen 0 1280x1024x24 -nolisten tcp +extension Composite >"${xvfb_log}" 2>&1 &
+  Xvfb "${xvfb_display}" -screen 0 8192x8192x24 -nolisten tcp +extension Composite >"${xvfb_log}" 2>&1 &
   xvfb_pid=$!
   for _ in $(seq 1 200); do
     if [[ -S "/tmp/.X11-unix/X${xvfb_num}" ]]; then

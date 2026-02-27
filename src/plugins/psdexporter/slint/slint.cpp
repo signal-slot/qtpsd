@@ -96,6 +96,21 @@ bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, c
             return false;
     }
 
+    // Flattened PSD fallback: if no layers were produced, use the merged image
+    if (window.children.isEmpty()) {
+        const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
+        if (!merged.isNull()) {
+            imageStore = QPsdImageStore(dir, "images"_L1);
+            const QString name = imageStore.save("merged.png"_L1, merged, "PNG");
+            Element img;
+            img.type = "Image";
+            outputRect(QRect { QPoint { 0, 0 }, canvasSize() }, &img);
+            img.properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
+            img.properties.insert("image-fit", "contain");
+            window.children.append(img);
+        }
+    }
+
     return saveTo("MainWindow", &window, imports, exports);
 }
 
@@ -501,7 +516,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
             element->properties.insert("font-weight", 700);
         if (run.font.italic() || run.fauxItalic)
             element->properties.insert("font-italic", true);
-        element->properties.insert("color", run.color.name());
+        element->properties.insert("color", colorToSlint(run.color));
         element->properties.insert("horizontal-alignment",
             horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));
         {
@@ -548,7 +563,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                     textElement.properties.insert("font-weight", 700);
                 if (run.font.italic() || run.fauxItalic)
                     textElement.properties.insert("font-italic", true);
-                textElement.properties.insert("color", run.color.name());
+                textElement.properties.insert("color", colorToSlint(run.color));
                 textElement.properties.insert("horizontal-alignment",
                     horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));
                 {
