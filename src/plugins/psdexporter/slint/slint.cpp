@@ -624,9 +624,19 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 break; }
             case QGradient::RadialGradient: {
                 const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                const qreal radius = radial->radius();
+                const QPointF center = radial->center();
+                // Slint @radial-gradient(circle) uses CSS farthest-corner sizing
+                // Scale stop positions: Qt radius vs CSS farthest-corner distance
+                const qreal farthestCorner = std::sqrt(center.x() * center.x() + center.y() * center.y());
+                const qreal scale = (farthestCorner > 0) ? (radius / farthestCorner) : 1.0;
                 QStringList grad = { "@radial-gradient(circle" };
-                for (const auto &stop : radial->stops()) {
-                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
+                const auto stops = radial->stops();
+                for (const auto &stop : stops) {
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * scale * 100) + "%");
+                }
+                if (!stops.isEmpty() && scale < 1.0) {
+                    grad.append(colorToSlint(stops.last().second) + " 100%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
@@ -678,9 +688,17 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 break; }
             case QGradient::RadialGradient: {
                 const auto radial = reinterpret_cast<const QRadialGradient *>(pathGrad);
+                const qreal radius = radial->radius();
+                const QPointF center = radial->center();
+                const qreal farthestCorner = std::sqrt(center.x() * center.x() + center.y() * center.y());
+                const qreal scale = (farthestCorner > 0) ? (radius / farthestCorner) : 1.0;
                 QStringList grad = { "@radial-gradient(circle" };
-                for (const auto &stop : radial->stops()) {
-                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
+                const auto stops = radial->stops();
+                for (const auto &stop : stops) {
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * scale * 100) + "%");
+                }
+                if (!stops.isEmpty() && scale < 1.0) {
+                    grad.append(colorToSlint(stops.last().second) + " 100%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element->properties.insert("fill", gradString);
@@ -734,9 +752,17 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 break; }
             case QGradient::RadialGradient: {
                 const auto radial = reinterpret_cast<const QRadialGradient *>(g);
+                const qreal radius = radial->radius();
+                const QPointF center = radial->center();
+                const qreal farthestCorner = std::sqrt(center.x() * center.x() + center.y() * center.y());
+                const qreal scale = (farthestCorner > 0) ? (radius / farthestCorner) : 1.0;
                 QStringList grad = { "@radial-gradient(circle" };
-                for (const auto &stop : radial->stops()) {
-                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
+                const auto stops = radial->stops();
+                for (const auto &stop : stops) {
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * scale * 100) + "%");
+                }
+                if (!stops.isEmpty() && scale < 1.0) {
+                    grad.append(colorToSlint(stops.last().second) + " 100%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
