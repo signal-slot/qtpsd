@@ -20,12 +20,17 @@ export component MainWindow inherits Window {
         x: 0px;
         y: 0px;
     }
-    Image {
-        height: 200px;
-        image-fit: contain;
-        source: @image-url("images/in_group.png");
-        width: 200px;
+    Rectangle {
+        opacity: 0.8;
         x: 0px;
         y: 0px;
+        Image {
+            height: 200px;
+            image-fit: contain;
+            source: @image-url("images/in_group.png");
+            width: 200px;
+            x: 0px;
+            y: 0px;
+        }
     }
 }

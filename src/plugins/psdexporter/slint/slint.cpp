@@ -18,6 +18,18 @@ QT_BEGIN_NAMESPACE
 
 #define ARGF(x) arg(qRound(x))
 
+// Slint uses CSS-style #rrggbbaa (alpha at end), not Qt's #aarrggbb
+static QString colorToSlint(const QColor &color)
+{
+    if (color.alpha() == 255)
+        return color.name();
+    return QStringLiteral("#%1%2%3%4")
+        .arg(color.red(), 2, 16, QChar('0'))
+        .arg(color.green(), 2, 16, QChar('0'))
+        .arg(color.blue(), 2, 16, QChar('0'))
+        .arg(color.alpha(), 2, 16, QChar('0'));
+}
+
 class QPsdExporterSlintPlugin : public QPsdExporterPlugin
 {
     Q_OBJECT
@@ -173,21 +185,28 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
                 if (needsClip) {
                     generated = outputFolder(index, &element, imports, exports);
                 } else {
-                    // Flatten into parent: just add artboard background and children
-                    const auto *f = dynamic_cast<const QPsdFolderLayerItem *>(item);
-                    if (f && f->artboardRect().isValid() && f->artboardBackground() != Qt::transparent) {
-                        Element artboard;
-                        artboard.type = "Rectangle"_L1;
-                        outputRect(f->artboardRect(), &artboard);
-                        artboard.properties.insert("background"_L1, f->artboardBackground().name());
-                        parent->children.append(artboard);
+                    // Check if folder needs wrapping for opacity/visibility
+                    const bool needsWrapper = displayOpacity(item).has_value()
+                        || !hint.visible || !item->isVisible();
+                    if (needsWrapper) {
+                        generated = outputFolder(index, &element, imports, exports);
+                    } else {
+                        // Flatten into parent: just add artboard background and children
+                        const auto *f = dynamic_cast<const QPsdFolderLayerItem *>(item);
+                        if (f && f->artboardRect().isValid() && f->artboardBackground() != Qt::transparent) {
+                            Element artboard;
+                            artboard.type = "Rectangle"_L1;
+                            outputRect(f->artboardRect(), &artboard);
+                            artboard.properties.insert("background"_L1, f->artboardBackground().name());
+                            parent->children.append(artboard);
+                        }
+                        for (int i = model()->rowCount(index) - 1; i >= 0; i--) {
+                            QModelIndex childIndex = model()->index(i, 0, index);
+                            if (!traverseTree(childIndex, parent, imports, exports, std::nullopt))
+                                return false;
+                        }
+                        return true;
                     }
-                    for (int i = model()->rowCount(index) - 1; i >= 0; i--) {
-                        QModelIndex childIndex = model()->index(i, 0, index);
-                        if (!traverseTree(childIndex, parent, imports, exports, std::nullopt))
-                            return false;
-                    }
-                    return true;
                 }
             }
             break; }
@@ -216,13 +235,13 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
             element.type = "Rectangle";
         }
 
-        if (!hint.visible)
+        if (!hint.visible || !item->isVisible())
             element.properties.insert("visible", "false");
         if (!id.isEmpty()) {
             if (hint.interactive) {
                 Element touchArea { "TouchArea", element.id, {}, {} };
                 outputBase(index, &touchArea, imports);
-                if (!hint.visible)
+                if (!hint.visible || !item->isVisible())
                     touchArea.properties.insert("visible", "false");
                 element.id = QString();
                 if (item->type() == QPsdAbstractLayerItem::Folder) {
@@ -315,7 +334,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
             }
         }
 
-        if (!hint.visible)
+        if (!hint.visible || !item->isVisible())
             element.properties.insert("visible", "false");
         if (element.type.isEmpty())
             return true;
@@ -441,7 +460,7 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
         element.type = hint.componentName;
         element.id = id;
         outputBase(index, &element, imports);
-        if (!hint.visible)
+        if (!hint.visible || !item->isVisible())
             element.properties.insert("visible", "false");
         parent->children.append(element);
         break; }
@@ -596,9 +615,9 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
-                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0, 'f', 3) + "deg" };
+                QStringList grad = { "@linear-gradient(" + QString::number(180.0 - angle * 180.0 / M_PI, 'f', 3) + "deg" };
                 for (const auto &stop : linear->stops()) {
-                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
@@ -607,7 +626,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const auto radial = reinterpret_cast<const QRadialGradient *>(g);
                 QStringList grad = { "@radial-gradient(circle" };
                 for (const auto &stop : radial->stops()) {
-                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
@@ -618,7 +637,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                     QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
-                    grad.append(qtStops.at(i).second.name() + " " +
+                    grad.append(colorToSlint(qtStops.at(i).second) + " " +
                         QString::number((1.0 - qtStops.at(i).first) * 360) + "deg");
                 }
                 const QString gradString = grad.join(", ") + ")";
@@ -652,7 +671,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
                 QStringList grad { "@linear-gradient(" + QString::number(180.0 - angle * 180.0 / M_PI, 'f', 3) + "deg " };
                 for (const auto &stop : linear->stops()) {
-                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element->properties.insert("fill", gradString);
@@ -661,7 +680,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const auto radial = reinterpret_cast<const QRadialGradient *>(pathGrad);
                 QStringList grad = { "@radial-gradient(circle" };
                 for (const auto &stop : radial->stops()) {
-                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element->properties.insert("fill", gradString);
@@ -672,7 +691,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                     QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
-                    grad.append(qtStops.at(i).second.name() + " " +
+                    grad.append(colorToSlint(qtStops.at(i).second) + " " +
                         QString::number((1.0 - qtStops.at(i).first) * 360) + "deg");
                 }
                 const QString gradString = grad.join(", ") + ")";
@@ -706,9 +725,9 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
                 const auto angle = std::atan2(linear->finalStop().x() - linear->start().x(), linear->finalStop().y() - linear->start().y());
-                QStringList grad = { "@linear-gradient(" + QString::number(angle * 180.0 / M_PI - 180.0, 'f', 3) + "deg" };
+                QStringList grad = { "@linear-gradient(" + QString::number(180.0 - angle * 180.0 / M_PI, 'f', 3) + "deg" };
                 for (const auto &stop : linear->stops()) {
-                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
@@ -717,7 +736,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 const auto radial = reinterpret_cast<const QRadialGradient *>(g);
                 QStringList grad = { "@radial-gradient(circle" };
                 for (const auto &stop : radial->stops()) {
-                    grad.append(stop.second.name() + " " + QString::number(stop.first * 100) + "%");
+                    grad.append(colorToSlint(stop.second) + " " + QString::number(stop.first * 100) + "%");
                 }
                 const QString gradString = grad.join(", ") + ")";
                 element2.properties.insert("background", gradString);
@@ -728,7 +747,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                     QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
-                    grad.append(qtStops.at(i).second.name() + " " +
+                    grad.append(colorToSlint(qtStops.at(i).second) + " " +
                         QString::number((1.0 - qtStops.at(i).first) * 360) + "deg");
                 }
                 const QString gradString = grad.join(", ") + ")";
