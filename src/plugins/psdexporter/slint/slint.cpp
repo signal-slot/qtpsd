@@ -211,7 +211,8 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
                         if (f && f->artboardRect().isValid() && f->artboardBackground() != Qt::transparent) {
                             Element artboard;
                             artboard.type = "Rectangle"_L1;
-                            outputRect(f->artboardRect(), &artboard);
+                            QRect bgRect = computeBaseRect(index);
+                            outputRect(bgRect, &artboard);
                             artboard.properties.insert("background"_L1, f->artboardBackground().name());
                             parent->children.append(artboard);
                         }

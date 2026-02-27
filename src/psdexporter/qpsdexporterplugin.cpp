@@ -45,14 +45,6 @@ void QPsdExporterPlugin::Private::generateChildrenRectMap(const QPersistentModel
             q->childrenRectMap.insert(index, childrenRect);
         } else {
             QRect r = model->rect(index);
-            if (r.isEmpty()) {
-                const auto *item = model->layerItem(index);
-                if (item && item->type() == QPsdAbstractLayerItem::Folder) {
-                    const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
-                    if (folder->artboardRect().isValid())
-                        r = folder->artboardRect();
-                }
-            }
             q->childrenRectMap.insert(index, r);
         }
     }
@@ -258,7 +250,9 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
     artboardOffset = QPoint();
     effectiveCanvasSize = QSize();
 
-    if (artboardToOrigin) {
+    // Always scan for artboards — needed for both default and artboardToOrigin modes.
+    // Default mode places the first artboard at origin; artboardToOrigin offsets all artboards.
+    {
         QRect artboardUnion;
         QSize firstArtboardSize;
         for (int i = 0; i < model->rowCount(); ++i) {
@@ -274,13 +268,14 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
             }
         }
         if (!artboardUnion.isEmpty()) {
-            artboardOffset = -artboardUnion.topLeft();
+            if (artboardToOrigin)
+                artboardOffset = -artboardUnion.topLeft();
             effectiveCanvasSize = firstArtboardSize;
         }
     }
 
     const QSize originalSize = model->size();
-    const QSize canvasForScaling = (artboardToOrigin && !effectiveCanvasSize.isEmpty())
+    const QSize canvasForScaling = !effectiveCanvasSize.isEmpty()
         ? effectiveCanvasSize : originalSize;
     const QSize targetSize = config.targetSize.isEmpty() ? canvasForScaling : config.targetSize;
     horizontalScale = targetSize.width() / qreal(canvasForScaling.width());
@@ -415,14 +410,31 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
     QRect rect;
     if (rectBounds.isEmpty()) {
         rect = item->rect();
-        // Figma top-level frames have empty rect but valid artboardRect
-        if (rect.isEmpty() && item->type() == QPsdAbstractLayerItem::Folder) {
+        if (!index.parent().isValid() && item->type() == QPsdAbstractLayerItem::Folder) {
+            // Top-level artboard folder: override position.
+            // Default mode places artboard at origin; artboardToOrigin applies a global offset.
             const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
-            if (folder->artboardRect().isValid())
-                rect = folder->artboardRect();
-        }
-        if (artboardToOrigin && !index.parent().isValid()) {
-            rect.translate(artboardOffset);
+            if (folder->artboardRect().isValid()) {
+                if (artboardToOrigin) {
+                    rect = folder->artboardRect();
+                    rect.translate(artboardOffset);
+                } else {
+                    rect = QRect(QPoint(0, 0), folder->artboardRect().size());
+                }
+            }
+        } else if (index.parent().isValid()) {
+            // Child of an artboard folder: PSD uses absolute (document-level) coordinates,
+            // but exporters nest children inside the parent element, so children's
+            // coordinates must be relative to the artboard folder's original position.
+            QModelIndex topLevel = index;
+            while (topLevel.parent().isValid())
+                topLevel = topLevel.parent();
+            const auto *topItem = model()->layerItem(topLevel);
+            if (topItem && topItem->type() == QPsdAbstractLayerItem::Folder) {
+                const auto *topFolder = static_cast<const QPsdFolderLayerItem *>(topItem);
+                if (topFolder->artboardRect().isValid())
+                    rect.translate(-topItem->rect().topLeft());
+            }
         }
         if (makeCompact) {
             rect = indexRectMap.value(index);
@@ -435,7 +447,7 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
 
 QSize QPsdExporterPlugin::canvasSize() const
 {
-    if (artboardToOrigin && !effectiveCanvasSize.isEmpty())
+    if (!effectiveCanvasSize.isEmpty())
         return effectiveCanvasSize;
     return model()->size();
 }
