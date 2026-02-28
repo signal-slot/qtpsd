@@ -1177,6 +1177,26 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     *element = shapeElem;
                 else
                     element->children.prepend(shapeElem);
+            } else if (shape->brush().style() == Qt::TexturePattern) {
+                // Composited fill (e.g. solid + gradient): save as image
+                QImage texImage = shape->brush().textureImage();
+                if (imageScaling)
+                    texImage = texImage.scaled(path.rect.width() * horizontalScale, path.rect.height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QString name = imageStore.save(imageFileName(shape->name(), "PNG"_L1), texImage, "PNG");
+                Element imgElement;
+                imgElement.type = "Image";
+                if (filled) {
+                    if (!outputBase(shapeIndex, &imgElement, imports))
+                        return false;
+                } else {
+                    outputRect(path.rect, &imgElement);
+                }
+                imgElement.properties.insert("source", u"\"images/%1\""_s.arg(name));
+                imgElement.properties.insert("fillMode", "Image.Stretch");
+                if (filled)
+                    *element = imgElement;
+                else
+                    element->children.append(imgElement);
             } else {
                 Element rectElement;
                 rectElement.type = "Rectangle";

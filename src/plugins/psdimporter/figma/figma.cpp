@@ -76,6 +76,13 @@ public:
         return getJson(url);
     }
 
+    // Fetch actual image fill URLs (imageRef → URL mapping)
+    QJsonObject fetchFileImages(const QString &fileKey)
+    {
+        QUrl url(u"https://api.figma.com/v1/files/%1/images"_s.arg(fileKey));
+        return getJson(url);
+    }
+
     QImage downloadImage(const QUrl &url)
     {
         QNetworkRequest request(url);
@@ -764,22 +771,34 @@ public:
         return createIndex(row, 0, id);
     }
 
+    // Returns node IDs for regular image nodes (NOT _imgbg) — these use the render API
     QStringList imageNodeIds() const
     {
         QStringList ids;
         QSet<QString> seen;
         for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) {
             if (it->layerItem && it->layerItem->type() == QPsdAbstractLayerItem::Image) {
-                QString fid = it->figmaId;
-                if (fid.endsWith("_imgbg"_L1))
-                    fid.chop(6);
-                if (!seen.contains(fid)) {
-                    ids.append(fid);
-                    seen.insert(fid);
+                if (it->figmaId.endsWith("_imgbg"_L1))
+                    continue;  // _imgbg nodes use the file images API
+                if (!seen.contains(it->figmaId)) {
+                    ids.append(it->figmaId);
+                    seen.insert(it->figmaId);
                 }
             }
         }
         return ids;
+    }
+
+    // Returns imageRef → figmaId mapping for _imgbg nodes — these use the file images API
+    QHash<QString, QString> imageFillRefs() const
+    {
+        QHash<QString, QString> refs;
+        for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) {
+            if (!it->imageRef.isEmpty() && it->figmaId.endsWith("_imgbg"_L1)) {
+                refs.insert(it->imageRef, it->figmaId);
+            }
+        }
+        return refs;
     }
 
     void setNodeImage(const QString &figmaId, const QImage &image)
@@ -792,6 +811,7 @@ public:
                 return;
             }
         }
+        // Fallback: try _imgbg suffix (for backward compat with render API results)
         quintptr bgId = findByFigmaId(figmaId + "_imgbg"_L1);
         if (bgId != 0) {
             auto &bgNode = m_nodes[bgId];
@@ -815,6 +835,7 @@ private:
         QList<quintptr> childIds;
         QJsonArray fills;
         bool isMask = false;
+        QString imageRef;  // For _imgbg nodes: the Figma imageRef of the IMAGE fill
     };
 
     quintptr processNode(const QJsonObject &nodeJson, quintptr parentId, QPoint parentOffset = {})
@@ -1216,6 +1237,18 @@ private:
             }
 
             if (hasImageFill) {
+                // Extract imageRef from the first visible IMAGE fill
+                QString imgRef;
+                for (const auto &fill : fills) {
+                    const auto obj = fill.toObject();
+                    if (obj["type"_L1].toString() == "IMAGE"_L1
+                        && obj.value("visible"_L1).toBool(true)) {
+                        imgRef = obj["imageRef"_L1].toString();
+                        if (!imgRef.isEmpty())
+                            break;
+                    }
+                }
+
                 quintptr imgBgId = m_nextId++;
                 Node imgBgNode;
                 imgBgNode.id = imgBgId;
@@ -1226,6 +1259,7 @@ private:
                 const QRect imgBgRect(0, 0, rect.width(), rect.height());
                 imgBgNode.rect = imgBgRect;
                 imgBgNode.blendMode = QPsdBlend::Normal;
+                imgBgNode.imageRef = imgRef;
 
                 auto *imgItem = new QPsdImageLayerItem();
                 imgItem->setId(imgBgNode.layerId);
@@ -2293,10 +2327,38 @@ public:
         figmaModel.buildFromFigmaJson(fileJson, {}, pageIndex);
 
         // Download images before building the widget model (cloning includes images)
+        //
+        // Two kinds of image downloads:
+        // 1. Regular image nodes → Figma render API (renders the node as PNG)
+        // 2. _imgbg nodes (IMAGE fill backgrounds) → Figma file images API (actual fill textures)
         const auto allImageIds = figmaModel.imageNodeIds();
+        const auto fillRefs = figmaModel.imageFillRefs();  // imageRef → _imgbg figmaId
+        const int totalImages = allImageIds.size() + fillRefs.size();
+        int downloaded = 0;
+
+        if (totalImages > 0)
+            reportProgress(0, totalImages);
+
+        // 1. Download actual fill textures for _imgbg nodes via file images API
+        if (!fillRefs.isEmpty()) {
+            const auto fileImagesResult = client.fetchFileImages(fileKey);
+            const auto meta = fileImagesResult["meta"_L1].toObject();
+            const auto fileImages = meta["images"_L1].toObject();
+            for (auto it = fillRefs.begin(); it != fillRefs.end(); ++it) {
+                const auto &imageRef = it.key();
+                const auto &imgBgFigmaId = it.value();
+                const auto imageUrl = fileImages[imageRef].toString();
+                if (!imageUrl.isEmpty()) {
+                    QImage img = client.downloadImage(QUrl(imageUrl));
+                    if (!img.isNull())
+                        figmaModel.setNodeImage(imgBgFigmaId, img);
+                }
+                reportProgress(++downloaded, totalImages);
+            }
+        }
+
+        // 2. Download regular image nodes via render API
         if (!allImageIds.isEmpty()) {
-            int downloaded = 0;
-            reportProgress(0, allImageIds.size());
             const int batchSize = 50;
             for (int i = 0; i < allImageIds.size(); i += batchSize) {
                 const auto batch = allImageIds.mid(i, batchSize);
@@ -2309,7 +2371,7 @@ public:
                         if (!img.isNull())
                             figmaModel.setNodeImage(nid, img);
                     }
-                    reportProgress(++downloaded, allImageIds.size());
+                    reportProgress(++downloaded, totalImages);
                 }
             }
         }
