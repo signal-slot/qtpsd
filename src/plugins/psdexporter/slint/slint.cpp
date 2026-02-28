@@ -12,6 +12,7 @@
 #include <QtGui/QFontMetrics>
 #include <QtGui/QPen>
 
+#include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdGui/QPsdBorder>
 
 QT_BEGIN_NAMESPACE
@@ -831,6 +832,39 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
     QString name = saveLayerImage(image);
     if (name.isEmpty())
         return true;
+
+    // Apply color overlay (SOFI) effect by baking it into the exported PNG
+    for (const auto &effect : image->effects()) {
+        if (effect.canConvert<QPsdSofiEffect>()) {
+            const auto sofi = effect.value<QPsdSofiEffect>();
+            if (sofi.blendMode() == QPsdBlend::Mode::Normal) {
+                const QString path = dir.absoluteFilePath("images/"_L1 + name);
+                QImage img(path);
+                if (!img.isNull()) {
+                    img = img.convertToFormat(QImage::Format_ARGB32);
+                    const QColor overlayColor(sofi.nativeColor());
+                    const qreal opacity = sofi.opacity();
+                    const int or_ = overlayColor.red();
+                    const int og = overlayColor.green();
+                    const int ob = overlayColor.blue();
+                    for (int y = 0; y < img.height(); ++y) {
+                        QRgb *line = reinterpret_cast<QRgb *>(img.scanLine(y));
+                        for (int x = 0; x < img.width(); ++x) {
+                            const int a = qAlpha(line[x]);
+                            if (a == 0) continue;
+                            const int r = qRound(qRed(line[x]) * (1.0 - opacity) + or_ * opacity);
+                            const int g = qRound(qGreen(line[x]) * (1.0 - opacity) + og * opacity);
+                            const int b = qRound(qBlue(line[x]) * (1.0 - opacity) + ob * opacity);
+                            line[x] = qRgba(r, g, b, a);
+                        }
+                    }
+                    img.save(path);
+                }
+            } else {
+                qWarning() << sofi.blendMode() << "not supported blend mode for Slint color overlay";
+            }
+        }
+    }
 
     element->type = "Image";
     if (!outputBase(imageIndex, element, imports))
