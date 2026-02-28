@@ -19,7 +19,6 @@ Options:
 
 Environment:
   QTPSD_SIMILARITY_LIMIT         Optional PSD file limit
-  QTPSD_SIMILARITY_EXPORTERS     Exporter list for report (default: qtquick,slint,flutter,lvgl)
 EOF
 }
 
@@ -181,7 +180,7 @@ run_cmd env "${qt_plugin_env[@]}" \
   QTPSD_SIMILARITY_OUTPUT_PATH="${docs_dir}" \
   QTPSD_SIMILARITY_SOURCE="${source_id}" \
   QTPSD_SIMILARITY_RUN_EXPORT=0 \
-  QTPSD_SIMILARITY_EXPORTERS="${QTPSD_SIMILARITY_EXPORTERS:-qtquick,slint,flutter,lvgl}" \
+  QTPSD_SIMILARITY_EXPORTERS="qtquick,slint,flutter,lvgl" \
   "${similarity_test}" generateReport
 
 echo "Completed: ${docs_dir}/similarity_report_${source_id}.md"
