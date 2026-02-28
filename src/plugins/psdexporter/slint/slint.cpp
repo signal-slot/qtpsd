@@ -235,6 +235,18 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &element, imports);
             break; }
+        case QPsdAbstractLayerItem::Adjustment: {
+            imageStore = QPsdImageStore(dir, "images"_L1);
+            QString name = saveLayerImage(item);
+            if (name.isEmpty())
+                return true;
+            element.type = "Image";
+            if (!outputBase(index, &element, imports))
+                return false;
+            element.properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
+            element.properties.insert("image-fit", "contain");
+            generated = true;
+            break; }
         default:
             return true;
         }
@@ -507,6 +519,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
+        element->properties.insert("clip", true);
         QRect rect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, rect))
             return false;
@@ -532,6 +545,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         }
     } else {
         element->type = "Rectangle";
+        element->properties.insert("clip", true);
         QRect multiRect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, multiRect))
             return false;
@@ -815,6 +829,8 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
     const auto *image = dynamic_cast<const QPsdImageLayerItem *>(model()->layerItem(imageIndex));
     imageStore = QPsdImageStore(dir, "images"_L1);
     QString name = saveLayerImage(image);
+    if (name.isEmpty())
+        return true;
 
     element->type = "Image";
     if (!outputBase(imageIndex, element, imports))
