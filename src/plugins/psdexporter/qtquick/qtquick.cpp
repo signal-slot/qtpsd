@@ -1501,6 +1501,25 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     *element = shapeElem;
                 else
                     element->children.prepend(shapeElem);
+            } else if (shape->brush().style() == Qt::TexturePattern) {
+                // Composited fill with rounded corners: clip an Image inside a transparent Rectangle
+                QImage texImage = shape->brush().textureImage();
+                if (imageScaling)
+                    texImage = texImage.scaled(path.rect.width() * horizontalScale, path.rect.height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+                QString name = imageStore.save(imageFileName(shape->name(), "PNG"_L1), texImage, "PNG");
+                rectElement.properties.insert("color", "\"transparent\"");
+                rectElement.properties.insert("clip", true);
+                Element imgElement;
+                imgElement.type = "Image";
+                imgElement.properties.insert("anchors.fill", "parent");
+                imgElement.properties.insert("source", u"\"images/%1\""_s.arg(name));
+                imgElement.properties.insert("fillMode", "Image.Stretch");
+                rectElement.children.append(imgElement);
+                gradientHandled = true;
+                if (filled)
+                    *element = rectElement;
+                else
+                    element->children.append(rectElement);
             } else {
                 if (pen.style() != Qt::NoPen) {
                     qreal dw = computeStrokeWidth(pen, unitScale);
