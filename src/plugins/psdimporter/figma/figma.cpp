@@ -1159,7 +1159,12 @@ private:
 
             if (nodeJson.value("clipsContent"_L1).toBool(false)) {
                 QPsdAbstractLayerItem::PathInfo clipMask;
-                clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                if (frameCornerRadius > 0) {
+                    clipMask.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
+                    clipMask.radius = frameCornerRadius;
+                } else {
+                    clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                }
                 clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
                 folderItem->setVectorMask(clipMask);
             }
@@ -1645,8 +1650,6 @@ private:
         if (type == "GRADIENT_LINEAR"_L1) {
             QLinearGradient gradient(x0, y0, x1, y1);
             gradient.setStops(stops);
-            // Figma interpolates gradient colors in straight (non-premultiplied) alpha
-            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
         } else if (type == "GRADIENT_DIAMOND"_L1) {
             // Diamond gradient: iso-lines are diamond-shaped (manhattan distance)
@@ -1690,12 +1693,19 @@ private:
                                 const qreal f = (t - stops[i-1].first) / (stops[i].first - stops[i-1].first);
                                 const QColor &c0 = stops[i-1].second;
                                 const QColor &c1 = stops[i].second;
-                                // Straight alpha interpolation (matches Figma)
-                                c = QColor::fromRgbF(
-                                    c0.redF() + (c1.redF() - c0.redF()) * f,
-                                    c0.greenF() + (c1.greenF() - c0.greenF()) * f,
-                                    c0.blueF() + (c1.blueF() - c0.blueF()) * f,
-                                    c0.alphaF() + (c1.alphaF() - c0.alphaF()) * f);
+                                // Premultiplied alpha interpolation (matches Figma)
+                                const qreal a0 = c0.alphaF(), a1 = c1.alphaF();
+                                const qreal pa0r = c0.redF() * a0, pa0g = c0.greenF() * a0, pa0b = c0.blueF() * a0;
+                                const qreal pa1r = c1.redF() * a1, pa1g = c1.greenF() * a1, pa1b = c1.blueF() * a1;
+                                const qreal a = a0 + (a1 - a0) * f;
+                                if (a > 0.0001) {
+                                    const qreal pr = pa0r + (pa1r - pa0r) * f;
+                                    const qreal pg = pa0g + (pa1g - pa0g) * f;
+                                    const qreal pb = pa0b + (pa1b - pa0b) * f;
+                                    c = QColor::fromRgbF(pr / a, pg / a, pb / a, a);
+                                } else {
+                                    c = QColor::fromRgbF(0, 0, 0, 0);
+                                }
                                 break;
                             }
                         }
@@ -1718,7 +1728,6 @@ private:
                     // Unit circle gradient transformed to the ellipse
                     QRadialGradient gradient(0, 0, 1.0);
                     gradient.setStops(stops);
-                    gradient.setInterpolationMode(QGradient::ComponentInterpolation);
                     const qreal angle = std::atan2(dy1, dx1) * 180.0 / M_PI;
                     QTransform t;
                     t.translate(x0, y0);
@@ -1732,7 +1741,6 @@ private:
             // Fallback: circular radial gradient
             QRadialGradient gradient(x0, y0, r1 > 0.001 ? r1 : 1.0);
             gradient.setStops(stops);
-            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
         } else if (type == "GRADIENT_ANGULAR"_L1) {
             const qreal angle = std::atan2(y1 - y0, x1 - x0) * 180.0 / M_PI;
@@ -1744,7 +1752,6 @@ private:
                 cwStops.append({pos, stops[i].second});
             }
             gradient.setStops(cwStops);
-            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             return QBrush(gradient);
         }
         return QBrush();
