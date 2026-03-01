@@ -26,8 +26,10 @@ public:
     ~Private();
 
     QMessageBox::StandardButton checkModifiedAndSaved(int index = -1, bool confirm = true, bool all = false);
-private:
     void openFile(const QString &fileName);
+    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options);
+private:
+    void connectViewer(PsdWidget *viewer);
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
 
@@ -145,102 +147,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         if (options.isEmpty())
             return;
 
-        // Determine page indices to import
-        QList<int> pageIndices;
-        if (options.contains("pageIndices"_L1)) {
-            const auto list = options.value("pageIndices"_L1).toList();
-            for (const auto &v : list)
-                pageIndices.append(v.toInt());
-        }
-        if (pageIndices.isEmpty())
-            pageIndices.append(options.value("pageIndex"_L1, 0).toInt());
-
-        QStringList pageNames;
-        if (options.contains("pageNames"_L1)) {
-            const auto list = options.value("pageNames"_L1).toList();
-            for (const auto &v : list)
-                pageNames.append(v.toString());
-        }
-
-        // Helper to connect viewer signals
-        auto connectViewer = [this](PsdWidget *viewer) {
-            connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
-                for (int i = 0; i < tabWidget->count(); i++) {
-                    if (tabWidget->widget(i) == viewer)
-                        tabWidget->setTabText(i, title);
-                }
-                if (tabWidget->currentWidget() == viewer) {
-                    q->setWindowModified(viewer->isWindowModified());
-                    q->setWindowTitle(title + " - " + applicationName);
-                }
-            });
-            connect(viewer, &PsdWidget::selectionInfoChanged, q, [this, viewer](const QString &info) {
-                if (tabWidget->currentWidget() == viewer)
-                    statusbar->showMessage(info);
-            });
-            connect(viewer, &PsdWidget::viewScaleChanged, q, [this, viewer](qreal scale) {
-                if (tabWidget->currentWidget() == viewer) {
-                    int sliderValue = qRound(std::log10(scale) * 100);
-                    scaleSlider->blockSignals(true);
-                    scaleSlider->setValue(sliderValue);
-                    scaleSlider->blockSignals(false);
-                    scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
-                }
-            });
-        };
-
-        for (int pageIdx : pageIndices) {
-            // Create a loading tab with progress bar
-            auto *loadingWidget = new QWidget(q);
-            auto *loadingLayout = new QVBoxLayout(loadingWidget);
-            loadingLayout->setAlignment(Qt::AlignCenter);
-            auto *progressLabel = new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
-            progressLabel->setAlignment(Qt::AlignCenter);
-            auto *progressBar = new QProgressBar();
-            progressBar->setRange(0, 0); // indeterminate
-            progressBar->setFixedWidth(300);
-            loadingLayout->addWidget(progressLabel);
-            loadingLayout->addWidget(progressBar);
-            const QString tabTitle = (pageIdx < pageNames.size())
-                ? tr("Importing %1...").arg(pageNames.at(pageIdx))
-                : tr("Importing...");
-            int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
-            tabWidget->setCurrentIndex(index);
-            updateFileMenus();
-
-            // Prepare per-page options
-            QVariantMap pageOptions = options;
-            pageOptions["pageIndex"_L1] = pageIdx;
-
-            importer->setProgressCallback([progressBar](int value, int maximum) {
-                progressBar->setRange(0, maximum);
-                progressBar->setValue(value);
-            });
-
-            QApplication::setOverrideCursor(Qt::BusyCursor);
-            auto viewer = new PsdWidget(q);
-            const bool ok = viewer->importFrom(importer, pageOptions);
-            QApplication::restoreOverrideCursor();
-
-            importer->setProgressCallback(nullptr);
-
-            // Replace loading tab with result
-            tabWidget->removeTab(index);
-            loadingWidget->deleteLater();
-
-            if (ok) {
-                index = tabWidget->insertTab(index, viewer, viewer->windowIcon(), viewer->windowTitle());
-                connectViewer(viewer);
-                tabWidget->setCurrentIndex(index);
-                updateFileMenus();
-            } else {
-                const QString err = importer->errorMessage();
-                if (!err.isEmpty())
-                    QMessageBox::critical(q, tr("Import Failed"), err);
-                delete viewer;
-                break;
-            }
-        }
+        importWith(importer, options);
     });
 
     connect(save, &QAction::triggered, q, [this]() {
@@ -461,6 +368,33 @@ QMessageBox::StandardButton MainWindow::Private::checkModifiedAndSaved(int index
     return ret;
 }
 
+void MainWindow::Private::connectViewer(PsdWidget *viewer)
+{
+    connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
+        for (int i = 0; i < tabWidget->count(); i++) {
+            if (tabWidget->widget(i) == viewer)
+                tabWidget->setTabText(i, title);
+        }
+        if (tabWidget->currentWidget() == viewer) {
+            q->setWindowModified(viewer->isWindowModified());
+            q->setWindowTitle(title + " - " + applicationName);
+        }
+    });
+    connect(viewer, &PsdWidget::selectionInfoChanged, q, [this, viewer](const QString &info) {
+        if (tabWidget->currentWidget() == viewer)
+            statusbar->showMessage(info);
+    });
+    connect(viewer, &PsdWidget::viewScaleChanged, q, [this, viewer](qreal scale) {
+        if (tabWidget->currentWidget() == viewer) {
+            int sliderValue = qRound(std::log10(scale) * 100);
+            scaleSlider->blockSignals(true);
+            scaleSlider->setValue(sliderValue);
+            scaleSlider->blockSignals(false);
+            scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
+        }
+    });
+}
+
 void MainWindow::Private::openFile(const QString &fileName)
 {
     // check if the file is already opened
@@ -478,31 +412,7 @@ void MainWindow::Private::openFile(const QString &fileName)
     QApplication::restoreOverrideCursor();
     if (viewer->errorMessage().isEmpty()) {
         int index = tabWidget->addTab(viewer, viewer->windowIcon(), viewer->windowTitle());
-        connect(viewer, &PsdWidget::windowTitleChanged, q, [this, viewer](const QString &title) {
-            for (int i = 0; i < tabWidget->count(); i++) {
-                if (tabWidget->widget(i) == viewer) {
-                    tabWidget->setTabText(i, title);
-                }
-            }
-            if (tabWidget->currentWidget() == viewer) {
-                q->setWindowModified(viewer->isWindowModified());
-                q->setWindowTitle(title + " - " + applicationName);
-            }
-        });
-        connect(viewer, &PsdWidget::selectionInfoChanged, q, [this, viewer](const QString &info) {
-            if (tabWidget->currentWidget() == viewer) {
-                statusbar->showMessage(info);
-            }
-        });
-        connect(viewer, &PsdWidget::viewScaleChanged, q, [this, viewer](qreal scale) {
-            if (tabWidget->currentWidget() == viewer) {
-                int sliderValue = qRound(std::log10(scale) * 100);
-                scaleSlider->blockSignals(true);
-                scaleSlider->setValue(sliderValue);
-                scaleSlider->blockSignals(false);
-                scaleLabel->setText(u"%1%"_s.arg(qRound(scale * 100)));
-            }
-        });
+        connectViewer(viewer);
         tabWidget->setTabToolTip(index, fileName);
         tabWidget->setCurrentIndex(index);
         updateRecentFiles(fileName);
@@ -556,12 +466,110 @@ void MainWindow::Private::updateFileMenus()
     imports->setEnabled(true); // imports always enabled since they create new tabs
 }
 
+void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVariantMap &options)
+{
+    // Determine page indices to import
+    QList<int> pageIndices;
+    if (options.contains("pageIndices"_L1)) {
+        const auto list = options.value("pageIndices"_L1).toList();
+        for (const auto &v : list)
+            pageIndices.append(v.toInt());
+    }
+    if (pageIndices.isEmpty())
+        pageIndices.append(options.value("pageIndex"_L1, 0).toInt());
+
+    QStringList pageNames;
+    if (options.contains("pageNames"_L1)) {
+        const auto list = options.value("pageNames"_L1).toList();
+        for (const auto &v : list)
+            pageNames.append(v.toString());
+    }
+
+    for (int pageIdx : pageIndices) {
+        // Create a loading tab with progress bar
+        auto *loadingWidget = new QWidget(q);
+        auto *loadingLayout = new QVBoxLayout(loadingWidget);
+        loadingLayout->setAlignment(Qt::AlignCenter);
+        auto *progressLabel = new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
+        progressLabel->setAlignment(Qt::AlignCenter);
+        auto *progressBar = new QProgressBar();
+        progressBar->setRange(0, 0); // indeterminate
+        progressBar->setFixedWidth(300);
+        loadingLayout->addWidget(progressLabel);
+        loadingLayout->addWidget(progressBar);
+        const QString tabTitle = (pageIdx < pageNames.size())
+            ? tr("Importing %1...").arg(pageNames.at(pageIdx))
+            : tr("Importing...");
+        int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
+        tabWidget->setCurrentIndex(index);
+        updateFileMenus();
+
+        // Prepare per-page options
+        QVariantMap pageOptions = options;
+        pageOptions["pageIndex"_L1] = pageIdx;
+
+        importer->setProgressCallback([progressBar](int value, int maximum) {
+            progressBar->setRange(0, maximum);
+            progressBar->setValue(value);
+        });
+
+        QApplication::setOverrideCursor(Qt::BusyCursor);
+        auto viewer = new PsdWidget(q);
+        const bool ok = viewer->importFrom(importer, pageOptions);
+        QApplication::restoreOverrideCursor();
+
+        importer->setProgressCallback(nullptr);
+
+        // Replace loading tab with result
+        tabWidget->removeTab(index);
+        loadingWidget->deleteLater();
+
+        if (ok) {
+            index = tabWidget->insertTab(index, viewer, viewer->windowIcon(), viewer->windowTitle());
+            connectViewer(viewer);
+            tabWidget->setCurrentIndex(index);
+            updateFileMenus();
+        } else {
+            const QString err = importer->errorMessage();
+            if (!err.isEmpty())
+                QMessageBox::critical(q, tr("Import Failed"), err);
+            delete viewer;
+            break;
+        }
+    }
+}
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , d(new Private(this))
 {}
 
 MainWindow::~MainWindow() = default;
+
+void MainWindow::openFile(const QString &fileName)
+{
+    d->openFile(fileName);
+}
+
+void MainWindow::importFromUrl(const QUrl &url)
+{
+    auto *importer = QPsdImporterPlugin::pluginForUrl(url);
+    if (!importer) {
+        QMessageBox::critical(this, tr("Import Failed"),
+                              tr("No importer plugin found for URL: %1").arg(url.toString()));
+        return;
+    }
+
+    auto options = importer->optionsFromUrl(url);
+    if (!options.contains("apiKey"_L1) || options.value("apiKey"_L1).toString().isEmpty()) {
+        // No API key available — fall back to the interactive dialog
+        options = importer->execImportDialog(this);
+        if (options.isEmpty())
+            return;
+    }
+
+    d->importWith(importer, options);
+}
 
 
 void MainWindow::showEvent(QShowEvent *event)

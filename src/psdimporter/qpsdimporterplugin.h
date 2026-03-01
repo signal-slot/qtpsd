@@ -9,6 +9,7 @@
 
 #include <QtPsdCore/qpsdabstractplugin.h>
 
+#include <QtCore/QUrl>
 #include <QtCore/QVariantMap>
 #include <QtGui/QIcon>
 
@@ -38,6 +39,28 @@ public:
     // Perform import with the given options (no GUI).
     virtual bool importFrom(QPsdExporterTreeItemModel *model,
                             const QVariantMap &options) const = 0;
+
+    // URL-based import support.
+    // Returns true if this plugin can handle the given URL (e.g., figma.com URLs).
+    virtual bool canHandleUrl(const QUrl &url) const { Q_UNUSED(url); return false; }
+
+    // Build an options map from the URL (and settings/env for credentials).
+    // Default returns {"source": url.toString()}.
+    virtual QVariantMap optionsFromUrl(const QUrl &url) const {
+        return {{"source"_L1, url.toString()}};
+    }
+
+    // Find the first importer plugin that can handle the given URL.
+    // Returns nullptr if no plugin matches.
+    static QPsdImporterPlugin *pluginForUrl(const QUrl &url) {
+        const auto allKeys = keys();
+        for (const auto &key : allKeys) {
+            auto *p = plugin(key);
+            if (p && p->canHandleUrl(url))
+                return p;
+        }
+        return nullptr;
+    }
 
     QString errorMessage() const { return m_errorMessage; }
 

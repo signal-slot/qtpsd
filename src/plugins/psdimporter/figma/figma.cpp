@@ -2043,6 +2043,30 @@ public:
     QIcon icon() const override { return QIcon(u":/figma/figma.png"_s); }
     QString name() const override { return u"&Figma..."_s; }
 
+    bool canHandleUrl(const QUrl &url) const override {
+        static const QRegularExpression re(u"figma\\.com/(?:file|design)/([a-zA-Z0-9]+)"_s);
+        return re.match(url.toString()).hasMatch();
+    }
+
+    QVariantMap optionsFromUrl(const QUrl &url) const override {
+        QVariantMap options;
+        options["source"_L1] = url.toString();
+
+        // Resolve API key from QSettings, then environment variables
+        QSettings settings;
+        settings.beginGroup("Importers/Figma"_L1);
+        QString apiKey = settings.value("apiKey"_L1).toString();
+        if (apiKey.isEmpty())
+            apiKey = qEnvironmentVariable("FIGMA_API_KEY");
+        if (apiKey.isEmpty())
+            apiKey = qEnvironmentVariable("FIGMA_ACCESS_TOKEN");
+        if (!apiKey.isEmpty())
+            options["apiKey"_L1] = apiKey;
+
+        options["imageScale"_L1] = settings.value("imageScale"_L1, 2).toInt();
+        return options;
+    }
+
     mutable QJsonObject m_cachedFileJson;
     mutable QString m_cachedFileKey;
 

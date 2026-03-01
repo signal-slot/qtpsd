@@ -4,6 +4,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QtCore/QUrl>
 #include <QtWidgets/QMainWindow>
 
 class MainWindow : public QMainWindow
@@ -13,6 +14,10 @@ class MainWindow : public QMainWindow
 public:
     explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow() override;
+
+public slots:
+    void openFile(const QString &fileName);
+    void importFromUrl(const QUrl &url);
 
 protected:
     void showEvent(QShowEvent *event) override;

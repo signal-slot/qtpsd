@@ -6,10 +6,13 @@
 #include "psdtreeitemmodel.h"
 
 #include <QtCore/QCommandLineParser>
+#include <QtCore/QFileInfo>
 #include <QtCore/QMetaProperty>
 #include <QtCore/QLoggingCategory>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSettings>
+#include <QtCore/QTimer>
+#include <QtCore/QUrl>
 #include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdGui/QPsdFolderLayerItem>
 #include <QtPsdImporter/QPsdImporterPlugin>
@@ -296,6 +299,8 @@ int main(int argc, char *argv[])
                                              "0");
     parser.addOption(importPageIndexOption);
 
+    parser.addPositionalArgument("urls", "PSD files or URLs to open", "[file-or-url...]");
+
     parser.process(app);
 
     if (parser.isSet(listOption)) {
@@ -352,6 +357,22 @@ int main(int argc, char *argv[])
 
     MainWindow window;
     window.show();
+
+    const auto positionalArgs = parser.positionalArguments();
+    for (const auto &arg : positionalArgs) {
+        const QUrl url(arg, QUrl::TolerantMode);
+        if (url.scheme() == "http"_L1 || url.scheme() == "https"_L1) {
+            // URL-based import — needs event loop for network I/O
+            QTimer::singleShot(0, &window, [&window, url]() {
+                window.importFromUrl(url);
+            });
+        } else {
+            // Local file path (file:// scheme or no scheme)
+            const QString path = url.isLocalFile() ? url.toLocalFile() : arg;
+            window.openFile(QFileInfo(path).absoluteFilePath());
+        }
+    }
+
     return app.exec();
 }
 
