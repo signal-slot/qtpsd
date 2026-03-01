@@ -234,6 +234,7 @@ PsdWidget::Private::Private(::PsdWidget *parent)
         nativeBase->addItem(QPsdExporterTreeItemModel::ExportHint::nativeCode2Name(QPsdExporterTreeItemModel::ExportHint::x), QPsdExporterTreeItemModel::ExportHint::NativeComponent::x)
 
     ADDITEM(Container);
+    ADDITEM(TouchArea);
     ADDITEM(Button);
     ADDITEM(Button_Highlighted);
 #undef ADDITEM
@@ -641,11 +642,12 @@ void PsdWidget::Private::updateAttributes()
     case QPsdExporterTreeItemModel::ExportHint::Component:
         customEnabled->setChecked(itemComponentName.isUnique());
         custom->setEnabled(customEnabled->isChecked());
+        customBase->setEnabled(true);
         if (customEnabled->isChecked()) {
             custom->setText(itemComponentName.value());
-            if (itemCustomBase.isUnique()) {
-                customBase->setCurrentText(QPsdExporterTreeItemModel::ExportHint::nativeCode2Name(itemCustomBase.value()));
-            }
+        }
+        if (itemCustomBase.isUnique()) {
+            customBase->setCurrentText(QPsdExporterTreeItemModel::ExportHint::nativeCode2Name(itemCustomBase.value()));
         }
         break;
     case QPsdExporterTreeItemModel::ExportHint::Native:

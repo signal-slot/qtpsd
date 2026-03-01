@@ -86,13 +86,10 @@ QPsdExporterTreeItemModel::ExportHint QPsdExporterTreeItemModel::ExportHint::fro
     int rawNative = obj.value("native"_L1).toInt();
     bool interactive = obj.value("interactive"_L1).toBool(false);
 
-    // Migration: old TouchArea(1) → interactive=true, baseElement=Container
-    if (rawNative == 1) { // old TouchArea enum value
-        if (rawType == Embed && !interactive)
-            interactive = true;
-        rawNative = Container;
-    }
     auto nativeComponent = static_cast<NativeComponent>(rawNative);
+    // TouchArea implies interactive
+    if (nativeComponent == TouchArea)
+        interactive = true;
 
     // Backward compat: read "componentName" with "name" fallback
     QString componentName = obj.value("componentName"_L1).toString();

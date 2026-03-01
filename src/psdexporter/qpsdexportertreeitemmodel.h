@@ -40,7 +40,8 @@ public:
         };
         enum NativeComponent {
             Container,
-            Button = 2,
+            TouchArea,
+            Button,
             Button_Highlighted,
         };
 
@@ -70,6 +71,7 @@ public:
             return x; \
             else
             IF(Container)
+            IF(TouchArea)
             IF(Button)
             IF(Button_Highlighted)
 #undef IF
@@ -91,6 +93,7 @@ public:
             switch (code) {
 #define CASE(x) case x: return parentheses(u###x##_s)
             CASE(Container);
+            CASE(TouchArea);
             CASE(Button);
             CASE(Button_Highlighted);
 #undef CASE
