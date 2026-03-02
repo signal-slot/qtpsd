@@ -2,12 +2,15 @@
 // SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 #include <QtCore/QCborMap>
+#include <QtCore/QDir>
 #include <QtCore/QEventLoop>
+#include <QtCore/QFile>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSettings>
+#include <QtCore/QStandardPaths>
 #include <QtGui/QFontMetrics>
 #include <QtGui/QGuiApplication>
 #include <QtGui/QPainter>
@@ -130,6 +133,90 @@ private:
 
     QNetworkAccessManager m_nam;
     QString m_token;
+};
+
+// ─── FigmaImageCache ──────────────────────────────────────────────────────
+
+class FigmaImageCache
+{
+public:
+    FigmaImageCache(const QString &fileKey, const QString &lastModified)
+    {
+        const auto cacheRoot = QStandardPaths::writableLocation(QStandardPaths::CacheLocation);
+        m_baseDir = cacheRoot + "/figma/"_L1 + sanitize(fileKey);
+
+        QDir dir(m_baseDir);
+        dir.mkpath(u"nodes"_s);
+        dir.mkpath(u"fills"_s);
+
+        // Check version and invalidate nodes/ if the file was modified
+        const auto versionFile = m_baseDir + "/version"_L1;
+        QFile vf(versionFile);
+        bool needsInvalidation = true;
+        if (vf.open(QIODevice::ReadOnly)) {
+            const auto cached = QString::fromUtf8(vf.readAll()).trimmed();
+            vf.close();
+            if (cached == lastModified)
+                needsInvalidation = false;
+        }
+
+        if (needsInvalidation) {
+            // Clear rendered node images (they depend on file version)
+            QDir nodesDir(m_baseDir + "/nodes"_L1);
+            const auto entries = nodesDir.entryList(QDir::Files);
+            for (const auto &f : entries)
+                nodesDir.remove(f);
+
+            // Write new version stamp
+            if (vf.open(QIODevice::WriteOnly | QIODevice::Truncate)) {
+                vf.write(lastModified.toUtf8());
+                vf.close();
+            }
+        }
+    }
+
+    QImage nodeImage(const QString &nodeId, int scale) const
+    {
+        const auto path = m_baseDir + "/nodes/"_L1 + sanitize(nodeId)
+                          + u"@%1x.png"_s.arg(scale);
+        QImage img;
+        if (QFile::exists(path))
+            img.load(path);
+        return img;
+    }
+
+    void saveNodeImage(const QString &nodeId, int scale, const QImage &image)
+    {
+        const auto path = m_baseDir + "/nodes/"_L1 + sanitize(nodeId)
+                          + u"@%1x.png"_s.arg(scale);
+        image.save(path);
+    }
+
+    QImage fillImage(const QString &imageRef) const
+    {
+        const auto path = m_baseDir + "/fills/"_L1 + sanitize(imageRef) + u".png"_s;
+        QImage img;
+        if (QFile::exists(path))
+            img.load(path);
+        return img;
+    }
+
+    void saveFillImage(const QString &imageRef, const QImage &image)
+    {
+        const auto path = m_baseDir + "/fills/"_L1 + sanitize(imageRef) + u".png"_s;
+        image.save(path);
+    }
+
+private:
+    static QString sanitize(const QString &id)
+    {
+        QString s = id;
+        s.replace(u':', u'_');
+        s.replace(u'/', u'_');
+        return s;
+    }
+
+    QString m_baseDir;
 };
 
 // ─── SVG Path Parser ───────────────────────────────────────────────────────
@@ -2354,6 +2441,10 @@ public:
             m_cachedFileJson = fileJson;
         }
 
+        // Initialize disk image cache with version check
+        const auto lastModified = fileJson["lastModified"_L1].toString();
+        FigmaImageCache cache(fileKey, lastModified);
+
         FigmaLayerTreeItemModel figmaModel;
         figmaModel.buildFromFigmaJson(fileJson, {}, pageIndex);
 
@@ -2372,19 +2463,38 @@ public:
 
         // 1. Download actual fill textures for _imgbg nodes via file images API
         if (!fillRefs.isEmpty()) {
-            const auto fileImagesResult = client.fetchFileImages(fileKey);
-            const auto meta = fileImagesResult["meta"_L1].toObject();
-            const auto fileImages = meta["images"_L1].toObject();
+            // Check which fills need downloading (not in cache)
+            QHash<QString, QString> uncachedFillRefs;
             for (auto it = fillRefs.begin(); it != fillRefs.end(); ++it) {
                 const auto &imageRef = it.key();
                 const auto &imgBgFigmaId = it.value();
-                const auto imageUrl = fileImages[imageRef].toString();
-                if (!imageUrl.isEmpty()) {
-                    QImage img = client.downloadImage(QUrl(imageUrl));
-                    if (!img.isNull())
-                        figmaModel.setNodeImage(imgBgFigmaId, img);
+                QImage cached = cache.fillImage(imageRef);
+                if (!cached.isNull()) {
+                    figmaModel.setNodeImage(imgBgFigmaId, cached);
+                    reportProgress(++downloaded, totalImages);
+                } else {
+                    uncachedFillRefs.insert(imageRef, imgBgFigmaId);
                 }
-                reportProgress(++downloaded, totalImages);
+            }
+
+            // Only call API if there are uncached fills
+            if (!uncachedFillRefs.isEmpty()) {
+                const auto fileImagesResult = client.fetchFileImages(fileKey);
+                const auto meta = fileImagesResult["meta"_L1].toObject();
+                const auto fileImages = meta["images"_L1].toObject();
+                for (auto it = uncachedFillRefs.begin(); it != uncachedFillRefs.end(); ++it) {
+                    const auto &imageRef = it.key();
+                    const auto &imgBgFigmaId = it.value();
+                    const auto imageUrl = fileImages[imageRef].toString();
+                    if (!imageUrl.isEmpty()) {
+                        QImage img = client.downloadImage(QUrl(imageUrl));
+                        if (!img.isNull()) {
+                            figmaModel.setNodeImage(imgBgFigmaId, img);
+                            cache.saveFillImage(imageRef, img);
+                        }
+                    }
+                    reportProgress(++downloaded, totalImages);
+                }
             }
         }
 
@@ -2393,16 +2503,34 @@ public:
             const int batchSize = 50;
             for (int i = 0; i < allImageIds.size(); i += batchSize) {
                 const auto batch = allImageIds.mid(i, batchSize);
-                const auto imagesResult = client.fetchImages(fileKey, batch, u"png"_s, imageScale);
-                const auto images = imagesResult["images"_L1].toObject();
+
+                // Check cache for all nodes in this batch
+                QStringList uncachedIds;
                 for (const auto &nid : batch) {
-                    const auto imageUrl = images[nid].toString();
-                    if (!imageUrl.isEmpty()) {
-                        QImage img = client.downloadImage(QUrl(imageUrl));
-                        if (!img.isNull())
-                            figmaModel.setNodeImage(nid, img);
+                    QImage cached = cache.nodeImage(nid, imageScale);
+                    if (!cached.isNull()) {
+                        figmaModel.setNodeImage(nid, cached);
+                        reportProgress(++downloaded, totalImages);
+                    } else {
+                        uncachedIds.append(nid);
                     }
-                    reportProgress(++downloaded, totalImages);
+                }
+
+                // Only call render API if there are uncached nodes in this batch
+                if (!uncachedIds.isEmpty()) {
+                    const auto imagesResult = client.fetchImages(fileKey, uncachedIds, u"png"_s, imageScale);
+                    const auto images = imagesResult["images"_L1].toObject();
+                    for (const auto &nid : uncachedIds) {
+                        const auto imageUrl = images[nid].toString();
+                        if (!imageUrl.isEmpty()) {
+                            QImage img = client.downloadImage(QUrl(imageUrl));
+                            if (!img.isNull()) {
+                                figmaModel.setNodeImage(nid, img);
+                                cache.saveNodeImage(nid, imageScale, img);
+                            }
+                        }
+                        reportProgress(++downloaded, totalImages);
+                    }
                 }
             }
         }
