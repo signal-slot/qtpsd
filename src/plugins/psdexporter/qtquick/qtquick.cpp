@@ -1751,7 +1751,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             return true;
 
         if (!id.isEmpty()) {
-            if (hint.interactive) {
+            if (hint.interactive || hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea) {
                 Element touchArea { "MouseArea", id };
                 outputBase(index, &touchArea, imports);
                 touchArea.layers.clear();
@@ -1776,6 +1776,9 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         switch (hint.baseElement) {
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             element.type = "Rectangle";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
+            element.type = "MouseArea";
             break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
@@ -1852,6 +1855,9 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         switch (hint.baseElement) {
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
             component.type = "Item";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
+            component.type = "MouseArea";
             break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted:
