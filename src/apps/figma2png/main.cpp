@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
     parser.addVersionOption();
     parser.addOption({{"k"_L1, "api-key"_L1}, "Figma API key (or set FIGMA_API_KEY env var)"_L1, "key"_L1});
     parser.addOption({{"s"_L1, "scale"_L1}, "Image scale (default: 2)"_L1, "scale"_L1, "2"_L1});
+    parser.addOption({{"r"_L1, "render-scale"_L1}, "Render scale factor (default: 1)"_L1, "render-scale"_L1, "1"_L1});
     parser.addPositionalArgument("url"_L1, "Figma design URL"_L1);
     parser.addPositionalArgument("output"_L1, "Output PNG file"_L1);
     parser.process(app);
@@ -95,14 +96,15 @@ int main(int argc, char *argv[])
     QPsdScene scene;
     scene.setModel(wm);
 
-    const QSize size = model.size();
+    const int renderScale = parser.value("render-scale"_L1).toInt();
+    const QSize size = model.size() * renderScale;
     QImage image(size, QImage::Format_ARGB32_Premultiplied);
     const QColor canvasColor = model.canvasColor();
     image.fill(canvasColor.isValid() && canvasColor.alpha() > 0
                ? canvasColor.rgba() : qRgba(0, 0, 0, 0));
 
     QPainter painter(&image);
-    scene.render(&painter);
+    scene.render(&painter, QRectF(QPointF(), size), scene.sceneRect());
     painter.end();
 
     if (!image.save(outputFile)) {
