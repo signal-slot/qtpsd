@@ -1377,9 +1377,14 @@ private:
             shapeItem->setOpacity(opacity);
             shapeItem->setRect(rect);
 
-            const auto brush = brushFromFigmaFills(fills, rect);
-            if (brush.style() != Qt::NoBrush)
-                shapeItem->setBrush(brush);
+            // Figma mask layers define clipping shapes for siblings above
+            // them.  Their fills determine the mask region, but should NOT
+            // render as visible content in the scene.
+            if (!node.isMask) {
+                const auto brush = brushFromFigmaFills(fills, rect);
+                if (brush.style() != Qt::NoBrush)
+                    shapeItem->setBrush(brush);
+            }
 
             const auto strokes = nodeJson["strokes"_L1].toArray();
             const auto strokeWeight = nodeJson["strokeWeight"_L1].toDouble(0);

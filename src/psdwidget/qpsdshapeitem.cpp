@@ -3,6 +3,7 @@
 
 #include "qpsdshapeitem.h"
 #include "qpsdblur_p.h"
+#include "qpsdcustomblend_p.h"
 
 #include <QtCore/QCborMap>
 #include <QtGui/QPainter>
@@ -413,29 +414,9 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
 
         if (useCustomBlend) {
             const qreal opacity = abstractLayer()->opacity() * abstractLayer()->fillOpacity();
-            QImage *backbuffer = dynamic_cast<QImage *>(painter->device());
-            if (backbuffer) {
-                const QTransform xf = painter->combinedTransform();
-                const QRect deviceRect = xf.mapRect(QRectF(QPointF(0, 0), QSizeF(tempImage.size()))).toAlignedRect();
-                const QRect clipped = deviceRect.intersected(backbuffer->rect());
-                if (!clipped.isEmpty()) {
-                    QImage destRegion = backbuffer->copy(clipped).convertToFormat(QImage::Format_ARGB32_Premultiplied);
-                    QImage srcRegion = tempImage.copy(
-                        clipped.x() - deviceRect.x(),
-                        clipped.y() - deviceRect.y(),
-                        clipped.width(), clipped.height()
-                    ).convertToFormat(QImage::Format_ARGB32_Premultiplied);
-                    QtPsdGui::customBlend(destRegion, srcRegion, blendMode, opacity);
-                    painter->save();
-                    painter->resetTransform();
-                    painter->setCompositionMode(QPainter::CompositionMode_Source);
-                    painter->setOpacity(1.0);
-                    painter->drawImage(clipped.topLeft(), destRegion);
-                    painter->restore();
-                }
-            } else {
-                painter->drawImage(0, 0, tempImage);
-            }
+            drawCustomBlended(painter, tempImage,
+                              QRectF(QPointF(0, 0), QSizeF(tempImage.size())),
+                              blendMode, opacity);
         } else {
             painter->drawImage(0, 0, tempImage);
         }
