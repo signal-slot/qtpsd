@@ -2059,7 +2059,10 @@ static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,
             leafRecord.setName(name.toUtf8());
             leafRecord.setBlendMode(blendMode == QPsdBlend::PassThrough ? QPsdBlend::Normal : blendMode);
             leafRecord.setOpacity(qRound(item->opacity() * 255.0));
-            leafRecord.setFlags(0x00);
+            // In Figma, isMask layers define clipping shape but are not rendered visually.
+            // Set the PSD "hidden" flag (0x02) so the mask layer is invisible,
+            // while still acting as the clipping base for NonBase siblings.
+            leafRecord.setFlags(isMask ? 0x02 : 0x00);
             if (isClipped)
                 leafRecord.setClipping(QPsdLayerRecord::NonBase);
             QHash<QByteArray, QVariant> leafALI;
