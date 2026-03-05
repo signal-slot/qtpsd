@@ -250,27 +250,29 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
     artboardOffset = QPoint();
     effectiveCanvasSize = QSize();
 
-    // Always scan for artboards — needed for both default and artboardToOrigin modes.
-    // Default mode places the first artboard at origin; artboardToOrigin offsets all artboards.
+    // Scan for artboards to determine effective canvas size.
+    // artboardToOrigin: all artboards at (0,0), canvas = most common artboard size.
+    // !artboardToOrigin: keep Figma layout, canvas = model->size() (full canvas).
     {
-        QRect artboardUnion;
-        QSize firstArtboardSize;
+        QList<QSize> artboardSizes;
         for (int i = 0; i < model->rowCount(); ++i) {
             auto idx = model->index(i, 0);
             const auto *layerItem = model->layerItem(idx);
             if (layerItem && layerItem->type() == QPsdAbstractLayerItem::Folder) {
                 const auto *folder = static_cast<const QPsdFolderLayerItem *>(layerItem);
-                if (folder->artboardRect().isValid()) {
-                    if (firstArtboardSize.isEmpty())
-                        firstArtboardSize = folder->artboardRect().size();
-                    artboardUnion = artboardUnion.united(folder->artboardRect());
-                }
+                if (folder->artboardRect().isValid())
+                    artboardSizes.append(folder->artboardRect().size());
             }
         }
-        if (!artboardUnion.isEmpty()) {
-            if (artboardToOrigin)
-                artboardOffset = -artboardUnion.topLeft();
-            effectiveCanvasSize = firstArtboardSize;
+        if (!artboardSizes.isEmpty() && artboardToOrigin) {
+            int maxCount = 0;
+            for (const auto &s : artboardSizes) {
+                int count = artboardSizes.count(s);
+                if (count > maxCount) {
+                    maxCount = count;
+                    effectiveCanvasSize = s;
+                }
+            }
         }
     }
 
@@ -412,29 +414,22 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
         rect = item->rect();
         if (!index.parent().isValid() && item->type() == QPsdAbstractLayerItem::Folder) {
             // Top-level artboard folder: override position.
-            // Default mode places artboard at origin; artboardToOrigin applies a global offset.
             const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
             if (folder->artboardRect().isValid()) {
                 if (artboardToOrigin) {
-                    rect = folder->artboardRect();
-                    rect.translate(artboardOffset);
-                } else {
+                    // All artboards at origin, window = artboard size
                     rect = QRect(QPoint(0, 0), folder->artboardRect().size());
+                } else {
+                    // Keep original Figma layout
+                    rect = folder->artboardRect();
                 }
             }
         } else if (index.parent().isValid()) {
-            // Child of an artboard folder: PSD uses absolute (document-level) coordinates,
-            // but exporters nest children inside the parent element, so children's
-            // coordinates must be relative to the artboard folder's original position.
-            QModelIndex topLevel = index;
-            while (topLevel.parent().isValid())
-                topLevel = topLevel.parent();
-            const auto *topItem = model()->layerItem(topLevel);
-            if (topItem && topItem->type() == QPsdAbstractLayerItem::Folder) {
-                const auto *topFolder = static_cast<const QPsdFolderLayerItem *>(topItem);
-                if (topFolder->artboardRect().isValid())
-                    rect.translate(-topItem->rect().topLeft());
-            }
+            // Exporters nest children inside parent elements, so coordinates
+            // must be relative to the immediate parent's position.
+            const auto *parentItem = model()->layerItem(index.parent());
+            if (parentItem)
+                rect.translate(-parentItem->rect().topLeft());
         }
         if (makeCompact) {
             rect = indexRectMap.value(index);

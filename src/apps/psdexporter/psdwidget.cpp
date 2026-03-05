@@ -1102,15 +1102,22 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
         // Use the first top-level artboard's individual size (not the union of all positions)
         QSize artboardFrameSize;
         {
+            QList<QSize> artboardSizes;
             for (int i = 0; i < d->model.rowCount(); ++i) {
                 auto idx = d->model.index(i, 0);
                 const auto *item = d->model.layerItem(idx);
                 if (item && item->type() == QPsdAbstractLayerItem::Folder) {
                     const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
-                    if (folder->artboardRect().isValid()) {
-                        artboardFrameSize = folder->artboardRect().size();
-                        break;
-                    }
+                    if (folder->artboardRect().isValid())
+                        artboardSizes.append(folder->artboardRect().size());
+                }
+            }
+            int maxCount = 0;
+            for (const auto &s : artboardSizes) {
+                int count = artboardSizes.count(s);
+                if (count > maxCount) {
+                    maxCount = count;
+                    artboardFrameSize = s;
                 }
             }
         }
