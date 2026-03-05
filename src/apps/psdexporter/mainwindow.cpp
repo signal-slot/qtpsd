@@ -189,6 +189,14 @@ MainWindow::Private::Private(::MainWindow *parent)
         psdWidget->copyViewToClipboard();
     });
 
+    connect(copySelectedLayer, &QAction::triggered, q, [this]() {
+        int index = tabWidget->currentIndex();
+        if (index < 0)
+            return;
+        auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+        psdWidget->copySelectedLayerToClipboard();
+    });
+
     connect(fontMapping, &QAction::triggered, q, [this]() {
         int index = tabWidget->currentIndex();
         if (index < 0)
@@ -462,6 +470,7 @@ void MainWindow::Private::updateFileMenus()
     save->setEnabled(hasPsdWidget && q->isWindowModified());
     close->setEnabled(hasTabs);
     copyView->setEnabled(hasPsdWidget);
+    copySelectedLayer->setEnabled(hasPsdWidget);
     fontMapping->setEnabled(hasPsdWidget);
     imports->setEnabled(true); // imports always enabled since they create new tabs
 }

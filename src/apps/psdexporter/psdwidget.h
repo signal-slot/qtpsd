@@ -38,6 +38,7 @@ public slots:
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
     bool importFrom(QPsdImporterPlugin *importer, const QVariantMap options);
     void copyViewToClipboard();
+    void copySelectedLayerToClipboard();
     void setViewScale(qreal scale);
     void fitToView();
     void showFontMappingDialog();

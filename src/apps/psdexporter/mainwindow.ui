@@ -83,6 +83,7 @@
      <string>&amp;Edit</string>
     </property>
     <addaction name="copyView"/>
+    <addaction name="copySelectedLayer"/>
     <addaction name="separator"/>
     <addaction name="fontMapping"/>
    </widget>
@@ -207,6 +208,14 @@
    </property>
    <property name="text">
     <string>&amp;Copy View</string>
+   </property>
+  </action>
+  <action name="copySelectedLayer">
+   <property name="icon">
+    <iconset theme="QIcon::ThemeIcon::EditCopy"/>
+   </property>
+   <property name="text">
+    <string>Copy &amp;Selected Layer</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+Shift+C</string>

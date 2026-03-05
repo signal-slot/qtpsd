@@ -4,6 +4,7 @@
 #ifndef QPSDABSTRACTITEM_H
 #define QPSDABSTRACTITEM_H
 
+#include <QtPsdWidget/qpsdwidgetglobal.h>
 #include <QtPsdGui/QPsdAbstractLayerItem>
 
 #include <QtGui/QPainter>
@@ -12,7 +13,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class QPsdAbstractItem : public QGraphicsItem
+class Q_PSDWIDGET_EXPORT QPsdAbstractItem : public QGraphicsItem
 {
 public:
     QPsdAbstractItem(const QModelIndex &index, const QPsdAbstractLayerItem *layer, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent = nullptr);

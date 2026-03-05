@@ -9,6 +9,7 @@
 
 #include <QtPsdGui/QPsdFolderLayerItem>
 #include <QtPsdGui/QPsdTextLayerItem>
+#include <QtPsdWidget/QPsdAbstractItem>
 #include <QtPsdWidget/QPsdFontMappingDialog>
 #include <QtPsdWidget/QPsdScene>
 #include <QtPsdImporter/QPsdImporterPlugin>
@@ -1010,6 +1011,59 @@ void PsdWidget::copyViewToClipboard()
     scene->render(&painter);
     painter.end();
 
+    QApplication::clipboard()->setImage(image);
+}
+
+void PsdWidget::copySelectedLayerToClipboard()
+{
+    // 1. Get selected row from tree view
+    auto rows = d->treeView->selectionModel()->selectedRows();
+    if (rows.size() != 1)
+        return;
+    QModelIndex sourceIndex = d->model.mapToSource(rows.first());
+
+    // 2. Find corresponding QPsdAbstractItem in scene
+    auto *scene = d->psdView->scene();
+    if (!scene)
+        return;
+    QPsdAbstractItem *targetItem = nullptr;
+    for (auto *item : scene->items()) {
+        auto *psdItem = dynamic_cast<QPsdAbstractItem *>(item);
+        if (psdItem && psdItem->modelIndex() == sourceIndex) {
+            targetItem = psdItem;
+            break;
+        }
+    }
+    if (!targetItem)
+        return;
+
+    // 3. Get bounding rect including all descendants
+    QRectF rect = targetItem->sceneBoundingRect();
+    QRectF childrenRect = targetItem->childrenBoundingRect();
+    if (!childrenRect.isEmpty())
+        rect = rect.united(targetItem->mapToScene(childrenRect).boundingRect());
+
+    // 4. Hide other top-level items
+    QList<QGraphicsItem *> hiddenItems;
+    for (auto *item : scene->items()) {
+        if (!item->parentItem() && item != targetItem && item->isVisible()) {
+            item->setVisible(false);
+            hiddenItems.append(item);
+        }
+    }
+
+    // 5. Render
+    QImage image(rect.size().toSize(), QImage::Format_ARGB32);
+    image.fill(Qt::transparent);
+    QPainter painter(&image);
+    scene->render(&painter, QRectF(), rect);
+    painter.end();
+
+    // 6. Restore hidden items
+    for (auto *item : hiddenItems)
+        item->setVisible(true);
+
+    // 7. Copy to clipboard
     QApplication::clipboard()->setImage(image);
 }
 
