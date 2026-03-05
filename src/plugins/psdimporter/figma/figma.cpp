@@ -986,7 +986,11 @@ private:
             textItem->setRect(rect);
 
             QList<QPsdTextLayerItem::Run> runs;
-            const auto characters = nodeJson["characters"_L1].toString();
+            auto characters = nodeJson["characters"_L1].toString();
+            // Figma uses U+2028 (LINE SEPARATOR) and U+2029 (PARAGRAPH SEPARATOR)
+            // for line breaks; normalize to \n for QPsdTextItem which splits on \n.
+            characters.replace(QChar(0x2028), QChar('\n'));
+            characters.replace(QChar(0x2029), QChar('\n'));
             const auto style = nodeJson["style"_L1].toObject();
 
             // QPsdTextItem divides lineHeight by dpiScale, but Figma's lineHeightPx
