@@ -1752,6 +1752,7 @@ private:
                 const qreal x2 = h2["x"_L1].toDouble() * rect.width();
                 const qreal y2 = h2["y"_L1].toDouble() * rect.height();
                 QLinearGradient gradient(0, 0, 1, 0);
+                gradient.setInterpolationMode(QGradient::ComponentInterpolation);
                 gradient.setStops(stops);
                 QTransform t(
                     x1 - x0, y1 - y0,
@@ -1763,6 +1764,7 @@ private:
                 return brush;
             }
             QLinearGradient gradient(x0, y0, x1, y1);
+            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             gradient.setStops(stops);
             return QBrush(gradient);
         } else if (type == "GRADIENT_DIAMOND"_L1) {
@@ -1841,6 +1843,7 @@ private:
                 if (r2 > 0.001) {
                     // Unit circle gradient transformed to the ellipse
                     QRadialGradient gradient(0, 0, 1.0);
+                    gradient.setInterpolationMode(QGradient::ComponentInterpolation);
                     gradient.setStops(stops);
                     const qreal angle = std::atan2(dy1, dx1) * 180.0 / M_PI;
                     QTransform t;
@@ -1854,11 +1857,13 @@ private:
             }
             // Fallback: circular radial gradient
             QRadialGradient gradient(x0, y0, r1 > 0.001 ? r1 : 1.0);
+            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             gradient.setStops(stops);
             return QBrush(gradient);
         } else if (type == "GRADIENT_ANGULAR"_L1) {
             const qreal angle = std::atan2(y1 - y0, x1 - x0) * 180.0 / M_PI;
             QConicalGradient gradient(x0, y0, angle);
+            gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             // Figma sweeps CW, Qt sweeps CCW: reverse stops to flip direction
             QGradientStops cwStops;
             for (int i = stops.size() - 1; i >= 0; --i) {
