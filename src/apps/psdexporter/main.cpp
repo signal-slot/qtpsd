@@ -165,7 +165,9 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
     return 0;
 }
 
-static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale, const QList<int> &pageIndices)
+static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale, const QList<int> &pageIndices,
+                         const QString &exportType = {}, const QString &outdir = {}, const QStringList &propertyArgs = {},
+                         const QString &resolution = "original"_L1, bool makeCompact = false, bool artboardToOrigin = false, const QString &licenseText = {})
 {
     auto plugin = QPsdImporterPlugin::plugin(importType.toUtf8());
     if (!plugin) {
@@ -209,6 +211,71 @@ static int runAutoImport(const QString &importType, const QString &source, const
         qInfo() << "Import completed successfully";
         qInfo() << "File name:" << model.fileName();
         qInfo() << "Size:" << model.size();
+
+        // Export if --type and --outdir were also specified
+        if (!exportType.isEmpty() && !outdir.isEmpty()) {
+            auto exporter = QPsdExporterPlugin::plugin(exportType.toUtf8());
+            if (!exporter) {
+                qCritical() << "Unknown exporter type:" << exportType;
+                return 1;
+            }
+
+            // Apply plugin properties
+            const auto *mo = exporter->metaObject();
+            for (const auto &arg : propertyArgs) {
+                const auto parts = arg.split('='_L1);
+                if (parts.size() != 2) continue;
+                const auto propName = parts[0].toUtf8();
+                const auto propValue = parts[1];
+                int idx = mo->indexOfProperty(propName.constData());
+                if (idx < 0) continue;
+                const auto prop = mo->property(idx);
+                if (prop.isEnumType()) {
+                    const auto enumerator = prop.enumerator();
+                    for (int j = 0; j < enumerator.keyCount(); j++) {
+                        if (propValue.compare(QString::fromLatin1(enumerator.key(j)), Qt::CaseInsensitive) == 0) {
+                            prop.write(exporter, enumerator.value(j));
+                            break;
+                        }
+                    }
+                } else if (prop.typeId() == QMetaType::Bool) {
+                    prop.write(exporter, QVariant(propValue).toBool());
+                } else {
+                    prop.write(exporter, propValue);
+                }
+            }
+
+            QDir outDir(outdir);
+            if (!outDir.exists())
+                outDir.mkpath(".");
+
+            QSize originalSize = model.size();
+            QSize outputSize = parseResolution(resolution, originalSize);
+            if (outputSize.isEmpty())
+                outputSize = originalSize;
+
+            QPsdExporterPlugin::ExportConfig config;
+            config.targetSize = outputSize;
+            config.fontScaleFactor = 1.0;
+            config.makeCompact = makeCompact;
+            config.imageScaling = false;
+            config.artboardToOrigin = artboardToOrigin;
+            config.licenseText = licenseText;
+
+            QString exportTarget = outdir;
+            if (exporter->exportType() == QPsdExporterPlugin::File) {
+                const auto filters = exporter->filters();
+                QString extension = filters.isEmpty() ? ".out"_L1 : filters.values().at(0);
+                exportTarget = outDir.filePath(model.fileName() + extension);
+            }
+
+            qInfo() << "Exporting to" << exportTarget << "using" << exportType;
+            if (!exporter->exportTo(&model, exportTarget, config)) {
+                qCritical() << "Export failed";
+                return 1;
+            }
+            qInfo() << "Export completed successfully";
+        }
     }
 
     return 0;
@@ -326,11 +393,21 @@ int main(int argc, char *argv[])
             pageIndices.append(part.trimmed().toInt());
         if (pageIndices.isEmpty())
             pageIndices.append(0);
+        QStringList propertyArgs;
+        if (parser.isSet(effectModeOption))
+            propertyArgs << u"effectMode=%1"_s.arg(parser.value(effectModeOption));
         return runAutoImport(parser.value(importTypeOption),
                              parser.value(importSourceOption),
                              parser.value(importApiKeyOption),
                              parser.value(importScaleOption).toInt(),
-                             pageIndices);
+                             pageIndices,
+                             parser.value(typeOption),
+                             parser.value(outdirOption),
+                             propertyArgs,
+                             parser.value(resolutionOption),
+                             parser.isSet(makeCompactOption),
+                             parser.isSet(artboardOriginOption),
+                             parser.value(licenseTextOption));
     }
 
     bool hasInput = parser.isSet(inputOption);

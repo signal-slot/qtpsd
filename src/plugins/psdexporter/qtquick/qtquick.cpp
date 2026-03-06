@@ -141,6 +141,12 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
             return false;
     }
 
+    // Expose artboard children as property aliases for external control (z, visible, etc.)
+    for (const auto &child : std::as_const(window.children)) {
+        if (!child.id.isEmpty())
+            window.properties.insert(u"property alias %1"_s.arg(child.id), child.id);
+    }
+
     if (!saveTo("MainWindow.ui", &window, imports, exports))
         return false;
 
@@ -367,6 +373,23 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     if (!outputBase(folderIndex, element, imports))
         return false;
 
+    // Top-level artboard folders: use clip: true instead of MultiEffect mask.
+    // MultiEffect mask + layer.enabled + blend ShaderEffects inside = blank rendering.
+    // Artboard corner radii are Figma frame decorations, not visible in the exported app.
+    if (!folderIndex.parent().isValid() && folder && folder->artboardRect().isValid()) {
+        if (!element->layers.isEmpty()) {
+            element->layers.clear();
+            if (!element->properties.contains("clip"_L1))
+                element->properties.insert("clip"_L1, true);
+        }
+        // Generate id from artboard name for property alias access
+        if (element->id.isEmpty()) {
+            const auto artboardId = toLowerCamelCase(item->name());
+            if (!artboardId.isEmpty())
+                element->id = artboardId;
+        }
+    }
+
     // Determine the blend mode to propagate to children
     const auto folderBlendMode = item->record().blendMode();
     QPsdBlend::Mode nextGroupBlendMode = groupBlendMode;
@@ -394,6 +417,38 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     }
     if (effectMode() != NoGPU)
         applyBlendModes(element, imports);
+
+    // When mask effect (layers) coexists with blend compositing (ShaderEffect children
+    // from applyBlendModes) or explicit layer.enabled (from blend mode), wrap children
+    // in an inner Item. The serialization always adds layer.enabled when layers exist,
+    // and layer.enabled + layer.effect: MultiEffect { maskEnabled } on the same Item
+    // that contains ShaderEffect blend children causes blank rendering.
+    if (!element->layers.isEmpty()) {
+        bool needsWrapping = element->properties.contains("layer.enabled"_L1);
+        if (!needsWrapping) {
+            for (const auto &child : std::as_const(element->children)) {
+                if (child.type == "ShaderEffect"_L1) {
+                    needsWrapping = true;
+                    break;
+                }
+            }
+        }
+        if (needsWrapping) {
+            Element inner;
+            inner.type = "Item"_L1;
+            inner.properties.insert("anchors.fill"_L1, "parent"_L1);
+            if (element->properties.contains("layer.enabled"_L1)) {
+                inner.properties.insert("layer.enabled"_L1, true);
+                element->properties.remove("layer.enabled"_L1);
+            }
+            if (element->properties.contains("property string blendMode"_L1))
+                inner.properties.insert("property string blendMode"_L1, element->properties.take("property string blendMode"_L1));
+            inner.children = element->children;
+            element->children.clear();
+            element->children.append(inner);
+        }
+    }
+
     return true;
 }
 
@@ -1934,6 +1989,29 @@ bool QPsdExporterQtQuickPlugin::saveTo(const QString &baseName, Element *element
             if (layer.type.trimmed().isEmpty()) {
                 apply(parent);
                 return;
+            }
+            // Extract inline maskSource from layer effect and promote to a separate
+            // child of the parent with visible:false + layer.enabled:true + unique id.
+            // Inline maskSource inside layer.effect doesn't render as a texture;
+            // it must be a scene graph item referenced by id.
+            for (int i = layer.children.size() - 1; i >= 0; i--) {
+                auto &child = layer.children[i];
+                if (child.type.startsWith("maskSource:"_L1)) {
+                    const auto maskId = u"_mask_%1"_s.arg(m_blendCounter++);
+                    // Create the mask item as a child of parent
+                    Element maskItem;
+                    maskItem.id = maskId;
+                    // "maskSource: Rectangle" → "Rectangle"
+                    maskItem.type = child.type.mid(child.type.indexOf(':'_L1) + 2);
+                    maskItem.properties = child.properties;
+                    maskItem.children = child.children;
+                    maskItem.properties.insert("visible"_L1, false);
+                    maskItem.properties.insert("layer.enabled"_L1, true);
+                    parent->children.prepend(maskItem);
+                    // Replace inline child with id reference property
+                    layer.properties.insert("maskSource"_L1, maskId);
+                    layer.children.removeAt(i);
+                }
             }
             layer.type = "layer.effect: " + layer.type;
             parent->properties.insert("layer.enabled", true);

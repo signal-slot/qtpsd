@@ -279,7 +279,12 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
     const QSize originalSize = model->size();
     const QSize canvasForScaling = !effectiveCanvasSize.isEmpty()
         ? effectiveCanvasSize : originalSize;
-    const QSize targetSize = config.targetSize.isEmpty() ? canvasForScaling : config.targetSize;
+    // When artboardToOrigin resizes the canvas, "original" resolution (targetSize == full canvas)
+    // should map to the artboard size, not the full canvas.
+    QSize adjustedTargetSize = config.targetSize;
+    if (artboardToOrigin && !effectiveCanvasSize.isEmpty() && adjustedTargetSize == originalSize)
+        adjustedTargetSize = effectiveCanvasSize;
+    const QSize targetSize = adjustedTargetSize.isEmpty() ? canvasForScaling : adjustedTargetSize;
     horizontalScale = targetSize.width() / qreal(canvasForScaling.width());
     verticalScale = targetSize.height() / qreal(canvasForScaling.height());
     unitScale = std::min(horizontalScale, verticalScale);
