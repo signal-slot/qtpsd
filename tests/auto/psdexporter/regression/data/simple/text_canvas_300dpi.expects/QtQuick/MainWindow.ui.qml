@@ -4,6 +4,7 @@ Item {
     height: 240
     width: 640
     Item {
+        id: 1
         height: 240
         width: 640
         x: 0

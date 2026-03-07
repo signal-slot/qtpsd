@@ -5,6 +5,7 @@ Item {
     height: 240
     width: 320
     Item {
+        id: 1
         height: 240
         width: 320
         x: 0

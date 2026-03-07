@@ -106,6 +106,8 @@ public:
     }
 
     void updateOriginalResolution(bool useArtboard) {
+        // artboardToOrigin=true: stacking mode → artboard size
+        // artboardToOrigin=false: layout mode → full canvas size
         const QSize &s = (useArtboard && !artboardSize.isEmpty()) ? artboardSize : canvasSize;
         resolution->setItemText(0, tr("Original\t(%1x%2)").arg(s.width()).arg(s.height()));
         resolution->setItemData(0, s);

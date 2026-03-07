@@ -142,8 +142,9 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     }
 
     // Expose artboard children as property aliases for external control (z, visible, etc.)
+    // Only generate aliases for top-level artboard folders (identified by clip:true from outputFolder)
     for (const auto &child : std::as_const(window.children)) {
-        if (!child.id.isEmpty())
+        if (!child.id.isEmpty() && child.properties.value("clip"_L1) == QVariant(true))
             window.properties.insert(u"property alias %1"_s.arg(child.id), child.id);
     }
 

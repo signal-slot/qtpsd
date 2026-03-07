@@ -250,28 +250,38 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
     artboardOffset = QPoint();
     effectiveCanvasSize = QSize();
 
-    // Scan for artboards to determine effective canvas size.
-    // artboardToOrigin: all artboards at (0,0), canvas = most common artboard size.
-    // !artboardToOrigin: keep Figma layout, canvas = model->size() (full canvas).
+    // Scan for artboards to determine layout mode.
+    // artboardToOrigin=true:  move all artboards to (0,0), canvas = artboard size
+    // artboardToOrigin=false: preserve Figma layout, canvas = full bounding box
     {
+        QRect artboardUnion;
         QList<QSize> artboardSizes;
         for (int i = 0; i < model->rowCount(); ++i) {
             auto idx = model->index(i, 0);
             const auto *layerItem = model->layerItem(idx);
             if (layerItem && layerItem->type() == QPsdAbstractLayerItem::Folder) {
                 const auto *folder = static_cast<const QPsdFolderLayerItem *>(layerItem);
-                if (folder->artboardRect().isValid())
+                if (folder->artboardRect().isValid()) {
                     artboardSizes.append(folder->artboardRect().size());
+                    artboardUnion = artboardUnion.united(folder->artboardRect());
+                }
             }
         }
-        if (!artboardSizes.isEmpty() && artboardToOrigin) {
-            int maxCount = 0;
-            for (const auto &s : artboardSizes) {
-                int count = artboardSizes.count(s);
-                if (count > maxCount) {
-                    maxCount = count;
-                    effectiveCanvasSize = s;
+        if (!artboardUnion.isEmpty()) {
+            if (artboardToOrigin) {
+                // Stacking mode: all artboards at (0,0), canvas = most common artboard size
+                int maxCount = 0;
+                for (const auto &s : artboardSizes) {
+                    int count = artboardSizes.count(s);
+                    if (count > maxCount) {
+                        maxCount = count;
+                        effectiveCanvasSize = s;
+                    }
                 }
+            } else {
+                // Layout mode: preserve positions, shift bounding box to start at (0,0)
+                artboardOffset = -artboardUnion.topLeft();
+                effectiveCanvasSize = artboardUnion.translated(-artboardUnion.topLeft()).size();
             }
         }
     }
@@ -279,12 +289,7 @@ bool QPsdExporterPlugin::initializeExport(const QPsdExporterTreeItemModel *model
     const QSize originalSize = model->size();
     const QSize canvasForScaling = !effectiveCanvasSize.isEmpty()
         ? effectiveCanvasSize : originalSize;
-    // When artboardToOrigin resizes the canvas, "original" resolution (targetSize == full canvas)
-    // should map to the artboard size, not the full canvas.
-    QSize adjustedTargetSize = config.targetSize;
-    if (artboardToOrigin && !effectiveCanvasSize.isEmpty() && adjustedTargetSize == originalSize)
-        adjustedTargetSize = effectiveCanvasSize;
-    const QSize targetSize = adjustedTargetSize.isEmpty() ? canvasForScaling : adjustedTargetSize;
+    const QSize targetSize = config.targetSize.isEmpty() ? canvasForScaling : config.targetSize;
     horizontalScale = targetSize.width() / qreal(canvasForScaling.width());
     verticalScale = targetSize.height() / qreal(canvasForScaling.height());
     unitScale = std::min(horizontalScale, verticalScale);
@@ -418,23 +423,33 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
     if (rectBounds.isEmpty()) {
         rect = item->rect();
         if (!index.parent().isValid() && item->type() == QPsdAbstractLayerItem::Folder) {
-            // Top-level artboard folder: override position.
+            // Top-level artboard folder: override position based on layout mode.
             const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
             if (folder->artboardRect().isValid()) {
                 if (artboardToOrigin) {
-                    // All artboards at origin, window = artboard size
+                    // Stacking mode: all artboards at (0,0)
                     rect = QRect(QPoint(0, 0), folder->artboardRect().size());
                 } else {
-                    // Keep original Figma layout
+                    // Layout mode: preserve Figma position, shifted so bounding box starts at (0,0)
                     rect = folder->artboardRect();
+                    rect.translate(artboardOffset);
                 }
             }
         } else if (index.parent().isValid()) {
-            // Exporters nest children inside parent elements, so coordinates
-            // must be relative to the immediate parent's position.
-            const auto *parentItem = model()->layerItem(index.parent());
-            if (parentItem)
-                rect.translate(-parentItem->rect().topLeft());
+            // Artboard descendants: convert absolute PSD coordinates to parent-relative.
+            // Exporters nest children inside parent elements, so each item's position
+            // must be relative to its direct parent's absolute rect.
+            QModelIndex topLevel = index;
+            while (topLevel.parent().isValid())
+                topLevel = topLevel.parent();
+            const auto *topItem = model()->layerItem(topLevel);
+            if (topItem && topItem->type() == QPsdAbstractLayerItem::Folder) {
+                const auto *topFolder = static_cast<const QPsdFolderLayerItem *>(topItem);
+                if (topFolder->artboardRect().isValid()) {
+                    const auto *parentItem = model()->layerItem(index.parent());
+                    rect.translate(-parentItem->rect().topLeft());
+                }
+            }
         }
         if (makeCompact) {
             rect = indexRectMap.value(index);

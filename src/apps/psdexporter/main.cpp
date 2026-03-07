@@ -18,7 +18,7 @@
 #include <QtPsdImporter/QPsdImporterPlugin>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 
-static QSize parseResolution(const QString &resolution, const QSize &originalSize)
+static QSize parseResolution(const QString &resolution, bool *ok = nullptr)
 {
     static const QHash<QString, QSize> presets = {
         {"original", QSize()},
@@ -33,17 +33,19 @@ static QSize parseResolution(const QString &resolution, const QSize &originalSiz
 
     QString lower = resolution.toLower();
     if (presets.contains(lower)) {
-        QSize size = presets.value(lower);
-        return size.isEmpty() ? originalSize : size;
+        if (ok) *ok = true;
+        return presets.value(lower);
     }
 
     // Try to parse as WIDTHxHEIGHT
     QRegularExpression re("^(\\d+)x(\\d+)$");
     auto match = re.match(resolution);
     if (match.hasMatch()) {
+        if (ok) *ok = true;
         return QSize(match.captured(1).toInt(), match.captured(2).toInt());
     }
 
+    if (ok) *ok = false;
     return QSize(); // Invalid
 }
 
@@ -118,22 +120,10 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         return 1;
     }
 
-    QSize originalSize = model.size();
-    if (artboardToOrigin) {
-        for (int i = 0; i < model.rowCount(); ++i) {
-            auto idx = model.index(i, 0);
-            const auto *item = model.layerItem(idx);
-            if (item && item->type() == QPsdAbstractLayerItem::Folder) {
-                const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
-                if (folder->artboardRect().isValid()) {
-                    originalSize = folder->artboardRect().size();
-                    break;
-                }
-            }
-        }
-    }
-    QSize outputSize = parseResolution(resolution, originalSize);
-    if (outputSize.isEmpty()) {
+    // "original" → empty targetSize so initializeExport uses effectiveCanvasSize
+    bool resOk = false;
+    QSize outputSize = parseResolution(resolution, &resOk);
+    if (!resOk) {
         qCritical() << "Invalid resolution:" << resolution;
         qCritical() << "Use preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT format";
         return 1;
@@ -249,10 +239,8 @@ static int runAutoImport(const QString &importType, const QString &source, const
             if (!outDir.exists())
                 outDir.mkpath(".");
 
-            QSize originalSize = model.size();
-            QSize outputSize = parseResolution(resolution, originalSize);
-            if (outputSize.isEmpty())
-                outputSize = originalSize;
+            // "original" → empty targetSize so initializeExport uses effectiveCanvasSize
+            QSize outputSize = parseResolution(resolution);
 
             QPsdExporterPlugin::ExportConfig config;
             config.targetSize = outputSize;
