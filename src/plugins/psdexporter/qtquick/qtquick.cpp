@@ -440,20 +440,49 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
             }
             return nullptr;
         };
+        // Extract the first Image element from an element tree
+        std::function<Element *(Element &)> findImage = [&](Element &el) -> Element * {
+            if (el.type == "Image"_L1) return &el;
+            for (auto &c : el.children)
+                if (auto *found = findImage(c))
+                    return found;
+            return nullptr;
+        };
         // Apply fix recursively at all nesting levels
         std::function<void(Element &)> fixCrossGroupBlend = [&](Element &parent) {
             for (int i = 0; i < parent.children.size(); i++) {
                 if (parent.children[i].type != "Item"_L1) continue;
                 Element *blendBg = findEmptyBlendBg(parent.children[i]);
                 if (!blendBg) continue;
+                bool found = false;
+                // First pass: move a non-blend Image sibling into the empty blend_bg
                 for (int j = 0; j < i; j++) {
-                    if (hasImage(parent.children[j])) {
+                    const auto &candidate = parent.children[j];
+                    if (hasImage(candidate)
+                        && !candidate.id.startsWith("_blend_bg_"_L1)
+                        && !candidate.id.startsWith("_blend_fg_"_L1)) {
                         Element img = parent.children.takeAt(j);
                         i--;
                         blendBg = findEmptyBlendBg(parent.children[i]);
                         if (blendBg)
                             blendBg->children.prepend(img);
+                        found = true;
                         break;
+                    }
+                }
+                // Second pass: if no standalone image found, clone from a sibling blend_bg
+                if (!found) {
+                    for (int j = 0; j < i; j++) {
+                        if (parent.children[j].id.startsWith("_blend_bg_"_L1)
+                            && hasImage(parent.children[j])) {
+                            Element *srcImg = findImage(parent.children[j]);
+                            if (srcImg) {
+                                blendBg = findEmptyBlendBg(parent.children[i]);
+                                if (blendBg)
+                                    blendBg->children.prepend(*srcImg);
+                                break;
+                            }
+                        }
                     }
                 }
             }
