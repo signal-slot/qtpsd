@@ -419,6 +419,51 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     if (effectMode() != NoGPU)
         applyBlendModes(element, imports);
 
+    // Fix cross-group blend: Figma frame fills (_imgbg) are at the frame level,
+    // but blend-mode layers may be inside a sub-frame. The blend background in
+    // the sub-frame won't include the image because they're at different levels.
+    // Move preceding image siblings into the sub-group's _blend_bg element.
+    if (effectMode() != NoGPU) {
+        std::function<bool(const Element &)> hasImage = [&](const Element &el) -> bool {
+            if (el.type == "Image"_L1) return true;
+            for (const auto &c : el.children)
+                if (hasImage(c)) return true;
+            return false;
+        };
+        // Find the deepest _blend_bg_ that has no Image descendants
+        std::function<Element *(Element &)> findEmptyBlendBg = [&](Element &el) -> Element * {
+            for (auto &c : el.children) {
+                if (auto *found = findEmptyBlendBg(c))
+                    return found;
+                if (c.id.startsWith("_blend_bg_"_L1) && !hasImage(c))
+                    return &c;
+            }
+            return nullptr;
+        };
+        // Apply fix recursively at all nesting levels
+        std::function<void(Element &)> fixCrossGroupBlend = [&](Element &parent) {
+            for (int i = 0; i < parent.children.size(); i++) {
+                if (parent.children[i].type != "Item"_L1) continue;
+                Element *blendBg = findEmptyBlendBg(parent.children[i]);
+                if (!blendBg) continue;
+                for (int j = 0; j < i; j++) {
+                    if (hasImage(parent.children[j])) {
+                        Element img = parent.children.takeAt(j);
+                        i--;
+                        blendBg = findEmptyBlendBg(parent.children[i]);
+                        if (blendBg)
+                            blendBg->children.prepend(img);
+                        break;
+                    }
+                }
+            }
+            for (auto &child : parent.children)
+                if (child.type == "Item"_L1)
+                    fixCrossGroupBlend(child);
+        };
+        fixCrossGroupBlend(*element);
+    }
+
     // When mask effect (layers) coexists with blend compositing (ShaderEffect children
     // from applyBlendModes) or explicit layer.enabled (from blend mode), wrap children
     // in an inner Item. The serialization always adds layer.enabled when layers exist,
@@ -481,7 +526,8 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 bgItem.id = u"_blend_bg_%1"_s.arg(m_blendCounter);
                 bgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
                 bgItem.properties.insert(u"layer.enabled"_s, true);
-                bgItem.properties.insert(u"visible"_s, false);
+                bgItem.properties.insert(u"visible"_s, true);
+                bgItem.properties.insert(u"opacity"_s, 0);
                 bgItem.children = accumulated;
 
                 // Wrap blend-mode child as foreground source
@@ -490,7 +536,8 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 fgItem.id = u"_blend_fg_%1"_s.arg(m_blendCounter);
                 fgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
                 fgItem.properties.insert(u"layer.enabled"_s, true);
-                fgItem.properties.insert(u"visible"_s, false);
+                fgItem.properties.insert(u"visible"_s, true);
+                fgItem.properties.insert(u"opacity"_s, 0);
                 fgItem.children.append(child);
 
                 // Blend composites bg + fg using the specified mode
@@ -514,7 +561,8 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 bgItem.id = u"_blend_bg_%1"_s.arg(m_blendCounter);
                 bgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
                 bgItem.properties.insert(u"layer.enabled"_s, true);
-                bgItem.properties.insert(u"visible"_s, false);
+                bgItem.properties.insert(u"visible"_s, true);
+                bgItem.properties.insert(u"opacity"_s, 0);
                 bgItem.children = accumulated;
 
                 // Wrap blend-mode child as foreground source
@@ -523,7 +571,8 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 fgItem.id = u"_blend_fg_%1"_s.arg(m_blendCounter);
                 fgItem.properties.insert(u"anchors.fill"_s, u"parent"_s);
                 fgItem.properties.insert(u"layer.enabled"_s, true);
-                fgItem.properties.insert(u"visible"_s, false);
+                fgItem.properties.insert(u"visible"_s, true);
+                fgItem.properties.insert(u"opacity"_s, 0);
                 fgItem.children.append(child);
 
                 // Map blend mode string to shader constant
