@@ -424,28 +424,22 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     // the sub-frame won't include the image because they're at different levels.
     // Move preceding image siblings into the sub-group's _blend_bg element.
     if (effectMode() != NoGPU) {
-        std::function<bool(const Element &)> hasImage = [&](const Element &el) -> bool {
-            if (el.type == "Image"_L1) return true;
-            for (const auto &c : el.children)
-                if (hasImage(c)) return true;
-            return false;
+        // Find the first Image element in an element tree (nullptr if none)
+        std::function<Element *(Element &)> findImage = [&](Element &el) -> Element * {
+            if (el.type == "Image"_L1) return &el;
+            for (auto &c : el.children)
+                if (auto *found = findImage(c))
+                    return found;
+            return nullptr;
         };
         // Find the deepest _blend_bg_ that has no Image descendants
         std::function<Element *(Element &)> findEmptyBlendBg = [&](Element &el) -> Element * {
             for (auto &c : el.children) {
                 if (auto *found = findEmptyBlendBg(c))
                     return found;
-                if (c.id.startsWith("_blend_bg_"_L1) && !hasImage(c))
+                if (c.id.startsWith("_blend_bg_"_L1) && !findImage(c))
                     return &c;
             }
-            return nullptr;
-        };
-        // Extract the first Image element from an element tree
-        std::function<Element *(Element &)> findImage = [&](Element &el) -> Element * {
-            if (el.type == "Image"_L1) return &el;
-            for (auto &c : el.children)
-                if (auto *found = findImage(c))
-                    return found;
             return nullptr;
         };
         // Apply fix recursively at all nesting levels
@@ -457,12 +451,13 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
                 bool found = false;
                 // First pass: move a non-blend Image sibling into the empty blend_bg
                 for (int j = 0; j < i; j++) {
-                    const auto &candidate = parent.children[j];
-                    if (hasImage(candidate)
+                    auto &candidate = parent.children[j];
+                    if (findImage(candidate)
                         && !candidate.id.startsWith("_blend_bg_"_L1)
                         && !candidate.id.startsWith("_blend_fg_"_L1)) {
                         Element img = parent.children.takeAt(j);
                         i--;
+                        // Re-fetch: takeAt shifted indices, invalidating the old pointer
                         blendBg = findEmptyBlendBg(parent.children[i]);
                         if (blendBg)
                             blendBg->children.prepend(img);
@@ -473,15 +468,12 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
                 // Second pass: if no standalone image found, clone from a sibling blend_bg
                 if (!found) {
                     for (int j = 0; j < i; j++) {
-                        if (parent.children[j].id.startsWith("_blend_bg_"_L1)
-                            && hasImage(parent.children[j])) {
-                            Element *srcImg = findImage(parent.children[j]);
-                            if (srcImg) {
-                                blendBg = findEmptyBlendBg(parent.children[i]);
-                                if (blendBg)
-                                    blendBg->children.prepend(*srcImg);
-                                break;
-                            }
+                        if (!parent.children[j].id.startsWith("_blend_bg_"_L1))
+                            continue;
+                        Element *srcImg = findImage(parent.children[j]);
+                        if (srcImg) {
+                            blendBg->children.prepend(*srcImg);
+                            break;
                         }
                     }
                 }
