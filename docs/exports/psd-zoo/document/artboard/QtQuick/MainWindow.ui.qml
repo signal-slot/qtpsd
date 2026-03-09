@@ -4,6 +4,7 @@ Item {
     height: 400
     width: 400
     Item {
+        id: artboard1
         height: 400
         width: 400
         x: 0

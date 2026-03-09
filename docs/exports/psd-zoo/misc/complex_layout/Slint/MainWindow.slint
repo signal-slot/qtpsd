@@ -34,12 +34,12 @@ export component MainWindow inherits Window {
         }
     }
     Text {
-        clip: true;
         color: #1e1e1e;
         font-family: "Roboto";
         font-size: 20px;
         height: 26px;
         horizontal-alignment: left;
+        overflow: clip;
         text: "Card Title";
         vertical-alignment: bottom;
         width: 87px;
@@ -47,12 +47,12 @@ export component MainWindow inherits Window {
         y: 59px;
     }
     Text {
-        clip: true;
         color: #505050;
         font-family: "Roboto";
         font-size: 12px;
         height: 121px;
         horizontal-alignment: left;
+        overflow: clip;
         text: "This is body text in a card layout with multiple layers and groups.";
         vertical-alignment: bottom;
         width: 250px;

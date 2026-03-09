@@ -520,7 +520,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
     if (runs.size() == 1) {
         const auto run = runs.first();
         element->type = "Text";
-        element->properties.insert("clip", true);
+        element->properties.insert("overflow", "clip");
         QRect rect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, rect))
             return false;

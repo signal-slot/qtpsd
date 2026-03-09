@@ -63,6 +63,7 @@ RUN mkdir -p ${PUB_CACHE} \
     && flutter config --no-analytics \
     && flutter precache \
     && chmod -R a+rX /opt/flutter \
+    && chmod -R a+rwX /opt/flutter/.git /opt/flutter/bin/cache \
     && chmod -R a+rwX ${PUB_CACHE}
 RUN cargo install slint-viewer --locked
 
