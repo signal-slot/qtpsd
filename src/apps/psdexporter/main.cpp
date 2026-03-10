@@ -384,6 +384,94 @@ int main(int argc, char *argv[])
         QStringList propertyArgs;
         if (parser.isSet(effectModeOption))
             propertyArgs << u"effectMode=%1"_s.arg(parser.value(effectModeOption));
+
+        // If --type and --outdir are also set, chain import → export
+        if (parser.isSet(typeOption) && parser.isSet(outdirOption)) {
+            auto importPlugin = QPsdImporterPlugin::plugin(parser.value(importTypeOption).toUtf8());
+            if (!importPlugin) {
+                qCritical() << "Unknown importer type:" << parser.value(importTypeOption);
+                return 1;
+            }
+            auto exportPlugin = QPsdExporterPlugin::plugin(parser.value(typeOption).toUtf8());
+            if (!exportPlugin) {
+                qCritical() << "Unknown exporter type:" << parser.value(typeOption);
+                return 1;
+            }
+
+            const auto mo = exportPlugin->metaObject();
+            for (const auto &arg : propertyArgs) {
+                const auto propParts = arg.split('=');
+                if (propParts.size() != 2) continue;
+                int idx = mo->indexOfProperty(propParts.at(0).toUtf8().constData());
+                if (idx >= 0) {
+                    const auto prop = mo->property(idx);
+                    if (prop.isEnumType()) {
+                        const auto enumerator = prop.enumerator();
+                        for (int j = 0; j < enumerator.keyCount(); j++) {
+                            if (propParts.at(1).compare(QString::fromLatin1(enumerator.key(j)), Qt::CaseInsensitive) == 0) {
+                                prop.write(exportPlugin, enumerator.value(j));
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+
+            QVariantMap baseOptions;
+            baseOptions["source"] = parser.value(importSourceOption);
+            QString key = parser.value(importApiKeyOption);
+            if (key.isEmpty()) {
+                QSettings settings;
+                settings.beginGroup("Importers/Figma");
+                key = settings.value("apiKey").toString();
+            }
+            if (key.isEmpty()) key = qEnvironmentVariable("FIGMA_API_KEY");
+            if (key.isEmpty()) key = qEnvironmentVariable("FIGMA_ACCESS_TOKEN");
+            if (!key.isEmpty()) baseOptions["apiKey"] = key;
+            baseOptions["imageScale"] = parser.value(importScaleOption).toInt();
+
+            for (int pageIdx : pageIndices) {
+                QPsdWidgetTreeItemModel widgetModel;
+                PsdTreeItemModel model;
+                model.setSourceModel(&widgetModel);
+
+                QVariantMap options = baseOptions;
+                options["pageIndex"] = pageIdx;
+
+                qInfo() << "Importing from" << parser.value(importSourceOption) << "page" << pageIdx;
+                if (!importPlugin->importFrom(&model, options)) {
+                    qCritical() << "Import failed:" << importPlugin->errorMessage();
+                    return 1;
+                }
+                qInfo() << "Import completed:" << model.fileName() << model.size();
+
+                QDir outDir(parser.value(outdirOption));
+                if (!outDir.exists()) outDir.mkpath(".");
+
+                QString exportTarget = parser.value(outdirOption);
+                if (exportPlugin->exportType() == QPsdExporterPlugin::File) {
+                    const auto filters = exportPlugin->filters();
+                    QString ext = filters.isEmpty() ? ".out"_L1 : filters.values().at(0);
+                    exportTarget = outDir.filePath(model.fileName() + ext);
+                }
+
+                QPsdExporterPlugin::ExportConfig config;
+                config.targetSize = model.size();
+                config.fontScaleFactor = 1.0;
+                config.makeCompact = parser.isSet(makeCompactOption);
+                config.artboardToOrigin = parser.isSet(artboardOriginOption);
+                config.licenseText = parser.value(licenseTextOption);
+
+                qInfo() << "Exporting to" << exportTarget;
+                if (!exportPlugin->exportTo(&model, exportTarget, config)) {
+                    qCritical() << "Export failed";
+                    return 1;
+                }
+                qInfo() << "Export completed successfully";
+            }
+            return 0;
+        }
+
         return runAutoImport(parser.value(importTypeOption),
                              parser.value(importSourceOption),
                              parser.value(importApiKeyOption),

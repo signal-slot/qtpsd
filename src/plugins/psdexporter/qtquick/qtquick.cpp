@@ -12,7 +12,9 @@
 
 #include <QtGui/QBrush>
 #include <QtGui/QFontMetrics>
+#include <QtGui/QGuiApplication>
 #include <QtGui/QPen>
+#include <QtGui/QScreen>
 
 #include <QtPsdCore/qpsdblend.h>
 #include <QtPsdCore/QPsdSofiEffect>
@@ -102,6 +104,7 @@ private:
     EffectMode m_effectMode = NoGPU;
     mutable bool m_needsBlendShader = false;
     mutable int m_blendCounter = 0;
+    mutable int m_maskCounter = 0;
 
     bool outputBase(const QModelIndex &index, Element *element, ImportData *imports, QRect rectBounds = {}) const;
     bool outputRect(const QRectF &rect, Element *element, bool skipEmpty = false) const;
@@ -124,6 +127,7 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     }
 
     m_blendCounter = 0;
+    m_maskCounter = 0;
     m_needsBlendShader = false;
 
     ImportData imports;
@@ -250,16 +254,10 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
             const bool filled = (mask.rect.topLeft() == QPointF(0, 0) && mask.rect.size() == item->rect().size());
             if (filled && mask.type == QPsdAbstractLayerItem::PathInfo::Rectangle && mask.radius <= 0) {
                 element->properties.insert("clip"_L1, true);
-            } else {
+            } else if (effectMode() == Qt5Effects) {
+                imports->insert("Qt5Compat.GraphicalEffects as GE");
                 Element effect;
-                if (effectMode() == Qt5Effects) {
-                    imports->insert("Qt5Compat.GraphicalEffects as GE");
-                    effect.type = "GE.OpacityMask";
-                } else {
-                    imports->insert("QtQuick.Effects");
-                    effect.type = "MultiEffect";
-                    effect.properties.insert("maskEnabled", true);
-                }
+                effect.type = "GE.OpacityMask";
                 switch (mask.type) {
                 case QPsdAbstractLayerItem::PathInfo::Rectangle:
                 case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
@@ -295,6 +293,57 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
                     effect.children.append(maskSource);
                     break; }
                 }
+                element->layers.append(effect);
+            } else {
+                // MultiEffect: maskSource must be a separate Item with
+                // visible:false and layer.enabled:true to work correctly
+                imports->insert("QtQuick.Effects");
+                const QString maskId = u"_vmask_%1"_s.arg(m_maskCounter++);
+
+                Element maskItem;
+                maskItem.properties.insert(u"visible"_s, false);
+                maskItem.properties.insert(u"layer.enabled"_s, true);
+
+                switch (mask.type) {
+                case QPsdAbstractLayerItem::PathInfo::Rectangle:
+                case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
+                    if (!filled) {
+                        maskItem.type = "Item";
+                        maskItem.id = maskId;
+                        maskItem.properties.insert("width", item->rect().width() * horizontalScale);
+                        maskItem.properties.insert("height", item->rect().height() * verticalScale);
+                        Element rectangle;
+                        rectangle.type = "Rectangle";
+                        if (mask.radius > 0)
+                            rectangle.properties.insert("radius", mask.radius * unitScale);
+                        outputRect(mask.rect, &rectangle);
+                        maskItem.children.append(rectangle);
+                    } else {
+                        maskItem.type = "Rectangle";
+                        maskItem.id = maskId;
+                        if (mask.radius > 0)
+                            maskItem.properties.insert("radius", mask.radius * unitScale);
+                        outputRect(mask.rect, &maskItem);
+                    }
+                    break; }
+                case QPsdAbstractLayerItem::PathInfo::Path: {
+                    imports->insert("QtQuick.Shapes");
+                    maskItem.type = "Shape";
+                    maskItem.id = maskId;
+                    Element shapePath;
+                    shapePath.type = "ShapePath";
+                    if (!outputPath(mask.path, &shapePath))
+                        return false;
+                    maskItem.children.append(shapePath);
+                    break; }
+                }
+
+                element->children.prepend(maskItem);
+
+                Element effect;
+                effect.type = "MultiEffect";
+                effect.properties.insert("maskEnabled", true);
+                effect.properties.insert("maskSource", maskId);
                 element->layers.append(effect);
             }
         }
@@ -698,7 +747,12 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
-        if (run.font.bold() || run.fauxBold)
+        {
+            const int weight = run.font.weight();
+            if (weight != QFont::Normal && weight != 0)
+                element->properties.insert("font.weight", weight);
+        }
+        if (run.fauxBold)
             element->properties.insert("font.bold", true);
         if (run.font.italic() || run.fauxItalic)
             element->properties.insert("font.italic", true);
@@ -710,8 +764,26 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             element->properties.insert("font.capitalization", "Font.SmallCaps"_L1);
         else if (run.fontCaps == 2)
             element->properties.insert("font.capitalization", "Font.AllUppercase"_L1);
-        if (run.lineHeight > 0)
-            element->properties.insert("lineHeight", run.lineHeight / run.font.pointSizeF());
+        if (run.font.letterSpacingType() == QFont::AbsoluteSpacing) {
+            const qreal ls = run.font.letterSpacing();
+            if (qAbs(ls) > 0.01)
+                element->properties.insert("font.letterSpacing", ls * fontScaleFactor);
+        } else if (run.font.letterSpacingType() == QFont::PercentageSpacing) {
+            const qreal ls = run.font.letterSpacing();
+            // Figma importer stores 100+value; Qt default is 0. Skip both "no change" cases.
+            if (ls > 0.01 && qAbs(ls - 100.0) > 0.01)
+                element->properties.insert("font.letterSpacing", ls - 100.0);
+        }
+        if (run.lineHeight > 0) {
+            qreal ratio = run.lineHeight / run.font.pointSizeF();
+            // Figma lineHeight is pre-multiplied by dpiScale for rendering; undo for QML export
+            if (model()->fileInfo().suffix().compare("psd"_L1, Qt::CaseInsensitive)) {
+                const qreal dpiScale = QGuiApplication::primaryScreen()
+                    ? QGuiApplication::primaryScreen()->logicalDotsPerInchY() / 72.0 : 1.0;
+                ratio /= dpiScale;
+            }
+            element->properties.insert("lineHeight", ratio);
+        }
         element->properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
         element->properties.insert("horizontalAlignment",
             horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
@@ -763,7 +835,12 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 textElement.properties.insert("text", u"\"%1\""_s.arg(text));
                 textElement.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
-                if (run.font.bold() || run.fauxBold)
+                {
+                    const int weight = run.font.weight();
+                    if (weight != QFont::Normal && weight != 0)
+                        textElement.properties.insert("font.weight", weight);
+                }
+                if (run.fauxBold)
                     textElement.properties.insert("font.bold", true);
                 if (run.font.italic() || run.fauxItalic)
                     textElement.properties.insert("font.italic", true);
@@ -775,8 +852,24 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                     textElement.properties.insert("font.capitalization", "Font.SmallCaps"_L1);
                 else if (run.fontCaps == 2)
                     textElement.properties.insert("font.capitalization", "Font.AllUppercase"_L1);
-                if (run.lineHeight > 0)
-                    textElement.properties.insert("lineHeight", run.lineHeight / run.font.pointSizeF());
+                if (run.font.letterSpacingType() == QFont::AbsoluteSpacing) {
+                    const qreal ls = run.font.letterSpacing();
+                    if (qAbs(ls) > 0.01)
+                        textElement.properties.insert("font.letterSpacing", ls * fontScaleFactor);
+                } else if (run.font.letterSpacingType() == QFont::PercentageSpacing) {
+                    const qreal ls = run.font.letterSpacing();
+                    if (ls > 0.01 && qAbs(ls - 100.0) > 0.01)
+                        textElement.properties.insert("font.letterSpacing", ls - 100.0);
+                }
+                if (run.lineHeight > 0) {
+                    qreal ratio = run.lineHeight / run.font.pointSizeF();
+                    if (model()->fileInfo().suffix().compare("psd"_L1, Qt::CaseInsensitive)) {
+                        const qreal dpiScale = QGuiApplication::primaryScreen()
+                            ? QGuiApplication::primaryScreen()->logicalDotsPerInchY() / 72.0 : 1.0;
+                        ratio /= dpiScale;
+                    }
+                    textElement.properties.insert("lineHeight", ratio);
+                }
                 textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
                 textElement.properties.insert("Layout.fillHeight", true);
                 if (isParagraph) {

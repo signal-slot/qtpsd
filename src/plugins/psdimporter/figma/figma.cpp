@@ -1019,16 +1019,20 @@ private:
             // Prefer styledTextSegments (more reliable per-segment fills/styles)
             const auto segments = nodeJson["styledTextSegments"_L1].toArray();
             if (!segments.isEmpty()) {
+                const QString nodeTextCase = style["textCase"_L1].toString();
                 for (const auto &seg : segments) {
                     const auto segObj = seg.toObject();
                     QPsdTextLayerItem::Run run;
                     const auto segFills = segObj["fills"_L1].toArray();
-                    run.text = applyTextCase(segObj["characters"_L1].toString(),
-                                             segObj["textCase"_L1].toString());
+                    const QString segTextCase = segObj.contains("textCase"_L1)
+                        ? segObj["textCase"_L1].toString() : nodeTextCase;
+                    run.text = applyTextCase(segObj["characters"_L1].toString(), segTextCase);
                     run.font = fontFromStyle(segObj);
-                    if (segObj["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
+                    if (segTextCase == "SMALL_CAPS"_L1) {
                         run.font.setCapitalization(QFont::SmallCaps);
                         run.fontCaps = 1;
+                    } else if (segTextCase == "UPPER"_L1) {
+                        run.fontCaps = 2;
                     }
                     run.originalFontName = segObj["fontFamily"_L1].toString();
                     run.color = !segFills.isEmpty() ? colorFromFills(segFills) : colorFromFills(fills);
@@ -1081,11 +1085,14 @@ private:
 
                 if (overrides.isEmpty() || characters.isEmpty()) {
                     QPsdTextLayerItem::Run run;
-                    run.text = applyTextCase(characters, style["textCase"_L1].toString());
+                    const QString tc = style["textCase"_L1].toString();
+                    run.text = applyTextCase(characters, tc);
                     run.font = fontFromStyle(style);
-                    if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
+                    if (tc == "SMALL_CAPS"_L1) {
                         run.font.setCapitalization(QFont::SmallCaps);
                         run.fontCaps = 1;
+                    } else if (tc == "UPPER"_L1) {
+                        run.fontCaps = 2;
                     }
                     run.originalFontName = style["fontFamily"_L1].toString();
                     run.color = colorFromFills(fills);
@@ -1113,11 +1120,14 @@ private:
                                 effectiveStyle[it.key()] = it.value();
                         }
 
-                        run.text = applyTextCase(rawText, effectiveStyle["textCase"_L1].toString());
+                        const QString etcCase = effectiveStyle["textCase"_L1].toString();
+                        run.text = applyTextCase(rawText, etcCase);
                         run.font = fontFromStyle(effectiveStyle);
-                        if (effectiveStyle["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
+                        if (etcCase == "SMALL_CAPS"_L1) {
                             run.font.setCapitalization(QFont::SmallCaps);
                             run.fontCaps = 1;
+                        } else if (etcCase == "UPPER"_L1) {
+                            run.fontCaps = 2;
                         }
                         run.originalFontName = effectiveStyle["fontFamily"_L1].toString();
                         run.color = colorFromFills(effectiveStyle.contains("fills"_L1)
@@ -1131,11 +1141,14 @@ private:
 
                     if (pos < characters.length()) {
                         QPsdTextLayerItem::Run run;
-                        run.text = applyTextCase(characters.mid(pos), style["textCase"_L1].toString());
+                        const QString tailCase = style["textCase"_L1].toString();
+                        run.text = applyTextCase(characters.mid(pos), tailCase);
                         run.font = fontFromStyle(style);
-                        if (style["textCase"_L1].toString() == "SMALL_CAPS"_L1) {
+                        if (tailCase == "SMALL_CAPS"_L1) {
                             run.font.setCapitalization(QFont::SmallCaps);
                             run.fontCaps = 1;
+                        } else if (tailCase == "UPPER"_L1) {
+                            run.fontCaps = 2;
                         }
                         run.originalFontName = style["fontFamily"_L1].toString();
                         run.color = colorFromFills(fills);
