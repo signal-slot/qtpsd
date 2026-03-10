@@ -141,6 +141,22 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
             return false;
     }
 
+    // Flattened PSD fallback: if no layers were produced, use the merged image
+    if (window.children.isEmpty()) {
+        const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
+        if (!merged.isNull()) {
+            imageStore = QPsdImageStore(dir, "images"_L1);
+            const QString name = imageStore.save("merged.png"_L1, merged, "PNG");
+            Element img;
+            img.type = "Image";
+            img.properties.insert("width", canvasSize().width() * horizontalScale);
+            img.properties.insert("height", canvasSize().height() * verticalScale);
+            img.properties.insert("source", u"\"images/%1\""_s.arg(name));
+            img.properties.insert("fillMode", "Image.PreserveAspectFit");
+            window.children.append(img);
+        }
+    }
+
     // Expose artboard children as property aliases for external control (z, visible, etc.)
     // Only generate aliases for top-level artboard folders (identified by clip:true from outputFolder)
     for (const auto &child : std::as_const(window.children)) {
