@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <component>
-  <view extends="lv_obj" height="100" scrollbar_mode="off" style_pad_all="0" width="100" x="0" y="0"/>
+  <view extends="lv_obj" height="100" scrollbar_mode="off" style_pad_all="0" width="100" x="0" y="0">
+    <lv_image height="100" src="merged" width="100" x="0" y="0"/>
+  </view>
 </component>

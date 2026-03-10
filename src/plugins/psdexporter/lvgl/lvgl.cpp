@@ -103,6 +103,23 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
             return false;
     }
 
+    // Flattened PSD fallback: if no layers were produced, use the merged image
+    if (view.children.isEmpty()) {
+        const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
+        if (!merged.isNull()) {
+            imageStore = QPsdImageStore(dir, "images"_L1);
+            const QString name = imageStore.save("merged.png"_L1, merged, "PNG");
+            QFileInfo fi(name);
+            QString imageName = fi.completeBaseName();
+            exportedImages.append(qMakePair(imageName, name));
+            Element img;
+            img.type = "lv_image";
+            outputRect(QRect { QPoint { 0, 0 }, canvasSize() }, &img);
+            img.attributes.insert("src", imageName);
+            view.children.append(img);
+        }
+    }
+
     if (!saveComponentXml("MainScreen", &view, exports))
         return false;
 

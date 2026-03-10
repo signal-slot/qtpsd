@@ -9,6 +9,14 @@ class MainWindow extends StatelessWidget {
       height: 400,
       width: 400,
       child: Stack(
+        children: [
+          Image.asset(
+            "assets/images/merged.png", 
+            fit: BoxFit.contain,
+            height: 400,
+            width: 400,
+          ),
+        ],
       ),
     );
   }

@@ -1040,6 +1040,21 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
             return false;
     }
 
+    // Flattened PSD fallback: if no layers were produced, use the merged image
+    if (container.children.isEmpty()) {
+        const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
+        if (!merged.isNull()) {
+            imageStore = QPsdImageStore(dir, "assets/images"_L1);
+            const QString name = imageStore.save("merged.png"_L1, merged, "PNG");
+            Element img;
+            img.type = "Image.asset";
+            img.noNamedParam = u"\"%1\""_s.arg(imagePath(name));
+            outputRectProp(QRect { QPoint { 0, 0 }, canvasSize() }, &img);
+            img.properties.insert("fit", "BoxFit.contain");
+            container.children.append(img);
+        }
+    }
+
     sizedBox.properties.insert("child", QVariant::fromValue(container));
 
     Element window;

@@ -104,20 +104,31 @@ void main() {
     vec4 fg = texture(source, qt_TexCoord0);
     vec4 bg = texture(background, qt_TexCoord0);
 
-    vec3 result;
-    if (blendMode == MULTIPLY)         result = blendMultiply(bg.rgb, fg.rgb);
-    else if (blendMode == SCREEN)      result = blendScreen(bg.rgb, fg.rgb);
-    else if (blendMode == OVERLAY)     result = blendOverlay(bg.rgb, fg.rgb);
-    else if (blendMode == DARKEN)      result = blendDarken(bg.rgb, fg.rgb);
-    else if (blendMode == LIGHTEN)     result = blendLighten(bg.rgb, fg.rgb);
-    else if (blendMode == COLOR_DODGE) result = blendColorDodge(bg.rgb, fg.rgb);
-    else if (blendMode == COLOR_BURN)  result = blendColorBurn(bg.rgb, fg.rgb);
-    else if (blendMode == HARD_LIGHT)  result = blendHardLight(bg.rgb, fg.rgb);
-    else if (blendMode == SOFT_LIGHT)  result = blendSoftLight(bg.rgb, fg.rgb);
-    else if (blendMode == DIFFERENCE)  result = blendDifference(bg.rgb, fg.rgb);
-    else if (blendMode == EXCLUSION)   result = blendExclusion(bg.rgb, fg.rgb);
-    else                               result = fg.rgb; // fallback: normal
+    // Qt Quick layer textures use premultiplied alpha.
+    // Unpremultiply to get straight-alpha colors for blend math.
+    vec3 Cs = fg.a > 0.0 ? fg.rgb / fg.a : vec3(0.0);
+    vec3 Cb = bg.a > 0.0 ? bg.rgb / bg.a : vec3(0.0);
 
-    // Composite blended result over background using foreground alpha
-    fragColor = vec4(mix(bg.rgb, result, fg.a), max(bg.a, fg.a)) * qt_Opacity;
+    vec3 B;
+    if (blendMode == MULTIPLY)         B = blendMultiply(Cb, Cs);
+    else if (blendMode == SCREEN)      B = blendScreen(Cb, Cs);
+    else if (blendMode == OVERLAY)     B = blendOverlay(Cb, Cs);
+    else if (blendMode == DARKEN)      B = blendDarken(Cb, Cs);
+    else if (blendMode == LIGHTEN)     B = blendLighten(Cb, Cs);
+    else if (blendMode == COLOR_DODGE) B = blendColorDodge(Cb, Cs);
+    else if (blendMode == COLOR_BURN)  B = blendColorBurn(Cb, Cs);
+    else if (blendMode == HARD_LIGHT)  B = blendHardLight(Cb, Cs);
+    else if (blendMode == SOFT_LIGHT)  B = blendSoftLight(Cb, Cs);
+    else if (blendMode == DIFFERENCE)  B = blendDifference(Cb, Cs);
+    else if (blendMode == EXCLUSION)   B = blendExclusion(Cb, Cs);
+    else                               B = Cs; // fallback: normal
+
+    // W3C Compositing: source-over with blend mode (premultiplied output).
+    // Co = (1 - αb) * Cs·αs + (1 - αs) * Cb·αb + αs·αb · B(Cb, Cs)
+    float Ao = fg.a + bg.a * (1.0 - fg.a);
+    vec3 Co = (1.0 - bg.a) * fg.rgb
+            + (1.0 - fg.a) * bg.rgb
+            + fg.a * bg.a * B;
+
+    fragColor = vec4(Co, Ao) * qt_Opacity;
 }
