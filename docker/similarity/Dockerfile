@@ -33,6 +33,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qml6-module-qtquick-layouts \
     qml6-module-qtquick-shapes \
     libgl1-mesa-dev \
+    libgl1-mesa-dri \
     libegl1-mesa-dev \
     libxkbcommon-x11-0 \
     libxcb-cursor0 \

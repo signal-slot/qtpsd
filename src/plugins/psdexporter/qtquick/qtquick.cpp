@@ -141,6 +141,9 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
             return false;
     }
 
+    // Apply blend modes for root-level layers (same logic as inside outputFolder)
+    applyBlendModes(&window, &imports);
+
     // Flattened PSD fallback: if no layers were produced, use the merged image
     if (window.children.isEmpty()) {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
@@ -625,6 +628,20 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 else if (mode == "softLight"_L1)   blendModeInt = 8;
                 else if (mode == "difference"_L1)  blendModeInt = 9;
                 else if (mode == "exclusion"_L1)   blendModeInt = 10;
+                else if (mode == "linearBurn"_L1)  blendModeInt = 11;
+                else if (mode == "linearDodge"_L1) blendModeInt = 12;
+                else if (mode == "vividLight"_L1)  blendModeInt = 13;
+                else if (mode == "linearLight"_L1) blendModeInt = 14;
+                else if (mode == "pinLight"_L1)    blendModeInt = 15;
+                else if (mode == "hardMix"_L1)     blendModeInt = 16;
+                else if (mode == "subtract"_L1)    blendModeInt = 17;
+                else if (mode == "divide"_L1)      blendModeInt = 18;
+                else if (mode == "darkerColor"_L1) blendModeInt = 19;
+                else if (mode == "lighterColor"_L1) blendModeInt = 20;
+                else if (mode == "hue"_L1)         blendModeInt = 21;
+                else if (mode == "saturation"_L1)  blendModeInt = 22;
+                else if (mode == "color"_L1)       blendModeInt = 23;
+                else if (mode == "luminosity"_L1)  blendModeInt = 24;
 
                 // ShaderEffect composites bg + fg using blend mode
                 Element shader;
