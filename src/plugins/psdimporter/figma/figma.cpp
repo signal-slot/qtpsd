@@ -1744,25 +1744,10 @@ private:
         const qreal y1 = h1["y"_L1].toDouble() * rect.height();
 
         if (type == "GRADIENT_LINEAR"_L1) {
-            if (handles.size() >= 3) {
-                // Figma linear gradients use 3 handles defining an affine transform:
-                // h0 = start, h1 = end, h2 = perpendicular handle (can skew the gradient)
-                // The gradient parameter is the u-coordinate in the (h0,h1,h2) coordinate system
-                const auto h2 = handles[2].toObject();
-                const qreal x2 = h2["x"_L1].toDouble() * rect.width();
-                const qreal y2 = h2["y"_L1].toDouble() * rect.height();
-                QLinearGradient gradient(0, 0, 1, 0);
-                gradient.setInterpolationMode(QGradient::ComponentInterpolation);
-                gradient.setStops(stops);
-                QTransform t(
-                    x1 - x0, y1 - y0,
-                    x2 - x0, y2 - y0,
-                    x0, y0
-                );
-                QBrush brush(gradient);
-                brush.setTransform(t);
-                return brush;
-            }
+            // Linear gradients go from h0 (start) to h1 (end).
+            // The optional h2 (perpendicular handle) can skew the gradient coordinate
+            // system, but for a linear gradient the perpendicular direction is irrelevant
+            // — the gradient is invariant along it. So we always use (x0,y0)→(x1,y1).
             QLinearGradient gradient(x0, y0, x1, y1);
             gradient.setInterpolationMode(QGradient::ComponentInterpolation);
             gradient.setStops(stops);
