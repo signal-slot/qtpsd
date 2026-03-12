@@ -1919,6 +1919,17 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &element, imports);
             break; }
+        case QPsdAbstractLayerItem::Adjustment: {
+            QString name = saveLayerImage(item);
+            if (name.isEmpty())
+                return true;
+            element.type = "Image";
+            if (!outputBase(index, &element, imports))
+                return false;
+            element.properties.insert("source", u"\"images/%1\""_s.arg(name));
+            element.properties.insert("fillMode", "Image.PreserveAspectFit");
+            generated = true;
+            break; }
         default:
             return true;
         }
@@ -2045,6 +2056,17 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             break; }
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &component, &i);
+            break; }
+        case QPsdAbstractLayerItem::Adjustment: {
+            QString name = saveLayerImage(item);
+            if (name.isEmpty())
+                return true;
+            component.type = "Image";
+            if (!outputBase(index, &component, &i))
+                return false;
+            component.properties.insert("source", u"\"images/%1\""_s.arg(name));
+            component.properties.insert("fillMode", "Image.PreserveAspectFit");
+            generated = true;
             break; }
         default:
             return true;

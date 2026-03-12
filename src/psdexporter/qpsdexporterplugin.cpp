@@ -9,6 +9,37 @@
 
 QT_BEGIN_NAMESPACE
 
+// Apply a raster layer mask to an image, modifying its alpha channel.
+// maskImage: Grayscale8 mask, maskRect: mask position in document coords,
+// layerRect: layer position in document coords,
+// defaultColor: alpha outside mask area (0=transparent, 255=opaque),
+// density: how strongly the mask is applied (255=full, 0=none).
+static void applyLayerMask(QImage &image, const QImage &maskImage, const QRect &maskRect,
+                           const QRect &layerRect, int defaultColor, int density)
+{
+    image = image.convertToFormat(QImage::Format_ARGB32);
+    for (int y = 0; y < image.height(); ++y) {
+        QRgb *scanLine = reinterpret_cast<QRgb *>(image.scanLine(y));
+        for (int x = 0; x < image.width(); ++x) {
+            const int maskX = (layerRect.x() + x) - maskRect.x();
+            const int maskY = (layerRect.y() + y) - maskRect.y();
+
+            int maskValue = defaultColor;
+            if (maskX >= 0 && maskX < maskImage.width() &&
+                maskY >= 0 && maskY < maskImage.height()) {
+                maskValue = qGray(maskImage.pixel(maskX, maskY));
+            }
+
+            // Apply density: scale mask effect (255=full, 0=no masking)
+            maskValue = 255 - density * (255 - maskValue) / 255;
+
+            const int alpha = qAlpha(scanLine[x]);
+            const int newAlpha = (alpha * maskValue) / 255;
+            scanLine[x] = qRgba(qRed(scanLine[x]), qGreen(scanLine[x]), qBlue(scanLine[x]), newAlpha);
+        }
+    }
+}
+
 QMimeDatabase QPsdExporterPlugin::mimeDatabase;
 
 class QPsdExporterPlugin::Private {
@@ -341,6 +372,11 @@ QString QPsdExporterPlugin::saveLayerImage(const QPsdImageLayerItem *image) cons
                 applyFillOpacity(qimage, fillOpacity);
             }
             qimage = image->applyGradient(qimage);
+            const QImage linkedMask = image->layerMask();
+            if (!linkedMask.isNull()) {
+                applyLayerMask(qimage, linkedMask, image->layerMaskRect(), image->rect(),
+                               image->layerMaskDefaultColor(), image->layerMaskDensity());
+            }
             QByteArray format = linkedFile.type.trimmed();
             name = imageStore.save(imageFileName(linkedFile.name, QString::fromLatin1(format.constData()), linkedFile.uniqueId), qimage, format.constData());
             done = !name.isEmpty();
@@ -355,6 +391,11 @@ QString QPsdExporterPlugin::saveLayerImage(const QPsdImageLayerItem *image) cons
             applyFillOpacity(qimage, fillOpacity);
         }
         qimage = image->applyGradient(qimage);
+        const QImage mask = image->layerMask();
+        if (!mask.isNull()) {
+            applyLayerMask(qimage, mask, image->layerMaskRect(), image->rect(),
+                           image->layerMaskDefaultColor(), image->layerMaskDensity());
+        }
         name = imageStore.save(imageFileName(image->name(), "PNG"_L1), qimage, "PNG");
     }
 
@@ -378,6 +419,11 @@ QString QPsdExporterPlugin::saveLayerImage(const QPsdAbstractLayerItem *item) co
         applyFillOpacity(qimage, fillOpacity);
     }
     qimage = item->applyGradient(qimage);
+    const QImage mask = item->layerMask();
+    if (!mask.isNull()) {
+        applyLayerMask(qimage, mask, item->layerMaskRect(), item->rect(),
+                       item->layerMaskDefaultColor(), item->layerMaskDensity());
+    }
     return imageStore.save(imageFileName(item->name(), "PNG"_L1), qimage, "PNG");
 }
 

@@ -29,7 +29,18 @@ class MainWindow extends StatelessWidget {
             width: 200,
             child: Container(
               decoration: BoxDecoration(
-                color: Color.fromARGB(255, 0, 0, 0),
+                gradient: RadialGradient(
+                  center: Alignment(0, 0),
+                  colors: [
+                    Color.fromARGB(255, 0, 255, 255),
+                    Color.fromARGB(255, 255, 0, 128),
+                  ],
+                  radius: 0.5,
+                  stops: [
+                    0,
+                    1,
+                  ],
+                ),
               ),
             ),
           ),

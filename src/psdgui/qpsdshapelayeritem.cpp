@@ -148,6 +148,33 @@ QBrush brushFromGdFl(const QVariant &gdflVariant, const QRectF &rect)
             reversedStops.prepend({1.0 - stop.first, stop.second});
         gradient.setStops(reversedStops);
         return QBrush(gradient);
+    } else if (typeValue == "Rflc") {
+        // Reflected: linear gradient mirrored at center.
+        // PSD stops define center→edge pattern. Build symmetric full-span stops:
+        // First half (0→0.5): reversed stops (edge→center)
+        // Second half (0.5→1.0): normal stops (center→edge)
+        QGradientStops reflectedStops;
+        for (int i = stops.size() - 1; i >= 0; --i)
+            reflectedStops.append({(1.0 - stops[i].first) * 0.5, stops[i].second});
+        for (int i = 1; i < stops.size(); ++i)
+            reflectedStops.append({0.5 + stops[i].first * 0.5, stops[i].second});
+        QLinearGradient gradient;
+        const QPointF center(rect.width() / 2, rect.height() / 2);
+        gradient.setStart(center.x() - std::cos(angle) * rect.width() / 2,
+                          center.y() + std::sin(angle) * rect.height() / 2);
+        gradient.setFinalStop(center.x() + std::cos(angle) * rect.width() / 2,
+                              center.y() - std::sin(angle) * rect.height() / 2);
+        gradient.setStops(reflectedStops);
+        return QBrush(gradient);
+    } else if (typeValue == "Dmnd") {
+        // Diamond: approximate as radial gradient (no direct Qt equivalent)
+        QRadialGradient gradient;
+        const QPointF center(rect.width() / 2, rect.height() / 2);
+        gradient.setCenter(center);
+        gradient.setFocalPoint(center);
+        gradient.setRadius(qMax(rect.width(), rect.height()) / 2);
+        gradient.setStops(stops);
+        return QBrush(gradient);
     } else {
         qWarning() << "GdFl gradient type" << typeValue << "not supported";
         return Qt::NoBrush;
@@ -269,7 +296,7 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
                         d->brush = QBrush(gradient);
                         break; }
                     default:
-                        qFatal() << vscg.gradientType() << "not implemented";
+                        qWarning() << "vscg gradient type" << vscg.gradientType() << "not implemented";
                     }
                     break; }
                 case QPsdVectorStrokeContentSetting::PatternFill:

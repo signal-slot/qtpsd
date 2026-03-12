@@ -2,6 +2,5 @@
 <globals>
   <images>
     <file name="background" src_path="A:images/background.png"/>
-    <file name="diamond_gradient" src_path="A:images/diamond_gradient.png"/>
   </images>
 </globals>
