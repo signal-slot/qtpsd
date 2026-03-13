@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
 qt_internal_add_plugin(QPsdImporterFigmaPlugin
-    OUTPUT_NAME qfigma
+    OUTPUT_NAME qfigmaimporter
     PLUGIN_TYPE psdimporter
     SOURCES
         figma.cpp
@@ -17,7 +17,7 @@ qt_internal_add_plugin(QPsdImporterFigmaPlugin
         Qt::PsdImporter
 )
 
-qt_add_resources(QPsdImporterFigmaPlugin "figma_icon"
+qt_internal_add_resource(QPsdImporterFigmaPlugin "figma_icon"
     PREFIX "/figma"
     FILES
         figma.png

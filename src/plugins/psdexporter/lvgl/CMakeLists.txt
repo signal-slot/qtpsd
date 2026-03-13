@@ -11,7 +11,7 @@ qt_internal_add_plugin(QPsdExporterLvglPlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterLvglPlugin "lvgl"
+qt_internal_add_resource(QPsdExporterLvglPlugin "lvgl"
     PREFIX "/lvgl"
     FILES
         lvgl.png

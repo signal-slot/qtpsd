@@ -11,7 +11,7 @@ qt_internal_add_plugin(QPsdExporterSwiftUIPlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterSwiftUIPlugin "swiftui"
+qt_internal_add_resource(QPsdExporterSwiftUIPlugin "swiftui"
     PREFIX "/swiftui"
     FILES
         swiftui.png

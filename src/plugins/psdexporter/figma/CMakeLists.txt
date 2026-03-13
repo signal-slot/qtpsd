@@ -12,7 +12,7 @@ qt_internal_add_plugin(QPsdExporterFigmaPlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterFigmaPlugin "figma_icon"
+qt_internal_add_resource(QPsdExporterFigmaPlugin "figma_icon"
     PREFIX "/figma"
     FILES
         figma.png
@@ -20,7 +20,7 @@ qt_add_resources(QPsdExporterFigmaPlugin "figma_icon"
 
 set(FIGMA_PLUGIN_DIR "${PROJECT_SOURCE_DIR}/tools/figma-plugin")
 
-qt_add_resources(QPsdExporterFigmaPlugin "figma_plugin"
+qt_internal_add_resource(QPsdExporterFigmaPlugin "figma_plugin"
     PREFIX "/figma/plugin"
     BASE "${FIGMA_PLUGIN_DIR}"
     FILES

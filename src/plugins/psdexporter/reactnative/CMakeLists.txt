@@ -11,7 +11,7 @@ qt_internal_add_plugin(QPsdExporterReactNativePlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterReactNativePlugin "reactnative"
+qt_internal_add_resource(QPsdExporterReactNativePlugin "reactnative"
     PREFIX "/reactnative"
     FILES
         reactnative.png

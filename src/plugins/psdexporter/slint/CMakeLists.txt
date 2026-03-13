@@ -11,7 +11,7 @@ qt_internal_add_plugin(QPsdExporterSlintPlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterSlintPlugin "slint"
+qt_internal_add_resource(QPsdExporterSlintPlugin "slint"
     PREFIX "/slint"
     FILES
         slint.png

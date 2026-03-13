@@ -11,7 +11,7 @@ qt_internal_add_plugin(QPsdExporterQtQuickPlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterQtQuickPlugin "qtquick"
+qt_internal_add_resource(QPsdExporterQtQuickPlugin "qtquick"
     PREFIX "/qtquick"
     FILES
         qtquick.png

@@ -11,7 +11,7 @@ qt_internal_add_plugin(QPsdExporterFlutterPlugin
         Qt::PsdExporter
 )
 
-qt_add_resources(QPsdExporterFlutterPlugin "flutter"
+qt_internal_add_resource(QPsdExporterFlutterPlugin "flutter"
     PREFIX "/flutter"
     FILES
         flutter.png
