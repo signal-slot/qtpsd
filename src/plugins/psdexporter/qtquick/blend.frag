@@ -200,13 +200,13 @@ vec3 setSat(vec3 c, float s) {
 }
 
 void main() {
-    vec4 fg = texture(source, qt_TexCoord0);
-    vec4 bg = texture(background, qt_TexCoord0);
+    vec4 fg_premul = texture(source, qt_TexCoord0);
+    vec4 bg_premul = texture(background, qt_TexCoord0);
 
     // Qt Quick layer textures use premultiplied alpha.
     // Unpremultiply to get straight-alpha colors for blend math.
-    vec3 Cs = fg.a > 0.0 ? fg.rgb / fg.a : vec3(0.0);
-    vec3 Cb = bg.a > 0.0 ? bg.rgb / bg.a : vec3(0.0);
+    vec3 Cs = fg_premul.a > 0.0 ? fg_premul.rgb / fg_premul.a : vec3(0.0);
+    vec3 Cb = bg_premul.a > 0.0 ? bg_premul.rgb / bg_premul.a : vec3(0.0);
 
     vec3 B;
     if (blendMode == MULTIPLY)              B = blendMultiply(Cb, Cs);
@@ -238,10 +238,10 @@ void main() {
 
     // W3C Compositing: source-over with blend mode (premultiplied output).
     // Co = (1 - αb) * Cs·αs + (1 - αs) * Cb·αb + αs·αb · B(Cb, Cs)
-    float Ao = fg.a + bg.a * (1.0 - fg.a);
-    vec3 Co = (1.0 - bg.a) * fg.rgb
-            + (1.0 - fg.a) * bg.rgb
-            + fg.a * bg.a * B;
+    float Ao = fg_premul.a + bg_premul.a * (1.0 - fg_premul.a);
+    vec3 Co = (1.0 - bg_premul.a) * fg_premul.rgb
+            + (1.0 - fg_premul.a) * bg_premul.rgb
+            + fg_premul.a * bg_premul.a * B;
 
     fragColor = vec4(Co, Ao) * qt_Opacity;
 }

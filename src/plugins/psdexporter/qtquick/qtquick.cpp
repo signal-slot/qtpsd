@@ -116,6 +116,7 @@ private:
 
     bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
     void applyBlendModes(Element *element, ImportData *imports) const;
+    static void stripLayerEffects(Element &element);
 
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
@@ -587,6 +588,22 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
     return true;
 }
 
+// Strip layer effects (and associated layer.enabled) from elements inside blend wrappers.
+// Qt Quick cannot render nested layer effects inside invisible layer-enabled parents;
+// the parent's layer texture ends up empty/black.
+void QPsdExporterQtQuickPlugin::stripLayerEffects(Element &element)
+{
+    // Layer effects are stored in element.layers during tree construction,
+    // later converted to children in saveTo(). Clear the layers list and
+    // remove the layer.enabled property that was only there to support them.
+    if (!element.layers.isEmpty()) {
+        element.layers.clear();
+        element.properties.remove(u"layer.enabled"_s);
+    }
+    for (auto &child : element.children)
+        stripLayerEffects(child);
+}
+
 void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *imports) const
 {
     // Check if any child has a blend mode
@@ -618,6 +635,7 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 bgItem.properties.insert(u"visible"_s, true);
                 bgItem.properties.insert(u"opacity"_s, 0);
                 bgItem.children = accumulated;
+                stripLayerEffects(bgItem);
 
                 // Wrap blend-mode child as foreground source
                 Element fgItem;
@@ -628,6 +646,7 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 fgItem.properties.insert(u"visible"_s, true);
                 fgItem.properties.insert(u"opacity"_s, 0);
                 fgItem.children.append(child);
+                stripLayerEffects(fgItem);
 
                 // Blend composites bg + fg using the specified mode
                 Element blend;
@@ -653,6 +672,7 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 bgItem.properties.insert(u"visible"_s, true);
                 bgItem.properties.insert(u"opacity"_s, 0);
                 bgItem.children = accumulated;
+                stripLayerEffects(bgItem);
 
                 // Wrap blend-mode child as foreground source
                 Element fgItem;
@@ -663,6 +683,7 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
                 fgItem.properties.insert(u"visible"_s, true);
                 fgItem.properties.insert(u"opacity"_s, 0);
                 fgItem.children.append(child);
+                stripLayerEffects(fgItem);
 
                 // Map blend mode string to shader constant
                 int blendModeInt = -1; // fallback: normal
@@ -904,14 +925,17 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
-                const bool simpleVertical = linear->start().x() == linear->finalStop().x();
-                const bool simpleHorizontal = linear->start().y() == linear->finalStop().y();
+                const QTransform brushTransform = shape->brush().transform();
+                const QPointF gradStart = brushTransform.map(linear->start());
+                const QPointF gradEnd = brushTransform.map(linear->finalStop());
+                const bool simpleVertical = qFuzzyCompare(gradStart.x(), gradEnd.x());
+                const bool simpleHorizontal = qFuzzyCompare(gradStart.y(), gradEnd.y());
 
                 if (simpleVertical || simpleHorizontal) {
                     // Gradient position 0=top/left, 1=bottom/right; invert if PSD direction is reversed
                     const bool reversed = simpleHorizontal
-                        ? (linear->start().x() > linear->finalStop().x())
-                        : (linear->start().y() > linear->finalStop().y());
+                        ? (gradStart.x() > gradEnd.x())
+                        : (gradStart.y() > gradEnd.y());
                     Element gradient;
                     gradient.type = "gradient: Gradient";
                     if (simpleHorizontal)
@@ -933,8 +957,8 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     effect.type = "GE.LinearGradient";
                     if (!outputBase(shapeIndex, &effect, imports))
                         return false;
-                    effect.properties.insert("start", QPointF(linear->start().x() * horizontalScale, linear->start().y() * verticalScale));
-                    effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
+                    effect.properties.insert("start", QPointF(gradStart.x() * horizontalScale, gradStart.y() * verticalScale));
+                    effect.properties.insert("end", QPointF(gradEnd.x() * horizontalScale, gradEnd.y() * verticalScale));
                     Element effectGradient;
                     effectGradient.type = "gradient: Gradient";
                     for (const auto &stop : linear->stops()) {
@@ -958,10 +982,10 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
                     Element fillGrad;
                     fillGrad.type = "fillGradient: LinearGradient";
-                    fillGrad.properties.insert("x1", linear->start().x() * horizontalScale);
-                    fillGrad.properties.insert("y1", linear->start().y() * verticalScale);
-                    fillGrad.properties.insert("x2", linear->finalStop().x() * horizontalScale);
-                    fillGrad.properties.insert("y2", linear->finalStop().y() * verticalScale);
+                    fillGrad.properties.insert("x1", gradStart.x() * horizontalScale);
+                    fillGrad.properties.insert("y1", gradStart.y() * verticalScale);
+                    fillGrad.properties.insert("x2", gradEnd.x() * horizontalScale);
+                    fillGrad.properties.insert("y2", gradEnd.y() * verticalScale);
                     for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
@@ -1137,13 +1161,16 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
-                const bool simpleVertical = linear->start().x() == linear->finalStop().x();
-                const bool simpleHorizontal = linear->start().y() == linear->finalStop().y();
+                const QTransform brushTransform = shape->brush().transform();
+                const QPointF gradStart = brushTransform.map(linear->start());
+                const QPointF gradEnd = brushTransform.map(linear->finalStop());
+                const bool simpleVertical = qFuzzyCompare(gradStart.x(), gradEnd.x());
+                const bool simpleHorizontal = qFuzzyCompare(gradStart.y(), gradEnd.y());
 
                 if (simpleVertical || simpleHorizontal) {
                     const bool reversed = simpleHorizontal
-                        ? (linear->start().x() > linear->finalStop().x())
-                        : (linear->start().y() > linear->finalStop().y());
+                        ? (gradStart.x() > gradEnd.x())
+                        : (gradStart.y() > gradEnd.y());
                     Element gradient;
                     gradient.type = "gradient: Gradient";
                     if (simpleHorizontal)
@@ -1167,8 +1194,8 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     } else {
                         outputRect(path.rect, &effect);
                     }
-                    effect.properties.insert("start", QPointF(linear->start().x() * horizontalScale, linear->start().y() * verticalScale));
-                    effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
+                    effect.properties.insert("start", QPointF(gradStart.x() * horizontalScale, gradStart.y() * verticalScale));
+                    effect.properties.insert("end", QPointF(gradEnd.x() * horizontalScale, gradEnd.y() * verticalScale));
                     Element effectGradient;
                     effectGradient.type = "gradient: Gradient";
                     for (const auto &stop : linear->stops()) {
@@ -1199,10 +1226,10 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
                     Element fillGrad;
                     fillGrad.type = "fillGradient: LinearGradient";
-                    fillGrad.properties.insert("x1", linear->start().x() * horizontalScale);
-                    fillGrad.properties.insert("y1", linear->start().y() * verticalScale);
-                    fillGrad.properties.insert("x2", linear->finalStop().x() * horizontalScale);
-                    fillGrad.properties.insert("y2", linear->finalStop().y() * verticalScale);
+                    fillGrad.properties.insert("x1", gradStart.x() * horizontalScale);
+                    fillGrad.properties.insert("y1", gradStart.y() * verticalScale);
+                    fillGrad.properties.insert("x2", gradEnd.x() * horizontalScale);
+                    fillGrad.properties.insert("y2", gradEnd.y() * verticalScale);
                     for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
@@ -1505,7 +1532,10 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
-                bool simpleVertical = linear->start().x() == linear->finalStop().x();
+                const QTransform brushTransform = shape->brush().transform();
+                const QPointF gradStart = brushTransform.map(linear->start());
+                const QPointF gradEnd = brushTransform.map(linear->finalStop());
+                bool simpleVertical = qFuzzyCompare(gradStart.x(), gradEnd.x());
                 Element gradient;
                 gradient.type = "gradient: Gradient";
                 for (const auto &stop : linear->stops()) {
@@ -1528,8 +1558,8 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     } else {
                         outputRect(path.rect, &effect);
                     }
-                    effect.properties.insert("start", QPointF(linear->start().x() * horizontalScale, linear->start().y() * verticalScale));
-                    effect.properties.insert("end", QPointF(linear->finalStop().x() * horizontalScale, linear->finalStop().y() * verticalScale));
+                    effect.properties.insert("start", QPointF(gradStart.x() * horizontalScale, gradStart.y() * verticalScale));
+                    effect.properties.insert("end", QPointF(gradEnd.x() * horizontalScale, gradEnd.y() * verticalScale));
                     effect.children.append(gradient);
                     rectElement.layers.append(effect);
                 } else {
@@ -1551,10 +1581,10 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
                     Element fillGrad;
                     fillGrad.type = "fillGradient: LinearGradient";
-                    fillGrad.properties.insert("x1", linear->start().x() * horizontalScale);
-                    fillGrad.properties.insert("y1", linear->start().y() * verticalScale);
-                    fillGrad.properties.insert("x2", linear->finalStop().x() * horizontalScale);
-                    fillGrad.properties.insert("y2", linear->finalStop().y() * verticalScale);
+                    fillGrad.properties.insert("x1", gradStart.x() * horizontalScale);
+                    fillGrad.properties.insert("y1", gradStart.y() * verticalScale);
+                    fillGrad.properties.insert("x2", gradEnd.x() * horizontalScale);
+                    fillGrad.properties.insert("y2", gradEnd.y() * verticalScale);
                     for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
@@ -1851,12 +1881,15 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
             switch (g->type()) {
             case QGradient::LinearGradient: {
                 const auto linear = reinterpret_cast<const QLinearGradient *>(g);
+                const QTransform brushTransform = shape->brush().transform();
+                const QPointF gradStart = brushTransform.map(linear->start());
+                const QPointF gradEnd = brushTransform.map(linear->finalStop());
                 Element gradient;
                 gradient.type = "fillGradient: LinearGradient";
-                gradient.properties.insert("x1", linear->start().x() * horizontalScale);
-                gradient.properties.insert("y1", linear->start().y() * verticalScale);
-                gradient.properties.insert("x2", linear->finalStop().x() * horizontalScale);
-                gradient.properties.insert("y2", linear->finalStop().y() * verticalScale);
+                gradient.properties.insert("x1", gradStart.x() * horizontalScale);
+                gradient.properties.insert("y1", gradStart.y() * verticalScale);
+                gradient.properties.insert("x2", gradEnd.x() * horizontalScale);
+                gradient.properties.insert("y2", gradEnd.y() * verticalScale);
                 for (const auto &stop : linear->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
