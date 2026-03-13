@@ -8,7 +8,7 @@
 
 QT_BEGIN_NAMESPACE
 
-class QPsdExporterImagePlugin : public QPsdExporterPlugin
+class QPsdExporterImagesPlugin : public QPsdExporterPlugin
 {
     Q_OBJECT
     Q_PLUGIN_METADATA(IID "org.qt-project.Qt.QPsdExporterFactoryInterface" FILE "images.json")
@@ -26,7 +26,7 @@ public:
     bool exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const override;
 };
 
-bool QPsdExporterImagePlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
+bool QPsdExporterImagesPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
 {
     const auto imageScaling = config.imageScaling;
     std::function<void(const QModelIndex &, QDir *)> traverseTree;
