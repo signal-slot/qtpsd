@@ -31,6 +31,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QStyledItemDelegate>
+#include <QtWidgets/QToolButton>
 
 class NameDelegate : public QStyledItemDelegate
 {
@@ -108,6 +109,7 @@ public:
 private:
     ::PsdWidget *q;
     QButtonGroup types;
+    QButtonGroup anchorButtons;
 };
 
 PsdWidget::Private::Private(::PsdWidget *parent)
@@ -298,18 +300,65 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     auto *propertiesGrid = qobject_cast<QGridLayout *>(properties->layout());
     textSourceCombo = new QComboBox(q);
     textSourceCombo->hide();
-    propertiesGrid->addWidget(textSourceCombo, 4, 1);
+    propertiesGrid->addWidget(textSourceCombo, 5, 1);
     connect(textSourceCombo, &QComboBox::currentIndexChanged, q, [=]() {
         if (isReset())
             changed();
     });
     imageSourceCombo = new QComboBox(q);
     imageSourceCombo->hide();
-    propertiesGrid->addWidget(imageSourceCombo, 6, 1);
+    propertiesGrid->addWidget(imageSourceCombo, 7, 1);
     connect(imageSourceCombo, &QComboBox::currentIndexChanged, q, [=]() {
         if (isReset())
             changed();
     });
+
+    // Initialize 3x3 anchor mode buttons
+    {
+        using AM = QPsdExporterTreeItemModel::ExportHint;
+        auto *grid = new QHBoxLayout(anchorModeWidget);
+        grid->setContentsMargins(0, 0, 0, 0);
+        grid->setSpacing(0);
+        auto *btnGrid = new QGridLayout;
+        btnGrid->setContentsMargins(0, 0, 0, 0);
+        btnGrid->setSpacing(0);
+        grid->addLayout(btnGrid);
+        grid->addStretch();
+        const QString labels[] = {
+            u"↖"_s, u"↑"_s, u"↗"_s,
+            u"←"_s, u"·"_s,  u"→"_s,
+            u"↙"_s, u"↓"_s, u"↘"_s,
+        };
+        const int modes[] = {
+            AM::AnchorTopLeft, AM::AnchorTop, AM::AnchorTopRight,
+            AM::AnchorLeft, AM::AnchorCenter, AM::AnchorRight,
+            AM::AnchorBottomLeft, AM::AnchorBottom, AM::AnchorBottomRight,
+        };
+        for (int i = 0; i < 9; ++i) {
+            auto *btn = new QToolButton(anchorModeWidget);
+            btn->setText(labels[i]);
+            btn->setCheckable(true);
+            btn->setFixedSize(24, 24);
+            btnGrid->addWidget(btn, i / 3, i % 3);
+            anchorButtons.addButton(btn, modes[i]);
+        }
+        anchorButtons.setExclusive(false);
+        connect(&anchorButtons, &QButtonGroup::buttonClicked, q, [this, changed, isReset](QAbstractButton *clicked) {
+            if (clicked->isChecked()) {
+                for (auto *btn : anchorButtons.buttons())
+                    if (btn != clicked) btn->setChecked(false);
+            }
+            if (isReset()) changed();
+        });
+        // Disable anchors when Position is checked
+        connect(position, &QCheckBox::toggled, q, [this](bool checked) {
+            anchorModeWidget->setEnabled(!checked);
+            if (checked) {
+                for (auto *btn : anchorButtons.buttons())
+                    btn->setChecked(false);
+            }
+        });
+    }
 
     auto updateButtonSourceVisibility = [this]() {
         const bool isNative = typeNative->isChecked();
@@ -700,6 +749,21 @@ void PsdWidget::Private::updateAttributes()
         }
     }
 
+    // Populate anchor buttons from hint
+    {
+        for (auto *btn : anchorButtons.buttons())
+            btn->setChecked(false);
+        if (rows.size() == 1) {
+            const auto hint = model.layerHint(rows.first());
+            auto *btn = anchorButtons.button(hint.anchorMode);
+            if (btn)
+                btn->setChecked(true);
+        }
+        // Disable when Position is checked
+        const bool posChecked = position->isChecked() && position->isEnabled();
+        anchorModeWidget->setEnabled(!posChecked);
+    }
+
     buttonBox->button(QDialogButtonBox::Discard)->setEnabled(false);
     buttonBox->button(QDialogButtonBox::Apply)->setEnabled(false);
     treeView->setEnabled(true);
@@ -779,6 +843,14 @@ void PsdWidget::Private::applyAttributes()
             break;
         default:
             break;
+        }
+
+        // Apply anchor mode from UI
+        {
+            auto *checked = anchorButtons.checkedButton();
+            hint.anchorMode = checked
+                ? static_cast<QPsdExporterTreeItemModel::ExportHint::AnchorMode>(anchorButtons.id(checked))
+                : QPsdExporterTreeItemModel::ExportHint::AnchorNone;
         }
 
         hint.properties = propertiesChecked;

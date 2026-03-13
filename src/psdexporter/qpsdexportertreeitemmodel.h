@@ -44,6 +44,12 @@ public:
             Button,
             Button_Highlighted,
         };
+        enum AnchorMode {
+            AnchorNone = 0,
+            AnchorTopLeft, AnchorTop, AnchorTopRight,
+            AnchorLeft, AnchorCenter, AnchorRight,
+            AnchorBottomLeft, AnchorBottom, AnchorBottomRight,
+        };
 
         QString id;
         Type type = Embed;
@@ -54,12 +60,13 @@ public:
         QSet<QString> properties;
         QString textSource;
         QString imageSource;
+        AnchorMode anchorMode = AnchorNone;
 
         bool isDefaultValue() const {
             return id.isEmpty() && type == Embed && componentName.isEmpty()
                    && baseElement == Container && visible && !interactive
                    && properties.isEmpty() && textSource.isEmpty()
-                   && imageSource.isEmpty();
+                   && imageSource.isEmpty() && anchorMode == AnchorNone;
         }
 
         QJsonObject toJson() const;

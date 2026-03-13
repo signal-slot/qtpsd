@@ -206,7 +206,64 @@ bool QPsdExporterQtQuickPlugin::outputBase(const QModelIndex &index, Element *el
         }
         rect = adjustRectForMerge(index, rect);
     }
-    if (rect.isEmpty()) {
+
+    // Check anchor mode hint
+    const auto anchorMode = model()->layerHint(index).anchorMode;
+    using AM = QPsdExporterTreeItemModel::ExportHint;
+    if (anchorMode != AM::AnchorNone) {
+        QSizeF parentSize;
+        if (index.parent().isValid())
+            parentSize = model()->rect(index.parent()).size();
+        else
+            parentSize = canvasSize();
+
+        // Horizontal anchor
+        switch (anchorMode) {
+        case AM::AnchorTopLeft: case AM::AnchorLeft: case AM::AnchorBottomLeft:
+            element->properties.insert("anchors.left", "parent.left");
+            if (rect.x() != 0)
+                element->properties.insert("anchors.leftMargin", rect.x() * horizontalScale);
+            break;
+        case AM::AnchorTop: case AM::AnchorCenter: case AM::AnchorBottom: {
+            element->properties.insert("anchors.horizontalCenter", "parent.horizontalCenter");
+            qreal off = rect.x() + rect.width() / 2.0 - parentSize.width() / 2.0;
+            if (!qFuzzyIsNull(off))
+                element->properties.insert("anchors.horizontalCenterOffset", off * horizontalScale);
+            break; }
+        case AM::AnchorTopRight: case AM::AnchorRight: case AM::AnchorBottomRight: {
+            element->properties.insert("anchors.right", "parent.right");
+            qreal m = parentSize.width() - rect.x() - rect.width();
+            if (!qFuzzyIsNull(m))
+                element->properties.insert("anchors.rightMargin", m * horizontalScale);
+            break; }
+        default: break;
+        }
+
+        // Vertical anchor
+        switch (anchorMode) {
+        case AM::AnchorTopLeft: case AM::AnchorTop: case AM::AnchorTopRight:
+            element->properties.insert("anchors.top", "parent.top");
+            if (rect.y() != 0)
+                element->properties.insert("anchors.topMargin", rect.y() * verticalScale);
+            break;
+        case AM::AnchorLeft: case AM::AnchorCenter: case AM::AnchorRight: {
+            element->properties.insert("anchors.verticalCenter", "parent.verticalCenter");
+            qreal off = rect.y() + rect.height() / 2.0 - parentSize.height() / 2.0;
+            if (!qFuzzyIsNull(off))
+                element->properties.insert("anchors.verticalCenterOffset", off * verticalScale);
+            break; }
+        case AM::AnchorBottomLeft: case AM::AnchorBottom: case AM::AnchorBottomRight: {
+            element->properties.insert("anchors.bottom", "parent.bottom");
+            qreal m = parentSize.height() - rect.y() - rect.height();
+            if (!qFuzzyIsNull(m))
+                element->properties.insert("anchors.bottomMargin", m * verticalScale);
+            break; }
+        default: break;
+        }
+
+        element->properties.insert("width", rect.width() * horizontalScale);
+        element->properties.insert("height", rect.height() * verticalScale);
+    } else if (rect.isEmpty()) {
         element->properties.insert("anchors.fill", "parent");
     } else {
         outputRect(rect, element);

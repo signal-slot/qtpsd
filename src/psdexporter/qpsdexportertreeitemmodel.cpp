@@ -71,6 +71,8 @@ QJsonObject QPsdExporterTreeItemModel::ExportHint::toJson() const
         object.insert("textSource"_L1, textSource);
     if (!imageSource.isEmpty())
         object.insert("imageSource"_L1, imageSource);
+    if (anchorMode != AnchorNone)
+        object.insert("anchorMode"_L1, static_cast<int>(anchorMode));
     return object;
 }
 
@@ -96,6 +98,8 @@ QPsdExporterTreeItemModel::ExportHint QPsdExporterTreeItemModel::ExportHint::fro
     if (componentName.isEmpty())
         componentName = obj.value("name"_L1).toString();
 
+    auto anchorMode = static_cast<AnchorMode>(obj.value("anchorMode"_L1).toInt(AnchorNone));
+
     return ExportHint {
         obj.value("id"_L1).toString(),
         static_cast<Type>(rawType),
@@ -106,6 +110,7 @@ QPsdExporterTreeItemModel::ExportHint QPsdExporterTreeItemModel::ExportHint::fro
         QSet<QString>(propList.begin(), propList.end()),
         obj.value("textSource"_L1).toString(),
         obj.value("imageSource"_L1).toString(),
+        anchorMode,
     };
 }
 
