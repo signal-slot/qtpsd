@@ -11,43 +11,28 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 24
-        height: 32
-        horizontalAlignment: Text.AlignLeft
-        text: "Top"
-        verticalAlignment: Text.AlignBottom
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 22
+        source: "images/top.png"
         width: 40
         x: 100
-        y: 25
+        y: 33
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 24
-        height: 32
-        horizontalAlignment: Text.AlignLeft
-        text: "Middle"
-        verticalAlignment: Text.AlignBottom
-        width: 72
-        x: 100
-        y: 125
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 19
+        source: "images/middle.png"
+        width: 70
+        x: 102
+        y: 132
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 24
-        height: 32
-        horizontalAlignment: Text.AlignLeft
-        text: "Bottom"
-        verticalAlignment: Text.AlignBottom
-        width: 79
-        x: 100
-        y: 225
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 18
+        source: "images/bottom.png"
+        width: 76
+        x: 102
+        y: 233
     }
 }

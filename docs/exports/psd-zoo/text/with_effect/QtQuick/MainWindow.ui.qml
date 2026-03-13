@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ffc83232"
-        font.family: "Roboto"
-        font.pixelSize: 48
-        height: 63
-        horizontalAlignment: Text.AlignLeft
-        text: "STYLED"
-        verticalAlignment: Text.AlignBottom
-        width: 173
-        x: 20
-        y: 90
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 36
+        source: "images/styled.png"
+        width: 171
+        x: 21
+        y: 105
     }
 }

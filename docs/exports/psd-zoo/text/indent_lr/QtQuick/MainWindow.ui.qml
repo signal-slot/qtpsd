@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 12
-        height: 181
-        horizontalAlignment: Text.AlignLeft
-        text: "This paragraph has left and right indentation applied for testing margin parameters."
-        verticalAlignment: Text.AlignBottom
-        width: 281
-        wrapMode: Text.Wrap
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 33
+        source: "images/this_paragraph_has_left_and_right_indentation_applied_for_testi.png"
+        width: 277
         x: 10
-        y: 9
+        y: 10
     }
 }

@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 48
-        horizontalAlignment: Text.AlignLeft
-        text: "Tracking"
-        verticalAlignment: Text.AlignBottom
-        width: 188
-        x: 20
-        y: 62
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 35
+        source: "images/tracking.png"
+        width: 184
+        x: 21
+        y: 73
     }
 }

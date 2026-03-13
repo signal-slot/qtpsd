@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 14
-        height: 261
-        horizontalAlignment: Text.AlignLeft
-        text: "First paragraph with indent. This is a longer text to test paragraph formatting.\n\nSecond paragraph."
-        verticalAlignment: Text.AlignBottom
-        width: 360
-        wrapMode: Text.Wrap
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 87
+        source: "images/First paragraph with indent. This is a longer text to test para"
+        width: 338
         x: 20
-        y: 19
+        y: 20
     }
 }

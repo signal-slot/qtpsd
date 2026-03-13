@@ -19,18 +19,13 @@ Item {
         x: 50
         y: 50
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 28
-        height: 37
-        horizontalAlignment: Text.AlignLeft
-        text: "Mixed Content"
-        verticalAlignment: Text.AlignBottom
-        width: 183
-        x: 50
-        y: 221
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 22
+        source: "images/mixed_content.png"
+        width: 182
+        x: 51
+        y: 229
     }
     Item {
         height: 152

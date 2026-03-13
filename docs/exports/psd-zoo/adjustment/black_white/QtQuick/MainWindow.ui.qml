@@ -6,15 +6,7 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
-        source: "images/background.png"
-        width: 200
-        x: 0
-        y: 0
-    }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 200
-        source: "images/colored_content.png"
+        source: "images/merged.png"
         width: 200
         x: 0
         y: 0

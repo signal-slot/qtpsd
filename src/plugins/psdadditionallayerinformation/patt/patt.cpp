@@ -71,6 +71,8 @@ public:
             QByteArray indexColorTable;
             if (imageMode == 2) {
                 indexColorTable = readByteArray(source, 256 * 3, &length);
+                // 4 bytes of transparency data follow the color table
+                skip(source, 4, &length);
             }
 
             // Pattern data as Virtual Memory Array List
@@ -231,6 +233,34 @@ public:
                         result.insert(uniqueID, QVariant::fromValue(image));
                         qCDebug(lcQPsdAdditionalLayerInformationPattPlugin)
                             << "Pattern" << uniqueID << "assembled as" << w << "x" << h << "Grayscale image";
+                    }
+                } else if (imageMode == 2 && !channelDataList.isEmpty() && indexColorTable.size() == 768) {
+                    // Indexed color mode: channel data contains palette indices
+                    const int w = patternRect.width();
+                    const int h = patternRect.height();
+                    if (w > 0 && h > 0) {
+                        QImage image(w, h, QImage::Format_ARGB32);
+                        image.fill(Qt::transparent);
+
+                        const auto *palette = reinterpret_cast<const quint8 *>(indexColorTable.constData());
+                        const auto &indexData = channelDataList[0];
+                        const qsizetype dataSize = indexData.size();
+                        for (int y = 0; y < h; ++y) {
+                            auto *line = reinterpret_cast<QRgb *>(image.scanLine(y));
+                            for (int x = 0; x < w; ++x) {
+                                const int idx = y * w + x;
+                                const quint8 palIdx = (idx < dataSize)
+                                    ? static_cast<quint8>(indexData.at(idx)) : 0;
+                                const int r = palette[palIdx * 3];
+                                const int g = palette[palIdx * 3 + 1];
+                                const int b = palette[palIdx * 3 + 2];
+                                line[x] = qRgba(r, g, b, 255);
+                            }
+                        }
+
+                        result.insert(uniqueID, QVariant::fromValue(image));
+                        qCDebug(lcQPsdAdditionalLayerInformationPattPlugin)
+                            << "Pattern" << uniqueID << "assembled as" << w << "x" << h << "Indexed image";
                     }
                 }
             }

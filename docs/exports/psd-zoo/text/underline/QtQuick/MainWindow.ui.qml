@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 36
-        font.underline: true
-        height: 48
-        horizontalAlignment: Text.AlignLeft
-        text: "Underline"
-        verticalAlignment: Text.AlignBottom
-        width: 151
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 34
+        source: "images/underline.png"
+        width: 152
         x: 30
-        y: 62
+        y: 73
     }
 }

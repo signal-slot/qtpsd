@@ -13,12 +13,18 @@
 #include <QtGui/QBrush>
 #include <QtGui/QFontMetrics>
 #include <QtGui/QGuiApplication>
+#include <QtGui/QPainter>
 #include <QtGui/QPen>
 #include <QtGui/QScreen>
 
 #include <QtPsdCore/qpsdblend.h>
+#include <QtPsdCore/QPsdDescriptor>
 #include <QtPsdCore/QPsdSofiEffect>
+#include <QtPsdCore/QPsdUnitFloat>
 #include <QtPsdGui/QPsdBorder>
+#include <QtPsdGui/QPsdGuiLayerTreeItemModel>
+#include <QtPsdGui/QPsdPatternFill>
+#include <QtPsdGui/qpsdguiglobal.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -140,29 +146,57 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     window.properties.insert("width", canvasSize().width() * horizontalScale);
     window.properties.insert("height", canvasSize().height() * verticalScale);
 
-    for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
-        QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &window, &imports, &exports, std::nullopt))
-            return false;
-    }
-
-    // Apply blend modes for root-level layers (same logic as inside outputFolder)
-    applyBlendModes(&window, &imports);
-
-    // Flattened PSD fallback: if no layers were produced, use the merged image
-    if (window.children.isEmpty()) {
+    // Helper: use the merged image from Image Data section (pre-composited by Photoshop)
+    auto appendMergedImage = [&]() {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
-        if (!merged.isNull()) {
-            imageStore = QPsdImageStore(dir, "images"_L1);
-            const QString name = imageStore.save("merged.png"_L1, merged, "PNG");
-            Element img;
-            img.type = "Image";
-            img.properties.insert("width", canvasSize().width() * horizontalScale);
-            img.properties.insert("height", canvasSize().height() * verticalScale);
-            img.properties.insert("source", u"\"images/%1\""_s.arg(name));
-            img.properties.insert("fillMode", "Image.PreserveAspectFit");
-            window.children.append(img);
+        if (merged.isNull())
+            return;
+        const QImage output = imageScaling
+            ? merged.scaled(canvasSize().width() * horizontalScale, canvasSize().height() * verticalScale, Qt::KeepAspectRatio, Qt::SmoothTransformation)
+            : merged;
+        const QString name = imageStore.save("merged.png"_L1, output, "PNG");
+        Element img;
+        img.type = "Image";
+        img.properties.insert("width", canvasSize().width() * horizontalScale);
+        img.properties.insert("height", canvasSize().height() * verticalScale);
+        img.properties.insert("x", 0);
+        img.properties.insert("y", 0);
+        img.properties.insert("source", u"\"images/%1\""_s.arg(name));
+        img.properties.insert("fillMode", "Image.PreserveAspectFit");
+        window.children.append(img);
+    };
+
+    // Detect adjustment layers — they require merged image fallback
+    bool hasAdjustmentLayers = false;
+    std::function<void(const QModelIndex &)> scanForAdjustments = [&](const QModelIndex &idx) {
+        if (hasAdjustmentLayers) return;
+        if (idx.isValid()) {
+            const auto *layer = model->layerItem(idx);
+            if (layer && layer->type() == QPsdAbstractLayerItem::Adjustment) {
+                hasAdjustmentLayers = true;
+                return;
+            }
         }
+        for (int r = 0; r < model->rowCount(idx); r++)
+            scanForAdjustments(model->index(r, 0, idx));
+    };
+    scanForAdjustments(QModelIndex());
+
+    if (hasAdjustmentLayers) {
+        appendMergedImage();
+    } else {
+        for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
+            QModelIndex childIndex = model->index(i, 0, QModelIndex {});
+            if (!traverseTree(childIndex, &window, &imports, &exports, std::nullopt))
+                return false;
+        }
+
+        // Apply blend modes for root-level layers (same logic as inside outputFolder)
+        applyBlendModes(&window, &imports);
+
+        // Flattened PSD fallback: if no layers were produced, use the merged image
+        if (window.children.isEmpty())
+            appendMergedImage();
     }
 
     // Expose artboard children as property aliases for external control (z, visible, etc.)
@@ -537,6 +571,56 @@ bool QPsdExporterQtQuickPlugin::outputFolder(const QModelIndex &folderIndex, Ele
         artboard.properties.insert("color", u"\"%1\""_s.arg(folder->artboardBackground().name(QColor::HexArgb)));
         element->children.append(artboard);
     }
+    // Pattern fill layers are folders with PtFl data but no children
+    if (model()->rowCount(folderIndex) == 0) {
+    const auto ali = item->record().additionalLayerInformation();
+    if (ali.contains("PtFl")) {
+        const auto ptfl = ali.value("PtFl").value<QPsdDescriptor>().data();
+        const auto ptrn = ptfl.value("Ptrn").value<QPsdDescriptor>().data();
+        const QString patternId = ptrn.value("Idnt").toString();
+        qreal patternScale = 1.0;
+        const auto scl = ptfl.value("Scl ").value<QPsdUnitFloat>();
+        if (scl.unit() == QPsdUnitFloat::Percent)
+            patternScale = scl.value() / 100.0;
+        qreal patternAngle = 0;
+        const auto angl = ptfl.value("Angl").value<QPsdUnitFloat>();
+        if (angl.unit() == QPsdUnitFloat::Angle)
+            patternAngle = angl.value();
+
+        auto *guiModel = static_cast<const QPsdExporterTreeItemModel *>(model())->guiLayerTreeItemModel();
+        QImage patternImage = guiModel ? guiModel->patternImage(patternId) : QImage();
+        if (!patternImage.isNull()) {
+            if (patternScale != 1.0 && patternScale > 0) {
+                patternImage = patternImage.scaled(
+                    qRound(patternImage.width() * patternScale),
+                    qRound(patternImage.height() * patternScale),
+                    Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+            }
+            QBrush brush(patternImage);
+            QTransform transform;
+            if (patternAngle != 0)
+                transform.rotate(patternAngle);
+            if (!transform.isIdentity())
+                brush.setTransform(transform);
+
+            QImage rendered(item->rect().size(), QImage::Format_ARGB32);
+            rendered.fill(Qt::transparent);
+            QPainter painter(&rendered);
+            painter.setPen(Qt::NoPen);
+            painter.setBrush(brush);
+            painter.drawRect(rendered.rect());
+            painter.end();
+
+            const QString name = imageStore.save(imageFileName(item->name(), "PNG"_L1), rendered, "PNG");
+            if (!name.isEmpty()) {
+                element->type = "Image";
+                element->properties.insert("source", u"\"images/%1\""_s.arg(name));
+                element->properties.insert("fillMode", "Image.PreserveAspectFit");
+            }
+        }
+    }
+    }
+
     for (int i = model()->rowCount(folderIndex) - 1; i >= 0; i--) {
         QModelIndex childIndex = model()->index(i, 0, folderIndex);
         if (!traverseTree(childIndex, element, imports, exports, std::nullopt, nextGroupBlendMode))
@@ -1197,6 +1281,51 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
                     element->properties.insert("fillMode", "Image.PreserveAspectFit");
                 }
                 break; }
+            }
+        } else if (shape->patternFill() || !shape->vscgPatternId().isEmpty()) {
+            // Pattern fill — render to image
+            auto *guiModel = static_cast<const QPsdExporterTreeItemModel *>(model())->guiLayerTreeItemModel();
+            const auto *pf = shape->patternFill();
+            const QString patternId = pf ? pf->patternID() : shape->vscgPatternId();
+            QImage patternImage = guiModel ? guiModel->patternImage(patternId) : QImage();
+            if (!patternImage.isNull()) {
+                const qreal sc = pf ? pf->scale() / 100.0 : shape->vscgPatternScale();
+                if (sc != 1.0 && sc > 0) {
+                    patternImage = patternImage.scaled(
+                        qRound(patternImage.width() * sc),
+                        qRound(patternImage.height() * sc),
+                        Qt::IgnoreAspectRatio, Qt::SmoothTransformation);
+                }
+                QBrush brush(patternImage);
+                QTransform transform;
+                const qreal angle = pf ? pf->angle() : shape->vscgPatternAngle();
+                if (angle != 0)
+                    transform.rotate(angle);
+                if (pf) {
+                    const QPointF phase = pf->phase();
+                    if (!phase.isNull())
+                        transform.translate(phase.x(), phase.y());
+                }
+                if (!transform.isIdentity())
+                    brush.setTransform(transform);
+
+                const QRect shapeRect = computeBaseRect(shapeIndex);
+                QImage rendered(shapeRect.size(), QImage::Format_ARGB32);
+                rendered.fill(Qt::transparent);
+                QPainter painter(&rendered);
+                painter.setPen(Qt::NoPen);
+                painter.setBrush(brush);
+                painter.drawRect(rendered.rect());
+                painter.end();
+
+                const QString name = imageStore.save(imageFileName(shape->name(), "PNG"_L1), rendered, "PNG");
+                if (!name.isEmpty()) {
+                    element->type = "Image";
+                    if (!outputBase(shapeIndex, element, imports))
+                        return false;
+                    element->properties.insert("source", u"\"images/%1\""_s.arg(name));
+                    element->properties.insert("fillMode", "Image.PreserveAspectFit");
+                }
             }
         } else if (shape->brush() != Qt::NoBrush) {
             element->type = "Rectangle";
@@ -2018,30 +2147,56 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     for (const auto &effect : image->effects()) {
         if (effect.canConvert<QPsdSofiEffect>()) {
             const auto sofi = effect.value<QPsdSofiEffect>();
-            if (sofi.blendMode() == QPsdBlend::Mode::Normal) {
-                const QString path = dir.absoluteFilePath("images/"_L1 + name);
-                QImage img(path);
-                if (!img.isNull()) {
-                    img = img.convertToFormat(QImage::Format_ARGB32);
-                    const QColor overlayColor(sofi.nativeColor());
-                    const qreal opacity = sofi.opacity();
-                    const int or_ = overlayColor.red();
-                    const int og = overlayColor.green();
-                    const int ob = overlayColor.blue();
-                    for (int y = 0; y < img.height(); ++y) {
-                        QRgb *line = reinterpret_cast<QRgb *>(img.scanLine(y));
-                        for (int x = 0; x < img.width(); ++x) {
-                            const int a = qAlpha(line[x]);
-                            if (a == 0) continue;
-                            const int r = qRound(qRed(line[x]) * (1.0 - opacity) + or_ * opacity);
-                            const int g = qRound(qGreen(line[x]) * (1.0 - opacity) + og * opacity);
-                            const int b = qRound(qBlue(line[x]) * (1.0 - opacity) + ob * opacity);
-                            line[x] = qRgba(r, g, b, a);
-                        }
-                    }
-                    img.save(path);
+            const QString path = dir.absoluteFilePath("images/"_L1 + name);
+            QImage img(path);
+            if (img.isNull())
+                break;
+            img = img.convertToFormat(QImage::Format_ARGB32);
+            const QColor overlayColor(sofi.nativeColor());
+            const qreal opacity = sofi.opacity();
+
+            // Create overlay image: SOFI color masked by original alpha
+            QImage overlayImg(img.size(), QImage::Format_ARGB32);
+            overlayImg.fill(Qt::transparent);
+            for (int y = 0; y < img.height(); ++y) {
+                const QRgb *srcLine = reinterpret_cast<const QRgb *>(img.constScanLine(y));
+                QRgb *dstLine = reinterpret_cast<QRgb *>(overlayImg.scanLine(y));
+                for (int x = 0; x < img.width(); ++x) {
+                    const int a = qAlpha(srcLine[x]);
+                    if (a > 0)
+                        dstLine[x] = qRgba(overlayColor.red(), overlayColor.green(), overlayColor.blue(), a);
                 }
             }
+
+            if (QtPsdGui::isCustomBlendMode(sofi.blendMode())) {
+                QtPsdGui::customBlend(img, overlayImg, sofi.blendMode(), opacity);
+            } else {
+                // Step 1: Apply blend at full strength
+                QImage blended;
+                if (sofi.blendMode() == QPsdBlend::Mode::Normal) {
+                    blended = overlayImg;
+                } else {
+                    blended = img;
+                    QPainter painter(&blended);
+                    painter.setCompositionMode(QtPsdGui::compositionMode(sofi.blendMode()));
+                    painter.drawImage(0, 0, overlayImg);
+                    painter.end();
+                }
+                // Step 2: Mix blended result with original using SOFI opacity
+                for (int y = 0; y < img.height(); ++y) {
+                    const QRgb *bLine = reinterpret_cast<const QRgb *>(blended.constScanLine(y));
+                    QRgb *line = reinterpret_cast<QRgb *>(img.scanLine(y));
+                    for (int x = 0; x < img.width(); ++x) {
+                        const int a = qAlpha(line[x]);
+                        if (a == 0) continue;
+                        const int r = qRound(qRed(line[x]) * (1.0 - opacity) + qRed(bLine[x]) * opacity);
+                        const int g = qRound(qGreen(line[x]) * (1.0 - opacity) + qGreen(bLine[x]) * opacity);
+                        const int b = qRound(qBlue(line[x]) * (1.0 - opacity) + qBlue(bLine[x]) * opacity);
+                        line[x] = qRgba(r, g, b, a);
+                    }
+                }
+            }
+            img.save(path);
         }
     }
 
@@ -2088,13 +2243,68 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             element.properties.insert("visible", false);
         if (!id.isEmpty())
             exports->insert(id);
+        // Clipping mask: NonBase layers are clipped to their base layer's alpha
+        const auto *guiModel = static_cast<const QPsdExporterTreeItemModel *>(model())->guiLayerTreeItemModel();
+        const QModelIndex sourceIndex = static_cast<const QPsdExporterTreeItemModel *>(model())->mapToSource(index);
+        const QModelIndex clipBaseSourceIndex = guiModel->clippingMaskIndex(sourceIndex);
+        if (clipBaseSourceIndex.isValid()) {
+            const auto *baseItem = guiModel->layerItem(clipBaseSourceIndex);
+            if (baseItem && item) {
+                QImage clippedImg = item->image();
+                QImage baseAlpha = baseItem->image();
+                if (!clippedImg.isNull() && !baseAlpha.isNull()) {
+                    // Composite: show clipped layer only where base layer has content
+                    const QRect baseRect = baseItem->rect();
+                    const QRect clippedRect = item->rect();
+
+                    // Draw clipped layer, then mask with base alpha
+                    QImage result(clippedRect.size(), QImage::Format_ARGB32);
+                    result.fill(Qt::transparent);
+                    QPainter painter(&result);
+                    painter.drawImage(0, 0, clippedImg);
+                    // DestinationIn: keep destination pixels only where source has alpha
+                    painter.setCompositionMode(QPainter::CompositionMode_DestinationIn);
+                    QImage baseMask(clippedRect.size(), QImage::Format_ARGB32);
+                    baseMask.fill(Qt::transparent);
+                    QPainter maskPainter(&baseMask);
+                    maskPainter.drawImage(baseRect.topLeft() - clippedRect.topLeft(), baseAlpha);
+                    maskPainter.end();
+                    painter.drawImage(0, 0, baseMask);
+                    painter.end();
+
+                    const QString name = imageStore.save(imageFileName(item->name(), "PNG"_L1), result, "PNG");
+                    if (!name.isEmpty()) {
+                        element.type = "Image";
+                        if (!outputBase(index, &element, imports))
+                            return false;
+                        element.properties.insert("source", u"\"images/%1\""_s.arg(name));
+                        element.properties.insert("fillMode", "Image.PreserveAspectFit");
+                        parent->children.append(element);
+                    }
+                }
+            }
+            break;
+        }
+
         bool generated = false;
         switch (item->type()) {
         case QPsdAbstractLayerItem::Folder: {
             generated = outputFolder(index, &element, imports, exports, groupBlendMode);
             break; }
         case QPsdAbstractLayerItem::Text: {
-            generated = outputText(index, &element, imports);
+            // Use pre-rendered text image from PSD channel data (Photoshop's rasterized text)
+            // for higher fidelity than QML Text element rendering
+            QString name = saveLayerImage(item);
+            if (!name.isEmpty()) {
+                element.type = "Image";
+                if (!outputBase(index, &element, imports))
+                    return false;
+                element.properties.insert("source", u"\"images/%1\""_s.arg(name));
+                element.properties.insert("fillMode", "Image.PreserveAspectFit");
+                generated = true;
+            } else {
+                generated = outputText(index, &element, imports);
+            }
             break; }
         case QPsdAbstractLayerItem::Shape: {
             generated = outputShape(index, &element, imports);

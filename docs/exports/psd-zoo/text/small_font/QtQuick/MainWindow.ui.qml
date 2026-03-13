@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 8
-        height: 10
-        horizontalAlignment: Text.AlignLeft
-        text: "Tiny text at 8pt"
-        verticalAlignment: Text.AlignBottom
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 8
+        source: "images/tiny.png"
         width: 53
         x: 10
-        y: 42
+        y: 44
     }
 }

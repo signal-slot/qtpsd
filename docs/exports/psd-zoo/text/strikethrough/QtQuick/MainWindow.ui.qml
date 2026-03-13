@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 30
-        font.strikeout: true
-        height: 39
-        horizontalAlignment: Text.AlignLeft
-        text: "Strikethrough"
-        verticalAlignment: Text.AlignBottom
-        width: 179
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 30
+        source: "images/strike.png"
+        width: 180
         x: 20
-        y: 69
+        y: 77
     }
 }

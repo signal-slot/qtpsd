@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 48
-        horizontalAlignment: Text.AlignLeft
-        text: "BULGE"
-        verticalAlignment: Text.AlignBottom
-        width: 110
-        x: 50
-        y: 82
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 55
+        source: "images/bulge.png"
+        width: 109
+        x: 51
+        y: 77
     }
 }

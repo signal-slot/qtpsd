@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 48
-        horizontalAlignment: Text.AlignLeft
-        text: "FISH"
-        verticalAlignment: Text.AlignBottom
-        width: 78
-        x: 50
-        y: 82
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 41
+        source: "images/fish.png"
+        width: 74
+        x: 52
+        y: 85
     }
 }

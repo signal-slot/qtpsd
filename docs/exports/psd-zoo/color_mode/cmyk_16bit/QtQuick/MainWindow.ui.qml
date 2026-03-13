@@ -8,5 +8,7 @@ Item {
         height: 200
         source: "images/merged.png"
         width: 200
+        x: 0
+        y: 0
     }
 }

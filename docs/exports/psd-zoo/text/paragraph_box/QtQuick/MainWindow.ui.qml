@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 16
-        height: 252
-        horizontalAlignment: Text.AlignLeft
-        text: "Paragraph text in a bounding box. This text wraps automatically when it reaches the edge of the box."
-        verticalAlignment: Text.AlignBottom
-        width: 354
-        wrapMode: Text.Wrap
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 69
+        source: "images/paragraph.png"
+        width: 350
         x: 25
-        y: 23
+        y: 25
     }
 }

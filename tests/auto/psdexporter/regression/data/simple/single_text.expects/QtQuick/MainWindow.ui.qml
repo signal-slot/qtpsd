@@ -16,18 +16,13 @@ Item {
             x: 0
             y: 0
         }
-        Text {
-            clip: true
-            color: "#ff000000"
-            font.family: "Source Han Sans"
-            font.pixelSize: 30
-            height: 44
-            horizontalAlignment: Text.AlignHCenter
-            text: "Example1"
-            verticalAlignment: Text.AlignVCenter
-            width: 160
-            x: 50
-            y: 71
+        Image {
+            fillMode: Image.PreserveAspectFit
+            height: 32
+            source: "images/example1.png"
+            width: 155
+            x: 53
+            y: 81
         }
     }
 }

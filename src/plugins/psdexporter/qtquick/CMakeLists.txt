@@ -8,7 +8,9 @@ qt_internal_add_plugin(QPsdExporterQtQuickPlugin
         qtquick.cpp
     LIBRARIES
         Qt::Core
+        Qt::Gui
         Qt::PsdExporter
+        Qt::PsdGui
 )
 
 qt_internal_add_resource(QPsdExporterQtQuickPlugin "qtquick"

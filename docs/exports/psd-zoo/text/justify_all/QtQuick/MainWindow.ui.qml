@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 14
-        height: 181
-        horizontalAlignment: Text.AlignJustify
-        text: "This text is fully justified including the last line of each paragraph."
-        verticalAlignment: Text.AlignBottom
-        width: 283
-        wrapMode: Text.Wrap
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 38
+        source: "images/this_text_is_fully_justified_including_the_last_line_of_each_pa.png"
+        width: 280
         x: 10
-        y: 9
+        y: 10
     }
 }

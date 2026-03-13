@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 14
-        height: 261
-        horizontalAlignment: Text.AlignLeft
-        text: "First paragraph.\n\nSecond paragraph.\n\nThird paragraph."
-        verticalAlignment: Text.AlignBottom
-        width: 360
-        wrapMode: Text.Wrap
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 112
+        source: "images/135912e0c633bc8d.png"
+        width: 116
         x: 20
-        y: 19
+        y: 20
     }
 }

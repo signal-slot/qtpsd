@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 48
-        horizontalAlignment: Text.AlignLeft
-        text: "Shifted"
-        verticalAlignment: Text.AlignBottom
-        width: 114
-        x: 30
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 29
+        source: "images/baseline_shift.png"
+        width: 110
+        x: 31
         y: 82
     }
 }

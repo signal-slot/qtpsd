@@ -52,19 +52,13 @@ Item {
                 y: 0.999995
             }
         }
-        Text {
-            clip: true
-            color: "#ff000000"
-            font.family: "Source Han Sans"
-            font.pixelSize: 50
-            height: 72
-            horizontalAlignment: Text.AlignHCenter
-            lineHeight: 0.24
-            text: "shooting"
-            verticalAlignment: Text.AlignVCenter
-            width: 239
-            x: 30
-            y: 6
+        Image {
+            fillMode: Image.PreserveAspectFit
+            height: 52
+            source: "images/shooting.png"
+            width: 237
+            x: 31
+            y: 24
         }
     }
 }

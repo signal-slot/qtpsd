@@ -10,17 +10,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ff000080"
-        font.family: "Roboto"
-        font.pixelSize: 24
-        height: 32
-        horizontalAlignment: Text.AlignLeft
-        text: "Foreground Text"
-        verticalAlignment: Text.AlignBottom
-        width: 174
-        x: 50
-        y: 125
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 23
+        source: "images/foreground_text.png"
+        width: 171
+        x: 52
+        y: 132
     }
 }

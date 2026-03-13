@@ -19,17 +19,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        clip: true
-        color: "#ffffffff"
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 48
-        horizontalAlignment: Text.AlignLeft
-        text: "Shadow"
-        verticalAlignment: Text.AlignBottom
-        width: 129
-        x: 30
-        y: 82
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 28
+        source: "images/shadow.png"
+        width: 127
+        x: 31
+        y: 93
     }
 }
