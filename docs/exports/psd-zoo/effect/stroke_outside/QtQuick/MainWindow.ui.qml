@@ -15,16 +15,17 @@ Item {
         border.color: "#ff000000"
         border.width: 4
         color: "transparent"
-        height: 120
-        width: 120
-        x: 40
-        y: 40
+        height: 128
+        width: 128
+        x: 36
+        y: 36
         Image {
-            anchors.fill: parent
             fillMode: Image.PreserveAspectFit
             height: 120
             source: "images/stroke_outside.png"
             width: 120
+            x: 4
+            y: 4
         }
     }
 }

@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Item {
+    Image {
+        fillMode: Image.PreserveAspectFit
         height: 162
+        source: "images/dual_mask.png"
         width: 162
         x: 19
         y: 19
-        Rectangle {
-            color: "#ffff0000"
-            height: 160
-            width: 160
-            x: 1
-            y: 1
-        }
     }
 }

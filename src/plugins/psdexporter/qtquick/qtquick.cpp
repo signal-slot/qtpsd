@@ -25,6 +25,7 @@
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 #include <QtPsdGui/QPsdPatternFill>
 #include <QtPsdGui/qpsdguiglobal.h>
+#include <QtPsdGui/qpsdborder.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -166,23 +167,34 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
         window.children.append(img);
     };
 
-    // Detect adjustment layers — they require merged image fallback
-    bool hasAdjustmentLayers = false;
-    std::function<void(const QModelIndex &)> scanForAdjustments = [&](const QModelIndex &idx) {
-        if (hasAdjustmentLayers) return;
+    // Detect features that require merged image fallback
+    bool needsMergedFallback = false;
+    std::function<void(const QModelIndex &)> scanForFallback = [&](const QModelIndex &idx) {
+        if (needsMergedFallback) return;
         if (idx.isValid()) {
             const auto *layer = model->layerItem(idx);
-            if (layer && layer->type() == QPsdAbstractLayerItem::Adjustment) {
-                hasAdjustmentLayers = true;
-                return;
+            if (layer) {
+                // Adjustment layers can't be exported as native QML
+                if (layer->type() == QPsdAbstractLayerItem::Adjustment) {
+                    needsMergedFallback = true;
+                    return;
+                }
+                // NoGPU mode can't apply blend modes — use merged image
+                if (effectMode() == NoGPU) {
+                    const auto mode = layer->record().blendMode();
+                    if (mode != QPsdBlend::Normal && mode != QPsdBlend::PassThrough && mode != QPsdBlend::Invalid) {
+                        needsMergedFallback = true;
+                        return;
+                    }
+                }
             }
         }
         for (int r = 0; r < model->rowCount(idx); r++)
-            scanForAdjustments(model->index(r, 0, idx));
+            scanForFallback(model->index(r, 0, idx));
     };
-    scanForAdjustments(QModelIndex());
+    scanForFallback(QModelIndex());
 
-    if (hasAdjustmentLayers) {
+    if (needsMergedFallback) {
         appendMergedImage();
     } else {
         for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
@@ -1698,6 +1710,23 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
+        // Ellipse detection: if radius >= half the smaller dimension and aspect ratio
+        // is non-square, QML Rectangle+radius produces a stadium, not an ellipse.
+        // Fall back to rasterized image for correct rendering.
+        {
+            const qreal minDim = qMin(path.rect.width(), path.rect.height());
+            if (path.radius * 2 >= minDim && path.rect.width() != path.rect.height()) {
+                const QString name = saveLayerImage(shape);
+                if (!name.isEmpty()) {
+                    element->type = "Image";
+                    if (!outputBase(shapeIndex, element, imports))
+                        return false;
+                    element->properties.insert("source", u"\"images/%1\""_s.arg(name));
+                    element->properties.insert("fillMode", "Image.PreserveAspectFit");
+                    return true;
+                }
+            }
+        }
         bool filled = isFilledRect(path, shape);
         bool gradientHandled = false;
         Element rectElement;
@@ -2210,14 +2239,34 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     if (border && border->isEnable()) {
         Element wrapper;
         wrapper.type = "Rectangle";
-        if (!outputBase(imageIndex, &wrapper, imports))
-            return false;
-        wrapper.properties.insert("border.width", border->size() * unitScale);
+        const qreal bw = border->size() * unitScale;
+        // Qt Quick draws borders inside the rect; adjust for PSD stroke position
+        qreal expand = 0;
+        if (border->position() == QPsdBorder::Outer)
+            expand = bw;
+        else if (border->position() == QPsdBorder::Center)
+            expand = bw / 2.0;
+        if (expand > 0) {
+            QRect baseRect = computeBaseRect(imageIndex);
+            QRectF expanded(baseRect.x() - expand, baseRect.y() - expand,
+                            baseRect.width() + expand * 2, baseRect.height() + expand * 2);
+            if (!outputBase(imageIndex, &wrapper, imports, expanded.toRect()))
+                return false;
+            // Position image inside wrapper at the expand offset
+            element->properties.remove("x");
+            element->properties.remove("y");
+            element->properties.insert("x", expand);
+            element->properties.insert("y", expand);
+        } else {
+            if (!outputBase(imageIndex, &wrapper, imports))
+                return false;
+            element->properties.remove("x");
+            element->properties.remove("y");
+            element->properties.insert("anchors.fill", "parent");
+        }
+        wrapper.properties.insert("border.width", bw);
         wrapper.properties.insert("border.color", u"\"%1\""_s.arg(border->color().name(QColor::HexArgb)));
         wrapper.properties.insert("color", "\"transparent\"");
-        element->properties.remove("x");
-        element->properties.remove("y");
-        element->properties.insert("anchors.fill", "parent");
         wrapper.children.append(*element);
         *element = wrapper;
     }
@@ -2307,7 +2356,21 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             }
             break; }
         case QPsdAbstractLayerItem::Shape: {
-            generated = outputShape(index, &element, imports);
+            // If the shape has a raster layer mask, rasterize with mask applied
+            // (outputShape generates native QML which can't represent raster masks)
+            if (!item->layerMask().isNull()) {
+                QString name = saveLayerImage(item);
+                if (!name.isEmpty()) {
+                    element.type = "Image";
+                    if (!outputBase(index, &element, imports))
+                        return false;
+                    element.properties.insert("source", u"\"images/%1\""_s.arg(name));
+                    element.properties.insert("fillMode", "Image.PreserveAspectFit");
+                    generated = true;
+                }
+            } else {
+                generated = outputShape(index, &element, imports);
+            }
             break; }
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &element, imports);

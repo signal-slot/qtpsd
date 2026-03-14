@@ -11,18 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Item {
+    Image {
+        fillMode: Image.PreserveAspectFit
         height: 262
+        source: "images/tall_ellipse.png"
         width: 102
         x: 49
         y: 19
-        Rectangle {
-            color: "#ff00c880"
-            height: 260
-            radius: 50
-            width: 100
-            x: 1
-            y: 0.999999
-        }
     }
 }

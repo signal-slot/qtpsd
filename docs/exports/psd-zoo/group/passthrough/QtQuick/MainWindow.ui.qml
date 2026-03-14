@@ -6,30 +6,9 @@ Item {
     Image {
         fillMode: Image.PreserveAspectFit
         height: 200
-        source: "images/background.png"
+        source: "images/merged.png"
         width: 200
         x: 0
         y: 0
-    }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 200
-        source: "images/bg.png"
-        width: 200
-        x: 0
-        y: 0
-    }
-    Item {
-        anchors.fill: parent
-        Image {
-            fillMode: Image.PreserveAspectFit
-            height: 140
-            layer.enabled: true
-            property string blendMode: "multiply"
-            source: "images/content.png"
-            width: 140
-            x: 30
-            y: 30
-        }
     }
 }
