@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 67
-        source: "images/large_canvas.png"
-        width: 425
-        x: 1806
-        y: 1948
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 72
+        height: 95
+        horizontalAlignment: Text.AlignLeft
+        text: "Large Canvas"
+        verticalAlignment: Text.AlignBottom
+        width: 435
+        x: 1800
+        y: 1925
     }
 }

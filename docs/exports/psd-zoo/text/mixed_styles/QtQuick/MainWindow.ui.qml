@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 19
-        source: "images/mixed_styles.png"
-        width: 188
-        x: 22
-        y: 82
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 32
+        horizontalAlignment: Text.AlignLeft
+        text: "Normal Bold Italic"
+        verticalAlignment: Text.AlignBottom
+        width: 190
+        x: 20
+        y: 75
     }
 }

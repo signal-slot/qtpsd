@@ -37,21 +37,32 @@ Item {
                 y: 1.00001
             }
         }
-        Image {
-            fillMode: Image.PreserveAspectFit
-            height: 16
-            source: "images/title.png"
+        Text {
+            clip: true
+            color: "#ff1e1e1e"
+            font.family: "Roboto"
+            font.pixelSize: 20
+            height: 26
+            horizontalAlignment: Text.AlignLeft
+            text: "Card Title"
+            verticalAlignment: Text.AlignBottom
             width: 87
             x: 80
-            y: 65
+            y: 59
         }
-        Image {
-            fillMode: Image.PreserveAspectFit
-            height: 33
-            source: "images/body.png"
-            width: 242
+        Text {
+            clip: true
+            color: "#ff505050"
+            font.family: "Roboto"
+            font.pixelSize: 12
+            height: 121
+            horizontalAlignment: Text.AlignLeft
+            text: "This is body text in a card layout with multiple layers and groups."
+            verticalAlignment: Text.AlignBottom
+            width: 250
+            wrapMode: Text.Wrap
             x: 80
-            y: 110
+            y: 109
         }
     }
 }

@@ -11,12 +11,18 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 87
-        source: "images/internationalization_implementation_characterization_extraordin.png"
-        width: 119
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 161
+        horizontalAlignment: Text.AlignLeft
+        text: "Internationalization implementation characterization extraordinarily"
+        verticalAlignment: Text.AlignBottom
+        width: 160
+        wrapMode: Text.Wrap
         x: 20
-        y: 20
+        y: 19
     }
 }

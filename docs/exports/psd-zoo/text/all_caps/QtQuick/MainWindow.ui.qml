@@ -11,12 +11,18 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 27
-        source: "images/all_caps.png"
-        width: 168
-        x: 31
-        y: 74
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.capitalization: Font.AllUppercase
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 48
+        horizontalAlignment: Text.AlignLeft
+        text: "all caps"
+        verticalAlignment: Text.AlignBottom
+        width: 171
+        x: 30
+        y: 62
     }
 }

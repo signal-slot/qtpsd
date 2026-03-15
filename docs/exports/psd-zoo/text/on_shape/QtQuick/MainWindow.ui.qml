@@ -24,12 +24,17 @@ Item {
             y: 1
         }
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 19
-        source: "images/button_label.png"
-        width: 106
-        x: 22
-        y: 97
+    Text {
+        clip: true
+        color: "#ffffffff"
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 32
+        horizontalAlignment: Text.AlignHCenter
+        text: "CLICK ME"
+        verticalAlignment: Text.AlignBottom
+        width: 107
+        x: 21
+        y: 90
     }
 }

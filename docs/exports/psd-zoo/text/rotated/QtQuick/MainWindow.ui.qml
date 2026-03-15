@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 88
-        source: "images/rotated.png"
-        width: 89
-        x: 90
-        y: 96
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 21
+        height: 28
+        horizontalAlignment: Text.AlignLeft
+        text: "Rotated"
+        verticalAlignment: Text.AlignBottom
+        width: 99
+        x: 71
+        y: 88
     }
 }

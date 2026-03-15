@@ -16,21 +16,31 @@ Item {
             x: 0
             y: 0
         }
-        Image {
-            fillMode: Image.PreserveAspectFit
-            height: 48
-            source: "images/12pt.png"
-            width: 115
-            x: 34
-            y: 37
+        Text {
+            clip: true
+            color: "#ffffffff"
+            font.family: "Source Han Sans"
+            font.pixelSize: 50
+            height: 72
+            horizontalAlignment: Text.AlignHCenter
+            text: "12pt"
+            verticalAlignment: Text.AlignVCenter
+            width: 120
+            x: 30
+            y: 16
         }
-        Image {
-            fillMode: Image.PreserveAspectFit
-            height: 143
-            source: "images/150px.png"
-            width: 464
-            x: 162
-            y: 82
+        Text {
+            clip: true
+            color: "#ffffffff"
+            font.family: "Source Han Sans"
+            font.pixelSize: 150
+            height: 217
+            horizontalAlignment: Text.AlignHCenter
+            text: "150px"
+            verticalAlignment: Text.AlignVCenter
+            width: 478
+            x: 150
+            y: 18
         }
     }
 }

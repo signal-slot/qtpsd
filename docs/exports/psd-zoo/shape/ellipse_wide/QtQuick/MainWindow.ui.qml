@@ -1,4 +1,5 @@
 import QtQuick
+import QtQuick.Shapes
 
 Item {
     height: 200
@@ -11,12 +12,23 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
+    Shape {
         height: 102
-        source: "images/wide_ellipse.png"
         width: 262
         x: 19
         y: 49
+        ShapePath {
+            fillColor: "#ffff8000"
+            strokeColor: "transparent"
+            strokeWidth: 0
+            PathAngleArc {
+                centerX: 131
+                centerY: 51
+                radiusX: 130
+                radiusY: 50
+                startAngle: 0
+                sweepAngle: 360
+            }
+        }
     }
 }

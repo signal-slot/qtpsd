@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 46
-        source: "images/landscape.png"
-        width: 229
-        x: 804
-        y: 504
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 48
+        height: 63
+        horizontalAlignment: Text.AlignLeft
+        text: "Landscape"
+        verticalAlignment: Text.AlignBottom
+        width: 234
+        x: 800
+        y: 490
     }
 }

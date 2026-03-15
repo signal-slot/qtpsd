@@ -108,7 +108,7 @@ private:
         QList<Element> layers;
     };
 
-    EffectMode m_effectMode = NoGPU;
+    EffectMode m_effectMode = EffectMaker;
     mutable bool m_needsBlendShader = false;
     mutable int m_blendCounter = 0;
     mutable int m_maskCounter = 0;
@@ -1710,21 +1710,50 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
-        // Ellipse detection: if radius >= half the smaller dimension and aspect ratio
-        // is non-square, QML Rectangle+radius produces a stadium, not an ellipse.
-        // Fall back to rasterized image for correct rendering.
+        // Ellipse detection: if radius >= half the smaller dimension and non-square,
+        // QML Rectangle+radius produces a stadium shape. Use Shape+PathAngleArc instead.
         {
             const qreal minDim = qMin(path.rect.width(), path.rect.height());
             if (path.radius * 2 >= minDim && path.rect.width() != path.rect.height()) {
-                const QString name = saveLayerImage(shape);
-                if (!name.isEmpty()) {
-                    element->type = "Image";
-                    if (!outputBase(shapeIndex, element, imports))
-                        return false;
-                    element->properties.insert("source", u"\"images/%1\""_s.arg(name));
-                    element->properties.insert("fillMode", "Image.PreserveAspectFit");
-                    return true;
+                imports->insert("QtQuick.Shapes");
+                element->type = "Shape";
+                if (!outputBase(shapeIndex, element, imports))
+                    return false;
+                Element shapePath;
+                shapePath.type = "ShapePath";
+                // Fill
+                const QGradient *eg = effectiveGradient(shape);
+                if (eg) {
+                    // TODO: gradient fill for ellipses
+                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                } else if (shape->brush() != Qt::NoBrush) {
+                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
                 }
+                // Stroke
+                const auto &pen = shape->pen();
+                if (pen.style() == Qt::NoPen) {
+                    shapePath.properties.insert("strokeWidth", 0);
+                    shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
+                } else {
+                    shapePath.properties.insert("strokeWidth", pen.widthF() * unitScale);
+                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                }
+                // Ellipse arc
+                const qreal cx = path.rect.center().x() * horizontalScale;
+                const qreal cy = path.rect.center().y() * verticalScale;
+                const qreal rx = path.rect.width() * horizontalScale / 2.0;
+                const qreal ry = path.rect.height() * verticalScale / 2.0;
+                Element arc;
+                arc.type = "PathAngleArc";
+                arc.properties.insert("centerX", cx);
+                arc.properties.insert("centerY", cy);
+                arc.properties.insert("radiusX", rx);
+                arc.properties.insert("radiusY", ry);
+                arc.properties.insert("startAngle", 0);
+                arc.properties.insert("sweepAngle", 360);
+                shapePath.children.append(arc);
+                element->children.append(shapePath);
+                return true;
             }
         }
         bool filled = isFilledRect(path, shape);
@@ -2341,19 +2370,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             generated = outputFolder(index, &element, imports, exports, groupBlendMode);
             break; }
         case QPsdAbstractLayerItem::Text: {
-            // Use pre-rendered text image from PSD channel data (Photoshop's rasterized text)
-            // for higher fidelity than QML Text element rendering
-            QString name = saveLayerImage(item);
-            if (!name.isEmpty()) {
-                element.type = "Image";
-                if (!outputBase(index, &element, imports))
-                    return false;
-                element.properties.insert("source", u"\"images/%1\""_s.arg(name));
-                element.properties.insert("fillMode", "Image.PreserveAspectFit");
-                generated = true;
-            } else {
-                generated = outputText(index, &element, imports);
-            }
+            generated = outputText(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Shape: {
             // If the shape has a raster layer mask, rasterize with mask applied

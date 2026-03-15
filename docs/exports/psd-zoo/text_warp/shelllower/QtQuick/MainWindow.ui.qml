@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 47
-        source: "images/shelllower.png"
-        width: 260
-        x: 35
-        y: 93
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 48
+        horizontalAlignment: Text.AlignLeft
+        text: "SHELLLOWER"
+        verticalAlignment: Text.AlignBottom
+        width: 225
+        x: 50
+        y: 82
     }
 }

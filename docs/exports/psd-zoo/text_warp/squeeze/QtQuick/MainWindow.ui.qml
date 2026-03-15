@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 38
-        source: "images/squeeze.png"
-        width: 130
-        x: 64
-        y: 90
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 48
+        horizontalAlignment: Text.AlignLeft
+        text: "SQUEEZE"
+        verticalAlignment: Text.AlignBottom
+        width: 153
+        x: 50
+        y: 82
     }
 }

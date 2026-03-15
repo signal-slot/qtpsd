@@ -16,13 +16,18 @@ Item {
             x: 0
             y: 0
         }
-        Image {
-            fillMode: Image.PreserveAspectFit
-            height: 5
-            source: "images/.png"
-            width: 5
-            x: 127
-            y: 101
+        Text {
+            clip: true
+            color: "#ff000000"
+            font.family: "Source Han Sans"
+            font.pixelSize: 30
+            height: 44
+            horizontalAlignment: Text.AlignHCenter
+            text: "."
+            verticalAlignment: Text.AlignVCenter
+            width: 9
+            x: 125
+            y: 71
         }
     }
 }

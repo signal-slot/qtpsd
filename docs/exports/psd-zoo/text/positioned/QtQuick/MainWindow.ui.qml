@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 20
-        source: "images/offset.png"
-        width: 65
-        x: 301
-        y: 381
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 32
+        horizontalAlignment: Text.AlignLeft
+        text: "Offset"
+        verticalAlignment: Text.AlignBottom
+        width: 66
+        x: 300
+        y: 375
     }
 }

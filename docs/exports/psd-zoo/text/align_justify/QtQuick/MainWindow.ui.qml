@@ -11,12 +11,18 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 38
-        source: "images/justify.png"
-        width: 250
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 151
+        horizontalAlignment: Text.AlignJustify
+        text: "This is justified text that should wrap across multiple lines in a text box."
+        verticalAlignment: Text.AlignBottom
+        width: 253
+        wrapMode: Text.Wrap
         x: 25
-        y: 25
+        y: 24
     }
 }

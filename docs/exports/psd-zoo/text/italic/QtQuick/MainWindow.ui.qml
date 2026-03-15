@@ -11,12 +11,18 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 28
-        source: "images/italic.png"
-        width: 76
-        x: 53
-        y: 73
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.italic: true
+        font.pixelSize: 36
+        height: 48
+        horizontalAlignment: Text.AlignLeft
+        text: "Italic"
+        verticalAlignment: Text.AlignBottom
+        width: 79
+        x: 50
+        y: 62
     }
 }

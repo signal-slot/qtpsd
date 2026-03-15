@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 28
-        source: "images/hscale.png"
-        width: 225
-        x: 22
-        y: 73
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 48
+        horizontalAlignment: Text.AlignLeft
+        text: "Stretched"
+        verticalAlignment: Text.AlignBottom
+        width: 231
+        x: 20
+        y: 62
     }
 }

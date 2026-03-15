@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 73
-        source: "images/300_dpi_text.png"
-        width: 337
-        x: 34
-        y: 28
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 100
+        height: 132
+        horizontalAlignment: Text.AlignLeft
+        text: "300 DPI"
+        verticalAlignment: Text.AlignBottom
+        width: 349
+        x: 30
+        y: -5
     }
 }

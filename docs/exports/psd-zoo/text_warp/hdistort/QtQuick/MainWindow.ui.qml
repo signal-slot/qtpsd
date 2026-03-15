@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 28
         height: 37
-        source: "images/distort.png"
-        width: 137
-        x: 42
-        y: 85
+        horizontalAlignment: Text.AlignLeft
+        text: "DISTORT"
+        verticalAlignment: Text.AlignBottom
+        width: 114
+        x: 50
+        y: 91
     }
 }

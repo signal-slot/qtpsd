@@ -11,84 +11,134 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_1.png"
-        width: 42
-        x: 11
-        y: 10
+    Text {
+        clip: true
+        color: "#ffff0000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 1"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 5
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_2.png"
-        width: 44
-        x: 11
-        y: 35
+    Text {
+        clip: true
+        color: "#ff00ff00"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 2"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 30
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_3.png"
-        width: 44
-        x: 11
-        y: 60
+    Text {
+        clip: true
+        color: "#ff0000ff"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 3"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 55
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_4.png"
-        width: 44
-        x: 11
-        y: 85
+    Text {
+        clip: true
+        color: "#ffff8000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 4"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 80
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_5.png"
-        width: 44
-        x: 11
-        y: 110
+    Text {
+        clip: true
+        color: "#ff8000ff"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 5"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 105
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_6.png"
-        width: 44
-        x: 11
-        y: 135
+    Text {
+        clip: true
+        color: "#ff008080"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 6"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 130
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_7.png"
-        width: 44
-        x: 11
-        y: 160
+    Text {
+        clip: true
+        color: "#ff808000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 7"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 155
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_8.png"
-        width: 44
-        x: 11
-        y: 185
+    Text {
+        clip: true
+        color: "#ff404040"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 8"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 180
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_9.png"
-        width: 44
-        x: 11
-        y: 210
+    Text {
+        clip: true
+        color: "#ffc000c0"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 9"
+        verticalAlignment: Text.AlignBottom
+        width: 45
+        x: 10
+        y: 205
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 13
-        source: "images/layer_10.png"
-        width: 51
-        x: 11
-        y: 235
+    Text {
+        clip: true
+        color: "#ff00c000"
+        font.family: "Roboto"
+        font.pixelSize: 14
+        height: 19
+        horizontalAlignment: Text.AlignLeft
+        text: "Layer 10"
+        verticalAlignment: Text.AlignBottom
+        width: 53
+        x: 10
+        y: 230
     }
 }

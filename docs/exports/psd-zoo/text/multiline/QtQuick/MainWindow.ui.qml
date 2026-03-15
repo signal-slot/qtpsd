@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 103
-        source: "images/multiline.png"
-        width: 109
-        x: 52
-        y: 62
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 24
+        height: 32
+        horizontalAlignment: Text.AlignLeft
+        text: "Line One\nLine Two\nLine Three"
+        verticalAlignment: Text.AlignBottom
+        width: 111
+        x: 50
+        y: 55
     }
 }

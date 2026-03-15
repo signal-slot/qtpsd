@@ -11,12 +11,17 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        fillMode: Image.PreserveAspectFit
-        height: 34
-        source: "images/crisp.png"
-        width: 80
-        x: 52
-        y: 74
+    Text {
+        clip: true
+        color: "#ff000000"
+        font.family: "Roboto"
+        font.pixelSize: 36
+        height: 48
+        horizontalAlignment: Text.AlignLeft
+        text: "Crisp"
+        verticalAlignment: Text.AlignBottom
+        width: 83
+        x: 50
+        y: 62
     }
 }
