@@ -978,17 +978,37 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
         wrapper.type = "Rectangle";
         if (!outputBase(imageIndex, &wrapper, imports))
             return false;
-        // Expand wrapper to account for border drawn inside the rectangle
         QRect baseRect = computeBaseRect(imageIndex);
-        wrapper.properties.insert("x", u"%1px"_s.ARGF((baseRect.x() - border->size()) * horizontalScale));
-        wrapper.properties.insert("y", u"%1px"_s.ARGF((baseRect.y() - border->size()) * verticalScale));
-        wrapper.properties.insert("width", u"%1px"_s.ARGF((baseRect.width() + 2 * border->size()) * horizontalScale));
-        wrapper.properties.insert("height", u"%1px"_s.ARGF((baseRect.height() + 2 * border->size()) * verticalScale));
+        switch (border->position()) {
+        case QPsdBorder::Outer:
+            // Expand wrapper outward; image stays at border offset inside
+            wrapper.properties.insert("x", u"%1px"_s.ARGF((baseRect.x() - border->size()) * horizontalScale));
+            wrapper.properties.insert("y", u"%1px"_s.ARGF((baseRect.y() - border->size()) * verticalScale));
+            wrapper.properties.insert("width", u"%1px"_s.ARGF((baseRect.width() + 2 * border->size()) * horizontalScale));
+            wrapper.properties.insert("height", u"%1px"_s.ARGF((baseRect.height() + 2 * border->size()) * verticalScale));
+            element->properties.insert("x", u"%1px"_s.ARGF(bw));
+            element->properties.insert("y", u"%1px"_s.ARGF(bw));
+            break;
+        case QPsdBorder::Inner:
+            // Keep wrapper at original size; image shrinks inside the border
+            element->properties.insert("x", u"%1px"_s.ARGF(bw));
+            element->properties.insert("y", u"%1px"_s.ARGF(bw));
+            element->properties.insert("width", u"%1px"_s.ARGF((baseRect.width() - 2 * border->size()) * horizontalScale));
+            element->properties.insert("height", u"%1px"_s.ARGF((baseRect.height() - 2 * border->size()) * verticalScale));
+            break;
+        case QPsdBorder::Center:
+            // Expand wrapper by half stroke; image offset by half stroke
+            wrapper.properties.insert("x", u"%1px"_s.ARGF((baseRect.x() - border->size() / 2.0) * horizontalScale));
+            wrapper.properties.insert("y", u"%1px"_s.ARGF((baseRect.y() - border->size() / 2.0) * verticalScale));
+            wrapper.properties.insert("width", u"%1px"_s.ARGF((baseRect.width() + border->size()) * horizontalScale));
+            wrapper.properties.insert("height", u"%1px"_s.ARGF((baseRect.height() + border->size()) * verticalScale));
+            element->properties.insert("x", u"%1px"_s.ARGF(bw / 2.0));
+            element->properties.insert("y", u"%1px"_s.ARGF(bw / 2.0));
+            break;
+        }
         wrapper.properties.insert("border-width", u"%1px"_s.ARGF(bw));
         wrapper.properties.insert("border-color", border->color().name());
         wrapper.properties.insert("background", "transparent");
-        element->properties.insert("x", u"%1px"_s.ARGF(bw));
-        element->properties.insert("y", u"%1px"_s.ARGF(bw));
         wrapper.children.append(*element);
         *element = wrapper;
     }
