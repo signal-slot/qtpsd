@@ -659,6 +659,54 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
     switch (path.type) {
     case QPsdAbstractLayerItem::PathInfo::Rectangle:
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
+        // Ellipse detection: if radius >= half the smaller dimension and non-square,
+        // Rectangle+border-radius produces a stadium shape. Use Path+CubicTo instead.
+        {
+            const qreal minDim = qMin(path.rect.width(), path.rect.height());
+            if (path.radius * 2 >= minDim && path.rect.width() != path.rect.height()
+                && path.type == QPsdAbstractLayerItem::PathInfo::RoundedRectangle) {
+                element->type = "Path";
+                if (!outputBase(shapeIndex, element, imports))
+                    return false;
+                const qreal cx = path.rect.center().x() * horizontalScale;
+                const qreal cy = path.rect.center().y() * verticalScale;
+                const qreal rx = path.rect.width() * horizontalScale / 2.0;
+                const qreal ry = path.rect.height() * verticalScale / 2.0;
+                if (shape->brush() != Qt::NoBrush)
+                    element->properties.insert("fill", colorToSlint(shape->brush().color()));
+                if (shape->pen().style() == Qt::NoPen) {
+                    element->properties.insert("stroke", "transparent");
+                } else {
+                    element->properties.insert("stroke", colorToSlint(shape->pen().color()));
+                    element->properties.insert("stroke-width",
+                        u"%1px"_s.ARGF(computeStrokeWidth(shape->pen(), unitScale)));
+                }
+                // Approximate ellipse with 4 cubic bezier curves
+                constexpr qreal k = 0.5522847498;
+                auto addMoveTo = [&](qreal x, qreal y) {
+                    Element cmd; cmd.type = "MoveTo";
+                    cmd.properties.insert("x", u"%1"_s.ARGF(x));
+                    cmd.properties.insert("y", u"%1"_s.ARGF(y));
+                    element->children.append(cmd);
+                };
+                auto addCubicTo = [&](qreal c1x, qreal c1y, qreal c2x, qreal c2y, qreal x, qreal y) {
+                    Element cmd; cmd.type = "CubicTo";
+                    cmd.properties.insert("control-1-x", u"%1"_s.ARGF(c1x));
+                    cmd.properties.insert("control-1-y", u"%1"_s.ARGF(c1y));
+                    cmd.properties.insert("control-2-x", u"%1"_s.ARGF(c2x));
+                    cmd.properties.insert("control-2-y", u"%1"_s.ARGF(c2y));
+                    cmd.properties.insert("x", u"%1"_s.ARGF(x));
+                    cmd.properties.insert("y", u"%1"_s.ARGF(y));
+                    element->children.append(cmd);
+                };
+                addMoveTo(cx, cy - ry);
+                addCubicTo(cx + rx * k, cy - ry, cx + rx, cy - ry * k, cx + rx, cy);
+                addCubicTo(cx + rx, cy + ry * k, cx + rx * k, cy + ry, cx, cy + ry);
+                addCubicTo(cx - rx * k, cy + ry, cx - rx, cy + ry * k, cx - rx, cy);
+                addCubicTo(cx - rx * k, cy - ry, cx - rx, cy - ry * k, cx, cy - ry);
+                return true;
+            }
+        }
         bool filled = isFilledRect(path, shape);
         if (!filled || base != "Rectangle") {
             element->type = base;
@@ -726,7 +774,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::ConicalGradient: {
                 const auto conical = reinterpret_cast<const QConicalGradient *>(g);
                 QStringList grad = { "@conic-gradient(from " +
-                    QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
+                    QString::number(std::fmod(90.0 - conical->angle() + 360.0, 360.0), 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
                     grad.append(colorToSlint(qtStops.at(i).second) + " " +
@@ -788,7 +836,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::ConicalGradient: {
                 const auto conical = reinterpret_cast<const QConicalGradient *>(pathGrad);
                 QStringList grad = { "@conic-gradient(from " +
-                    QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
+                    QString::number(std::fmod(90.0 - conical->angle() + 360.0, 360.0), 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
                     grad.append(colorToSlint(qtStops.at(i).second) + " " +
@@ -852,7 +900,7 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
             case QGradient::ConicalGradient: {
                 const auto conical = reinterpret_cast<const QConicalGradient *>(g);
                 QStringList grad = { "@conic-gradient(from " +
-                    QString::number(conical->angle() + 90.0, 'f', 3) + "deg" };
+                    QString::number(std::fmod(90.0 - conical->angle() + 360.0, 360.0), 'f', 3) + "deg" };
                 const auto qtStops = conical->stops();
                 for (int i = qtStops.size() - 1; i >= 0; --i) {
                     grad.append(colorToSlint(qtStops.at(i).second) + " " +
@@ -925,15 +973,22 @@ bool QPsdExporterSlintPlugin::outputImage(const QModelIndex &imageIndex, Element
 
     const auto *border = image->border();
     if (border && border->isEnable()) {
+        const qreal bw = border->size() * unitScale;
         Element wrapper;
         wrapper.type = "Rectangle";
         if (!outputBase(imageIndex, &wrapper, imports))
             return false;
-        wrapper.properties.insert("border-width", u"%1px"_s.ARGF(border->size() * unitScale));
+        // Expand wrapper to account for border drawn inside the rectangle
+        QRect baseRect = computeBaseRect(imageIndex);
+        wrapper.properties.insert("x", u"%1px"_s.ARGF((baseRect.x() - border->size()) * horizontalScale));
+        wrapper.properties.insert("y", u"%1px"_s.ARGF((baseRect.y() - border->size()) * verticalScale));
+        wrapper.properties.insert("width", u"%1px"_s.ARGF((baseRect.width() + 2 * border->size()) * horizontalScale));
+        wrapper.properties.insert("height", u"%1px"_s.ARGF((baseRect.height() + 2 * border->size()) * verticalScale));
+        wrapper.properties.insert("border-width", u"%1px"_s.ARGF(bw));
         wrapper.properties.insert("border-color", border->color().name());
         wrapper.properties.insert("background", "transparent");
-        element->properties.remove("x");
-        element->properties.remove("y");
+        element->properties.insert("x", u"%1px"_s.ARGF(bw));
+        element->properties.insert("y", u"%1px"_s.ARGF(bw));
         wrapper.children.append(*element);
         *element = wrapper;
     }

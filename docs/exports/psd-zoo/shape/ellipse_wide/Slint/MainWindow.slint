@@ -12,18 +12,48 @@ export component MainWindow inherits Window {
         x: 0px;
         y: 0px;
     }
-    Rectangle {
+    Path {
+        fill: #ff8000;
         height: 102px;
+        stroke: transparent;
         width: 262px;
         x: 19px;
         y: 49px;
-        Rectangle {
-            background: #ff8000;
-            border-radius: 130px;
-            height: 100px;
-            width: 260px;
-            x: 1px;
-            y: 1px;
+        MoveTo {
+            x: 131;
+            y: 1;
+        }
+        CubicTo {
+            control-1-x: 203;
+            control-1-y: 1;
+            control-2-x: 261;
+            control-2-y: 23;
+            x: 261;
+            y: 51;
+        }
+        CubicTo {
+            control-1-x: 261;
+            control-1-y: 79;
+            control-2-x: 203;
+            control-2-y: 101;
+            x: 131;
+            y: 101;
+        }
+        CubicTo {
+            control-1-x: 59;
+            control-1-y: 101;
+            control-2-x: 1;
+            control-2-y: 79;
+            x: 1;
+            y: 51;
+        }
+        CubicTo {
+            control-1-x: 59;
+            control-1-y: 1;
+            control-2-x: 1;
+            control-2-y: 23;
+            x: 131;
+            y: 1;
         }
     }
 }
