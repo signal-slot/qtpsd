@@ -519,30 +519,69 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
     }
     if (runs.size() == 1) {
         const auto run = runs.first();
-        element->type = "Text";
-        element->properties.insert("overflow", "clip");
         QRect rect = computeTextBounds(text);
-        if (!outputBase(textIndex, element, imports, rect))
-            return false;
-        element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
-        element->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
-        element->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
-        if (run.font.bold() || run.fauxBold)
-            element->properties.insert("font-weight", 700);
-        if (run.font.italic() || run.fauxItalic)
-            element->properties.insert("font-italic", true);
-        element->properties.insert("color", colorToSlint(run.color));
-        element->properties.insert("horizontal-alignment",
-            horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));
-        {
-            const auto vAlign = verticalAlignmentString(run.alignment, {"top"_L1, "bottom"_L1, "center"_L1});
-            if (!vAlign.isEmpty())
-                element->properties.insert("vertical-alignment", vAlign);
-        }
+        QString displayText = run.text.trimmed();
+        if (run.fontCaps == 2)
+            displayText = displayText.toUpper();
+        displayText.replace("\n"_L1, "\\n"_L1);
+
+        auto setTextProperties = [&](Element *e) {
+            e->type = "Text";
+            e->properties.insert("overflow", "clip");
+            e->properties.insert("text", u"\"%1\""_s.arg(displayText));
+            e->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
+            e->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
+            if (run.font.bold() || run.fauxBold)
+                e->properties.insert("font-weight", 700);
+            if (run.font.italic() || run.fauxItalic)
+                e->properties.insert("font-italic", true);
+            if (run.font.letterSpacingType() == QFont::AbsoluteSpacing) {
+                const qreal ls = run.font.letterSpacing();
+                if (qAbs(ls) > 0.01)
+                    e->properties.insert("letter-spacing", u"%1px"_s.ARGF(ls * fontScaleFactor));
+            } else if (run.font.letterSpacingType() == QFont::PercentageSpacing) {
+                const qreal ls = run.font.letterSpacing();
+                if (ls > 0.01 && qAbs(ls - 100.0) > 0.01)
+                    e->properties.insert("letter-spacing", u"%1px"_s.ARGF((ls - 100.0) / 100.0 * run.font.pointSizeF() * fontScaleFactor));
+            }
+            e->properties.insert("horizontal-alignment",
+                horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));
+            {
+                const auto vAlign = verticalAlignmentString(run.alignment, {"top"_L1, "bottom"_L1, "center"_L1});
+                if (!vAlign.isEmpty())
+                    e->properties.insert("vertical-alignment", vAlign);
+            }
+            if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText)
+                e->properties.insert("wrap", "word-wrap");
+        };
+
         if (shadow) {
-            // slint doesn't support dropshadow for text
-            element->properties.insert("stroke-width", u"%1px"_s.ARGF(2 * unitScale));
-            element->properties.insert("stroke", shadow->color.name(QColor::HexArgb));
+            element->type = "Rectangle";
+            if (!outputBase(textIndex, element, imports, rect))
+                return false;
+            element->properties.insert("background", "transparent");
+
+            Element shadowText;
+            setTextProperties(&shadowText);
+            shadowText.properties.insert("color", colorToSlint(shadow->color));
+            const auto offset = dropShadowOffset(*shadow, true);
+            shadowText.properties.insert("x", u"%1px"_s.ARGF(offset.x()));
+            shadowText.properties.insert("y", u"%1px"_s.ARGF(offset.y()));
+            shadowText.properties.insert("width", "100%");
+            shadowText.properties.insert("height", "100%");
+            element->children.append(shadowText);
+
+            Element mainText;
+            setTextProperties(&mainText);
+            mainText.properties.insert("color", colorToSlint(run.color));
+            mainText.properties.insert("width", "100%");
+            mainText.properties.insert("height", "100%");
+            element->children.append(mainText);
+        } else {
+            setTextProperties(element);
+            if (!outputBase(textIndex, element, imports, rect))
+                return false;
+            element->properties.insert("color", colorToSlint(run.color));
         }
     } else {
         element->type = "Rectangle";
@@ -572,13 +611,25 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                 }
                 Element textElement;
                 textElement.type = "Text";
-                textElement.properties.insert("text", u"\"%1\""_s.arg(text));
+                QString displayText = text;
+                if (run.fontCaps == 2)
+                    displayText = displayText.toUpper();
+                textElement.properties.insert("text", u"\"%1\""_s.arg(displayText));
                 textElement.properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
                 if (run.font.bold() || run.fauxBold)
                     textElement.properties.insert("font-weight", 700);
                 if (run.font.italic() || run.fauxItalic)
                     textElement.properties.insert("font-italic", true);
+                if (run.font.letterSpacingType() == QFont::AbsoluteSpacing) {
+                    const qreal ls = run.font.letterSpacing();
+                    if (qAbs(ls) > 0.01)
+                        textElement.properties.insert("letter-spacing", u"%1px"_s.ARGF(ls * fontScaleFactor));
+                } else if (run.font.letterSpacingType() == QFont::PercentageSpacing) {
+                    const qreal ls = run.font.letterSpacing();
+                    if (ls > 0.01 && qAbs(ls - 100.0) > 0.01)
+                        textElement.properties.insert("letter-spacing", u"%1px"_s.ARGF((ls - 100.0) / 100.0 * run.font.pointSizeF() * fontScaleFactor));
+                }
                 textElement.properties.insert("color", colorToSlint(run.color));
                 textElement.properties.insert("horizontal-alignment",
                     horizontalAlignmentString(run.alignment, {"left"_L1, "right"_L1, "center"_L1, "left"_L1}));

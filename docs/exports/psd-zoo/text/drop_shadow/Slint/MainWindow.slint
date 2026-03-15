@@ -20,19 +20,35 @@ export component MainWindow inherits Window {
         x: 0px;
         y: 0px;
     }
-    Text {
-        color: #ffffff;
-        font-family: "Roboto";
-        font-size: 36px;
+    Rectangle {
+        background: transparent;
         height: 48px;
-        horizontal-alignment: left;
-        overflow: clip;
-        stroke: #e6000000;
-        stroke-width: 2px;
-        text: "Shadow";
-        vertical-alignment: bottom;
         width: 129px;
         x: 30px;
         y: 82px;
+        Text {
+            color: #000000e6;
+            font-family: "Roboto";
+            font-size: 36px;
+            height: 100%;
+            horizontal-alignment: left;
+            overflow: clip;
+            text: "Shadow";
+            vertical-alignment: bottom;
+            width: 100%;
+            x: 3px;
+            y: 3px;
+        }
+        Text {
+            color: #ffffff;
+            font-family: "Roboto";
+            font-size: 36px;
+            height: 100%;
+            horizontal-alignment: left;
+            overflow: clip;
+            text: "Shadow";
+            vertical-alignment: bottom;
+            width: 100%;
+        }
     }
 }
