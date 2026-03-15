@@ -2373,21 +2373,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             generated = outputText(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Shape: {
-            // If the shape has a raster layer mask, rasterize with mask applied
-            // (outputShape generates native QML which can't represent raster masks)
-            if (!item->layerMask().isNull()) {
-                QString name = saveLayerImage(item);
-                if (!name.isEmpty()) {
-                    element.type = "Image";
-                    if (!outputBase(index, &element, imports))
-                        return false;
-                    element.properties.insert("source", u"\"images/%1\""_s.arg(name));
-                    element.properties.insert("fillMode", "Image.PreserveAspectFit");
-                    generated = true;
-                }
-            } else {
-                generated = outputShape(index, &element, imports);
-            }
+            generated = outputShape(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &element, imports);
@@ -2408,6 +2394,33 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         }
         if (!generated)
             return false;
+
+        // Apply raster layer mask via MultiEffect (all layer types)
+        if (!item->layerMask().isNull()) {
+            imports->insert("QtQuick.Effects");
+            const QString maskId = u"_rmask_%1"_s.arg(m_maskCounter++);
+            const QImage mask = item->layerMask();
+            const QString maskName = imageStore.save(
+                imageFileName(item->name() + "_mask"_L1, "PNG"_L1), mask, "PNG");
+            if (!maskName.isEmpty()) {
+                Element maskItem;
+                maskItem.type = "Image";
+                maskItem.id = maskId;
+                maskItem.properties.insert("visible", false);
+                maskItem.properties.insert("layer.enabled", true);
+                maskItem.properties.insert("source", u"\"images/%1\""_s.arg(maskName));
+                maskItem.properties.insert("fillMode", "Image.PreserveAspectFit");
+                maskItem.properties.insert("width", item->rect().width() * horizontalScale);
+                maskItem.properties.insert("height", item->rect().height() * verticalScale);
+                element.children.prepend(maskItem);
+
+                Element effect;
+                effect.type = "MultiEffect";
+                effect.properties.insert("maskEnabled", true);
+                effect.properties.insert("maskSource", maskId);
+                element.layers.append(effect);
+            }
+        }
 
         // Determine effective blend mode for leaf items
         if (item->type() != QPsdAbstractLayerItem::Folder) {
