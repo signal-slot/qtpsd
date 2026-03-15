@@ -18,4 +18,5 @@ qt_internal_add_resource(QPsdExporterQtQuickPlugin "qtquick"
     FILES
         qtquick.png
         blend.frag.qsb
+        adjustment.frag.qsb
 )

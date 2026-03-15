@@ -21,6 +21,7 @@
 #include <QtPsdCore/QPsdDescriptor>
 #include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdCore/QPsdUnitFloat>
+#include <QtPsdGui/QPsdAdjustmentLayerItem>
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 #include <QtPsdGui/QPsdPatternFill>
@@ -123,7 +124,11 @@ private:
 
     bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt, QPsdBlend::Mode groupBlendMode = QPsdBlend::PassThrough) const;
     void applyBlendModes(Element *element, ImportData *imports) const;
+    void applyAdjustmentLayer(const QPsdAbstractLayerItem *item, Element *parent, ImportData *imports) const;
     static void stripLayerEffects(Element &element);
+
+    mutable bool m_needsAdjustmentShader = false;
+    mutable int m_adjustmentCounter = 0;
 
     bool saveTo(const QString &baseName, Element *element, const ImportData &imports, const ExportData &exports) const;
 };
@@ -136,7 +141,9 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     m_blendCounter = 0;
     m_maskCounter = 0;
+    m_adjustmentCounter = 0;
     m_needsBlendShader = false;
+    m_needsAdjustmentShader = false;
 
     ImportData imports;
     imports.insert("QtQuick");
@@ -167,20 +174,14 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
         window.children.append(img);
     };
 
-    // Detect features that require merged image fallback
+    // Detect NoGPU mode with blend modes — requires merged image fallback
     bool needsMergedFallback = false;
-    std::function<void(const QModelIndex &)> scanForFallback = [&](const QModelIndex &idx) {
-        if (needsMergedFallback) return;
-        if (idx.isValid()) {
-            const auto *layer = model->layerItem(idx);
-            if (layer) {
-                // Adjustment layers can't be exported as native QML
-                if (layer->type() == QPsdAbstractLayerItem::Adjustment) {
-                    needsMergedFallback = true;
-                    return;
-                }
-                // NoGPU mode can't apply blend modes — use merged image
-                if (effectMode() == NoGPU) {
+    if (effectMode() == NoGPU) {
+        std::function<void(const QModelIndex &)> scanForFallback = [&](const QModelIndex &idx) {
+            if (needsMergedFallback) return;
+            if (idx.isValid()) {
+                const auto *layer = model->layerItem(idx);
+                if (layer) {
                     const auto mode = layer->record().blendMode();
                     if (mode != QPsdBlend::Normal && mode != QPsdBlend::PassThrough && mode != QPsdBlend::Invalid) {
                         needsMergedFallback = true;
@@ -188,11 +189,11 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
                     }
                 }
             }
-        }
-        for (int r = 0; r < model->rowCount(idx); r++)
-            scanForFallback(model->index(r, 0, idx));
-    };
-    scanForFallback(QModelIndex());
+            for (int r = 0; r < model->rowCount(idx); r++)
+                scanForFallback(model->index(r, 0, idx));
+        };
+        scanForFallback(QModelIndex());
+    }
 
     if (needsMergedFallback) {
         appendMergedImage();
@@ -230,6 +231,17 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
                 output.write(shader.readAll());
         }
         m_needsBlendShader = false;
+    }
+
+    // Copy adjustment shader to output directory if needed
+    if (m_needsAdjustmentShader) {
+        QFile shader(":/qtquick/adjustment.frag.qsb");
+        if (shader.open(QIODevice::ReadOnly)) {
+            QFile output(dir.absoluteFilePath("adjustment.frag.qsb"));
+            if (output.open(QIODevice::WriteOnly))
+                output.write(shader.readAll());
+        }
+        m_needsAdjustmentShader = false;
     }
 
     return true;
@@ -890,6 +902,285 @@ void QPsdExporterQtQuickPlugin::applyBlendModes(Element *element, ImportData *im
     }
 
     element->children = accumulated;
+}
+
+void QPsdExporterQtQuickPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *item, Element *parent, ImportData * /*imports*/) const
+{
+    const auto *adj = dynamic_cast<const QPsdAdjustmentLayerItem *>(item);
+    if (!adj || parent->children.isEmpty())
+        return;
+
+    const QByteArray key = adj->adjustmentKey();
+    const auto ali = item->record().additionalLayerInformation();
+    // ALI data may be a QVariantMap (custom plugins) or QPsdDescriptor (v16descriptor plugin)
+    QVariantMap data = ali.value(key).toMap();
+    if (data.isEmpty() && ali.value(key).canConvert<QPsdDescriptor>()) {
+        const auto desc = ali.value(key).value<QPsdDescriptor>();
+        const auto hash = desc.data();
+        for (auto it = hash.cbegin(); it != hash.cend(); ++it)
+            data.insert(QString::fromLatin1(it.key()), it.value());
+    }
+
+    // Wrap all existing children into a source Item
+    const QString sourceId = u"_adj_src_%1"_s.arg(m_adjustmentCounter++);
+    Element wrapper;
+    wrapper.type = "Item";
+    wrapper.id = sourceId;
+    wrapper.properties.insert("anchors.fill", "parent");
+    wrapper.properties.insert("layer.enabled", true);
+    wrapper.children = parent->children;
+    parent->children.clear();
+
+    // Build ShaderEffect as layer.effect
+    Element effect;
+    effect.type = "ShaderEffect";
+    effect.properties.insert("fragmentShader", u"\"adjustment.frag.qsb\""_s);
+
+    // Helper to set/override a float property
+    auto setFloat = [&](const QString &name, qreal value) {
+        effect.properties.insert(u"property real %1"_s.arg(name), value);
+    };
+
+    // Declare ALL shader uniforms with defaults to avoid "does not have a matching property" warnings
+    effect.properties.insert("property int adjustmentType", -1);
+    setFloat("brightness", 0);
+    setFloat("contrast", 0);
+    // Levels defaults (identity: shadow=0, highlight=1, midtone=1)
+    for (const auto &prefix : {u"lvl"_s, u"lvlR"_s, u"lvlG"_s, u"lvlB"_s}) {
+        setFloat(prefix + "_shadowIn"_L1, 0);
+        setFloat(prefix + "_highlightIn"_L1, 1);
+        setFloat(prefix + "_shadowOut"_L1, 0);
+        setFloat(prefix + "_highlightOut"_L1, 1);
+        setFloat(prefix + "_midtone"_L1, 1);
+    }
+    setFloat("exposure", 0); setFloat("offset", 0); setFloat("gamma", 1);
+    setFloat("hueShift", 0); setFloat("saturationShift", 0); setFloat("lightnessShift", 0);
+    setFloat("bal_shadow_cr", 0); setFloat("bal_shadow_mg", 0); setFloat("bal_shadow_yb", 0);
+    setFloat("bal_mid_cr", 0); setFloat("bal_mid_mg", 0); setFloat("bal_mid_yb", 0);
+    setFloat("bal_hi_cr", 0); setFloat("bal_hi_mg", 0); setFloat("bal_hi_yb", 0);
+    setFloat("bal_preserveLum", 0);
+    setFloat("phfl_r", 1); setFloat("phfl_g", 1); setFloat("phfl_b", 1);
+    setFloat("phfl_density", 0); setFloat("phfl_preserveLum", 0);
+    setFloat("posterizeLevels", 4); setFloat("thresholdLevel", 0.5);
+    setFloat("vibrance", 0); setFloat("vibranceSat", 0);
+    setFloat("mixr_outR_r", 100); setFloat("mixr_outR_g", 0); setFloat("mixr_outR_b", 0); setFloat("mixr_outR_c", 0);
+    setFloat("mixr_outG_r", 0); setFloat("mixr_outG_g", 100); setFloat("mixr_outG_b", 0); setFloat("mixr_outG_c", 0);
+    setFloat("mixr_outB_r", 0); setFloat("mixr_outB_g", 0); setFloat("mixr_outB_b", 100); setFloat("mixr_outB_c", 0);
+    setFloat("mixr_mono", 0);
+    setFloat("bw_red", 40); setFloat("bw_yellow", 60); setFloat("bw_green", 40);
+    setFloat("bw_cyan", 60); setFloat("bw_blue", 20); setFloat("bw_magenta", 80);
+
+    // LUT image for curves/gradient map — will be overridden if needed
+    QString lutImageId;
+
+    // Override with actual adjustment values
+    if (key == "brit") {
+        effect.properties.insert("property int adjustmentType", 0);
+        setFloat("brightness", data.value(u"brightness"_s).toDouble() / 150.0);
+        setFloat("contrast", data.value(u"contrast"_s).toDouble() / 100.0);
+    } else if (key == "levl") {
+        effect.properties.insert("property int adjustmentType", 1);
+        auto setLevels = [&](const QString &prefix, const QVariantMap &ch) {
+            setFloat(prefix + "_shadowIn"_L1, ch.value(u"shadowInput"_s).toDouble() / 255.0);
+            setFloat(prefix + "_highlightIn"_L1, ch.value(u"highlightInput"_s).toDouble() / 255.0);
+            setFloat(prefix + "_shadowOut"_L1, ch.value(u"shadowOutput"_s).toDouble() / 255.0);
+            setFloat(prefix + "_highlightOut"_L1, ch.value(u"highlightOutput"_s).toDouble() / 255.0);
+            double mid = ch.value(u"midtoneInput"_s, 100).toDouble();
+            setFloat(prefix + "_midtone"_L1, mid / 100.0);
+        };
+        setLevels("lvl"_L1, data.value(u"rgb"_s).toMap());
+        setLevels("lvlR"_L1, data.value(u"red"_s).toMap());
+        setLevels("lvlG"_L1, data.value(u"green"_s).toMap());
+        setLevels("lvlB"_L1, data.value(u"blue"_s).toMap());
+    } else if (key == "curv") {
+        effect.properties.insert("property int adjustmentType", 2);
+        QImage lut(256, 1, QImage::Format_RGBA8888);
+        auto buildLUT = [](const QVariantList &points) -> QVector<quint8> {
+            QVector<quint8> table(256);
+            if (points.isEmpty()) {
+                for (int i = 0; i < 256; i++) table[i] = i;
+                return table;
+            }
+            QVector<QPair<int, int>> pts;
+            for (const auto &p : points) {
+                auto m = p.toMap();
+                pts.append({m.value(u"input"_s).toInt(), m.value(u"output"_s).toInt()});
+            }
+            if (pts.first().first != 0)
+                pts.prepend({0, pts.first().second});
+            if (pts.last().first != 255)
+                pts.append({255, pts.last().second});
+            int seg = 0;
+            for (int i = 0; i < 256; i++) {
+                while (seg < pts.size() - 2 && i > pts[seg + 1].first)
+                    seg++;
+                int x0 = pts[seg].first, y0 = pts[seg].second;
+                int x1 = pts[seg + 1].first, y1 = pts[seg + 1].second;
+                double t = (x1 != x0) ? double(i - x0) / (x1 - x0) : 0.0;
+                table[i] = qBound(0, qRound(y0 + t * (y1 - y0)), 255);
+            }
+            return table;
+        };
+        auto rgbCurve = buildLUT(data.value(u"rgb"_s).toList());
+        auto redCurve = buildLUT(data.value(u"red"_s).toList());
+        auto greenCurve = buildLUT(data.value(u"green"_s).toList());
+        auto blueCurve = buildLUT(data.value(u"blue"_s).toList());
+        for (int i = 0; i < 256; i++) {
+            auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
+            pixel[0] = redCurve[i];
+            pixel[1] = greenCurve[i];
+            pixel[2] = blueCurve[i];
+            pixel[3] = rgbCurve[i];
+        }
+        const QString lutName = imageStore.save(imageFileName(item->name() + "_lut"_L1, "PNG"_L1), lut, "PNG");
+        lutImageId = u"_adj_lut_%1"_s.arg(m_adjustmentCounter - 1);
+        Element lutItem;
+        lutItem.type = "Image";
+        lutItem.id = lutImageId;
+        lutItem.properties.insert("source", u"\"images/%1\""_s.arg(lutName));
+        lutItem.properties.insert("visible", false);
+        parent->children.append(lutItem);
+    } else if (key == "expA") {
+        effect.properties.insert("property int adjustmentType", 3);
+        setFloat("exposure", data.value(u"exposure"_s).toDouble());
+        setFloat("offset", data.value(u"offset"_s).toDouble());
+        setFloat("gamma", data.value(u"gamma"_s, 1.0).toDouble());
+    } else if (key == "hue2") {
+        effect.properties.insert("property int adjustmentType", 4);
+        auto master = data.value(u"master"_s).toMap();
+        setFloat("hueShift", master.value(u"hue"_s).toDouble());
+        setFloat("saturationShift", master.value(u"saturation"_s).toDouble());
+        setFloat("lightnessShift", master.value(u"lightness"_s).toDouble());
+    } else if (key == "blnc") {
+        effect.properties.insert("property int adjustmentType", 5);
+        auto shadows = data.value(u"shadows"_s).toMap();
+        auto midtones = data.value(u"midtones"_s).toMap();
+        auto highlights = data.value(u"highlights"_s).toMap();
+        setFloat("bal_shadow_cr", shadows.value(u"cyanRed"_s).toDouble());
+        setFloat("bal_shadow_mg", shadows.value(u"magentaGreen"_s).toDouble());
+        setFloat("bal_shadow_yb", shadows.value(u"yellowBlue"_s).toDouble());
+        setFloat("bal_mid_cr", midtones.value(u"cyanRed"_s).toDouble());
+        setFloat("bal_mid_mg", midtones.value(u"magentaGreen"_s).toDouble());
+        setFloat("bal_mid_yb", midtones.value(u"yellowBlue"_s).toDouble());
+        setFloat("bal_hi_cr", highlights.value(u"cyanRed"_s).toDouble());
+        setFloat("bal_hi_mg", highlights.value(u"magentaGreen"_s).toDouble());
+        setFloat("bal_hi_yb", highlights.value(u"yellowBlue"_s).toDouble());
+        setFloat("bal_preserveLum", data.value(u"preserveLuminosity"_s).toBool() ? 1.0 : 0.0);
+    } else if (key == "phfl") {
+        effect.properties.insert("property int adjustmentType", 6);
+        QColor c = data.value(u"color"_s).value<QColor>();
+        if (!c.isValid()) c = QColor(255, 147, 0);
+        setFloat("phfl_r", c.redF());
+        setFloat("phfl_g", c.greenF());
+        setFloat("phfl_b", c.blueF());
+        setFloat("phfl_density", data.value(u"density"_s).toDouble() / 100.0);
+        setFloat("phfl_preserveLum", data.value(u"preserveLuminosity"_s).toBool() ? 1.0 : 0.0);
+    } else if (key == "nvrt") {
+        effect.properties.insert("property int adjustmentType", 7);
+    } else if (key == "post") {
+        effect.properties.insert("property int adjustmentType", 8);
+        setFloat("posterizeLevels", 4.0);
+    } else if (key == "thrs") {
+        effect.properties.insert("property int adjustmentType", 9);
+        setFloat("thresholdLevel", 128.0 / 255.0);
+    } else if (key == "mixr") {
+        effect.properties.insert("property int adjustmentType", 11);
+        auto mono = data.value(u"monochrome"_s).toBool();
+        setFloat("mixr_mono", mono ? 1.0 : 0.0);
+        auto red = data.value(u"red"_s).toMap();
+        auto green = data.value(u"green"_s).toMap();
+        auto blue = data.value(u"blue"_s).toMap();
+        auto src = mono ? data.value(u"gray"_s).toMap() : red;
+        setFloat("mixr_outR_r", src.value(u"red"_s).toDouble());
+        setFloat("mixr_outR_g", src.value(u"green"_s).toDouble());
+        setFloat("mixr_outR_b", src.value(u"blue"_s).toDouble());
+        setFloat("mixr_outR_c", src.value(u"constant"_s).toDouble());
+        if (!mono) {
+            setFloat("mixr_outG_r", green.value(u"red"_s).toDouble());
+            setFloat("mixr_outG_g", green.value(u"green"_s).toDouble());
+            setFloat("mixr_outG_b", green.value(u"blue"_s).toDouble());
+            setFloat("mixr_outG_c", green.value(u"constant"_s).toDouble());
+            setFloat("mixr_outB_r", blue.value(u"red"_s).toDouble());
+            setFloat("mixr_outB_g", blue.value(u"green"_s).toDouble());
+            setFloat("mixr_outB_b", blue.value(u"blue"_s).toDouble());
+            setFloat("mixr_outB_c", blue.value(u"constant"_s).toDouble());
+        }
+    } else if (key == "grdm") {
+        effect.properties.insert("property int adjustmentType", 13);
+        QImage lut(256, 1, QImage::Format_RGBA8888);
+        lut.fill(Qt::black);
+        auto stops = data.value(u"colorStops"_s).toList();
+        if (!stops.isEmpty()) {
+            struct Stop { double pos; QColor color; };
+            QVector<Stop> gradStops;
+            for (const auto &s : stops) {
+                auto m = s.toMap();
+                double loc = m.value(u"location"_s).toDouble() / 4096.0;
+                QColor c = m.value(u"color"_s).value<QColor>();
+                if (c.isValid())
+                    gradStops.append({loc, c});
+            }
+            if (!gradStops.isEmpty()) {
+                for (int i = 0; i < 256; i++) {
+                    double t = i / 255.0;
+                    int idx = 0;
+                    while (idx < gradStops.size() - 1 && gradStops[idx + 1].pos < t)
+                        idx++;
+                    QColor c;
+                    if (idx >= gradStops.size() - 1) {
+                        c = gradStops.last().color;
+                    } else {
+                        double t0 = gradStops[idx].pos, t1 = gradStops[idx + 1].pos;
+                        double f = (t1 > t0) ? (t - t0) / (t1 - t0) : 0.0;
+                        const auto &c0 = gradStops[idx].color;
+                        const auto &c1 = gradStops[idx + 1].color;
+                        c = QColor::fromRgbF(
+                            c0.redF() + f * (c1.redF() - c0.redF()),
+                            c0.greenF() + f * (c1.greenF() - c0.greenF()),
+                            c0.blueF() + f * (c1.blueF() - c0.blueF()));
+                    }
+                    auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
+                    pixel[0] = c.red();
+                    pixel[1] = c.green();
+                    pixel[2] = c.blue();
+                    pixel[3] = 255;
+                }
+            }
+        }
+        const QString lutName = imageStore.save(imageFileName(item->name() + "_lut"_L1, "PNG"_L1), lut, "PNG");
+        lutImageId = u"_adj_lut_%1"_s.arg(m_adjustmentCounter - 1);
+        Element lutItem;
+        lutItem.type = "Image";
+        lutItem.id = lutImageId;
+        lutItem.properties.insert("source", u"\"images/%1\""_s.arg(lutName));
+        lutItem.properties.insert("visible", false);
+        parent->children.append(lutItem);
+    } else if (key == "blwh") {
+        effect.properties.insert("property int adjustmentType", 12);
+        // Descriptor keys use 4-char codes: "Rd  ", "Yllw", "Grn ", "Cyn ", "Bl  ", "Mgnt"
+        setFloat("bw_red", data.value(u"Rd  "_s).toDouble());
+        setFloat("bw_yellow", data.value(u"Yllw"_s).toDouble());
+        setFloat("bw_green", data.value(u"Grn "_s).toDouble());
+        setFloat("bw_cyan", data.value(u"Cyn "_s).toDouble());
+        setFloat("bw_blue", data.value(u"Bl  "_s).toDouble());
+        setFloat("bw_magenta", data.value(u"Mgnt"_s).toDouble());
+    } else if (key == "vibA") {
+        effect.properties.insert("property int adjustmentType", 10);
+        setFloat("vibrance", data.value(u"vibrance"_s).toDouble() / 100.0);
+        setFloat("vibranceSat", data.value(u"Strt"_s).toDouble());
+    } else {
+        // Unknown adjustment type — skip
+        parent->children = wrapper.children;
+        return;
+    }
+
+    // Bind curvesLUT to the LUT image if one was created
+    if (!lutImageId.isEmpty())
+        effect.properties.insert("property var curvesLUT", lutImageId);
+
+    wrapper.layers.append(effect);
+    parent->children.append(wrapper);
+    m_needsAdjustmentShader = true;
 }
 
 bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element *element, ImportData *imports) const
@@ -2379,16 +2670,9 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             generated = outputImage(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Adjustment: {
-            QString name = saveLayerImage(item);
-            if (name.isEmpty())
-                return true;
-            element.type = "Image";
-            if (!outputBase(index, &element, imports))
-                return false;
-            element.properties.insert("source", u"\"images/%1\""_s.arg(name));
-            element.properties.insert("fillMode", "Image.PreserveAspectFit");
-            generated = true;
-            break; }
+            // Adjustment layers modify all layers below them via ShaderEffect
+            applyAdjustmentLayer(item, parent, imports);
+            return true; }
         default:
             return true;
         }
@@ -2543,17 +2827,9 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &component, &i);
             break; }
-        case QPsdAbstractLayerItem::Adjustment: {
-            QString name = saveLayerImage(item);
-            if (name.isEmpty())
-                return true;
-            component.type = "Image";
-            if (!outputBase(index, &component, &i))
-                return false;
-            component.properties.insert("source", u"\"images/%1\""_s.arg(name));
-            component.properties.insert("fillMode", "Image.PreserveAspectFit");
-            generated = true;
-            break; }
+        case QPsdAbstractLayerItem::Adjustment:
+            // TODO: adjustment layers in Component mode
+            return true;
         default:
             return true;
         }
