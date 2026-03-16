@@ -39,7 +39,7 @@
                                 "style": {
                                     "fontFamily": "SourceHanSans-Medium",
                                     "fontSize": 50,
-                                    "fontWeight": 400,
+                                    "fontWeight": 500,
                                     "textAlignHorizontal": "CENTER",
                                     "textAlignVertical": "CENTER",
                                     "textAutoResize": "WIDTH_AND_HEIGHT"
@@ -62,7 +62,7 @@
                                         ],
                                         "fontFamily": "SourceHanSans-Medium",
                                         "fontSize": 50,
-                                        "fontWeight": 400
+                                        "fontWeight": 500
                                     }
                                 ],
                                 "type": "TEXT",
@@ -95,7 +95,7 @@
                                 "style": {
                                     "fontFamily": "SourceHanSans-Medium",
                                     "fontSize": 150,
-                                    "fontWeight": 400,
+                                    "fontWeight": 500,
                                     "textAlignHorizontal": "CENTER",
                                     "textAlignVertical": "CENTER",
                                     "textAutoResize": "WIDTH_AND_HEIGHT"
@@ -118,7 +118,7 @@
                                         ],
                                         "fontFamily": "SourceHanSans-Medium",
                                         "fontSize": 150,
-                                        "fontWeight": 400
+                                        "fontWeight": 500
                                     }
                                 ],
                                 "type": "TEXT",

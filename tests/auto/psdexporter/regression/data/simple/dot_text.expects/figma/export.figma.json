@@ -39,7 +39,7 @@
                                 "style": {
                                     "fontFamily": "SourceHanSans-Medium",
                                     "fontSize": 29.999999999999996,
-                                    "fontWeight": 400,
+                                    "fontWeight": 500,
                                     "textAlignHorizontal": "CENTER",
                                     "textAlignVertical": "CENTER",
                                     "textAutoResize": "WIDTH_AND_HEIGHT"
@@ -62,7 +62,7 @@
                                         ],
                                         "fontFamily": "SourceHanSans-Medium",
                                         "fontSize": 29.999999999999996,
-                                        "fontWeight": 400
+                                        "fontWeight": 500
                                     }
                                 ],
                                 "type": "TEXT",

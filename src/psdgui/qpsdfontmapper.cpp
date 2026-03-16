@@ -263,6 +263,38 @@ QPair<QString, QString> QPsdFontMapper::Private::parsePostScriptName(const QStri
     return qMakePair(expandedFamily.simplified(), style);
 }
 
+// Set QFont weight and italic from a style string like "Bold", "SemiBoldItalic", etc.
+// This ensures font properties are correct even when the font isn't installed.
+static void applyStyleToFont(QFont &font, const QString &style)
+{
+    if (style.isEmpty())
+        return;
+
+    const QString lower = style.toLower();
+
+    // Weight (check longest matches first)
+    if (lower.contains("extrabold"_L1) || lower.contains("ultrabold"_L1))
+        font.setWeight(QFont::ExtraBold);
+    else if (lower.contains("semibold"_L1) || lower.contains("demibold"_L1))
+        font.setWeight(QFont::DemiBold);
+    else if (lower.contains("bold"_L1))
+        font.setWeight(QFont::Bold);
+    else if (lower.contains("black"_L1) || lower.contains("heavy"_L1))
+        font.setWeight(QFont::Black);
+    else if (lower.contains("medium"_L1))
+        font.setWeight(QFont::Medium);
+    else if (lower.contains("ultralight"_L1))
+        font.setWeight(QFont::Thin);
+    else if (lower.contains("light"_L1))
+        font.setWeight(QFont::Light);
+    else if (lower.contains("thin"_L1))
+        font.setWeight(QFont::Thin);
+
+    // Italic / Oblique
+    if (lower.contains("italic"_L1) || lower.contains("oblique"_L1))
+        font.setItalic(true);
+}
+
 QFont QPsdFontMapper::Private::findMatchingFont(const QString &family, const QString &style) const
 {
     QFont font;
@@ -554,10 +586,14 @@ QFont QPsdFontMapper::resolveFont(const QString &fontName, const QString &psdPat
     // 4. Fall back to automatic resolution
     resultFont = d->autoResolveFont(fontName);
 
-    // Log warning if no matching font was found
-    if (!QFontInfo(resultFont).exactMatch()) {
+    // Ensure weight/italic are set from the PostScript style name.
+    // Qt's setStyleName() selects the right font variant at render time
+    // but doesn't update weight()/italic() properties, which exporters rely on.
+    {
         auto [family, style] = Private::parsePostScriptName(fontName);
-        qWarning() << fontName << "doesn't match any font - parsed as" << family << style;
+        if (!QFontInfo(resultFont).exactMatch())
+            qWarning() << fontName << "doesn't match any font - parsed as" << family << style;
+        applyStyleToFont(resultFont, style);
     }
 
     QWriteLocker locker(&d->lock);

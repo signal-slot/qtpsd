@@ -21,6 +21,7 @@ Item {
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 50
+            font.weight: 500
             height: 72
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
@@ -34,6 +35,7 @@ Item {
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 150
+            font.weight: 500
             height: 217
             horizontalAlignment: Text.AlignHCenter
             text: "150px"

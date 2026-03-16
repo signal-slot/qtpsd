@@ -22,6 +22,7 @@ Item {
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
+            font.weight: 500
             horizontalAlignment: Text.AlignHCenter
             text: ""
             verticalAlignment: Text.AlignVCenter
@@ -57,6 +58,7 @@ Item {
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
+            font.weight: 500
             height: 72
             horizontalAlignment: Text.AlignHCenter
             lineHeight: 0.24

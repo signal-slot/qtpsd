@@ -1214,11 +1214,11 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
         {
             const int weight = run.font.weight();
-            if (weight != QFont::Normal && weight != 0)
+            if (weight == QFont::Bold || run.fauxBold)
+                element->properties.insert("font.bold", true);
+            else if (weight != QFont::Normal && weight != 0)
                 element->properties.insert("font.weight", weight);
         }
-        if (run.fauxBold)
-            element->properties.insert("font.bold", true);
         if (run.font.italic() || run.fauxItalic)
             element->properties.insert("font.italic", true);
         if (run.underline)
