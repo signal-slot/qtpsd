@@ -683,27 +683,28 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 }
                 // Approximate ellipse with 4 cubic bezier curves
                 constexpr qreal k = 0.5522847498;
+                auto fmt = [](qreal v) { return QString::number(v, 'f', 2); };
                 auto addMoveTo = [&](qreal x, qreal y) {
                     Element cmd; cmd.type = "MoveTo";
-                    cmd.properties.insert("x", u"%1"_s.ARGF(x));
-                    cmd.properties.insert("y", u"%1"_s.ARGF(y));
+                    cmd.properties.insert("x", fmt(x));
+                    cmd.properties.insert("y", fmt(y));
                     element->children.append(cmd);
                 };
                 auto addCubicTo = [&](qreal c1x, qreal c1y, qreal c2x, qreal c2y, qreal x, qreal y) {
                     Element cmd; cmd.type = "CubicTo";
-                    cmd.properties.insert("control-1-x", u"%1"_s.ARGF(c1x));
-                    cmd.properties.insert("control-1-y", u"%1"_s.ARGF(c1y));
-                    cmd.properties.insert("control-2-x", u"%1"_s.ARGF(c2x));
-                    cmd.properties.insert("control-2-y", u"%1"_s.ARGF(c2y));
-                    cmd.properties.insert("x", u"%1"_s.ARGF(x));
-                    cmd.properties.insert("y", u"%1"_s.ARGF(y));
+                    cmd.properties.insert("control-1-x", fmt(c1x));
+                    cmd.properties.insert("control-1-y", fmt(c1y));
+                    cmd.properties.insert("control-2-x", fmt(c2x));
+                    cmd.properties.insert("control-2-y", fmt(c2y));
+                    cmd.properties.insert("x", fmt(x));
+                    cmd.properties.insert("y", fmt(y));
                     element->children.append(cmd);
                 };
                 addMoveTo(cx, cy - ry);
                 addCubicTo(cx + rx * k, cy - ry, cx + rx, cy - ry * k, cx + rx, cy);
                 addCubicTo(cx + rx, cy + ry * k, cx + rx * k, cy + ry, cx, cy + ry);
                 addCubicTo(cx - rx * k, cy + ry, cx - rx, cy + ry * k, cx - rx, cy);
-                addCubicTo(cx - rx * k, cy - ry, cx - rx, cy - ry * k, cx, cy - ry);
+                addCubicTo(cx - rx, cy - ry * k, cx - rx * k, cy - ry, cx, cy - ry);
                 return true;
             }
         }
