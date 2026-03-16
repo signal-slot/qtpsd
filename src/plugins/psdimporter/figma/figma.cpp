@@ -2328,6 +2328,22 @@ public:
         const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
         QVariantList pageIndices;
 
+        // Resolve node-id from URL to pre-select the matching page
+        int preselectedPage = -1;
+        {
+            static const QRegularExpression reNodeId(u"[?&]node-id=([^&]+)"_s);
+            auto nodeMatch = reNodeId.match(source);
+            if (nodeMatch.hasMatch()) {
+                const QString nodeId = nodeMatch.captured(1).replace('-'_L1, ':'_L1);
+                for (int i = 0; i < pages.size(); ++i) {
+                    if (pages[i].toObject()["id"_L1].toString() == nodeId) {
+                        preselectedPage = i;
+                        break;
+                    }
+                }
+            }
+        }
+
         if (pages.size() <= 1) {
             pageIndices.append(0);
         } else {
@@ -2375,7 +2391,9 @@ public:
                 auto *item = new QListWidgetItem(pageName, listWidget);
                 item->setData(Qt::UserRole, i);
                 item->setFlags(item->flags() | Qt::ItemIsUserCheckable);
-                item->setCheckState(Qt::Checked);
+                // Pre-select only the page matching node-id from URL, or all if no node-id
+                item->setCheckState((preselectedPage < 0 || preselectedPage == i)
+                                    ? Qt::Checked : Qt::Unchecked);
 
                 if (thumbnails.contains(nodeId)) {
                     const auto &thumb = thumbnails[nodeId];
@@ -2508,8 +2526,9 @@ public:
             m_cachedFileJson = fileJson;
         }
 
-        // Resolve node-id from URL to page index
-        if (!nodeIdFromUrl.isEmpty()) {
+        // Resolve node-id from URL to page index (skip when caller explicitly set pageIndex)
+        if (!nodeIdFromUrl.isEmpty()
+            && !options.value("pageIndexExplicit"_L1, false).toBool()) {
             const auto document = fileJson["document"_L1].toObject();
             const auto pages = document["children"_L1].toArray();
             for (int i = 0; i < pages.size(); ++i) {

@@ -516,6 +516,7 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
         // Prepare per-page options
         QVariantMap pageOptions = options;
         pageOptions["pageIndex"_L1] = pageIdx;
+        pageOptions["pageIndexExplicit"_L1] = true;
 
         importer->setProgressCallback([progressBar](int value, int maximum) {
             progressBar->setRange(0, maximum);

@@ -157,7 +157,8 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
 
 static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale, const QList<int> &pageIndices,
                          const QString &exportType = {}, const QString &outdir = {}, const QStringList &propertyArgs = {},
-                         const QString &resolution = "original"_L1, bool makeCompact = false, bool artboardToOrigin = false, const QString &licenseText = {})
+                         const QString &resolution = "original"_L1, bool makeCompact = false, bool artboardToOrigin = false, const QString &licenseText = {},
+                         bool pageIndexExplicit = false)
 {
     auto plugin = QPsdImporterPlugin::plugin(importType.toUtf8());
     if (!plugin) {
@@ -190,6 +191,8 @@ static int runAutoImport(const QString &importType, const QString &source, const
 
         QVariantMap options = baseOptions;
         options["pageIndex"] = pageIdx;
+        if (pageIndexExplicit)
+            options["pageIndexExplicit"] = true;
 
         qInfo() << "Importing from" << source << "page" << pageIdx << "using" << importType;
         if (!plugin->importFrom(&model, options)) {
@@ -437,6 +440,8 @@ int main(int argc, char *argv[])
 
                 QVariantMap options = baseOptions;
                 options["pageIndex"] = pageIdx;
+                if (parser.isSet(importPageIndexOption))
+                    options["pageIndexExplicit"] = true;
 
                 qInfo() << "Importing from" << parser.value(importSourceOption) << "page" << pageIdx;
                 if (!importPlugin->importFrom(&model, options)) {
@@ -483,7 +488,8 @@ int main(int argc, char *argv[])
                              parser.value(resolutionOption),
                              parser.isSet(makeCompactOption),
                              parser.isSet(artboardOriginOption),
-                             parser.value(licenseTextOption));
+                             parser.value(licenseTextOption),
+                             parser.isSet(importPageIndexOption));
     }
 
     bool hasInput = parser.isSet(inputOption);
