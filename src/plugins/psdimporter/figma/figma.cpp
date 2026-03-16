@@ -323,6 +323,61 @@ static void arcToBezier(QPainterPath &path, qreal x1, qreal y1,
     }
 }
 
+// Build a PathInfo from per-corner radii using CSS-style proportional scaling.
+// When adjacent corner radii exceed the side length, all radii are scaled down
+// by a single factor so that they fit (CSS Backgrounds Level 3 §5.5).
+static QPsdAbstractLayerItem::PathInfo pathInfoFromCornerRadii(
+    qreal w, qreal h,
+    qreal rawTl, qreal rawTr, qreal rawBr, qreal rawBl,
+    qreal uniformRadius = 0)
+{
+    QPsdAbstractLayerItem::PathInfo pi;
+    pi.rect = QRectF(0, 0, w, h);
+
+    const bool hasPerCorner = (rawTl > 0 || rawTr > 0 || rawBr > 0 || rawBl > 0);
+    if (hasPerCorner) {
+        // CSS-style proportional scaling
+        qreal scale = 1.0;
+        if (rawTl + rawTr > 0) scale = qMin(scale, w / (rawTl + rawTr));
+        if (rawTr + rawBr > 0) scale = qMin(scale, h / (rawTr + rawBr));
+        if (rawBr + rawBl > 0) scale = qMin(scale, w / (rawBr + rawBl));
+        if (rawBl + rawTl > 0) scale = qMin(scale, h / (rawBl + rawTl));
+
+        const qreal tl = rawTl * scale;
+        const qreal tr = rawTr * scale;
+        const qreal br = rawBr * scale;
+        const qreal bl = rawBl * scale;
+
+        if (tl != tr || tr != br || br != bl) {
+            pi.type = QPsdAbstractLayerItem::PathInfo::Path;
+            QPainterPath pp;
+            pp.moveTo(tl, 0);
+            pp.lineTo(w - tr, 0);
+            if (tr > 0) pp.arcTo(w - 2 * tr, 0, 2 * tr, 2 * tr, 90, -90);
+            pp.lineTo(w, h - br);
+            if (br > 0) pp.arcTo(w - 2 * br, h - 2 * br, 2 * br, 2 * br, 0, -90);
+            pp.lineTo(bl, h);
+            if (bl > 0) pp.arcTo(0, h - 2 * bl, 2 * bl, 2 * bl, 270, -90);
+            pp.lineTo(0, tl);
+            if (tl > 0) pp.arcTo(0, 0, 2 * tl, 2 * tl, 180, -90);
+            pp.closeSubpath();
+            pi.path = pp;
+        } else if (tl > 0) {
+            pi.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
+            pi.radius = tl;
+        } else {
+            pi.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+        }
+    } else if (uniformRadius > 0) {
+        const qreal maxR = qMin(w, h) / 2.0;
+        pi.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
+        pi.radius = qMin(uniformRadius, maxR);
+    } else {
+        pi.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+    }
+    return pi;
+}
+
 static QPainterPath parseSvgPath(const QString &pathData)
 {
     QPainterPath path;
@@ -1260,16 +1315,20 @@ private:
 
             // Extract corner radius for frames/components
             const qreal frameCornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
+            const auto frameRadiiArray = nodeJson["rectangleCornerRadii"_L1].toArray();
+
+            // Build PathInfo from frame corner radii (uniform or per-corner)
+            auto buildFramePathInfo = [&](qreal w, qreal h) {
+                if (frameRadiiArray.size() == 4) {
+                    return pathInfoFromCornerRadii(w, h,
+                        frameRadiiArray[0].toDouble(), frameRadiiArray[1].toDouble(),
+                        frameRadiiArray[2].toDouble(), frameRadiiArray[3].toDouble());
+                }
+                return pathInfoFromCornerRadii(w, h, 0, 0, 0, 0, frameCornerRadius);
+            };
 
             if (nodeJson.value("clipsContent"_L1).toBool(false)) {
-                QPsdAbstractLayerItem::PathInfo clipMask;
-                if (frameCornerRadius > 0) {
-                    clipMask.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
-                    clipMask.radius = frameCornerRadius;
-                } else {
-                    clipMask.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
-                }
-                clipMask.rect = QRectF(0, 0, rect.width(), rect.height());
+                auto clipMask = buildFramePathInfo(rect.width(), rect.height());
                 folderItem->setVectorMask(clipMask);
             }
 
@@ -1326,14 +1385,7 @@ private:
                 bgShape->setOpacity(1.0);
                 bgShape->setRect(bgRect);
                 bgShape->setBrush(frameBrush);
-                QPsdAbstractLayerItem::PathInfo bgPath;
-                bgPath.rect = QRectF(0, 0, rect.width(), rect.height());
-                if (frameCornerRadius > 0) {
-                    bgPath.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
-                    bgPath.radius = frameCornerRadius;
-                } else {
-                    bgPath.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
-                }
+                auto bgPath = buildFramePathInfo(rect.width(), rect.height());
                 bgShape->setPathInfo(bgPath);
 
                 bgNode.layerItem = bgShape;
@@ -1484,40 +1536,13 @@ private:
             if (nodeType == "RECTANGLE"_L1) {
                 const auto radiiArray = nodeJson["rectangleCornerRadii"_L1].toArray();
                 const auto cornerRadius = nodeJson["cornerRadius"_L1].toDouble(0);
-                // Figma clamps cornerRadius to min(width, height) / 2
-                const qreal maxRadius = qMin(w, h) / 2.0;
                 if (radiiArray.size() == 4) {
-                    const qreal tl = qMin(radiiArray[0].toDouble(), maxRadius);
-                    const qreal tr = qMin(radiiArray[1].toDouble(), maxRadius);
-                    const qreal br = qMin(radiiArray[2].toDouble(), maxRadius);
-                    const qreal bl = qMin(radiiArray[3].toDouble(), maxRadius);
-                    if (tl != tr || tr != br || br != bl) {
-                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
-                        QPainterPath pp;
-                        pp.moveTo(tl, 0);
-                        pp.lineTo(w - tr, 0);
-                        if (tr > 0) pp.arcTo(w - 2 * tr, 0, 2 * tr, 2 * tr, 90, -90);
-                        pp.lineTo(w, h - br);
-                        if (br > 0) pp.arcTo(w - 2 * br, h - 2 * br, 2 * br, 2 * br, 0, -90);
-                        pp.lineTo(bl, h);
-                        if (bl > 0) pp.arcTo(0, h - 2 * bl, 2 * bl, 2 * bl, 270, -90);
-                        pp.lineTo(0, tl);
-                        if (tl > 0) pp.arcTo(0, 0, 2 * tl, 2 * tl, 180, -90);
-                        pp.closeSubpath();
-                        pathInfo.path = pp;
-                    } else if (tl > 0) {
-                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
-                        pathInfo.radius = tl;
-                    } else {
-                        pathInfo.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
-                    }
-                } else if (cornerRadius > 0) {
-                    pathInfo.type = QPsdAbstractLayerItem::PathInfo::RoundedRectangle;
-                    pathInfo.radius = qMin(cornerRadius, maxRadius);
+                    pathInfo = pathInfoFromCornerRadii(w, h,
+                        radiiArray[0].toDouble(), radiiArray[1].toDouble(),
+                        radiiArray[2].toDouble(), radiiArray[3].toDouble());
                 } else {
-                    pathInfo.type = QPsdAbstractLayerItem::PathInfo::Rectangle;
+                    pathInfo = pathInfoFromCornerRadii(w, h, 0, 0, 0, 0, cornerRadius);
                 }
-                pathInfo.rect = QRectF(0, 0, w, h);
             } else if (nodeType == "ELLIPSE"_L1) {
                 pathInfo.type = QPsdAbstractLayerItem::PathInfo::Path;
                 QPainterPath pp;
@@ -2430,15 +2455,24 @@ public:
     {
         const QString source = options.value("source"_L1).toString();
         const int imageScale = options.value("imageScale"_L1, 2).toInt();
-        const int pageIndex = options.value("pageIndex"_L1, 0).toInt();
+        int pageIndex = options.value("pageIndex"_L1, 0).toInt();
 
         QString fileKey = source;
+        QString nodeIdFromUrl;
 
         if (source.contains("figma.com"_L1)) {
             static const QRegularExpression reKey(u"figma\\.com/(?:file|design)/([a-zA-Z0-9]+)"_s);
             auto match = reKey.match(source);
             if (match.hasMatch())
                 fileKey = match.captured(1);
+
+            // Extract node-id from URL query parameter (e.g., ?node-id=0-1746)
+            static const QRegularExpression reNodeId(u"[?&]node-id=([^&]+)"_s);
+            auto nodeMatch = reNodeId.match(source);
+            if (nodeMatch.hasMatch()) {
+                // URL uses '-' separator, Figma API uses ':'
+                nodeIdFromUrl = nodeMatch.captured(1).replace('-'_L1, ':'_L1);
+            }
         }
 
         if (fileKey.isEmpty()) {
@@ -2472,6 +2506,18 @@ public:
             }
             m_cachedFileKey = fileKey;
             m_cachedFileJson = fileJson;
+        }
+
+        // Resolve node-id from URL to page index
+        if (!nodeIdFromUrl.isEmpty()) {
+            const auto document = fileJson["document"_L1].toObject();
+            const auto pages = document["children"_L1].toArray();
+            for (int i = 0; i < pages.size(); ++i) {
+                if (pages[i].toObject()["id"_L1].toString() == nodeIdFromUrl) {
+                    pageIndex = i;
+                    break;
+                }
+            }
         }
 
         // Initialize disk image cache with version check
