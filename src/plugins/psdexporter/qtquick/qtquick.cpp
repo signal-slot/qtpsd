@@ -2001,11 +2001,14 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
-        // Ellipse detection: if radius >= half the smaller dimension and non-square,
+        // Ellipse detection: if radius > half the smaller dimension and non-square,
         // QML Rectangle+radius produces a stadium shape. Use Shape+PathAngleArc instead.
         {
+            // No qFuzzyCompare() here, which is too strict to test visual distinction.
+            constexpr qreal epsilon = 0.1;
             const qreal minDim = qMin(path.rect.width(), path.rect.height());
-            if (path.radius * 2 >= minDim && path.rect.width() != path.rect.height()) {
+            if (path.radius * 2 > minDim + epsilon
+                && qAbs(path.rect.width() - path.rect.height()) > epsilon) {
                 imports->insert("QtQuick.Shapes");
                 element->type = "Shape";
                 if (!outputBase(shapeIndex, element, imports))
@@ -2368,8 +2371,10 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         break; }
     case QPsdAbstractLayerItem::PathInfo::Path: {
         // Circle optimization: emit Rectangle { radius: width/2 } instead of Shape+PathAngleArc
+        // No qFuzzyCompare() here, which is too strict to test visual distinction.
+        constexpr qreal epsilon = 0.1;
         if (!path.rect.isEmpty()
-            && qFuzzyCompare(path.rect.width(), path.rect.height())) {
+            && qAbs(path.rect.width() - path.rect.height()) > epsilon) {
             QPainterPath refCircle;
             refCircle.addEllipse(path.rect);
             refCircle.setFillRule(path.path.fillRule());
