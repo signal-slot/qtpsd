@@ -2367,6 +2367,47 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::Path: {
+        // Circle optimization: emit Rectangle { radius: width/2 } instead of Shape+PathAngleArc
+        if (!path.rect.isEmpty()
+            && qFuzzyCompare(path.rect.width(), path.rect.height())) {
+            QPainterPath refCircle;
+            refCircle.addEllipse(path.rect);
+            refCircle.setFillRule(path.path.fillRule());
+            if (path.path == refCircle) {
+                const QGradient *g = effectiveGradient(shape);
+                if (!g && shape->brush().style() != Qt::TexturePattern) {
+                    bool filled = isFilledRect(path, shape);
+                    Element rectElement;
+                    rectElement.type = "Rectangle";
+                    if (filled) {
+                        if (!outputBase(shapeIndex, &rectElement, imports))
+                            return false;
+                    } else {
+                        element->type = "Item";
+                        if (!outputBase(shapeIndex, element, imports))
+                            return false;
+                        outputRect(path.rect, &rectElement);
+                    }
+                    rectElement.properties.insert("radius", path.rect.width() * horizontalScale / 2.0);
+                    const auto &pen = shape->pen();
+                    if (pen.style() != Qt::NoPen) {
+                        qreal dw = computeStrokeWidth(pen, unitScale);
+                        rectElement.properties.insert("border.width", dw);
+                        rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                    }
+                    if (shape->brush() != Qt::NoBrush)
+                        rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    else
+                        rectElement.properties.insert("color", "\"transparent\"");
+                    if (filled)
+                        *element = rectElement;
+                    else
+                        element->children.append(rectElement);
+                    return true;
+                }
+            }
+        }
+        // Fall through to Shape for non-circles and complex fills (gradients, textures)
         imports->insert("QtQuick.Shapes");
         element->type = "Shape";
         if (!outputBase(shapeIndex, element, imports))
