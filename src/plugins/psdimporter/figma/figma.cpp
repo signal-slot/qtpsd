@@ -931,13 +931,14 @@ public:
         return ids;
     }
 
-    // Returns imageRef → figmaId mapping for _imgbg nodes — these use the file images API
-    QHash<QString, QString> imageFillRefs() const
+    // Returns imageRef → list of figmaIds mapping for _imgbg nodes — these use the file images API
+    // Multiple _imgbg nodes may share the same imageRef (e.g. component instances)
+    QHash<QString, QStringList> imageFillRefs() const
     {
-        QHash<QString, QString> refs;
+        QHash<QString, QStringList> refs;
         for (auto it = m_nodes.begin(); it != m_nodes.end(); ++it) {
             if (!it->imageRef.isEmpty() && it->figmaId.endsWith("_imgbg"_L1)) {
-                refs.insert(it->imageRef, it->figmaId);
+                refs[it->imageRef].append(it->figmaId);
             }
         }
         return refs;
@@ -1310,7 +1311,8 @@ private:
             folderItem->setIsOpened(true);
 
             const bool isTopLevelFrame = (parentId == 0)
-                && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1);
+                && (nodeType == "FRAME"_L1 || nodeType == "COMPONENT"_L1
+                    || nodeType == "SECTION"_L1 || nodeType == "COMPONENT_SET"_L1);
             folderItem->setRect(rect);
 
             // Extract corner radius for frames/components
@@ -1365,6 +1367,11 @@ private:
                     node.childIds.append(childId);
             }
 
+            // Synthetic background layers are appended in PSD front-to-back order:
+            // SOLID/gradient fill (in front) → IMAGE fill (behind)
+            // Note: IMAGE fills normally composite on TOP with blend modes (e.g. LINEAR_BURN),
+            // but without blend mode support they'd wash out the solid fill.
+            // Placing them behind keeps correct dark backgrounds.
             if (needsGradientBg) {
                 const auto frameBrush = brushFromFigmaFills(fills, rect);
                 quintptr bgId = m_nextId++;
@@ -2552,8 +2559,12 @@ public:
         // 1. Regular image nodes → Figma render API (renders the node as PNG)
         // 2. _imgbg nodes (IMAGE fill backgrounds) → Figma file images API (actual fill textures)
         const auto allImageIds = figmaModel.imageNodeIds();
-        const auto fillRefs = figmaModel.imageFillRefs();  // imageRef → _imgbg figmaId
-        const int totalImages = allImageIds.size() + fillRefs.size();
+        const auto fillRefs = figmaModel.imageFillRefs();  // imageRef → list of _imgbg figmaIds
+        // Count total _imgbg nodes across all imageRefs
+        int totalFillNodes = 0;
+        for (auto it = fillRefs.begin(); it != fillRefs.end(); ++it)
+            totalFillNodes += it.value().size();
+        const int totalImages = allImageIds.size() + totalFillNodes;
         int downloaded = 0;
 
         if (totalImages > 0)
@@ -2561,37 +2572,44 @@ public:
 
         // 1. Download actual fill textures for _imgbg nodes via file images API
         if (!fillRefs.isEmpty()) {
-            // Check which fills need downloading (not in cache)
-            QHash<QString, QString> uncachedFillRefs;
+            // Check which imageRefs need downloading (not in cache)
+            QStringList uncachedRefs;
             for (auto it = fillRefs.begin(); it != fillRefs.end(); ++it) {
                 const auto &imageRef = it.key();
-                const auto &imgBgFigmaId = it.value();
+                const auto &figmaIds = it.value();
                 QImage cached = cache.fillImage(imageRef);
                 if (!cached.isNull()) {
-                    figmaModel.setNodeImage(imgBgFigmaId, cached);
-                    reportProgress(++downloaded, totalImages);
+                    for (const auto &fid : figmaIds) {
+                        figmaModel.setNodeImage(fid, cached);
+                        reportProgress(++downloaded, totalImages);
+                    }
                 } else {
-                    uncachedFillRefs.insert(imageRef, imgBgFigmaId);
+                    uncachedRefs.append(imageRef);
                 }
             }
 
             // Only call API if there are uncached fills
-            if (!uncachedFillRefs.isEmpty()) {
+            if (!uncachedRefs.isEmpty()) {
                 const auto fileImagesResult = client.fetchFileImages(fileKey);
                 const auto meta = fileImagesResult["meta"_L1].toObject();
                 const auto fileImages = meta["images"_L1].toObject();
-                for (auto it = uncachedFillRefs.begin(); it != uncachedFillRefs.end(); ++it) {
-                    const auto &imageRef = it.key();
-                    const auto &imgBgFigmaId = it.value();
+                for (const auto &imageRef : std::as_const(uncachedRefs)) {
                     const auto imageUrl = fileImages[imageRef].toString();
                     if (!imageUrl.isEmpty()) {
                         QImage img = client.downloadImage(QUrl(imageUrl));
                         if (!img.isNull()) {
-                            figmaModel.setNodeImage(imgBgFigmaId, img);
+                            const auto &figmaIds = fillRefs[imageRef];
+                            for (const auto &fid : figmaIds) {
+                                figmaModel.setNodeImage(fid, img);
+                                reportProgress(++downloaded, totalImages);
+                            }
                             cache.saveFillImage(imageRef, img);
+                            continue;
                         }
                     }
-                    reportProgress(++downloaded, totalImages);
+                    // Failed to download — still advance progress for all nodes
+                    downloaded += fillRefs[imageRef].size();
+                    reportProgress(downloaded, totalImages);
                 }
             }
         }

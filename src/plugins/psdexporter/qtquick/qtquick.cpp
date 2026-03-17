@@ -2537,6 +2537,8 @@ bool QPsdExporterQtQuickPlugin::outputImage(const QModelIndex &imageIndex, Eleme
     const QPsdImageLayerItem *image = dynamic_cast<const QPsdImageLayerItem *>(model()->layerItem(imageIndex));
 
     QString name = saveLayerImage(image);
+    if (name.isEmpty())
+        return true;  // Skip image layers with no image data
 
     // Apply color overlay (SOFI) effect by baking it into the exported PNG
     for (const auto &effect : image->effects()) {

@@ -482,20 +482,12 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
                 }
             }
         } else if (index.parent().isValid()) {
-            // Artboard descendants: convert absolute PSD coordinates to parent-relative.
+            // Descendants inside folders: convert absolute PSD coordinates to parent-relative.
             // Exporters nest children inside parent elements, so each item's position
             // must be relative to its direct parent's absolute rect.
-            QModelIndex topLevel = index;
-            while (topLevel.parent().isValid())
-                topLevel = topLevel.parent();
-            const auto *topItem = model()->layerItem(topLevel);
-            if (topItem && topItem->type() == QPsdAbstractLayerItem::Folder) {
-                const auto *topFolder = static_cast<const QPsdFolderLayerItem *>(topItem);
-                if (topFolder->artboardRect().isValid()) {
-                    const auto *parentItem = model()->layerItem(index.parent());
-                    rect.translate(-parentItem->rect().topLeft());
-                }
-            }
+            const auto *parentItem = model()->layerItem(index.parent());
+            if (parentItem)
+                rect.translate(-parentItem->rect().topLeft());
         }
         if (makeCompact) {
             rect = indexRectMap.value(index);
