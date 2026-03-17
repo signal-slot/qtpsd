@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     left: 30,
     top: 6,
     width: 239,
-    height: 72,
+    height: 12,
     fontFamily: 'Source Han Sans',
     fontSize: 50,
     color: '#000000',

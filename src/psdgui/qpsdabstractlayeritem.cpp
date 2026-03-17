@@ -400,7 +400,10 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
 
     // Vector mask
     if (additionalLayerInformation.contains("vmsk")) {
-        d->vectorMask = parseShape(additionalLayerInformation.value("vmsk").value<QPsdVectorMaskSetting>());
+        const auto vms = additionalLayerInformation.value("vmsk").value<QPsdVectorMaskSetting>();
+        if (!vms.disable()) {
+            d->vectorMask = parseShape(vms);
+        }
     }
 }
 

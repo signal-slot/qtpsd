@@ -39,7 +39,6 @@ export component MainWindow inherits Window {
         font-size: 20px;
         height: 26px;
         horizontal-alignment: left;
-        overflow: clip;
         text: "Card Title";
         vertical-alignment: bottom;
         width: 87px;
@@ -56,6 +55,7 @@ export component MainWindow inherits Window {
         text: "This is body text in a card layout with multiple layers and groups.";
         vertical-alignment: bottom;
         width: 250px;
+        wrap: word-wrap;
         x: 80px;
         y: 109px;
     }

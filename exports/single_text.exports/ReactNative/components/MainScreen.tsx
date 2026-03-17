@@ -22,6 +22,8 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     top: 0,
+    width: 320,
+    height: 240,
     backgroundColor: '#F7E790',
   },
   style1: {
@@ -29,7 +31,7 @@ const styles = StyleSheet.create({
     left: 50,
     top: 71,
     width: 160,
-    height: 44,
+    height: 49,
     fontFamily: 'Source Han Sans',
     fontSize: 30,
     color: '#000000',

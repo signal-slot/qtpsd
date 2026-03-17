@@ -527,7 +527,6 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
 
         auto setTextProperties = [&](Element *e) {
             e->type = "Text";
-            e->properties.insert("overflow", "clip");
             e->properties.insert("text", u"\"%1\""_s.arg(displayText));
             e->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
             e->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
@@ -551,8 +550,10 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                 if (!vAlign.isEmpty())
                     e->properties.insert("vertical-alignment", vAlign);
             }
-            if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText)
+            if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
+                e->properties.insert("overflow", "clip");
                 e->properties.insert("wrap", "word-wrap");
+            }
         };
 
         if (shadow) {
@@ -585,7 +586,8 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         }
     } else {
         element->type = "Rectangle";
-        element->properties.insert("clip", true);
+        if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText)
+            element->properties.insert("clip", true);
         QRect multiRect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, multiRect))
             return false;

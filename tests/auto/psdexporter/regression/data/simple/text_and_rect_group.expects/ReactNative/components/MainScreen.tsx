@@ -56,7 +56,7 @@ const styles = StyleSheet.create({
     left: 50,
     top: 71,
     width: 160,
-    height: 44,
+    height: 49,
     fontFamily: 'Source Han Sans',
     fontSize: 30,
     color: '#000000',

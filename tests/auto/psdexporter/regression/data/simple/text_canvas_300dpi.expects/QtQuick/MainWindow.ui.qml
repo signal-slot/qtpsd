@@ -21,7 +21,7 @@ Item {
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 50
-            height: 72
+            height: 81
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
             verticalAlignment: Text.AlignVCenter
@@ -34,13 +34,13 @@ Item {
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 150
-            height: 217
+            height: 242
             horizontalAlignment: Text.AlignHCenter
             text: "150px"
             verticalAlignment: Text.AlignVCenter
             width: 478
             x: 150
-            y: 18
+            y: 19
         }
     }
 }

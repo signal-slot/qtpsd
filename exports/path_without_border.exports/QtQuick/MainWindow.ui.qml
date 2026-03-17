@@ -5,7 +5,11 @@ Item {
     height: 240
     width: 320
     Item {
-        anchors.fill: parent
+        id: 1
+        height: 240
+        width: 320
+        x: 0
+        y: 0
         Rectangle {
             color: "#ff8fc5f3"
             height: 240
@@ -21,14 +25,9 @@ Item {
             y: 74
             ShapePath {
                 fillColor: "#ff5a6f0e"
-                strokeColor: "transparent"
-                strokeWidth: 1
-            }
-            ShapePath {
-                fillColor: "#ff5a6f0e"
                 fillRule: ShapePath.WindingFill
                 strokeColor: "transparent"
-                strokeWidth: 1
+                strokeWidth: 0
                 PathMove {
                     x: 66.5
                     y: 2

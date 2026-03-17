@@ -4,7 +4,11 @@ Item {
     height: 240
     width: 320
     Item {
-        anchors.fill: parent
+        id: 1
+        height: 240
+        width: 320
+        x: 0
+        y: 0
         Rectangle {
             color: "#ff1b868a"
             height: 240
@@ -14,6 +18,7 @@ Item {
         }
         Text {
             anchors.fill: parent
+            clip: true
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
@@ -48,11 +53,13 @@ Item {
             }
         }
         Text {
+            clip: true
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
-            height: 72
+            height: 12
             horizontalAlignment: Text.AlignHCenter
+            lineHeight: 0.24
             text: "shooting"
             verticalAlignment: Text.AlignVCenter
             width: 239

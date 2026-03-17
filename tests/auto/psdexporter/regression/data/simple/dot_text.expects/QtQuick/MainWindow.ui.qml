@@ -21,7 +21,7 @@ Item {
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 44
+            height: 49
             horizontalAlignment: Text.AlignHCenter
             text: "."
             verticalAlignment: Text.AlignVCenter

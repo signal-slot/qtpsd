@@ -17,7 +17,7 @@ class MainWindow extends StatelessWidget {
             child: Stack(
               children: [
                 Positioned(
-                  height: 44,
+                  height: 49,
                   left: 125,
                   top: 71,
                   width: 9,

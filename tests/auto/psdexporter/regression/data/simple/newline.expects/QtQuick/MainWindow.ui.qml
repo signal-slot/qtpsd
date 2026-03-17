@@ -32,7 +32,7 @@ Item {
             color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
-            height: 44
+            height: 98
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
             verticalAlignment: Text.AlignVCenter
@@ -42,7 +42,7 @@ Item {
         }
         Item {
             clip: true
-            height: 44
+            height: 98
             width: 144
             x: 169
             y: 1
@@ -108,7 +108,7 @@ Item {
             color: "#ffeac3c3"
             font.family: "Koz Go Pr6N"
             font.pixelSize: 30
-            height: 44
+            height: 98
             horizontalAlignment: Text.AlignHCenter
             text: "Shift\n+改行"
             verticalAlignment: Text.AlignVCenter

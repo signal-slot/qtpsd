@@ -203,7 +203,9 @@ QPsdShapeLayerItem::QPsdShapeLayerItem(const QPsdLayerRecord &record)
     if (additionalLayerInformation.contains("vsms")) {
         d->path = parseShape(additionalLayerInformation.value("vsms").value<QPsdVectorMaskSetting>());
     } else if (additionalLayerInformation.contains("vmsk")) {
-        d->path = parseShape(additionalLayerInformation.value("vmsk").value<QPsdVectorMaskSetting>());
+        const auto vmsk = additionalLayerInformation.value("vmsk").value<QPsdVectorMaskSetting>();
+        if (!vmsk.disable())
+            d->path = parseShape(vmsk);
     }
 
     if (additionalLayerInformation.contains("vstk")) {

@@ -526,9 +526,16 @@ QRect QPsdExporterPlugin::computeTextBounds(const QPsdTextLayerItem *text)
     QFont metricsFont = firstRun.font;
     metricsFont.setPixelSize(qRound(firstRun.font.pointSizeF()));
     QFontMetrics fm(metricsFont);
+    QString fullText;
+    for (const auto &run : runs)
+        fullText += run.text;
+    const int lineCount = fullText.trimmed().count(u'\n') + 1;
+    qreal lineHeight = fm.height();
+    if (firstRun.lineHeight > 0)
+        lineHeight = firstRun.lineHeight;
     QRectF adjustedBounds = text->bounds();
     adjustedBounds.setY(text->textOrigin().y() - fm.ascent());
-    adjustedBounds.setHeight(fm.height());
+    adjustedBounds.setHeight(lineHeight * lineCount);
     return adjustedBounds.toRect();
 }
 
