@@ -18,6 +18,33 @@
 #include <QtPsdImporter/QPsdImporterPlugin>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 
+#include <optional>
+
+struct CommandLineExportConfig
+{
+    std::optional<QSize> targetSize;
+    std::optional<bool> makeCompact;
+    std::optional<bool> artboardToOrigin;
+    std::optional<QString> licenseText;
+};
+
+static void mergeExportConfig(QPsdExporterPlugin::ExportConfig &merged,
+                              const CommandLineExportConfig &cli)
+{
+    if (cli.targetSize) {
+        merged.targetSize = *cli.targetSize;
+    }
+    if (cli.makeCompact) {
+        merged.makeCompact = *cli.makeCompact;
+    }
+    if (cli.artboardToOrigin) {
+        merged.artboardToOrigin = *cli.artboardToOrigin;
+    }
+    if (cli.licenseText) {
+        merged.licenseText = *cli.licenseText;
+    }
+}
+
 static QSize parseResolution(const QString &resolution, bool *ok = nullptr)
 {
     static const QHash<QString, QSize> presets = {
@@ -49,7 +76,9 @@ static QSize parseResolution(const QString &resolution, bool *ok = nullptr)
     return QSize(); // Invalid
 }
 
-static int runAutoExport(const QString &input, const QString &type, const QString &outdir, const QString &resolution, const QStringList &propertyArgs, bool makeCompact, bool artboardToOrigin, const QString &licenseText)
+static int runAutoExport(const QString &input, const QString &type, const QString &outdir,
+                         const QStringList &propertyArgs,
+                         const CommandLineExportConfig &cliExportConfig)
 {
     QFileInfo inputInfo(input);
     if (!inputInfo.exists()) {
@@ -120,22 +149,8 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         return 1;
     }
 
-    // "original" → empty targetSize so initializeExport uses effectiveCanvasSize
-    bool resOk = false;
-    QSize outputSize = parseResolution(resolution, &resOk);
-    if (!resOk) {
-        qCritical() << "Invalid resolution:" << resolution;
-        qCritical() << "Use preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT format";
-        return 1;
-    }
-
-    QPsdExporterPlugin::ExportConfig config;
-    config.targetSize = outputSize;
-    config.fontScaleFactor = 1.0;
-    config.makeCompact = makeCompact;
-    config.imageScaling = false;
-    config.artboardToOrigin = artboardToOrigin;
-    config.licenseText = licenseText;
+    auto config = QPsdExporterPlugin::ExportConfig::fromVariantMap(model.exportHint(plugin->key()));
+    mergeExportConfig(config, cliExportConfig);
 
     // For File-type exporters, construct the output file path from outdir
     QString exportTarget = outdir;
@@ -145,7 +160,7 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
         exportTarget = outDir.filePath(inputInfo.completeBaseName() + extension);
     }
 
-    qInfo() << "Exporting" << input << "to" << exportTarget << "using" << type << "at" << outputSize;
+    qInfo() << "Exporting" << input << "to" << exportTarget << "using" << type << "at" << config.targetSize;
     if (!plugin->exportTo(&model, exportTarget, config)) {
         qCritical() << "Export failed";
         return 1;
@@ -157,7 +172,8 @@ static int runAutoExport(const QString &input, const QString &type, const QStrin
 
 static int runAutoImport(const QString &importType, const QString &source, const QString &apiKey, int imageScale, const QList<int> &pageIndices,
                          const QString &exportType = {}, const QString &outdir = {}, const QStringList &propertyArgs = {},
-                         const QString &resolution = "original"_L1, bool makeCompact = false, bool artboardToOrigin = false, const QString &licenseText = {})
+                         const CommandLineExportConfig &cliExportConfig = {},
+                         bool pageIndexExplicit = false)
 {
     auto plugin = QPsdImporterPlugin::plugin(importType.toUtf8());
     if (!plugin) {
@@ -190,6 +206,8 @@ static int runAutoImport(const QString &importType, const QString &source, const
 
         QVariantMap options = baseOptions;
         options["pageIndex"] = pageIdx;
+        if (pageIndexExplicit)
+            options["pageIndexExplicit"] = true;
 
         qInfo() << "Importing from" << source << "page" << pageIdx << "using" << importType;
         if (!plugin->importFrom(&model, options)) {
@@ -239,16 +257,8 @@ static int runAutoImport(const QString &importType, const QString &source, const
             if (!outDir.exists())
                 outDir.mkpath(".");
 
-            // "original" → empty targetSize so initializeExport uses effectiveCanvasSize
-            QSize outputSize = parseResolution(resolution);
-
-            QPsdExporterPlugin::ExportConfig config;
-            config.targetSize = outputSize;
-            config.fontScaleFactor = 1.0;
-            config.makeCompact = makeCompact;
-            config.imageScaling = false;
-            config.artboardToOrigin = artboardToOrigin;
-            config.licenseText = licenseText;
+            auto config = QPsdExporterPlugin::ExportConfig::fromVariantMap(model.exportHint(exporter->key()));
+            mergeExportConfig(config, cliExportConfig);
 
             QString exportTarget = outdir;
             if (exporter->exportType() == QPsdExporterPlugin::File) {
@@ -301,8 +311,7 @@ int main(int argc, char *argv[])
 
     QCommandLineOption resolutionOption(QStringList() << "resolution",
                                         "Output resolution: preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT",
-                                        "resolution",
-                                        "original");
+                                        "resolution");
     parser.addOption(resolutionOption);
 
     QCommandLineOption effectModeOption(QStringList() << "effect-mode",
@@ -366,6 +375,28 @@ int main(int argc, char *argv[])
             qInfo().noquote() << "  " << key << "-" << plugin->name() << "(" << typeStr << ")";
         }
         return 0;
+    }
+
+    CommandLineExportConfig cliExportConfig;
+    if (parser.isSet(resolutionOption)) {
+        const auto resolution = parser.value(resolutionOption);
+        bool resOk = false;
+        QSize targetSize = parseResolution(resolution, &resOk);
+        if (!resOk) {
+            qCritical() << "Invalid resolution:" << resolution;
+            qCritical() << "Use preset (original, 4k, fhd, hd, xga, svga, vga, qvga) or WIDTHxHEIGHT format";
+            return 1;
+        }
+        cliExportConfig.targetSize = targetSize;
+    }
+    if (parser.isSet(makeCompactOption)) {
+        cliExportConfig.makeCompact = true;
+    }
+    if (parser.isSet(artboardOriginOption)) {
+        cliExportConfig.artboardToOrigin = true;
+    }
+    if (parser.isSet(licenseTextOption)) {
+        cliExportConfig.licenseText = parser.value(licenseTextOption);
     }
 
     // Handle --import-type / --import-source
@@ -437,6 +468,8 @@ int main(int argc, char *argv[])
 
                 QVariantMap options = baseOptions;
                 options["pageIndex"] = pageIdx;
+                if (parser.isSet(importPageIndexOption))
+                    options["pageIndexExplicit"] = true;
 
                 qInfo() << "Importing from" << parser.value(importSourceOption) << "page" << pageIdx;
                 if (!importPlugin->importFrom(&model, options)) {
@@ -480,10 +513,8 @@ int main(int argc, char *argv[])
                              parser.value(typeOption),
                              parser.value(outdirOption),
                              propertyArgs,
-                             parser.value(resolutionOption),
-                             parser.isSet(makeCompactOption),
-                             parser.isSet(artboardOriginOption),
-                             parser.value(licenseTextOption));
+                             cliExportConfig,
+                             parser.isSet(importPageIndexOption));
     }
 
     bool hasInput = parser.isSet(inputOption);
@@ -501,11 +532,8 @@ int main(int argc, char *argv[])
         return runAutoExport(parser.value(inputOption),
                              parser.value(typeOption),
                              parser.value(outdirOption),
-                             parser.value(resolutionOption),
                              propertyArgs,
-                             parser.isSet(makeCompactOption),
-                             parser.isSet(artboardOriginOption),
-                             parser.value(licenseTextOption));
+                             cliExportConfig);
     }
 
     MainWindow window;

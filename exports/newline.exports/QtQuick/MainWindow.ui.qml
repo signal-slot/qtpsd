@@ -23,6 +23,7 @@ Item {
             color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 50
+            font.weight: 500
             horizontalAlignment: Text.AlignHCenter
             text: ""
             verticalAlignment: Text.AlignVCenter
@@ -32,6 +33,7 @@ Item {
             color: "#ffeac3c3"
             font.family: "Source Han Sans"
             font.pixelSize: 30
+            font.weight: 500
             height: 98
             horizontalAlignment: Text.AlignHCenter
             text: "文字列中に\n改行"
@@ -96,6 +98,7 @@ Item {
                         color: "#ffeac3c3"
                         font.family: "Source Han Sans"
                         font.pixelSize: 18
+                        font.weight: 500
                         horizontalAlignment: Text.AlignHCenter
                         text: "フォント"
                         verticalAlignment: Text.AlignVCenter

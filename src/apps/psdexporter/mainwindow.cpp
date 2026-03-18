@@ -479,7 +479,8 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
 {
     // Determine page indices to import
     QList<int> pageIndices;
-    if (options.contains("pageIndices"_L1)) {
+    const bool hasExplicitPages = options.contains("pageIndices"_L1);
+    if (hasExplicitPages) {
         const auto list = options.value("pageIndices"_L1).toList();
         for (const auto &v : list)
             pageIndices.append(v.toInt());
@@ -516,6 +517,8 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
         // Prepare per-page options
         QVariantMap pageOptions = options;
         pageOptions["pageIndex"_L1] = pageIdx;
+        if (hasExplicitPages)
+            pageOptions["pageIndexExplicit"_L1] = true;
 
         importer->setProgressCallback([progressBar](int value, int maximum) {
             progressBar->setRange(0, maximum);

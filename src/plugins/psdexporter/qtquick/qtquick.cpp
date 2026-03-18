@@ -1214,11 +1214,11 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
         {
             const int weight = run.font.weight();
-            if (weight != QFont::Normal && weight != 0)
+            if (weight == QFont::Bold || run.fauxBold)
+                element->properties.insert("font.bold", true);
+            else if (weight != QFont::Normal && weight != 0)
                 element->properties.insert("font.weight", weight);
         }
-        if (run.fauxBold)
-            element->properties.insert("font.bold", true);
         if (run.font.italic() || run.fauxItalic)
             element->properties.insert("font.italic", true);
         if (run.underline)
@@ -2001,11 +2001,14 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::RoundedRectangle: {
-        // Ellipse detection: if radius >= half the smaller dimension and non-square,
+        // Ellipse detection: if radius > half the smaller dimension and non-square,
         // QML Rectangle+radius produces a stadium shape. Use Shape+PathAngleArc instead.
         {
+            // No qFuzzyCompare() here, which is too strict to test visual distinction.
+            constexpr qreal epsilon = 0.1;
             const qreal minDim = qMin(path.rect.width(), path.rect.height());
-            if (path.radius * 2 >= minDim && path.rect.width() != path.rect.height()) {
+            if (path.radius * 2 > minDim + epsilon
+                && qAbs(path.rect.width() - path.rect.height()) > epsilon) {
                 imports->insert("QtQuick.Shapes");
                 element->type = "Shape";
                 if (!outputBase(shapeIndex, element, imports))
@@ -2367,6 +2370,49 @@ bool QPsdExporterQtQuickPlugin::outputShape(const QModelIndex &shapeIndex, Eleme
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::Path: {
+        // Circle optimization: emit Rectangle { radius: width/2 } instead of Shape+PathAngleArc
+        // No qFuzzyCompare() here, which is too strict to test visual distinction.
+        constexpr qreal epsilon = 0.1;
+        if (!path.rect.isEmpty()
+            && qAbs(path.rect.width() - path.rect.height()) > epsilon) {
+            QPainterPath refCircle;
+            refCircle.addEllipse(path.rect);
+            refCircle.setFillRule(path.path.fillRule());
+            if (path.path == refCircle) {
+                const QGradient *g = effectiveGradient(shape);
+                if (!g && shape->brush().style() != Qt::TexturePattern) {
+                    bool filled = isFilledRect(path, shape);
+                    Element rectElement;
+                    rectElement.type = "Rectangle";
+                    if (filled) {
+                        if (!outputBase(shapeIndex, &rectElement, imports))
+                            return false;
+                    } else {
+                        element->type = "Item";
+                        if (!outputBase(shapeIndex, element, imports))
+                            return false;
+                        outputRect(path.rect, &rectElement);
+                    }
+                    rectElement.properties.insert("radius", path.rect.width() * horizontalScale / 2.0);
+                    const auto &pen = shape->pen();
+                    if (pen.style() != Qt::NoPen) {
+                        qreal dw = computeStrokeWidth(pen, unitScale);
+                        rectElement.properties.insert("border.width", dw);
+                        rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                    }
+                    if (shape->brush() != Qt::NoBrush)
+                        rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    else
+                        rectElement.properties.insert("color", "\"transparent\"");
+                    if (filled)
+                        *element = rectElement;
+                    else
+                        element->children.append(rectElement);
+                    return true;
+                }
+            }
+        }
+        // Fall through to Shape for non-circles and complex fills (gradients, textures)
         imports->insert("QtQuick.Shapes");
         element->type = "Shape";
         if (!outputBase(shapeIndex, element, imports))
