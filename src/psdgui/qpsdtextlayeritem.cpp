@@ -59,6 +59,12 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
     }
 
     const auto engineDataData = textData.data().value("EngineData").toByteArray();
+    if (engineDataData.isEmpty()) {
+        // No EngineData (e.g. Figma imports) — caller will use setRuns() directly
+        appendFallbackRun();
+        d->bounds = tysh.bounds();
+        return;
+    }
     QPsdEngineDataParser::ParseError parseError;
     const auto engineData = QPsdEngineDataParser::parseEngineData(engineDataData, &parseError);
     if (parseError) {

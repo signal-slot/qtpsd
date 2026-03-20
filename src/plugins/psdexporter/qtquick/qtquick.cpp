@@ -176,7 +176,8 @@ bool QPsdExporterQtQuickPlugin::exportTo(const QPsdExporterTreeItemModel *model,
 
     // Detect NoGPU mode with blend modes — requires merged image fallback
     bool needsMergedFallback = false;
-    if (effectMode() == NoGPU) {
+    const QImage mergedImage = model->guiLayerTreeItemModel()->mergedImage();
+    if (effectMode() == NoGPU && !mergedImage.isNull()) {
         std::function<void(const QModelIndex &)> scanForFallback = [&](const QModelIndex &idx) {
             if (needsMergedFallback) return;
             if (idx.isValid()) {
