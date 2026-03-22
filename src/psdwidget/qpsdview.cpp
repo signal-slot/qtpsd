@@ -5,11 +5,13 @@
 #include "qpsdscene.h"
 #include "qpsdabstractitem.h"
 
+#include <QtGui/QContextMenuEvent>
 #include <QtGui/QPainter>
 #include <QtGui/QPaintEvent>
 #include <QtGui/QWheelEvent>
 #include <cmath>
 
+#include <QtWidgets/QMenu>
 #include <QtWidgets/QStyleOption>
 #include <QtWidgets/QRubberBand>
 
@@ -178,6 +180,78 @@ void QPsdView::selectItem(const QModelIndex &index)
 void QPsdView::clearSelection()
 {
     d->rubberBandRect = QRect {};
+}
+
+void QPsdView::contextMenuEvent(QContextMenuEvent *event)
+{
+    const QPointF scenePos = mapToScene(event->pos());
+    const auto hitItems = d->scene->items(scenePos, Qt::IntersectsItemShape, Qt::DescendingOrder);
+
+    // Collect QPsdAbstractItems and build the set of ancestor model indexes
+    QList<const QPsdAbstractItem *> psdItems;
+    QSet<QPersistentModelIndex> hitIndexSet;
+    for (auto *item : hitItems) {
+        auto *psdItem = dynamic_cast<const QPsdAbstractItem *>(item);
+        if (psdItem) {
+            psdItems.append(psdItem);
+            hitIndexSet.insert(QPersistentModelIndex(psdItem->modelIndex()));
+            // Include all ancestors so folders appear in the menu
+            QModelIndex parent = psdItem->modelIndex().parent();
+            while (parent.isValid()) {
+                hitIndexSet.insert(QPersistentModelIndex(parent));
+                parent = parent.parent();
+            }
+        }
+    }
+
+    if (psdItems.isEmpty()) {
+        QGraphicsView::contextMenuEvent(event);
+        return;
+    }
+
+    // Build hierarchical menu from the model tree
+    QMenu menu(this);
+    const auto *model = psdItems.first()->modelIndex().model();
+
+    std::function<void(QMenu *, const QModelIndex &)> buildMenu;
+    buildMenu = [&](QMenu *parentMenu, const QModelIndex &parentIndex) {
+        const int rows = model->rowCount(parentIndex);
+        for (int i = 0; i < rows; ++i) {
+            QModelIndex childIndex = model->index(i, 0, parentIndex);
+            if (!hitIndexSet.contains(QPersistentModelIndex(childIndex)))
+                continue;
+
+            const QString layerName = childIndex.siblingAtColumn(1).data(Qt::DisplayRole).toString();
+            const bool isLeaf = !model->hasChildren(childIndex)
+                || std::none_of(hitIndexSet.cbegin(), hitIndexSet.cend(),
+                    [&](const QPersistentModelIndex &idx) {
+                        return idx != childIndex && QModelIndex(idx).parent() == childIndex;
+                    });
+
+            if (isLeaf) {
+                QAction *action = parentMenu->addAction(layerName);
+                QPersistentModelIndex persistent(childIndex);
+                connect(action, &QAction::triggered, this, [this, persistent]() {
+                    selectItem(persistent);
+                });
+            } else {
+                QMenu *subMenu = parentMenu->addMenu(layerName);
+                // Allow selecting the folder itself
+                QAction *selfAction = subMenu->addAction(tr("(Select this group)"));
+                QPersistentModelIndex persistent(childIndex);
+                connect(selfAction, &QAction::triggered, this, [this, persistent]() {
+                    selectItem(persistent);
+                });
+                subMenu->addSeparator();
+                buildMenu(subMenu, childIndex);
+            }
+        }
+    };
+
+    buildMenu(&menu, QModelIndex());
+
+    if (!menu.isEmpty())
+        menu.exec(event->globalPos());
 }
 
 void QPsdView::paintEvent(QPaintEvent *event)
