@@ -187,21 +187,12 @@ void QPsdView::contextMenuEvent(QContextMenuEvent *event)
     const QPointF scenePos = mapToScene(event->pos());
     const auto hitItems = d->scene->items(scenePos, Qt::IntersectsItemShape, Qt::DescendingOrder);
 
-    // Collect QPsdAbstractItems and build the set of ancestor model indexes
+    // Collect hit QPsdAbstractItems (front-to-back order)
     QList<const QPsdAbstractItem *> psdItems;
-    QSet<QPersistentModelIndex> hitIndexSet;
     for (auto *item : hitItems) {
         auto *psdItem = dynamic_cast<const QPsdAbstractItem *>(item);
-        if (psdItem) {
+        if (psdItem)
             psdItems.append(psdItem);
-            hitIndexSet.insert(QPersistentModelIndex(psdItem->modelIndex()));
-            // Include all ancestors so folders appear in the menu
-            QModelIndex parent = psdItem->modelIndex().parent();
-            while (parent.isValid()) {
-                hitIndexSet.insert(QPersistentModelIndex(parent));
-                parent = parent.parent();
-            }
-        }
     }
 
     if (psdItems.isEmpty()) {
@@ -209,49 +200,44 @@ void QPsdView::contextMenuEvent(QContextMenuEvent *event)
         return;
     }
 
-    // Build hierarchical menu from the model tree
+    // Build flat menu with breadcrumb path and layer preview icons
     QMenu menu(this);
-    const auto *model = psdItems.first()->modelIndex().model();
+    constexpr int iconSize = 24;
 
-    std::function<void(QMenu *, const QModelIndex &)> buildMenu;
-    buildMenu = [&](QMenu *parentMenu, const QModelIndex &parentIndex) {
-        const int rows = model->rowCount(parentIndex);
-        for (int i = 0; i < rows; ++i) {
-            QModelIndex childIndex = model->index(i, 0, parentIndex);
-            if (!hitIndexSet.contains(QPersistentModelIndex(childIndex)))
-                continue;
+    for (const auto *psdItem : psdItems) {
+        const QModelIndex index = psdItem->modelIndex();
 
-            const QString layerName = childIndex.siblingAtColumn(1).data(Qt::DisplayRole).toString();
-            const bool isLeaf = !model->hasChildren(childIndex)
-                || std::none_of(hitIndexSet.cbegin(), hitIndexSet.cend(),
-                    [&](const QPersistentModelIndex &idx) {
-                        return idx != childIndex && QModelIndex(idx).parent() == childIndex;
-                    });
-
-            if (isLeaf) {
-                QAction *action = parentMenu->addAction(layerName);
-                QPersistentModelIndex persistent(childIndex);
-                connect(action, &QAction::triggered, this, [this, persistent]() {
-                    selectItem(persistent);
-                });
-            } else {
-                QMenu *subMenu = parentMenu->addMenu(layerName);
-                // Allow selecting the folder itself
-                QAction *selfAction = subMenu->addAction(tr("(Select this group)"));
-                QPersistentModelIndex persistent(childIndex);
-                connect(selfAction, &QAction::triggered, this, [this, persistent]() {
-                    selectItem(persistent);
-                });
-                subMenu->addSeparator();
-                buildMenu(subMenu, childIndex);
-            }
+        // Build breadcrumb path: "grandparent > parent > layer"
+        QStringList pathParts;
+        QModelIndex walk = index;
+        while (walk.isValid()) {
+            pathParts.prepend(walk.siblingAtColumn(1).data(Qt::DisplayRole).toString());
+            walk = walk.parent();
         }
-    };
+        const QString label = pathParts.join(u" > "_s);
 
-    buildMenu(&menu, QModelIndex());
+        // Create preview icon from the layer image
+        QIcon icon;
+        const QImage layerImage = psdItem->abstractLayer()->image();
+        if (!layerImage.isNull()) {
+            QImage preview(iconSize, iconSize, QImage::Format_ARGB32_Premultiplied);
+            preview.fill(Qt::transparent);
+            QPainter p(&preview);
+            p.setRenderHint(QPainter::SmoothPixmapTransform);
+            const QImage scaled = layerImage.scaled(iconSize, iconSize, Qt::KeepAspectRatio, Qt::SmoothTransformation);
+            p.drawImage((iconSize - scaled.width()) / 2, (iconSize - scaled.height()) / 2, scaled);
+            p.end();
+            icon = QIcon(QPixmap::fromImage(preview));
+        }
 
-    if (!menu.isEmpty())
-        menu.exec(event->globalPos());
+        QAction *action = menu.addAction(icon, label);
+        QPersistentModelIndex persistent(index);
+        connect(action, &QAction::triggered, this, [this, persistent]() {
+            selectItem(persistent);
+        });
+    }
+
+    menu.exec(event->globalPos());
 }
 
 void QPsdView::paintEvent(QPaintEvent *event)
