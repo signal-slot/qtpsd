@@ -916,8 +916,21 @@ bool QPsdExporterSlintPlugin::outputShape(const QModelIndex &shapeIndex, Element
                 break;
             }
         } else {
-            if (shape->brush() != Qt::NoBrush)
+            if (shape->brush() != Qt::NoBrush) {
                 element2.properties.insert("background", shape->brush().color().name());
+            } else {
+                // No gradient and no brush (e.g. pattern fill) — fall back to image
+                imageStore = QPsdImageStore(dir, "images"_L1);
+                const QImage img = shape->image();
+                if (!img.isNull()) {
+                    const QString name = saveLayerImage(shape);
+                    if (!name.isEmpty()) {
+                        element2.type = "Image";
+                        element2.properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
+                        element2.properties.insert("image-fit", "contain");
+                    }
+                }
+            }
         }
         element->children.append(element2);
         break; }
