@@ -11,17 +11,11 @@ Item {
         x: 0
         y: 0
     }
-    Item {
+    Rectangle {
+        color: "#ff00c800"
         height: 200
         width: 200
         x: 0
         y: 0
-        Rectangle {
-            color: "#ff00c800"
-            height: 140
-            width: 140
-            x: 30
-            y: 30
-        }
     }
 }

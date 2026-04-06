@@ -14,10 +14,10 @@ Item {
     }
     Item {
         clip: true
-        height: 36
+        height: 42
         width: 203
         x: 30
-        y: 72
+        y: 67
         Column {
             anchors.centerIn: parent
             RowLayout {

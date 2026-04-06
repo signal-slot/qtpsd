@@ -40,6 +40,7 @@ Item {
         Text {
             clip: true
             color: "#ff1e1e1e"
+            font.bold: true
             font.family: "Roboto"
             font.pixelSize: 20
             height: 26

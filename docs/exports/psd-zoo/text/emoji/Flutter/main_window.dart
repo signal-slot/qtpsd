@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 36,
+            height: 42,
             left: 30,
-            top: 72,
+            top: 67,
             width: 203,
             child: Column(
               children: [

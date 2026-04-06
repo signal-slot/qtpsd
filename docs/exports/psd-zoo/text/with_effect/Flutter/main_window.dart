@@ -35,7 +35,7 @@ class MainWindow extends StatelessWidget {
                 color: Color.fromARGB(255, 200, 50, 50),
                 fontFamily: "Roboto",
                 fontSize: 48,
-                fontVariations: [FontVariation.weight(600)],
+                fontVariations: [FontVariation.weight(800)],
                 height: 1,
               ),
             ),

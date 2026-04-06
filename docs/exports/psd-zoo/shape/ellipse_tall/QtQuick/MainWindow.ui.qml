@@ -1,5 +1,4 @@
 import QtQuick
-import QtQuick.Shapes
 
 Item {
     height: 300
@@ -12,23 +11,18 @@ Item {
         x: 0
         y: 0
     }
-    Shape {
+    Item {
         height: 262
         width: 102
         x: 49
         y: 19
-        ShapePath {
-            fillColor: "#ff00c880"
-            strokeColor: "transparent"
-            strokeWidth: 0
-            PathAngleArc {
-                centerX: 51
-                centerY: 131
-                radiusX: 50
-                radiusY: 130
-                startAngle: 0
-                sweepAngle: 360
-            }
+        Rectangle {
+            color: "#ff00c880"
+            height: 260
+            radius: 50
+            width: 100
+            x: 1
+            y: 0.999999
         }
     }
 }

@@ -15,6 +15,7 @@ Item {
     Text {
         clip: true
         color: "#ffc83232"
+        font.bold: true
         font.family: "Roboto"
         font.pixelSize: 48
         height: 63

@@ -11,9 +11,4 @@ Item {
         x: 0
         y: 0
     }
-    Image {
-        anchors.fill: parent
-        fillMode: Image.PreserveAspectFit
-        source: "images/"
-    }
 }
