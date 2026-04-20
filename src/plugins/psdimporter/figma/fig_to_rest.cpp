@@ -571,9 +571,33 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx
 
     // Fills / strokes
     const auto fillPaints = node.value(QStringLiteral("fillPaints")).toArray();
-    if (!fillPaints.isEmpty())
-        out.insert("fills"_L1, convertPaints(fillPaints));
     const auto strokePaints = node.value(QStringLiteral("strokePaints")).toArray();
+    bool hasVisibleFill = false;
+    for (const auto &p : fillPaints) {
+        if (p.toMap().value(QStringLiteral("visible")).toBool(true)) {
+            hasVisibleFill = true;
+            break;
+        }
+    }
+    if (!fillPaints.isEmpty()) {
+        out.insert("fills"_L1, convertPaints(fillPaints));
+    }
+    // Stroke-only shapes (e.g. connector lines, arrows, open vector paths):
+    // emit a fully transparent SOLID fill so downstream renderers don't
+    // auto-close and fill the path with their default brush.
+    if (!hasVisibleFill && !strokePaints.isEmpty()) {
+        QJsonObject transparent;
+        transparent.insert("type"_L1, QStringLiteral("SOLID"));
+        transparent.insert("visible"_L1, true);
+        transparent.insert("opacity"_L1, 0.0);
+        QJsonObject zero;
+        zero.insert("r"_L1, 0.0); zero.insert("g"_L1, 0.0);
+        zero.insert("b"_L1, 0.0); zero.insert("a"_L1, 0.0);
+        transparent.insert("color"_L1, zero);
+        QJsonArray fills;
+        fills.append(transparent);
+        out.insert("fills"_L1, fills);
+    }
     if (!strokePaints.isEmpty())
         out.insert("strokes"_L1, convertPaints(strokePaints));
     const auto strokeWeight = fdouble(node.value(QStringLiteral("strokeWeight")), 0.0);
