@@ -166,10 +166,27 @@ void QPsdView::selectItem(const QModelIndex &index)
     const auto selectedItems = d->scene->selectedItems();
     if (!selectedItems.isEmpty()) {
         const auto item = selectedItems.first();
-        const auto rect = item->sceneBoundingRect().toRect();
-        d->rubberBandRect = rect;
-        if (!rect.isEmpty())
-            ensureVisible(item);
+        const auto rectF = item->sceneBoundingRect();
+        d->rubberBandRect = rectF.toRect();
+        if (!rectF.isEmpty()) {
+            // Zoom out if the item doesn't fit in the current viewport.
+            // We only shrink — never grow — so selecting a small item after
+            // the user zoomed in keeps their zoom level.
+            const qreal scale = transform().m11();
+            const qreal vpW = viewport()->width() / scale;
+            const qreal vpH = viewport()->height() / scale;
+            if (rectF.width() > vpW || rectF.height() > vpH) {
+                const qreal margin = 0.95; // leave a little breathing room
+                const qreal fitScale = qMin(viewport()->width() / rectF.width(),
+                                            viewport()->height() / rectF.height()) * margin;
+                const qreal newScale = qBound(0.1, fitScale, 10.0);
+                setTransform(QTransform::fromScale(newScale, newScale));
+                emit scaleChanged(newScale);
+                centerOn(rectF.center());
+            } else {
+                ensureVisible(item);
+            }
+        }
         viewport()->update();
     } else {
         d->rubberBandRect = QRect {};
