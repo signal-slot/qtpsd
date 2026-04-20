@@ -7,8 +7,10 @@
 #include <QtCore/QFile>
 #include <QtCore/private/qzipreader_p.h>
 
-#include <zlib.h>
-#include <zstd.h>
+#ifdef QPSD_FIGMA_LOCAL_FIG
+#  include <zlib.h>
+#  include <zstd.h>
+#endif
 
 using namespace Qt::StringLiterals;
 
@@ -17,6 +19,7 @@ namespace FigArchive {
 static constexpr char FIG_KIWI_PRELUDE[] = "fig-kiwi";
 static constexpr int PRELUDE_LEN = 8;
 
+#ifdef QPSD_FIGMA_LOCAL_FIG
 QByteArray decompressDeflateRaw(const QByteArray &in, QString *error)
 {
     z_stream strm {};
@@ -95,6 +98,26 @@ QByteArray decompressAuto(const QByteArray &in, QString *error)
     }
     return decompressDeflateRaw(in, error);
 }
+#else // !QPSD_FIGMA_LOCAL_FIG — stubs so callers link, but refuse to run
+
+QByteArray decompressDeflateRaw(const QByteArray &, QString *error)
+{
+    if (error) *error = QStringLiteral("local .fig support was disabled at build time (missing zlib/libzstd)");
+    return {};
+}
+
+QByteArray decompressZstd(const QByteArray &, QString *error)
+{
+    if (error) *error = QStringLiteral("local .fig support was disabled at build time (missing libzstd)");
+    return {};
+}
+
+QByteArray decompressAuto(const QByteArray &, QString *error)
+{
+    if (error) *error = QStringLiteral("local .fig support was disabled at build time");
+    return {};
+}
+#endif // QPSD_FIGMA_LOCAL_FIG
 
 static bool parseFigStream(const QByteArray &figData, Archive *out, QString *error)
 {

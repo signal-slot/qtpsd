@@ -1,10 +1,13 @@
 # Copyright (C) 2025 Signal Slot Inc.
 # SPDX-License-Identifier: LGPL-3.0-only OR GPL-2.0-only OR GPL-3.0-only
 
-find_package(ZLIB REQUIRED)
+# Local .fig file support depends on zlib (raw DEFLATE) and libzstd. On
+# platforms where either can't be located the plugin still builds and the
+# REST-API import path keeps working; .fig paths are rejected at runtime.
+find_package(ZLIB QUIET)
 find_package(PkgConfig QUIET)
 if(PkgConfig_FOUND)
-    pkg_check_modules(LIBZSTD IMPORTED_TARGET libzstd)
+    pkg_check_modules(LIBZSTD IMPORTED_TARGET QUIET libzstd)
 endif()
 
 if(NOT TARGET PkgConfig::LIBZSTD)
@@ -20,8 +23,12 @@ if(NOT TARGET PkgConfig::LIBZSTD)
     endif()
 endif()
 
-if(NOT TARGET PkgConfig::LIBZSTD)
-    message(WARNING "libzstd not found; QPsdImporterFigmaPlugin will skip .fig local-file support")
+set(_fig_local_enabled OFF)
+if(TARGET ZLIB::ZLIB AND TARGET PkgConfig::LIBZSTD)
+    set(_fig_local_enabled ON)
+else()
+    message(STATUS "QPsdImporterFigmaPlugin: local .fig support disabled "
+        "(zlib found: ${ZLIB_FOUND}, libzstd found: $<IF:$<BOOL:${LIBZSTD_FOUND}>,yes,no>)")
 endif()
 
 qt_internal_add_plugin(QPsdImporterFigmaPlugin
@@ -42,12 +49,11 @@ qt_internal_add_plugin(QPsdImporterFigmaPlugin
         Qt::PsdGui
         Qt::PsdWidget
         Qt::PsdImporter
-        ZLIB::ZLIB
 )
 
-if(TARGET PkgConfig::LIBZSTD)
-    target_link_libraries(QPsdImporterFigmaPlugin PRIVATE PkgConfig::LIBZSTD)
-    target_compile_definitions(QPsdImporterFigmaPlugin PRIVATE QPSD_FIGMA_HAS_ZSTD=1)
+if(_fig_local_enabled)
+    target_link_libraries(QPsdImporterFigmaPlugin PRIVATE ZLIB::ZLIB PkgConfig::LIBZSTD)
+    target_compile_definitions(QPsdImporterFigmaPlugin PRIVATE QPSD_FIGMA_LOCAL_FIG=1)
 endif()
 
 qt_internal_add_resource(QPsdImporterFigmaPlugin "figma_icon"
