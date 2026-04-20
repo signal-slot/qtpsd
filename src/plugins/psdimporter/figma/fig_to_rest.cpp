@@ -284,15 +284,29 @@ static QJsonObject convertPaint(const QCborMap &src)
         color.insert("a"_L1, fdouble(c.value(QStringLiteral("a")), 1.0));
         dst.insert("color"_L1, color);
     } else if (type.startsWith("GRADIENT_"_L1)) {
-        const auto handles = src.value(QStringLiteral("gradientHandles")).toArray();
+        // Kiwi stores the gradient orientation as a 2x3 affine `transform`
+        // that maps the unit gradient space (0-1) into the shape's normalized
+        // local space. The REST API instead ships three handle positions:
+        //   [0] = start of the gradient axis
+        //   [1] = end of the gradient axis
+        //   [2] = perpendicular point defining gradient width
+        const auto t = src.value(QStringLiteral("transform")).toMap();
+        const double m00 = fdouble(t.value(QStringLiteral("m00")), 1.0);
+        const double m01 = fdouble(t.value(QStringLiteral("m01")), 0.0);
+        const double m02 = fdouble(t.value(QStringLiteral("m02")), 0.0);
+        const double m10 = fdouble(t.value(QStringLiteral("m10")), 0.0);
+        const double m11 = fdouble(t.value(QStringLiteral("m11")), 1.0);
+        const double m12 = fdouble(t.value(QStringLiteral("m12")), 0.0);
+        auto mapPoint = [&](double x, double y, QJsonObject *out) {
+            out->insert("x"_L1, m00 * x + m01 * y + m02);
+            out->insert("y"_L1, m10 * x + m11 * y + m12);
+        };
         QJsonArray h;
-        for (const auto &pt : handles) {
-            const auto pm = pt.toMap();
-            QJsonObject o;
-            o.insert("x"_L1, fdouble(pm.value(QStringLiteral("x"))));
-            o.insert("y"_L1, fdouble(pm.value(QStringLiteral("y"))));
-            h.append(o);
-        }
+        QJsonObject p0, p1, p2;
+        mapPoint(0.0, 0.5, &p0);
+        mapPoint(1.0, 0.5, &p1);
+        mapPoint(0.0, 1.0, &p2);
+        h.append(p0); h.append(p1); h.append(p2);
         dst.insert("gradientHandlePositions"_L1, h);
         const auto stops = src.value(QStringLiteral("stops")).toArray();
         QJsonArray s;
