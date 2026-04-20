@@ -7,6 +7,8 @@
 #include <QtCore/QCborMap>
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QRectF>
+#include <QtGui/QTransform>
 
 #include <cmath>
 #include <cstring>
@@ -333,8 +335,10 @@ struct BuildCtx
     QCborArray blobs;
     QHash<QString, int> nodeByGuidStr;
     QHash<QString, QVector<int>> childrenByParent; // parentGuidStr → ordered indices
-    // Absolute coordinates cache: node guid → {x, y}
-    QHash<QString, QPointF> absPos;
+    // Absolute transform per node (cumulative from root)
+    QHash<QString, QTransform> absXform;
+    // Absolute bounding box (axis-aligned) computed from transform + size
+    QHash<QString, QRectF> absBBox;
 };
 
 static QJsonObject convertNode(const BuildCtx &ctx, int idx);
@@ -367,16 +371,16 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx)
     out.insert("isMask"_L1, node.value(QStringLiteral("mask")).toBool(false));
 
     // Rect from transform + size (absolute).
-    const QPointF abs = ctx.absPos.value(guidStr);
     const auto size = node.value(QStringLiteral("size")).toMap();
     const double w = fdouble(size.value(QStringLiteral("x")));
     const double h = fdouble(size.value(QStringLiteral("y")));
     {
+        const QRectF bb = ctx.absBBox.value(guidStr);
         QJsonObject bbox;
-        bbox.insert("x"_L1, finite(abs.x()));
-        bbox.insert("y"_L1, finite(abs.y()));
-        bbox.insert("width"_L1, w);
-        bbox.insert("height"_L1, h);
+        bbox.insert("x"_L1, finite(bb.x()));
+        bbox.insert("y"_L1, finite(bb.y()));
+        bbox.insert("width"_L1, finite(bb.width(), w));
+        bbox.insert("height"_L1, finite(bb.height(), h));
         out.insert("absoluteBoundingBox"_L1, bbox);
     }
     {
@@ -408,6 +412,25 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx)
     if (!strokeCap.isEmpty()) out.insert("strokeCap"_L1, strokeCap);
     const auto strokeJoin = node.value(QStringLiteral("strokeJoin")).toString();
     if (!strokeJoin.isEmpty()) out.insert("strokeJoin"_L1, strokeJoin);
+    const auto dashPattern = node.value(QStringLiteral("dashPattern")).toArray();
+    if (!dashPattern.isEmpty()) {
+        QJsonArray arr;
+        for (const auto &d : dashPattern) arr.append(fdouble(d));
+        out.insert("strokeDashes"_L1, arr);
+    }
+
+    // CANVAS background color (reused by buildFromFigmaJson via page["backgroundColor"]).
+    if (type == "CANVAS"_L1) {
+        const auto bg = node.value(QStringLiteral("backgroundColor")).toMap();
+        if (!bg.isEmpty()) {
+            QJsonObject color;
+            color.insert("r"_L1, fdouble(bg.value(QStringLiteral("r"))));
+            color.insert("g"_L1, fdouble(bg.value(QStringLiteral("g"))));
+            color.insert("b"_L1, fdouble(bg.value(QStringLiteral("b"))));
+            color.insert("a"_L1, fdouble(bg.value(QStringLiteral("a")), 1.0));
+            out.insert("backgroundColor"_L1, color);
+        }
+    }
 
     // Rectangle corner radii
     auto insertRadii = [&]() {
@@ -545,13 +568,36 @@ static void computeLayout(BuildCtx &ctx)
         const auto m = ctx.nodeChanges.at(idx).toMap();
         const QString gs = guidToStr(m.value(QStringLiteral("guid")));
         const auto t = m.value(QStringLiteral("transform")).toMap();
-        const double tx = fdouble(t.value(QStringLiteral("m02")));
-        const double ty = fdouble(t.value(QStringLiteral("m12")));
+        const double m00 = fdouble(t.value(QStringLiteral("m00")), 1.0);
+        const double m01 = fdouble(t.value(QStringLiteral("m01")));
+        const double m02 = fdouble(t.value(QStringLiteral("m02")));
+        const double m10 = fdouble(t.value(QStringLiteral("m10")));
+        const double m11 = fdouble(t.value(QStringLiteral("m11")), 1.0);
+        const double m12 = fdouble(t.value(QStringLiteral("m12")));
+        // QTransform takes (m11, m12, m21, m22, dx, dy) in its column-major
+        // convention; Figma's (m00, m01, m02, m10, m11, m12) is a 2x3 affine
+        // where (x, y) -> (m00*x + m01*y + m02, m10*x + m11*y + m12).
+        // Mapped to QTransform with map(x,y) = (m11*x + m21*y + dx, ...).
+        QTransform local(m00, m10, m01, m11, m02, m12);
         const QString parent = parentMap.value(gs);
-        QPointF pabs;
+        QTransform parentAbs;
         if (!parent.isEmpty())
-            pabs = ctx.absPos.value(parent);
-        ctx.absPos.insert(gs, QPointF(pabs.x() + tx, pabs.y() + ty));
+            parentAbs = ctx.absXform.value(parent);
+        const QTransform absX = local * parentAbs;
+        ctx.absXform.insert(gs, absX);
+
+        const auto size = m.value(QStringLiteral("size")).toMap();
+        const double w = fdouble(size.value(QStringLiteral("x")));
+        const double h = fdouble(size.value(QStringLiteral("y")));
+        QPointF p1 = absX.map(QPointF(0, 0));
+        QPointF p2 = absX.map(QPointF(w, 0));
+        QPointF p3 = absX.map(QPointF(0, h));
+        QPointF p4 = absX.map(QPointF(w, h));
+        const double minX = std::min({p1.x(), p2.x(), p3.x(), p4.x()});
+        const double minY = std::min({p1.y(), p2.y(), p3.y(), p4.y()});
+        const double maxX = std::max({p1.x(), p2.x(), p3.x(), p4.x()});
+        const double maxY = std::max({p1.y(), p2.y(), p3.y(), p4.y()});
+        ctx.absBBox.insert(gs, QRectF(minX, minY, maxX - minX, maxY - minY));
     }
 }
 
