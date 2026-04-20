@@ -23,6 +23,7 @@
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QButtonGroup>
 #include <QtWidgets/QFileDialog>
 #include <QtWidgets/QFormLayout>
 #include <QtWidgets/QHBoxLayout>
@@ -31,6 +32,7 @@
 #include <QtWidgets/QListWidget>
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QPushButton>
+#include <QtWidgets/QRadioButton>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
 #include <QtPsdCore/QPsdParser>
@@ -2265,28 +2267,54 @@ public:
 
         auto *layout = new QFormLayout(&dialog);
 
+        // Source mode selector: URL vs local file
+        QSettings settings;
+        settings.beginGroup("Importers/Figma"_L1);
+        const QString savedMode = settings.value("sourceMode"_L1, "url"_L1).toString();
+        auto *modeUrl = new QRadioButton(tr("Figma URL"), &dialog);
+        auto *modeFile = new QRadioButton(tr("Local .fig file"), &dialog);
+        if (savedMode == "file"_L1)
+            modeFile->setChecked(true);
+        else
+            modeUrl->setChecked(true);
+        auto *modeGroup = new QButtonGroup(&dialog);
+        modeGroup->addButton(modeUrl, 0);
+        modeGroup->addButton(modeFile, 1);
+        auto *modeRow = new QWidget(&dialog);
+        auto *modeRowLayout = new QHBoxLayout(modeRow);
+        modeRowLayout->setContentsMargins(0, 0, 0, 0);
+        modeRowLayout->addWidget(modeUrl);
+        modeRowLayout->addWidget(modeFile);
+        modeRowLayout->addStretch();
+        layout->addRow(tr("Source:"), modeRow);
+
+        // URL field
         auto *urlEdit = new QLineEdit(&dialog);
-        urlEdit->setPlaceholderText(u"https://www.figma.com/design/...  or /path/to/file.fig"_s);
+        urlEdit->setPlaceholderText(u"https://www.figma.com/design/..."_s);
+        const int urlRow = layout->rowCount();
+        layout->addRow(tr("URL:"), urlEdit);
+
+        // File field + Browse button
+        auto *fileEdit = new QLineEdit(&dialog);
+        fileEdit->setPlaceholderText(u"/path/to/file.fig"_s);
         auto *browseBtn = new QPushButton(tr("Browse..."), &dialog);
-        auto *urlRow = new QWidget(&dialog);
-        auto *urlRowLayout = new QHBoxLayout(urlRow);
-        urlRowLayout->setContentsMargins(0, 0, 0, 0);
-        urlRowLayout->addWidget(urlEdit, 1);
-        urlRowLayout->addWidget(browseBtn);
-        layout->addRow(tr("Figma URL or .fig file:"), urlRow);
+        auto *fileRowWidget = new QWidget(&dialog);
+        auto *fileRowLayout = new QHBoxLayout(fileRowWidget);
+        fileRowLayout->setContentsMargins(0, 0, 0, 0);
+        fileRowLayout->addWidget(fileEdit, 1);
+        fileRowLayout->addWidget(browseBtn);
+        const int fileRow = layout->rowCount();
+        layout->addRow(tr("File:"), fileRowWidget);
         QObject::connect(browseBtn, &QPushButton::clicked, &dialog, [&]() {
             const QString picked = QFileDialog::getOpenFileName(
-                &dialog, tr("Open Figma File"), QString(),
+                &dialog, tr("Open Figma File"), fileEdit->text(),
                 tr("Figma files (*.fig *.figjam);;All files (*)"));
             if (!picked.isEmpty())
-                urlEdit->setText(picked);
+                fileEdit->setText(picked);
         });
 
         auto *apiKeyEdit = new QLineEdit(&dialog);
         apiKeyEdit->setEchoMode(QLineEdit::Password);
-
-        QSettings settings;
-        settings.beginGroup("Importers/Figma"_L1);
         QString savedKey = settings.value("apiKey"_L1).toString();
         if (savedKey.isEmpty()) {
             savedKey = qEnvironmentVariable("FIGMA_API_KEY");
@@ -2294,6 +2322,7 @@ public:
                 savedKey = qEnvironmentVariable("FIGMA_ACCESS_TOKEN");
         }
         apiKeyEdit->setText(savedKey);
+        const int apiKeyRow = layout->rowCount();
         layout->addRow(tr("API Key:"), apiKeyEdit);
 
         auto *scaleCombo = new QComboBox(&dialog);
@@ -2308,6 +2337,7 @@ public:
                 break;
             }
         }
+        const int scaleRow = layout->rowCount();
         layout->addRow(tr("Image Scale:"), scaleCombo);
 
         auto *buttonBox = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
@@ -2317,36 +2347,38 @@ public:
         QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
         QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
-        auto isLocalFigPath = [](const QString &s) {
-            const QString path = QUrl(s).isLocalFile() ? QUrl(s).toLocalFile()
-                                                        : (QFile::exists(s) ? s : QString());
-            return !path.isEmpty()
-                && (path.endsWith(".fig"_L1, Qt::CaseInsensitive)
-                    || path.endsWith(".figjam"_L1, Qt::CaseInsensitive));
+        auto refreshVisibility = [&]() {
+            const bool urlMode = modeUrl->isChecked();
+            layout->setRowVisible(urlRow, urlMode);
+            layout->setRowVisible(apiKeyRow, urlMode);
+            layout->setRowVisible(scaleRow, urlMode);
+            layout->setRowVisible(fileRow, !urlMode);
+
+            const QString src = urlMode ? urlEdit->text().trimmed()
+                                        : fileEdit->text().trimmed();
+            const bool okEnabled = urlMode
+                ? (!src.isEmpty() && !apiKeyEdit->text().trimmed().isEmpty())
+                : !src.isEmpty();
+            buttonBox->button(QDialogButtonBox::Ok)->setEnabled(okEnabled);
         };
-        auto updateOkButton = [&]() {
-            const QString src = urlEdit->text().trimmed();
-            const bool local = isLocalFigPath(src);
-            // Local .fig files don't need an API key; dim the field to hint that.
-            apiKeyEdit->setEnabled(!local);
-            buttonBox->button(QDialogButtonBox::Ok)->setEnabled(
-                !src.isEmpty() && (local || !apiKeyEdit->text().trimmed().isEmpty()));
-        };
-        QObject::connect(urlEdit, &QLineEdit::textChanged, &dialog, updateOkButton);
-        QObject::connect(apiKeyEdit, &QLineEdit::textChanged, &dialog, updateOkButton);
-        updateOkButton();
+        QObject::connect(modeUrl, &QRadioButton::toggled, &dialog, refreshVisibility);
+        QObject::connect(modeFile, &QRadioButton::toggled, &dialog, refreshVisibility);
+        QObject::connect(urlEdit, &QLineEdit::textChanged, &dialog, refreshVisibility);
+        QObject::connect(fileEdit, &QLineEdit::textChanged, &dialog, refreshVisibility);
+        QObject::connect(apiKeyEdit, &QLineEdit::textChanged, &dialog, refreshVisibility);
+        refreshVisibility();
 
         if (dialog.exec() != QDialog::Accepted)
             return {};
 
-        const QString rawSource = urlEdit->text().trimmed();
+        settings.setValue("sourceMode"_L1, modeUrl->isChecked() ? "url"_L1 : "file"_L1);
 
         // Local .fig short-circuit: decode once to enumerate pages, then show
         // the page selector (no API key / no network).
-        if (isLocalFigPath(rawSource)) {
+        if (modeFile->isChecked()) {
+            const QString rawSource = fileEdit->text().trimmed();
             const QString localPath = QUrl(rawSource).isLocalFile()
                 ? QUrl(rawSource).toLocalFile() : rawSource;
-            settings.setValue("imageScale"_L1, scaleCombo->currentData().toInt());
 
             QJsonObject fileJson;
             QHash<QString, QImage> embeddedImages;
@@ -2404,6 +2436,8 @@ public:
             return options;
         }
 
+        // URL mode: proceed with the REST API fetch path below.
+        const QString rawSource = urlEdit->text().trimmed();
         settings.setValue("apiKey"_L1, apiKeyEdit->text().trimmed());
         settings.setValue("imageScale"_L1, scaleCombo->currentData().toInt());
 
