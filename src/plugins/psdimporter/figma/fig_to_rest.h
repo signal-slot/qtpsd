@@ -26,6 +26,10 @@ bool convertMessageToFileJson(const QCborValue &message,
 // Decode a kiwi commandsBlob payload into an SVG path data string.
 QString commandsBlobToSvgPath(const QByteArray &blobBytes);
 
+// Decode a kiwi vectorNetworkBlob payload into an SVG path data string.
+// Returns empty if the blob is malformed or has no renderable geometry.
+QString vectorNetworkBlobToSvgPath(const QByteArray &blobBytes);
+
 } // namespace FigToRest
 
 #endif

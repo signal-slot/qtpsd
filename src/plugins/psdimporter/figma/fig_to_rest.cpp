@@ -99,6 +99,125 @@ static QString svgFormat(qreal v)
 
 } // anon
 
+namespace {
+
+static quint32 readU32LE(const uchar *p)
+{
+    return quint32(p[0]) | (quint32(p[1]) << 8)
+         | (quint32(p[2]) << 16) | (quint32(p[3]) << 24);
+}
+
+} // anon
+
+QString vectorNetworkBlobToSvgPath(const QByteArray &bytes)
+{
+    const uchar *p = reinterpret_cast<const uchar *>(bytes.constData());
+    const qsizetype n = bytes.size();
+    if (n < 12) return {};
+
+    const quint32 vCount = readU32LE(p);
+    const quint32 sCount = readU32LE(p + 4);
+    const quint32 rCount = readU32LE(p + 8);
+    qsizetype off = 12;
+
+    struct Vertex { float x, y; };
+    QVector<Vertex> vertices;
+    vertices.resize(int(vCount));
+    if (off + qsizetype(vCount) * 12 > n) return {};
+    for (quint32 i = 0; i < vCount; ++i) {
+        // styleID (u32) + x (f32) + y (f32)
+        off += 4;
+        vertices[int(i)].x = readF32LE(p + off); off += 4;
+        vertices[int(i)].y = readF32LE(p + off); off += 4;
+    }
+
+    struct Segment { quint32 start, end; float sdx, sdy, edx, edy; };
+    QVector<Segment> segments;
+    segments.resize(int(sCount));
+    if (off + qsizetype(sCount) * 28 > n) return {};
+    for (quint32 i = 0; i < sCount; ++i) {
+        off += 4; // styleID
+        Segment &s = segments[int(i)];
+        s.start = readU32LE(p + off); off += 4;
+        s.sdx = readF32LE(p + off); off += 4;
+        s.sdy = readF32LE(p + off); off += 4;
+        s.end = readU32LE(p + off); off += 4;
+        s.edx = readF32LE(p + off); off += 4;
+        s.edy = readF32LE(p + off); off += 4;
+    }
+
+    auto segmentToPath = [&](const Segment &s, bool first) -> QString {
+        if (s.start >= vCount || s.end >= vCount) return {};
+        const Vertex &a = vertices[int(s.start)];
+        const Vertex &b = vertices[int(s.end)];
+        QString out;
+        if (first)
+            out += u'M' + svgFormat(a.x) + u' ' + svgFormat(a.y);
+        const bool straight = qFuzzyIsNull(s.sdx) && qFuzzyIsNull(s.sdy)
+                              && qFuzzyIsNull(s.edx) && qFuzzyIsNull(s.edy);
+        if (straight) {
+            out += u'L' + svgFormat(b.x) + u' ' + svgFormat(b.y);
+        } else {
+            const float c1x = a.x + s.sdx;
+            const float c1y = a.y + s.sdy;
+            const float c2x = b.x + s.edx;
+            const float c2y = b.y + s.edy;
+            out += u'C' + svgFormat(c1x) + u' ' + svgFormat(c1y)
+                + u' ' + svgFormat(c2x) + u' ' + svgFormat(c2y)
+                + u' ' + svgFormat(b.x) + u' ' + svgFormat(b.y);
+        }
+        return out;
+    };
+
+    // Regions (filled loops) when present. Each region: styleID+windingRule (u32),
+    // loopCount (u32), loops = [segCount (u32), indices (i32[])].
+    // Segment index may be negative to indicate reversed direction.
+    if (rCount > 0) {
+        QString out;
+        for (quint32 r = 0; r < rCount; ++r) {
+            if (off + 8 > n) return out;
+            off += 4; // styleID + winding
+            const quint32 loopCount = readU32LE(p + off); off += 4;
+            for (quint32 l = 0; l < loopCount; ++l) {
+                if (off + 4 > n) return out;
+                const quint32 segCount = readU32LE(p + off); off += 4;
+                if (off + qsizetype(segCount) * 4 > n) return out;
+                Vertex prev {0, 0};
+                for (quint32 k = 0; k < segCount; ++k) {
+                    const qint32 raw = qint32(readU32LE(p + off)); off += 4;
+                    const bool reversed = raw < 0;
+                    const quint32 idx = quint32(reversed ? ~raw : raw);
+                    if (idx >= sCount) continue;
+                    Segment s = segments[int(idx)];
+                    if (reversed) {
+                        std::swap(s.start, s.end);
+                        std::swap(s.sdx, s.edx);
+                        std::swap(s.sdy, s.edy);
+                    }
+                    if (k == 0) {
+                        const Vertex &first = vertices[int(s.start)];
+                        out += u'M' + svgFormat(first.x) + u' ' + svgFormat(first.y);
+                    }
+                    out += segmentToPath(s, false);
+                    prev = vertices[int(s.end)];
+                }
+                (void)prev;
+                out += u'Z';
+            }
+        }
+        return out;
+    }
+
+    // Fall back: walk segments as an open polyline/curve.
+    QString out;
+    bool first = true;
+    for (const auto &s : segments) {
+        out += segmentToPath(s, first);
+        first = false;
+    }
+    return out;
+}
+
 QString commandsBlobToSvgPath(const QByteArray &bytes)
 {
     QString out;
@@ -492,6 +611,32 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx
     const auto strokeGeom = node.value(QStringLiteral("strokeGeometry")).toArray();
     if (!strokeGeom.isEmpty())
         out.insert("strokeGeometry"_L1, buildGeometryArray(strokeGeom, ctx.blobs));
+
+    // VECTOR nodes encode their geometry as a single vectorNetworkBlob under
+    // vectorData. Convert it into the same fillGeometry array shape so
+    // processNode can consume it transparently.
+    if (fillGeom.isEmpty()) {
+        const auto vd = node.value(QStringLiteral("vectorData")).toMap();
+        if (!vd.isEmpty()) {
+            const auto vnb = vd.value(QStringLiteral("vectorNetworkBlob"));
+            if (!vnb.isUndefined()) {
+                const qint64 blobIdx = vnb.toInteger(-1);
+                if (blobIdx >= 0 && blobIdx < ctx.blobs.size()) {
+                    const QByteArray bytes = ctx.blobs.at(blobIdx).toMap()
+                        .value(QStringLiteral("bytes")).toByteArray();
+                    const QString path = vectorNetworkBlobToSvgPath(bytes);
+                    if (!path.isEmpty()) {
+                        QJsonArray arr;
+                        QJsonObject entry;
+                        entry.insert("path"_L1, path);
+                        entry.insert("windingRule"_L1, QStringLiteral("NONZERO"));
+                        arr.append(entry);
+                        out.insert("fillGeometry"_L1, arr);
+                    }
+                }
+            }
+        }
+    }
 
     // TEXT
     if (type == "TEXT"_L1) {
