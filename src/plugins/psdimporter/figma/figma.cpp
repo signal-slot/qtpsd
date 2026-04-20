@@ -23,6 +23,7 @@
 #include <QtWidgets/QComboBox>
 #include <QtWidgets/QDialog>
 #include <QtWidgets/QDialogButtonBox>
+#include <QtWidgets/QFileDialog>
 #include <QtWidgets/QFormLayout>
 #include <QtWidgets/QHBoxLayout>
 #include <QtWidgets/QLabel>
@@ -31,6 +32,7 @@
 #include <QtWidgets/QMessageBox>
 #include <QtWidgets/QPushButton>
 #include <QtWidgets/QVBoxLayout>
+#include <QtWidgets/QWidget>
 #include <QtPsdCore/QPsdParser>
 #include <QtPsdCore/QPsdFileHeader>
 #include <QtPsdCore/QPsdLayerInfo>
@@ -2264,8 +2266,21 @@ public:
         auto *layout = new QFormLayout(&dialog);
 
         auto *urlEdit = new QLineEdit(&dialog);
-        urlEdit->setPlaceholderText(u"https://www.figma.com/design/..."_s);
-        layout->addRow(tr("Figma URL:"), urlEdit);
+        urlEdit->setPlaceholderText(u"https://www.figma.com/design/...  or /path/to/file.fig"_s);
+        auto *browseBtn = new QPushButton(tr("Browse..."), &dialog);
+        auto *urlRow = new QWidget(&dialog);
+        auto *urlRowLayout = new QHBoxLayout(urlRow);
+        urlRowLayout->setContentsMargins(0, 0, 0, 0);
+        urlRowLayout->addWidget(urlEdit, 1);
+        urlRowLayout->addWidget(browseBtn);
+        layout->addRow(tr("Figma URL or .fig file:"), urlRow);
+        QObject::connect(browseBtn, &QPushButton::clicked, &dialog, [&]() {
+            const QString picked = QFileDialog::getOpenFileName(
+                &dialog, tr("Open Figma File"), QString(),
+                tr("Figma files (*.fig *.figjam);;All files (*)"));
+            if (!picked.isEmpty())
+                urlEdit->setText(picked);
+        });
 
         auto *apiKeyEdit = new QLineEdit(&dialog);
         apiKeyEdit->setEchoMode(QLineEdit::Password);
@@ -2302,9 +2317,20 @@ public:
         QObject::connect(buttonBox, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
         QObject::connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
+        auto isLocalFigPath = [](const QString &s) {
+            const QString path = QUrl(s).isLocalFile() ? QUrl(s).toLocalFile()
+                                                        : (QFile::exists(s) ? s : QString());
+            return !path.isEmpty()
+                && (path.endsWith(".fig"_L1, Qt::CaseInsensitive)
+                    || path.endsWith(".figjam"_L1, Qt::CaseInsensitive));
+        };
         auto updateOkButton = [&]() {
+            const QString src = urlEdit->text().trimmed();
+            const bool local = isLocalFigPath(src);
+            // Local .fig files don't need an API key; dim the field to hint that.
+            apiKeyEdit->setEnabled(!local);
             buttonBox->button(QDialogButtonBox::Ok)->setEnabled(
-                !urlEdit->text().trimmed().isEmpty() && !apiKeyEdit->text().trimmed().isEmpty());
+                !src.isEmpty() && (local || !apiKeyEdit->text().trimmed().isEmpty()));
         };
         QObject::connect(urlEdit, &QLineEdit::textChanged, &dialog, updateOkButton);
         QObject::connect(apiKeyEdit, &QLineEdit::textChanged, &dialog, updateOkButton);
@@ -2313,11 +2339,76 @@ public:
         if (dialog.exec() != QDialog::Accepted)
             return {};
 
+        const QString rawSource = urlEdit->text().trimmed();
+
+        // Local .fig short-circuit: decode once to enumerate pages, then show
+        // the page selector (no API key / no network).
+        if (isLocalFigPath(rawSource)) {
+            const QString localPath = QUrl(rawSource).isLocalFile()
+                ? QUrl(rawSource).toLocalFile() : rawSource;
+            settings.setValue("imageScale"_L1, scaleCombo->currentData().toInt());
+
+            QJsonObject fileJson;
+            QHash<QString, QImage> embeddedImages;
+            QGuiApplication::setOverrideCursor(Qt::BusyCursor);
+            const bool ok = loadLocalFigFile(localPath, &fileJson, &embeddedImages);
+            QGuiApplication::restoreOverrideCursor();
+            if (!ok) {
+                QMessageBox::critical(parent, tr("Import from Figma"),
+                                      tr("Failed to read .fig file: %1").arg(errorMessage()));
+                return {};
+            }
+            m_cachedFileKey = localPath;
+            m_cachedFileJson = fileJson;
+
+            QVariantMap options;
+            options["source"_L1] = localPath;
+            options["imageScale"_L1] = scaleCombo->currentData().toInt();
+
+            const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
+            QVariantList pageIndices;
+            if (pages.size() <= 1) {
+                pageIndices.append(0);
+            } else {
+                QDialog pageDlg(parent);
+                pageDlg.setWindowTitle(tr("Select Pages"));
+                pageDlg.setWindowIcon(icon());
+                pageDlg.setMinimumSize(420, 400);
+                auto *vLayout = new QVBoxLayout(&pageDlg);
+                vLayout->addWidget(new QLabel(tr("Select pages to import:"), &pageDlg));
+                auto *list = new QListWidget(&pageDlg);
+                for (int i = 0; i < pages.size(); ++i) {
+                    auto *it = new QListWidgetItem(pages[i].toObject()["name"_L1].toString(), list);
+                    it->setData(Qt::UserRole, i);
+                    it->setFlags(it->flags() | Qt::ItemIsUserCheckable);
+                    it->setCheckState(i == 0 ? Qt::Checked : Qt::Unchecked);
+                }
+                vLayout->addWidget(list);
+                auto *bb = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &pageDlg);
+                bb->button(QDialogButtonBox::Ok)->setText(tr("Import Selected"));
+                vLayout->addWidget(bb);
+                QObject::connect(bb, &QDialogButtonBox::accepted, &pageDlg, &QDialog::accept);
+                QObject::connect(bb, &QDialogButtonBox::rejected, &pageDlg, &QDialog::reject);
+                if (pageDlg.exec() != QDialog::Accepted) return {};
+                for (int i = 0; i < list->count(); ++i) {
+                    if (list->item(i)->checkState() == Qt::Checked)
+                        pageIndices.append(list->item(i)->data(Qt::UserRole).toInt());
+                }
+                if (pageIndices.isEmpty()) pageIndices.append(0);
+            }
+            options["pageIndices"_L1] = pageIndices;
+            QVariantList pageNames;
+            for (const auto &p : pages)
+                pageNames.append(p.toObject()["name"_L1].toString());
+            options["pageNames"_L1] = pageNames;
+            return options;
+        }
+
         settings.setValue("apiKey"_L1, apiKeyEdit->text().trimmed());
         settings.setValue("imageScale"_L1, scaleCombo->currentData().toInt());
 
         QVariantMap options;
-        options["source"_L1] = urlEdit->text().trimmed();
+        options["source"_L1] = rawSource;
         options["apiKey"_L1] = apiKeyEdit->text().trimmed();
         options["imageScale"_L1] = scaleCombo->currentData().toInt();
 
