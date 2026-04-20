@@ -335,30 +335,54 @@ struct BuildCtx
     QCborArray blobs;
     QHash<QString, int> nodeByGuidStr;
     QHash<QString, QVector<int>> childrenByParent; // parentGuidStr → ordered indices
-    // Absolute transform per node (cumulative from root)
-    QHash<QString, QTransform> absXform;
-    // Absolute bounding box (axis-aligned) computed from transform + size
-    QHash<QString, QRectF> absBBox;
 };
 
-static QJsonObject convertNode(const BuildCtx &ctx, int idx);
+// Per-node rendering context carried down the conversion recursion: the effective
+// absolute transform of the current node's parent, and a unique guid that may be
+// synthetic (instance-scoped) so repeated instances of the same symbol do not
+// collide in the downstream flat id space.
+struct NodeCtx
+{
+    QTransform parentAbs;
+    QString displayIdPrefix; // empty for normal, "instGuid|" for cloned subtrees
+};
 
-static QJsonArray buildChildren(const BuildCtx &ctx, const QString &parentGuidStr)
+static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx);
+
+static QJsonArray buildChildren(const BuildCtx &ctx, const QString &parentGuidStr,
+                                const NodeCtx &nctx)
 {
     QJsonArray out;
     const auto it = ctx.childrenByParent.constFind(parentGuidStr);
     if (it == ctx.childrenByParent.cend()) return out;
-    for (int childIdx : *it) {
-        out.append(convertNode(ctx, childIdx));
-    }
+    for (int childIdx : *it)
+        out.append(convertNode(ctx, childIdx, nctx));
     return out;
 }
 
-static QJsonObject convertNode(const BuildCtx &ctx, int idx)
+static QTransform localTransformOf(const QCborMap &node)
+{
+    const auto t = node.value(QStringLiteral("transform")).toMap();
+    const double m00 = finite(t.value(QStringLiteral("m00")).toDouble(1.0), 1.0);
+    const double m01 = finite(t.value(QStringLiteral("m01")).toDouble(), 0.0);
+    const double m02 = finite(t.value(QStringLiteral("m02")).toDouble(), 0.0);
+    const double m10 = finite(t.value(QStringLiteral("m10")).toDouble(), 0.0);
+    const double m11 = finite(t.value(QStringLiteral("m11")).toDouble(1.0), 1.0);
+    const double m12 = finite(t.value(QStringLiteral("m12")).toDouble(), 0.0);
+    return QTransform(m00, m10, m01, m11, m02, m12);
+}
+
+static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx)
 {
     const auto node = ctx.nodeChanges.at(idx).toMap();
     const QString type = node.value(QStringLiteral("type")).toString();
-    const QString guidStr = guidToStr(node.value(QStringLiteral("guid")));
+    const QString rawGuid = guidToStr(node.value(QStringLiteral("guid")));
+    const QString guidStr = nctx.displayIdPrefix.isEmpty()
+        ? rawGuid
+        : nctx.displayIdPrefix + rawGuid;
+
+    const QTransform local = localTransformOf(node);
+    const QTransform absX = local * nctx.parentAbs;
 
     QJsonObject out;
     out.insert("id"_L1, guidStr);
@@ -370,17 +394,24 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx)
     if (!blendMode.isEmpty()) out.insert("blendMode"_L1, blendMode);
     out.insert("isMask"_L1, node.value(QStringLiteral("mask")).toBool(false));
 
-    // Rect from transform + size (absolute).
+    // Rect from transform + size (absolute, axis-aligned bbox of 4 transformed corners).
     const auto size = node.value(QStringLiteral("size")).toMap();
     const double w = fdouble(size.value(QStringLiteral("x")));
     const double h = fdouble(size.value(QStringLiteral("y")));
     {
-        const QRectF bb = ctx.absBBox.value(guidStr);
+        const QPointF c1 = absX.map(QPointF(0, 0));
+        const QPointF c2 = absX.map(QPointF(w, 0));
+        const QPointF c3 = absX.map(QPointF(0, h));
+        const QPointF c4 = absX.map(QPointF(w, h));
+        const double minX = std::min({c1.x(), c2.x(), c3.x(), c4.x()});
+        const double minY = std::min({c1.y(), c2.y(), c3.y(), c4.y()});
+        const double maxX = std::max({c1.x(), c2.x(), c3.x(), c4.x()});
+        const double maxY = std::max({c1.y(), c2.y(), c3.y(), c4.y()});
         QJsonObject bbox;
-        bbox.insert("x"_L1, finite(bb.x()));
-        bbox.insert("y"_L1, finite(bb.y()));
-        bbox.insert("width"_L1, finite(bb.width(), w));
-        bbox.insert("height"_L1, finite(bb.height(), h));
+        bbox.insert("x"_L1, finite(minX));
+        bbox.insert("y"_L1, finite(minY));
+        bbox.insert("width"_L1, finite(maxX - minX, w));
+        bbox.insert("height"_L1, finite(maxY - minY, h));
         out.insert("absoluteBoundingBox"_L1, bbox);
     }
     {
@@ -497,12 +528,34 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx)
         out.insert("effects"_L1, arr);
     }
 
-    // Children: ordered by positionKey (lexicographic on the string Figma uses)
-    if (type == "DOCUMENT"_L1 || type == "CANVAS"_L1
-        || type == "FRAME"_L1 || type == "GROUP"_L1
-        || type == "SYMBOL"_L1 || type == "INSTANCE"_L1
-        || type == "SECTION"_L1 || type == "BOOLEAN_OPERATION"_L1) {
-        const QJsonArray children = buildChildren(ctx, guidStr);
+    // Children. INSTANCE expands its referenced SYMBOL's children, re-positioned
+    // relative to the INSTANCE. Each instance gets a unique displayId prefix so
+    // downstream id lookups don't collide between multiple instances of the
+    // same symbol.
+    if (type == "INSTANCE"_L1) {
+        const auto symbolData = node.value(QStringLiteral("symbolData")).toMap();
+        const auto symID = symbolData.value(QStringLiteral("symbolID"));
+        if (!symID.isUndefined()) {
+            const QString symbolGuid = guidToStr(symID);
+            const int symIdx = ctx.nodeByGuidStr.value(symbolGuid, -1);
+            if (symIdx >= 0) {
+                NodeCtx childCtx { absX, guidStr + u'|' };
+                const auto it = ctx.childrenByParent.constFind(symbolGuid);
+                if (it != ctx.childrenByParent.cend()) {
+                    QJsonArray children;
+                    for (int ci : *it)
+                        children.append(convertNode(ctx, ci, childCtx));
+                    if (!children.isEmpty())
+                        out.insert("children"_L1, children);
+                }
+            }
+        }
+    } else if (type == "DOCUMENT"_L1 || type == "CANVAS"_L1
+               || type == "FRAME"_L1 || type == "GROUP"_L1
+               || type == "SYMBOL"_L1 || type == "SECTION"_L1
+               || type == "BOOLEAN_OPERATION"_L1) {
+        NodeCtx childCtx { absX, nctx.displayIdPrefix };
+        const QJsonArray children = buildChildren(ctx, rawGuid, childCtx);
         if (!children.isEmpty())
             out.insert("children"_L1, children);
     }
@@ -510,16 +563,17 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx)
     return out;
 }
 
-// Compute parent→children and absolute positions (topologically).
-static void computeLayout(BuildCtx &ctx)
+// Build guid→index map and parent→ordered children map. Absolute positioning
+// is computed lazily during convertNode recursion so INSTANCE expansion can
+// reposition cloned SYMBOL subtrees correctly.
+static void buildIndexes(BuildCtx &ctx)
 {
-    // Build guid → index and grouping.
     for (int i = 0; i < ctx.nodeChanges.size(); ++i) {
         const auto m = ctx.nodeChanges.at(i).toMap();
         const QString gs = guidToStr(m.value(QStringLiteral("guid")));
         ctx.nodeByGuidStr.insert(gs, i);
     }
-    QHash<QString, QMap<QString, int>> orderedByParent; // sort by positionKey
+    QHash<QString, QMap<QString, int>> orderedByParent;
     for (int i = 0; i < ctx.nodeChanges.size(); ++i) {
         const auto m = ctx.nodeChanges.at(i).toMap();
         const auto pi = m.value(QStringLiteral("parentIndex")).toMap();
@@ -533,71 +587,6 @@ static void computeLayout(BuildCtx &ctx)
         for (auto mit = it.value().cbegin(); mit != it.value().cend(); ++mit)
             indices.append(mit.value());
         ctx.childrenByParent.insert(it.key(), indices);
-    }
-
-    // Compute absolute positions by BFS from roots (DOCUMENT).
-    // The kiwi transform is `{m00, m01, m02, m10, m11, m12}` — a 2x3 affine.
-    // We only need the translation (m02, m12) plus accumulated parent translations.
-    // Rotation/scale is applied within the node's own rendering; bounding boxes
-    // in the REST API are axis-aligned bounding rects of the transformed node.
-    // For MVP we approximate absoluteBoundingBox as parentAbs + (m02, m12).
-    QHash<QString, QString> parentMap;
-    for (auto it = ctx.childrenByParent.cbegin(); it != ctx.childrenByParent.cend(); ++it) {
-        for (int ci : it.value()) {
-            const auto cm = ctx.nodeChanges.at(ci).toMap();
-            parentMap.insert(guidToStr(cm.value(QStringLiteral("guid"))), it.key());
-        }
-    }
-    // Topological order by BFS from roots (nodes without parent in map)
-    QVector<int> order;
-    order.reserve(ctx.nodeChanges.size());
-    QSet<QString> visited;
-    std::function<void(const QString &)> visit = [&](const QString &guid) {
-        if (visited.contains(guid)) return;
-        const QString parent = parentMap.value(guid);
-        if (!parent.isEmpty() && !visited.contains(parent))
-            visit(parent);
-        visited.insert(guid);
-        const int idx = ctx.nodeByGuidStr.value(guid, -1);
-        if (idx >= 0) order.append(idx);
-    };
-    for (auto it = ctx.nodeByGuidStr.cbegin(); it != ctx.nodeByGuidStr.cend(); ++it)
-        visit(it.key());
-
-    for (int idx : order) {
-        const auto m = ctx.nodeChanges.at(idx).toMap();
-        const QString gs = guidToStr(m.value(QStringLiteral("guid")));
-        const auto t = m.value(QStringLiteral("transform")).toMap();
-        const double m00 = fdouble(t.value(QStringLiteral("m00")), 1.0);
-        const double m01 = fdouble(t.value(QStringLiteral("m01")));
-        const double m02 = fdouble(t.value(QStringLiteral("m02")));
-        const double m10 = fdouble(t.value(QStringLiteral("m10")));
-        const double m11 = fdouble(t.value(QStringLiteral("m11")), 1.0);
-        const double m12 = fdouble(t.value(QStringLiteral("m12")));
-        // QTransform takes (m11, m12, m21, m22, dx, dy) in its column-major
-        // convention; Figma's (m00, m01, m02, m10, m11, m12) is a 2x3 affine
-        // where (x, y) -> (m00*x + m01*y + m02, m10*x + m11*y + m12).
-        // Mapped to QTransform with map(x,y) = (m11*x + m21*y + dx, ...).
-        QTransform local(m00, m10, m01, m11, m02, m12);
-        const QString parent = parentMap.value(gs);
-        QTransform parentAbs;
-        if (!parent.isEmpty())
-            parentAbs = ctx.absXform.value(parent);
-        const QTransform absX = local * parentAbs;
-        ctx.absXform.insert(gs, absX);
-
-        const auto size = m.value(QStringLiteral("size")).toMap();
-        const double w = fdouble(size.value(QStringLiteral("x")));
-        const double h = fdouble(size.value(QStringLiteral("y")));
-        QPointF p1 = absX.map(QPointF(0, 0));
-        QPointF p2 = absX.map(QPointF(w, 0));
-        QPointF p3 = absX.map(QPointF(0, h));
-        QPointF p4 = absX.map(QPointF(w, h));
-        const double minX = std::min({p1.x(), p2.x(), p3.x(), p4.x()});
-        const double minY = std::min({p1.y(), p2.y(), p3.y(), p4.y()});
-        const double maxX = std::max({p1.x(), p2.x(), p3.x(), p4.x()});
-        const double maxY = std::max({p1.y(), p2.y(), p3.y(), p4.y()});
-        ctx.absBBox.insert(gs, QRectF(minX, minY, maxX - minX, maxY - minY));
     }
 }
 
@@ -621,7 +610,7 @@ bool convertMessageToFileJson(const QCborValue &message,
         return false;
     }
 
-    computeLayout(ctx);
+    buildIndexes(ctx);
 
     // Locate DOCUMENT node.
     int docIdx = -1;
@@ -636,7 +625,8 @@ bool convertMessageToFileJson(const QCborValue &message,
         return false;
     }
 
-    QJsonObject document = convertNode(ctx, docIdx);
+    NodeCtx rootCtx { QTransform(), QString() };
+    QJsonObject document = convertNode(ctx, docIdx, rootCtx);
 
     // Filter CANVAS children to exclude the "Internal Only" canvas.
     const QJsonArray allChildren = document.value("children"_L1).toArray();
