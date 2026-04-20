@@ -8,6 +8,7 @@
 #include <QtCore/QJsonArray>
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
+#include <QtCore/QPointer>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSettings>
 #include <QtCore/QStandardPaths>
@@ -90,18 +91,29 @@ public:
     {
         QNetworkRequest request(url);
         auto *reply = m_nam.get(request);
+        m_currentReply = reply;
         QEventLoop loop;
         connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         loop.exec();
+        m_currentReply = nullptr;
 
         QImage image;
         if (reply->error() == QNetworkReply::NoError) {
             image.loadFromData(reply->readAll());
-        } else {
+        } else if (reply->error() != QNetworkReply::OperationCanceledError) {
             qWarning() << "Image download failed:" << reply->errorString();
         }
         reply->deleteLater();
         return image;
+    }
+
+public Q_SLOTS:
+    // Abort the reply currently being awaited (if any). Safe to call from
+    // anywhere; abort() emits finished() which unblocks the nested event loop.
+    void abort()
+    {
+        if (m_currentReply)
+            m_currentReply->abort();
     }
 
 private:
@@ -110,10 +122,12 @@ private:
         QNetworkRequest request(url);
         request.setRawHeader("X-Figma-Token", m_token.toUtf8());
         auto *reply = m_nam.get(request);
+        m_currentReply = reply;
 
         QEventLoop loop;
         connect(reply, &QNetworkReply::finished, &loop, &QEventLoop::quit);
         loop.exec();
+        m_currentReply = nullptr;
 
         QJsonObject result;
         if (reply->error() == QNetworkReply::NoError) {
@@ -133,6 +147,7 @@ private:
 
     QNetworkAccessManager m_nam;
     QString m_token;
+    QPointer<QNetworkReply> m_currentReply;
 };
 
 // ─── FigmaImageCache ──────────────────────────────────────────────────────
@@ -2478,6 +2493,7 @@ public:
     bool importFrom(QPsdExporterTreeItemModel *model,
                     const QVariantMap &options) const override
     {
+        resetCancellation();
         const QString source = options.value("source"_L1).toString();
         const int imageScale = options.value("imageScale"_L1, 2).toInt();
         int pageIndex = options.value("pageIndex"_L1, 0).toInt();
@@ -2507,6 +2523,10 @@ public:
         }
 
         FigmaClient client;
+        // Route cancellation through the client so requestCancel() aborts the
+        // reply the nested event loop is currently waiting on.
+        QObject::connect(this, &QPsdImporterPlugin::cancelRequested,
+                         &client, &FigmaClient::abort);
         const QString token = options.value("apiKey"_L1).toString();
         if (!token.isEmpty())
             client.setToken(token);
@@ -2517,12 +2537,22 @@ public:
             return false;
         }
 
+        auto checkCancelled = [this]() {
+            if (isCancelRequested()) {
+                setErrorMessage(tr("Import cancelled."));
+                return true;
+            }
+            return false;
+        };
+
         // Use cached file JSON if available for this fileKey
         QJsonObject fileJson;
         if (m_cachedFileKey == fileKey && !m_cachedFileJson.isEmpty()) {
             fileJson = m_cachedFileJson;
         } else {
             fileJson = client.fetchFile(fileKey);
+            if (checkCancelled())
+                return false;
             if (fileJson.contains("error"_L1)) {
                 const auto error = fileJson["error"_L1].toVariant().toString();
                 qWarning() << "Figma import: API error:" << error;
@@ -2591,12 +2621,16 @@ public:
             // Only call API if there are uncached fills
             if (!uncachedRefs.isEmpty()) {
                 const auto fileImagesResult = client.fetchFileImages(fileKey);
+                if (checkCancelled())
+                    return false;
                 const auto meta = fileImagesResult["meta"_L1].toObject();
                 const auto fileImages = meta["images"_L1].toObject();
                 for (const auto &imageRef : std::as_const(uncachedRefs)) {
                     const auto imageUrl = fileImages[imageRef].toString();
                     if (!imageUrl.isEmpty()) {
                         QImage img = client.downloadImage(QUrl(imageUrl));
+                        if (checkCancelled())
+                            return false;
                         if (!img.isNull()) {
                             const auto &figmaIds = fillRefs[imageRef];
                             for (const auto &fid : figmaIds) {
@@ -2635,11 +2669,15 @@ public:
                 // Only call render API if there are uncached nodes in this batch
                 if (!uncachedIds.isEmpty()) {
                     const auto imagesResult = client.fetchImages(fileKey, uncachedIds, u"png"_s, imageScale);
+                    if (checkCancelled())
+                        return false;
                     const auto images = imagesResult["images"_L1].toObject();
                     for (const auto &nid : uncachedIds) {
                         const auto imageUrl = images[nid].toString();
                         if (!imageUrl.isEmpty()) {
                             QImage img = client.downloadImage(QUrl(imageUrl));
+                            if (checkCancelled())
+                                return false;
                             if (!img.isNull()) {
                                 figmaModel.setNodeImage(nid, img);
                                 cache.saveNodeImage(nid, imageScale, img);

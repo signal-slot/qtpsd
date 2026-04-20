@@ -9,6 +9,7 @@
 
 #include <QtPsdCore/qpsdabstractplugin.h>
 
+#include <QtCore/QAtomicInt>
 #include <QtCore/QUrl>
 #include <QtCore/QVariantMap>
 #include <QtGui/QIcon>
@@ -67,6 +68,21 @@ public:
     using ProgressCallback = std::function<void(int value, int maximum)>;
     void setProgressCallback(const ProgressCallback &callback) const { m_progressCallback = callback; }
 
+    // Cancellation. Callers invoke requestCancel() to ask the active import
+    // to stop; plugins poll isCancelRequested() and/or connect to the
+    // cancelRequested() signal to interrupt blocking I/O.
+    bool isCancelRequested() const { return m_cancelRequested.loadRelaxed() != 0; }
+
+public Q_SLOTS:
+    void requestCancel() {
+        m_cancelRequested.storeRelaxed(1);
+        Q_EMIT cancelRequested();
+    }
+
+Q_SIGNALS:
+    void cancelRequested();
+
+public:
     static QByteArrayList keys() {
         return QPsdAbstractPlugin::keys<QPsdImporterPlugin>(QPsdImporterFactoryInterface_iid, "psdimporter");
     }
@@ -79,10 +95,12 @@ protected:
     void reportProgress(int value, int maximum) const {
         if (m_progressCallback) m_progressCallback(value, maximum);
     }
+    void resetCancellation() const { m_cancelRequested.storeRelaxed(0); }
 
 private:
     mutable QString m_errorMessage;
     mutable ProgressCallback m_progressCallback;
+    mutable QAtomicInt m_cancelRequested { 0 };
 };
 
 QT_END_NAMESPACE

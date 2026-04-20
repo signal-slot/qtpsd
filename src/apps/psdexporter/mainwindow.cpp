@@ -5,6 +5,7 @@
 #include "ui_mainwindow.h"
 #include "psdwidget.h"
 
+#include <QtCore/QPointer>
 #include <QtCore/QSettings>
 #include <cmath>
 #include <QtGui/QCloseEvent>
@@ -41,6 +42,11 @@ public:
     QSettings settings;
     QSlider *scaleSlider = nullptr;
     QLabel *scaleLabel = nullptr;
+    // Tracks the loading tab currently being populated by importWith() so
+    // tabCloseRequested can route a close into importer->requestCancel()
+    // instead of deleting state the nested event loop still uses.
+    QPointer<QWidget> loadingTabWidget;
+    QPsdImporterPlugin *loadingImporter = nullptr;
 };
 
 MainWindow::Private::Private(::MainWindow *parent)
@@ -165,6 +171,11 @@ MainWindow::Private::Private(::MainWindow *parent)
         const auto index = tabWidget->currentIndex();
         if (index < 0)
             return;
+        if (loadingTabWidget && tabWidget->widget(index) == loadingTabWidget) {
+            if (loadingImporter)
+                loadingImporter->requestCancel();
+            return;
+        }
         const auto ret = checkModifiedAndSaved(index);
         if (ret == QMessageBox::Cancel)
             return;
@@ -236,6 +247,14 @@ MainWindow::Private::Private(::MainWindow *parent)
     }, Qt::QueuedConnection); // first addTab changes its index before tooltip is set
 
     connect(tabWidget, &QTabWidget::tabCloseRequested, q, [this](int index) {
+        // Closing the loading tab cancels the in-progress import. The
+        // synchronous importWith() is still on the stack, so we only signal
+        // cancellation — it will unwind and remove the tab itself.
+        if (loadingTabWidget && tabWidget->widget(index) == loadingTabWidget) {
+            if (loadingImporter)
+                loadingImporter->requestCancel();
+            return;
+        }
         auto ret = checkModifiedAndSaved(index);
         if (ret == QMessageBox::Cancel)
             return;
@@ -355,6 +374,8 @@ QMessageBox::StandardButton MainWindow::Private::checkModifiedAndSaved(int index
         }
     } else {
         auto viewer = qobject_cast<PsdWidget *>(tabWidget->widget(index));
+        if (!viewer)
+            return QMessageBox::NoButton;  // loading tab — nothing to save
         if (viewer->isWindowModified()) {
             tabWidget->setCurrentIndex(index);
             if (confirm) {
@@ -512,6 +533,8 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
             : tr("Importing...");
         int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
         tabWidget->setCurrentIndex(index);
+        loadingTabWidget = loadingWidget;
+        loadingImporter = importer;
         updateFileMenus();
 
         // Prepare per-page options
@@ -520,9 +543,12 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
         if (hasExplicitPages)
             pageOptions["pageIndexExplicit"_L1] = true;
 
-        importer->setProgressCallback([progressBar](int value, int maximum) {
-            progressBar->setRange(0, maximum);
-            progressBar->setValue(value);
+        QPointer<QProgressBar> progressBarGuard(progressBar);
+        importer->setProgressCallback([progressBarGuard](int value, int maximum) {
+            if (!progressBarGuard)
+                return;
+            progressBarGuard->setRange(0, maximum);
+            progressBarGuard->setValue(value);
         });
 
         QApplication::setOverrideCursor(Qt::BusyCursor);
@@ -531,21 +557,35 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
         QApplication::restoreOverrideCursor();
 
         importer->setProgressCallback(nullptr);
+        const bool cancelled = importer->isCancelRequested();
+        loadingTabWidget.clear();
+        loadingImporter = nullptr;
 
-        // Replace loading tab with result
-        tabWidget->removeTab(index);
+        // Replace loading tab with result. The loading tab may have been
+        // removed already if the user triggered cancellation, but in our
+        // current flow we keep it until importFrom returns, so removeTab
+        // here is safe.
+        int loadingIdx = tabWidget->indexOf(loadingWidget);
+        if (loadingIdx >= 0)
+            tabWidget->removeTab(loadingIdx);
         loadingWidget->deleteLater();
 
         if (ok) {
-            index = tabWidget->insertTab(index, viewer, viewer->windowIcon(), viewer->windowTitle());
+            const int insertAt = loadingIdx >= 0 ? loadingIdx : tabWidget->count();
+            int newIndex = tabWidget->insertTab(insertAt, viewer, viewer->windowIcon(), viewer->windowTitle());
             connectViewer(viewer);
-            tabWidget->setCurrentIndex(index);
+            tabWidget->setCurrentIndex(newIndex);
             updateFileMenus();
         } else {
+            delete viewer;
+            if (cancelled) {
+                updateFileMenus();
+                break;  // silent: user chose to cancel
+            }
             const QString err = importer->errorMessage();
             if (!err.isEmpty())
                 QMessageBox::critical(q, tr("Import Failed"), err);
-            delete viewer;
+            updateFileMenus();
             break;
         }
     }
