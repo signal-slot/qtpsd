@@ -1320,7 +1320,19 @@ private:
             imageItem->setId(layerId);
             imageItem->setName(name);
             imageItem->setVisible(visible);
-            imageItem->setOpacity(opacity);
+            // Compose node opacity with the first visible IMAGE fill's opacity —
+            // Figma can lay a texture on top at reduced alpha, which we'd
+            // otherwise render fully opaque.
+            qreal effOpacity = opacity;
+            for (const auto &fill : fills) {
+                const auto fo = fill.toObject();
+                if (fo["type"_L1].toString() == "IMAGE"_L1
+                    && fo.value("visible"_L1).toBool(true)) {
+                    effOpacity *= fo.value("opacity"_L1).toDouble(1.0);
+                    break;
+                }
+            }
+            imageItem->setOpacity(effOpacity);
             imageItem->setRect(rect);
             node.layerItem = imageItem;
             node.folderType = FolderType::NotFolder;
