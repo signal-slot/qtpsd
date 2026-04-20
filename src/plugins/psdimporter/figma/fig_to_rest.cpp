@@ -523,6 +523,11 @@ static QString restTypeFor(const QString &kiwiType)
 {
     if (kiwiType == "SYMBOL"_L1) return QStringLiteral("COMPONENT");
     if (kiwiType == "BRUSH"_L1) return QStringLiteral("VECTOR");
+    // Kiwi distinguishes ROUNDED_RECTANGLE as a separate type; the REST API
+    // treats it as a RECTANGLE with a non-zero cornerRadius.
+    if (kiwiType == "ROUNDED_RECTANGLE"_L1) return QStringLiteral("RECTANGLE");
+    // Kiwi uses STAR / REGULAR_POLYGON which are already in processNode's
+    // shapeTypes via the REST names; pass through.
     return kiwiType;
 }
 
