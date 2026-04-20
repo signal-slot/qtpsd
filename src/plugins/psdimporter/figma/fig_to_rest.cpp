@@ -468,14 +468,27 @@ struct NodeCtx
 
 static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx);
 
+static bool isMetadataType(const QString &type)
+{
+    // Variable definitions, annotations, shared styles: present in the tree
+    // as children of pages/canvases but have no rendered representation.
+    return type == "VARIABLE"_L1 || type == "VARIABLE_SET"_L1
+        || type == "STYLE"_L1 || type == "ANNOTATION"_L1
+        || type == "DEVELOPER_RELATED_LINK"_L1;
+}
+
 static QJsonArray buildChildren(const BuildCtx &ctx, const QString &parentGuidStr,
                                 const NodeCtx &nctx)
 {
     QJsonArray out;
     const auto it = ctx.childrenByParent.constFind(parentGuidStr);
     if (it == ctx.childrenByParent.cend()) return out;
-    for (int childIdx : *it)
+    for (int childIdx : *it) {
+        const auto childType = ctx.nodeChanges.at(childIdx).toMap()
+            .value(QStringLiteral("type")).toString();
+        if (isMetadataType(childType)) continue;
         out.append(convertNode(ctx, childIdx, nctx));
+    }
     return out;
 }
 
@@ -491,10 +504,19 @@ static QTransform localTransformOf(const QCborMap &node)
     return QTransform(m00, m10, m01, m11, m02, m12);
 }
 
+// Remap kiwi-only type names to REST-API equivalents processNode understands.
+static QString restTypeFor(const QString &kiwiType)
+{
+    if (kiwiType == "SYMBOL"_L1) return QStringLiteral("COMPONENT");
+    if (kiwiType == "BRUSH"_L1) return QStringLiteral("VECTOR");
+    return kiwiType;
+}
+
 static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx)
 {
     const auto node = ctx.nodeChanges.at(idx).toMap();
-    const QString type = node.value(QStringLiteral("type")).toString();
+    const QString rawType = node.value(QStringLiteral("type")).toString();
+    const QString type = restTypeFor(rawType);
     const QString rawGuid = guidToStr(node.value(QStringLiteral("guid")));
     const QString guidStr = nctx.displayIdPrefix.isEmpty()
         ? rawGuid
@@ -697,7 +719,7 @@ static QJsonObject convertNode(const BuildCtx &ctx, int idx, const NodeCtx &nctx
         }
     } else if (type == "DOCUMENT"_L1 || type == "CANVAS"_L1
                || type == "FRAME"_L1 || type == "GROUP"_L1
-               || type == "SYMBOL"_L1 || type == "SECTION"_L1
+               || type == "COMPONENT"_L1 || type == "SECTION"_L1
                || type == "BOOLEAN_OPERATION"_L1) {
         NodeCtx childCtx { absX, nctx.displayIdPrefix };
         const QJsonArray children = buildChildren(ctx, rawGuid, childCtx);
