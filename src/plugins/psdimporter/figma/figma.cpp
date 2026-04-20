@@ -46,6 +46,10 @@
 #include <QtPsdExporter/QPsdExporterTreeItemModel>
 #include <QtPsdImporter/QPsdImporterPlugin>
 
+#include "fig_archive.h"
+#include "fig_kiwi.h"
+#include "fig_to_rest.h"
+
 using namespace Qt::StringLiterals;
 
 // ─── FigmaClient ───────────────────────────────────────────────────────────
@@ -2219,7 +2223,12 @@ public:
 
     bool canHandleUrl(const QUrl &url) const override {
         static const QRegularExpression re(u"figma\\.com/(?:file|design)/([a-zA-Z0-9]+)"_s);
-        return re.match(url.toString()).hasMatch();
+        if (re.match(url.toString()).hasMatch())
+            return true;
+        // Local .fig file (URL or bare path)
+        const QString path = url.isLocalFile() ? url.toLocalFile() : url.toString();
+        return path.endsWith(".fig"_L1, Qt::CaseInsensitive)
+            || path.endsWith(".figjam"_L1, Qt::CaseInsensitive);
     }
 
     QVariantMap optionsFromUrl(const QUrl &url) const override {
@@ -2490,6 +2499,54 @@ public:
         return options;
     }
 
+    // Decode a local .fig file into a REST-API-shaped QJsonObject, plus a hash of
+    // image payloads keyed by `imageRef` hex digest.
+    // Returns false (and sets errorMessage) on failure.
+    bool loadLocalFigFile(const QString &path, QJsonObject *outFileJson,
+                          QHash<QString, QImage> *outImagesByHash) const
+    {
+        FigArchive::Archive arc;
+        QString err;
+        if (!FigArchive::readFigFile(path, &arc, &err)) {
+            setErrorMessage(tr("Cannot read .fig file: %1").arg(err));
+            return false;
+        }
+        const QByteArray schemaRaw = FigArchive::decompressAuto(arc.schemaChunk, &err);
+        if (schemaRaw.isEmpty()) {
+            setErrorMessage(tr("Cannot decompress schema chunk: %1").arg(err));
+            return false;
+        }
+        const QByteArray dataRaw = FigArchive::decompressAuto(arc.dataChunk, &err);
+        if (dataRaw.isEmpty()) {
+            setErrorMessage(tr("Cannot decompress data chunk: %1").arg(err));
+            return false;
+        }
+        FigKiwi::Schema schema;
+        if (!FigKiwi::parseSchema(schemaRaw, &schema, &err)) {
+            setErrorMessage(tr("Cannot parse kiwi schema: %1").arg(err));
+            return false;
+        }
+        const QCborValue message = FigKiwi::decodeMessage(dataRaw, schema, &err);
+        if (!message.isMap()) {
+            setErrorMessage(tr("Cannot decode message: %1").arg(err));
+            return false;
+        }
+        if (!FigToRest::convertMessageToFileJson(message, arc.metaJson, outFileJson, &err)) {
+            setErrorMessage(tr("Cannot convert to file JSON: %1").arg(err));
+            return false;
+        }
+        // Collect embedded images. Keys are full hex hash strings.
+        for (auto it = arc.zipFiles.cbegin(); it != arc.zipFiles.cend(); ++it) {
+            const QString &name = it.key();
+            if (!name.startsWith("images/"_L1)) continue;
+            const QString hash = name.mid(7);
+            QImage img;
+            if (img.loadFromData(it.value()))
+                outImagesByHash->insert(hash, img);
+        }
+        return true;
+    }
+
     bool importFrom(QPsdExporterTreeItemModel *model,
                     const QVariantMap &options) const override
     {
@@ -2497,6 +2554,56 @@ public:
         const QString source = options.value("source"_L1).toString();
         const int imageScale = options.value("imageScale"_L1, 2).toInt();
         int pageIndex = options.value("pageIndex"_L1, 0).toInt();
+
+        // --- Local .fig file path ---
+        const QString localPath = QUrl(source).isLocalFile()
+            ? QUrl(source).toLocalFile()
+            : (QFile::exists(source) ? source : QString());
+        const bool isLocalFig = !localPath.isEmpty()
+            && (localPath.endsWith(".fig"_L1, Qt::CaseInsensitive)
+                || localPath.endsWith(".figjam"_L1, Qt::CaseInsensitive));
+
+        if (isLocalFig) {
+            QJsonObject fileJson;
+            QHash<QString, QImage> embeddedImages;
+            if (!loadLocalFigFile(localPath, &fileJson, &embeddedImages))
+                return false;
+
+            FigmaLayerTreeItemModel figmaModel;
+            figmaModel.buildFromFigmaJson(fileJson, {}, pageIndex);
+
+            // Resolve embedded images for IMAGE-fill nodes without any network traffic.
+            const auto fillRefs = figmaModel.imageFillRefs();
+            for (auto it = fillRefs.cbegin(); it != fillRefs.cend(); ++it) {
+                const QString &imageRef = it.key();
+                const QImage img = embeddedImages.value(imageRef);
+                if (img.isNull()) continue;
+                for (const auto &figmaId : it.value())
+                    figmaModel.setNodeImage(figmaId, img);
+            }
+            // Regular image nodes (non-_imgbg) cannot be resolved without the render API;
+            // they will render as empty placeholders. This is acceptable for MVP.
+
+            auto *widgetModel = buildQPsdModel(&figmaModel, model);
+            model->setSourceModel(widgetModel);
+            model->setSize(figmaModel.size());
+            model->setCanvasColor(figmaModel.canvasColor());
+
+            const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();
+            const auto fileName = fileJson["name"_L1].toString();
+            if (pages.size() > 1 && pageIndex < pages.size()) {
+                const auto pageName = pages[pageIndex].toObject()["name"_L1].toString();
+                model->setFileName(u"%1 - %2"_s.arg(fileName, pageName));
+            } else {
+                model->setFileName(fileName);
+            }
+
+            const auto hintFile = options.value("hintFile"_L1).toString();
+            if (!hintFile.isEmpty())
+                model->loadHints(hintFile);
+
+            return true;
+        }
 
         QString fileKey = source;
         QString nodeIdFromUrl;
