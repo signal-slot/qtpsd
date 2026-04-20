@@ -2698,6 +2698,11 @@ public:
             figmaModel.buildFromFigmaJson(fileJson, {}, pageIndex);
 
             // Resolve embedded images for IMAGE-fill nodes without any network traffic.
+            // Two cases:
+            //   1) _imgbg synthetic child nodes generated for FRAME/INSTANCE with an
+            //      IMAGE fill -- looked up by their parent's imageRef.
+            //   2) Regular image nodes (e.g. ROUNDED_RECTANGLE with an IMAGE fill) where
+            //      the node itself carries the fill; each has an imageRef in node.fills.
             const auto fillRefs = figmaModel.imageFillRefs();
             for (auto it = fillRefs.cbegin(); it != fillRefs.cend(); ++it) {
                 const QString &imageRef = it.key();
@@ -2706,8 +2711,23 @@ public:
                 for (const auto &figmaId : it.value())
                     figmaModel.setNodeImage(figmaId, img);
             }
-            // Regular image nodes (non-_imgbg) cannot be resolved without the render API;
-            // they will render as empty placeholders. This is acceptable for MVP.
+            const auto imgIds = figmaModel.imageNodeIds();
+            for (const auto &figmaId : imgIds) {
+                const auto fills = figmaModel.nodeFills(figmaId);
+                QString imageRef;
+                for (const auto &f : fills) {
+                    const auto obj = f.toObject();
+                    if (obj.value("type"_L1).toString() == "IMAGE"_L1
+                        && obj.value("visible"_L1).toBool(true)) {
+                        imageRef = obj.value("imageRef"_L1).toString();
+                        if (!imageRef.isEmpty()) break;
+                    }
+                }
+                if (imageRef.isEmpty()) continue;
+                const QImage img = embeddedImages.value(imageRef);
+                if (!img.isNull())
+                    figmaModel.setNodeImage(figmaId, img);
+            }
 
             auto *widgetModel = buildQPsdModel(&figmaModel, model);
             model->setSourceModel(widgetModel);
