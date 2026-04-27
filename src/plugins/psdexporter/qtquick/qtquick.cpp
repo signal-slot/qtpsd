@@ -1205,7 +1205,12 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         element->type = "Text";
         QRect rect = computeTextBounds(text);
         if (text->textType() == QPsdTextLayerItem::TextType::ParagraphText) {
-            element->properties.insert("wrapMode"_L1, "Text.Wrap"_L1);
+            // WordWrap (not Wrap) so a label that just barely overflows the
+            // Figma bbox under Qt's text engine doesn't break in the middle
+            // of a word — it overflows visually, which is the right default
+            // for short Latin labels (e.g. "EXT") and harmless for longer
+            // paragraph text since wrapping still happens at word breaks.
+            element->properties.insert("wrapMode"_L1, "Text.WordWrap"_L1);
         }
 
         if (!outputBase(textIndex, element, imports, rect))
@@ -1258,13 +1263,14 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
             if (!vAlign.isEmpty())
                 element->properties.insert("verticalAlignment", vAlign);
         }
-        element->properties.insert("clip", true);
+        // No clip on Text — the Figma bbox is a layout hint, not a render
+        // bound; clipping crops descenders when Qt's metrics differ slightly
+        // from Figma's.
     } else {
         element->type = "Item";
         QRect multiRect = computeTextBounds(text);
         if (!outputBase(textIndex, element, imports, multiRect))
             return false;
-        element->properties.insert("clip", true);
 
         const bool isParagraph = text->textType() == QPsdTextLayerItem::TextType::ParagraphText;
 
@@ -1340,7 +1346,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 textElement.properties.insert("Layout.fillHeight", true);
                 if (isParagraph) {
                     textElement.properties.insert("Layout.fillWidth", true);
-                    textElement.properties.insert("wrapMode"_L1, "Text.Wrap"_L1);
+                    textElement.properties.insert("wrapMode"_L1, "Text.WordWrap"_L1);
                 }
                 textElement.properties.insert("horizontalAlignment",
                     horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
