@@ -1510,7 +1510,8 @@ private:
                             color["r"_L1].toDouble(),
                             color["g"_L1].toDouble(),
                             color["b"_L1].toDouble(),
-                            strokeObj.value("opacity"_L1).toDouble(1.0));
+                            color.value("a"_L1).toDouble(1.0)
+                                * strokeObj.value("opacity"_L1).toDouble(1.0));
                         pen = QPen(c);
                     } else if (strokeType.startsWith("GRADIENT_"_L1)) {
                         QBrush strokeBrush = brushFromSingleFill(strokeObj, rect);
@@ -1748,11 +1749,14 @@ private:
             if (obj["type"_L1].toString() == "SOLID"_L1
                 && obj.value("visible"_L1).toBool(true)) {
                 const auto color = obj["color"_L1].toObject();
+                // Figma supplies alpha both inside `color.a` and on the fill
+                // itself (`opacity`); compose them so neither is ignored.
                 return QColor::fromRgbF(
                     color["r"_L1].toDouble(),
                     color["g"_L1].toDouble(),
                     color["b"_L1].toDouble(),
-                    obj.value("opacity"_L1).toDouble(1.0));
+                    color.value("a"_L1).toDouble(1.0)
+                        * obj.value("opacity"_L1).toDouble(1.0));
             }
         }
         return Qt::black;
@@ -1795,7 +1799,7 @@ private:
                 color["r"_L1].toDouble(),
                 color["g"_L1].toDouble(),
                 color["b"_L1].toDouble(),
-                fillOpacity);
+                color.value("a"_L1).toDouble(1.0) * fillOpacity);
             return QBrush(c);
         }
 
