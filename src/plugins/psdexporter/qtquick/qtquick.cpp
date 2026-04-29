@@ -2851,6 +2851,38 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                 }
             }
             break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::CheckBox:
+            imports->insert("QtQuick.Controls");
+            element.type = "CheckBox";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::ComboBox:
+            imports->insert("QtQuick.Controls");
+            element.type = "ComboBox";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::RadioButton:
+            imports->insert("QtQuick.Controls");
+            element.type = "RadioButton";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Slider:
+            imports->insert("QtQuick.Controls");
+            element.type = "Slider";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::SpinBox:
+            imports->insert("QtQuick.Controls");
+            element.type = "SpinBox";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Switch:
+            imports->insert("QtQuick.Controls");
+            element.type = "Switch";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TabBar:
+            imports->insert("QtQuick.Controls");
+            element.type = "TabBar";
+            break;
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TabButton:
+            imports->insert("QtQuick.Controls");
+            element.type = "TabButton";
+            break;
         }
         element.id = id;
         if (!hint.visible || (item && !item->isVisible()))

@@ -240,6 +240,14 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     ADDITEM(TouchArea);
     ADDITEM(Button);
     ADDITEM(Button_Highlighted);
+    ADDITEM(CheckBox);
+    ADDITEM(ComboBox);
+    ADDITEM(RadioButton);
+    ADDITEM(Slider);
+    ADDITEM(SpinBox);
+    ADDITEM(Switch);
+    ADDITEM(TabBar);
+    ADDITEM(TabButton);
 #undef ADDITEM
 
     auto isReset = [&]() -> bool {

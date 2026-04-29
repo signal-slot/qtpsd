@@ -43,6 +43,14 @@ public:
             TouchArea,
             Button,
             Button_Highlighted,
+            CheckBox,
+            ComboBox,
+            RadioButton,
+            Slider,
+            SpinBox,
+            Switch,
+            TabBar,
+            TabButton,
         };
         enum AnchorMode {
             AnchorNone = 0,
@@ -81,6 +89,14 @@ public:
             IF(TouchArea)
             IF(Button)
             IF(Button_Highlighted)
+            IF(CheckBox)
+            IF(ComboBox)
+            IF(RadioButton)
+            IF(Slider)
+            IF(SpinBox)
+            IF(Switch)
+            IF(TabBar)
+            IF(TabButton)
 #undef IF
             {
                 qWarning() << name << "is not a valid NativeComponent";
@@ -103,6 +119,14 @@ public:
             CASE(TouchArea);
             CASE(Button);
             CASE(Button_Highlighted);
+            CASE(CheckBox);
+            CASE(ComboBox);
+            CASE(RadioButton);
+            CASE(Slider);
+            CASE(SpinBox);
+            CASE(Switch);
+            CASE(TabBar);
+            CASE(TabButton);
 #undef CASE
             default:
                 qWarning() << code << "is not a valid NativeComponent";

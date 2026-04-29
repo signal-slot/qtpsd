@@ -705,6 +705,17 @@ bool QPsdExporterSwiftUIPlugin::traverseTree(const QModelIndex &index, Element *
 
         switch (hint.baseElement) {
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Container:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TouchArea:
+        // TODO: map QtQuickControls types to native SwiftUI equivalents
+        // (Toggle / Picker / Stepper / Slider / TabView / etc.).
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::CheckBox:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::ComboBox:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::RadioButton:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Slider:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::SpinBox:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Switch:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TabBar:
+        case QPsdExporterTreeItemModel::ExportHint::NativeComponent::TabButton:
             element.type = "Group";
             break;
         case QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button:
