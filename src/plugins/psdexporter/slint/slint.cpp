@@ -345,7 +345,9 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
                         for (const auto &run : runs) {
                             text += run.text.trimmed();
                         }
-                        element.properties.insert("text", u"\"%1\""_s.arg(text));
+                        const bool translatable = model()->layerHint(mergedIndex).properties.contains("translatable"_L1);
+                        element.properties.insert("text",
+                            translatable ? u"@tr(\"%1\")"_s.arg(text) : u"\"%1\""_s.arg(text));
                         break; }
                     case QPsdAbstractLayerItem::Image:
                     case QPsdAbstractLayerItem::Shape: {
@@ -507,13 +509,17 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         qWarning() << "Invalid text layer item for index" << textIndex;
         return false;
     }
+    const bool translatable = model()->layerHint(textIndex).properties.contains("translatable"_L1);
+    auto formatText = [translatable](const QString &literal) {
+        return translatable ? u"@tr(\"%1\")"_s.arg(literal) : u"\"%1\""_s.arg(literal);
+    };
     const auto shadow = parseDropShadow(text->dropShadow());
     const auto runs = text->runs();
     if (runs.isEmpty()) {
         element->type = "Text";
         if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
             return false;
-        element->properties.insert("text", "\"\"");
+        element->properties.insert("text", formatText(QString()));
         element->properties.insert("color", "#000000");
         return true;
     }
@@ -527,7 +533,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
 
         auto setTextProperties = [&](Element *e) {
             e->type = "Text";
-            e->properties.insert("text", u"\"%1\""_s.arg(displayText));
+            e->properties.insert("text", formatText(displayText));
             e->properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
             e->properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
             if (run.font.bold() || run.fauxBold)
@@ -616,7 +622,7 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
                 QString displayText = text;
                 if (run.fontCaps == 2)
                     displayText = displayText.toUpper();
-                textElement.properties.insert("text", u"\"%1\""_s.arg(displayText));
+                textElement.properties.insert("text", formatText(displayText));
                 textElement.properties.insert("font-family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font-size", u"%1px"_s.ARGF(run.font.pointSizeF() * fontScaleFactor));
                 if (run.font.bold() || run.fauxBold)

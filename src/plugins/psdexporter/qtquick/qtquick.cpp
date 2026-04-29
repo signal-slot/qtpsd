@@ -1191,12 +1191,16 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
         qWarning() << "Invalid text layer item for index" << textIndex;
         return false;
     }
+    const bool translatable = model()->layerHint(textIndex).properties.contains("translatable"_L1);
+    auto formatText = [translatable](const QString &literal) {
+        return translatable ? u"qsTr(\"%1\")"_s.arg(literal) : u"\"%1\""_s.arg(literal);
+    };
     const auto runs = text->runs();
     if (runs.isEmpty()) {
         element->type = "Text";
         if (!outputBase(textIndex, element, imports, text->bounds().toRect()))
             return false;
-        element->properties.insert("text", "\"\"");
+        element->properties.insert("text", formatText(QString()));
         element->properties.insert("color", "\"#000000\"");
         return true;
     }
@@ -1215,7 +1219,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
 
         if (!outputBase(textIndex, element, imports, rect))
             return false;
-        element->properties.insert("text", u"\"%1\""_s.arg(run.text.trimmed().replace("\n", "\\n")));
+        element->properties.insert("text", formatText(run.text.trimmed().replace("\n", "\\n")));
         element->properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
         element->properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
         {
@@ -1304,7 +1308,7 @@ bool QPsdExporterQtQuickPlugin::outputText(const QModelIndex &textIndex, Element
                 }
                 Element textElement;
                 textElement.type = "Text";
-                textElement.properties.insert("text", u"\"%1\""_s.arg(text));
+                textElement.properties.insert("text", formatText(text));
                 textElement.properties.insert("font.family", u"\"%1\""_s.arg(run.font.family()));
                 textElement.properties.insert("font.pixelSize", std::round(run.font.pointSizeF() * fontScaleFactor));
                 {
@@ -2838,7 +2842,9 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                             }
                             text += run.text;
                         }
-                        element.properties.insert("text", u"\"%1\""_s.arg(text));
+                        const bool translatable = model()->layerHint(mergedIndex).properties.contains("translatable"_L1);
+                        element.properties.insert("text",
+                            translatable ? u"qsTr(\"%1\")"_s.arg(text) : u"\"%1\""_s.arg(text));
                         break; }
                     case QPsdAbstractLayerItem::Image:
                     case QPsdAbstractLayerItem::Shape: {

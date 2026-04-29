@@ -96,6 +96,7 @@ public:
     void applyAttributes();
     void populateTextSourceCombo();
     void populateImageSourceCombo();
+    void updateTranslatableEnabled();
 
     QPsdWidgetTreeItemModel widgetModel;
     PsdTreeItemModel model;
@@ -401,6 +402,7 @@ PsdWidget::Private::Private(::PsdWidget *parent)
                 changed();
         });
     }
+    connect(text, &QCheckBox::toggled, q, [this](bool) { updateTranslatableEnabled(); });
     connect(buttonBox, &QDialogButtonBox::clicked, q, [this](QAbstractButton *button) {
         switch (buttonBox->buttonRole(button)) {
         case QDialogButtonBox::ApplyRole:
@@ -599,7 +601,7 @@ void PsdWidget::Private::updateAttributes()
         "size",
     };
     static const QHash<QPsdAbstractLayerItem::Type, QSet<QString>> additionalProperties = {
-        { QPsdAbstractLayerItem::Text, { "color", "text", "font" } },
+        { QPsdAbstractLayerItem::Text, { "color", "text", "font", "translatable" } },
         { QPsdAbstractLayerItem::Shape, { "color" } },
         { QPsdAbstractLayerItem::Image, { "image" } }
     };
@@ -756,6 +758,8 @@ void PsdWidget::Private::updateAttributes()
             property->setCheckState(Qt::Unchecked);
         }
     }
+
+    updateTranslatableEnabled();
 
     // Populate anchor buttons from hint
     {
@@ -996,6 +1000,14 @@ void PsdWidget::Private::populateImageSourceCombo()
             }
         }
     }
+}
+
+void PsdWidget::Private::updateTranslatableEnabled()
+{
+    const bool textChecked = text->isEnabled() && text->isChecked();
+    translatable->setEnabled(textChecked);
+    if (!textChecked && translatable->isChecked())
+        translatable->setChecked(false);
 }
 
 PsdWidget::PsdWidget(QWidget *parent)
