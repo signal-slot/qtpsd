@@ -757,6 +757,12 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
     if (hintOverload.has_value()) {
         type = *hintOverload;
     }
+
+    // Layer is consumed by a Native Button's textSource/imageSource; the
+    // button emits its content, so don't emit this layer standalone.
+    if (isMergedSource(index))
+        return true;
+
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;

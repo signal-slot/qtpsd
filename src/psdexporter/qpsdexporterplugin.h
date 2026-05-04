@@ -17,6 +17,7 @@
 #include <QtCore/QCborMap>
 #include <QtCore/QDir>
 #include <QtCore/QMimeDatabase>
+#include <QtCore/QSet>
 #include <QtGui/QIcon>
 #include <QtGui/QPainterPath>
 #include <QtGui/QPen>
@@ -99,6 +100,11 @@ protected:
     QRect computeBaseRect(const QModelIndex &index, QRect rectBounds = {}) const;
     QSize canvasSize() const;
 
+    // True when the layer is referenced by some Native Button's textSource
+    // or imageSource. Such layers are absorbed into the button and must not
+    // be emitted independently.
+    bool isMergedSource(const QModelIndex &index) const;
+
     static QRect computeTextBounds(const QPsdTextLayerItem *text);
 
     static QRectF adjustRectForStroke(const QRectF &rect,
@@ -175,6 +181,7 @@ protected:
     mutable QHash<const QPersistentModelIndex, QRect> childrenRectMap;
     mutable QHash<const QPersistentModelIndex, QRect> indexRectMap;
     mutable QMultiMap<const QPersistentModelIndex, QPersistentModelIndex> indexMergeMap;
+    mutable QSet<QPersistentModelIndex> mergedSourceIndices;
 
 private:
     class Private;

@@ -98,8 +98,10 @@ void QPsdExporterPlugin::Private::generateIndexMap(const QPersistentModelIndex &
             && (!hint.textSource.isEmpty() || !hint.imageSource.isEmpty())) {
             auto tryMerge = [&](const QModelIndex &i) {
                 const auto name = model->layerName(i);
-                if (name == hint.textSource || name == hint.imageSource)
+                if (name == hint.textSource || name == hint.imageSource) {
                     q->indexMergeMap.insert(index, i);
+                    q->mergedSourceIndices.insert(QPersistentModelIndex(i));
+                }
             };
             const auto parentIndex = model->parent(index);
             for (int si = 0; si < model->rowCount(parentIndex); ++si) {
@@ -235,11 +237,17 @@ bool QPsdExporterPlugin::generateMaps() const
     childrenRectMap.clear();
     indexRectMap.clear();
     indexMergeMap.clear();
+    mergedSourceIndices.clear();
 
     d->generateChildrenRectMap({});
     d->generateIndexMap({}, QPoint(0, 0));
 
     return true;
+}
+
+bool QPsdExporterPlugin::isMergedSource(const QModelIndex &index) const
+{
+    return mergedSourceIndices.contains(QPersistentModelIndex(index));
 }
 
 QVariantMap QPsdExporterPlugin::ExportConfig::toVariantMap() const
