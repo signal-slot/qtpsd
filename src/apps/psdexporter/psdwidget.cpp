@@ -905,6 +905,9 @@ void PsdWidget::Private::applyAttributes()
             findByName(newSource, [&](const QModelIndex &gi) {
                 auto srcHint = model.layerHint(gi);
                 srcHint.type = QPsdExporterTreeItemModel::ExportHint::Merged;
+                // Clear stale legacy componentName: in the new format the
+                // Native Button's textSource is authoritative.
+                srcHint.componentName.clear();
                 model.setLayerHint(gi, srcHint);
             });
         };

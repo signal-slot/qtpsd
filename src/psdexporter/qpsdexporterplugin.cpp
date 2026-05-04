@@ -119,19 +119,10 @@ void QPsdExporterPlugin::Private::generateIndexMap(const QPersistentModelIndex &
                     tryMerge(model->index(gci, 0, child));
             }
         }
-        // Backward compat: old Merged + componentName (push model)
-        if (hint.type == QPsdExporterTreeItemModel::ExportHint::Merged
-            && !hint.componentName.isEmpty()) {
-            const auto parentIndex = model->parent(index);
-            for (int si = 0; si < model->rowCount(parentIndex); ++si) {
-                const auto i = model->index(si, 0, parentIndex);
-                if (i == index)
-                    continue;
-                if (model->layerName(i) == hint.componentName) {
-                    q->indexMergeMap.insert(i, index);  // target ← source
-                }
-            }
-        }
+        // Note: legacy Merged + componentName (push) format is intentionally
+        // ignored. The Native Button's textSource/imageSource is authoritative.
+        // Pushing by sibling name was ambiguous when copies share names
+        // (e.g. Photoshop "<name> のコピー N") and produced wrong merges.
     }
 
     for (int i = 0; i < model->rowCount(index); i++) {
