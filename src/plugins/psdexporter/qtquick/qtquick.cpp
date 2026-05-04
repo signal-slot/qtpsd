@@ -2844,9 +2844,13 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                         }
                         text = text.trimmed();
                         text.replace("\n"_L1, "\\n"_L1);
-                        const bool translatable = model()->layerHint(mergedIndex).properties.contains("translatable"_L1);
+                        // Translatable lives on the Native Button itself
+                        // (the layer that owns the textSource hint).
+                        const bool translatable = hint.properties.contains("translatable"_L1);
                         element.properties.insert("text",
-                            translatable ? u"qsTr(\"%1\")"_s.arg(text) : u"\"%1\""_s.arg(text));
+                            translatable
+                                ? u"qsTr(\"%1\" /* from textSource */)"_s.arg(text)
+                                : u"\"%1\""_s.arg(text));
                         break; }
                     case QPsdAbstractLayerItem::Image:
                     case QPsdAbstractLayerItem::Shape: {

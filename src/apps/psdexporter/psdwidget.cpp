@@ -96,7 +96,6 @@ public:
     void applyAttributes();
     void populateTextSourceCombo();
     void populateImageSourceCombo();
-    void updateTranslatableEnabled();
 
     QPsdWidgetTreeItemModel widgetModel;
     PsdTreeItemModel model;
@@ -402,7 +401,6 @@ PsdWidget::Private::Private(::PsdWidget *parent)
                 changed();
         });
     }
-    connect(text, &QCheckBox::toggled, q, [this](bool) { updateTranslatableEnabled(); });
     connect(buttonBox, &QDialogButtonBox::clicked, q, [this](QAbstractButton *button) {
         switch (buttonBox->buttonRole(button)) {
         case QDialogButtonBox::ApplyRole:
@@ -643,7 +641,14 @@ void PsdWidget::Private::updateAttributes()
 
         for (auto *property : propertyCheckBoxes) {
             const auto name = property->objectName();
-            if (baseProperties.contains(name) || additionalProperties.value(item->type()).contains(name)) {
+            // translatable applies to any text-bearing context: a Text layer
+            // or a Native Button that pulls its text via textSource.
+            const bool translatableAvailable = (name == "translatable"_L1)
+                && (item->type() == QPsdAbstractLayerItem::Text
+                    || !hint.textSource.isEmpty());
+            if (baseProperties.contains(name)
+                || additionalProperties.value(item->type()).contains(name)
+                || translatableAvailable) {
                 if (!itemProperties.contains(name)) {
                     itemProperties.insert(name, UniqueOrNot<Qt::CheckState>(Qt::PartiallyChecked));
                 }
@@ -758,8 +763,6 @@ void PsdWidget::Private::updateAttributes()
             property->setCheckState(Qt::Unchecked);
         }
     }
-
-    updateTranslatableEnabled();
 
     // Populate anchor buttons from hint
     {
@@ -1028,14 +1031,6 @@ void PsdWidget::Private::populateImageSourceCombo()
             }
         }
     }
-}
-
-void PsdWidget::Private::updateTranslatableEnabled()
-{
-    const bool textChecked = text->isEnabled() && text->isChecked();
-    translatable->setEnabled(textChecked);
-    if (!textChecked && translatable->isChecked())
-        translatable->setChecked(false);
 }
 
 PsdWidget::PsdWidget(QWidget *parent)
