@@ -316,7 +316,7 @@ PsdWidget::Private::Private(::PsdWidget *parent)
     });
     imageSourceCombo = new QComboBox(q);
     imageSourceCombo->hide();
-    propertiesGrid->addWidget(imageSourceCombo, 7, 1);
+    propertiesGrid->addWidget(imageSourceCombo, 8, 1);
     connect(imageSourceCombo, &QComboBox::currentIndexChanged, q, [=]() {
         if (isReset())
             changed();
@@ -832,12 +832,14 @@ void PsdWidget::Private::applyAttributes()
             hint.imageSource.clear();
             if (customEnabled->isEnabled()) {
                 hint.componentName = custom->text();
-                hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(customBase->currentText());
+                hint.baseElement = static_cast<QPsdExporterTreeItemModel::ExportHint::NativeComponent>(
+                    customBase->currentData().toInt());
             }
             break;
         case QPsdExporterTreeItemModel::ExportHint::Native: {
             hint.type = QPsdExporterTreeItemModel::ExportHint::Native;
-            hint.baseElement = QPsdExporterTreeItemModel::ExportHint::nativeName2Code(nativeBase->currentText());
+            hint.baseElement = static_cast<QPsdExporterTreeItemModel::ExportHint::NativeComponent>(
+                nativeBase->currentData().toInt());
             const bool isButton = (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button
                                    || hint.baseElement == QPsdExporterTreeItemModel::ExportHint::Button_Highlighted);
             if (isButton) {
@@ -878,6 +880,15 @@ void PsdWidget::Private::applyAttributes()
                 for (int ci = 0; ci < model.rowCount(gi); ++ci) {
                     const QModelIndex ni = model.index(ci, 0, gi);
                     if (model.layerName(ni) == source) { callback(ni); return; }
+                }
+            }
+            // Also search the button's own children/grandchildren
+            for (int ci = 0; ci < model.rowCount(row); ++ci) {
+                const QModelIndex child = model.index(ci, 0, row);
+                if (model.layerName(child) == source) { callback(child); return; }
+                for (int gci = 0; gci < model.rowCount(child); ++gci) {
+                    const QModelIndex gchild = model.index(gci, 0, child);
+                    if (model.layerName(gchild) == source) { callback(gchild); return; }
                 }
             }
         };
@@ -949,6 +960,13 @@ void PsdWidget::Private::populateTextSourceCombo()
         for (int j = 0; j < model.rowCount(gi); ++j)
             addTextCandidate(model.index(j, 0, gi));
     }
+    // Also iterate the button's own children/grandchildren (Frame-style)
+    for (int j = 0; j < model.rowCount(rows.first()); ++j) {
+        const QModelIndex child = model.index(j, 0, rows.first());
+        addTextCandidate(child);
+        for (int k = 0; k < model.rowCount(child); ++k)
+            addTextCandidate(model.index(k, 0, child));
+    }
 
     // Restore previous selection if possible
     if (!oldSelection.isEmpty()) {
@@ -989,6 +1007,13 @@ void PsdWidget::Private::populateImageSourceCombo()
         addImageCandidate(gi);
         for (int j = 0; j < model.rowCount(gi); ++j)
             addImageCandidate(model.index(j, 0, gi));
+    }
+    // Also iterate the button's own children/grandchildren (Frame-style)
+    for (int j = 0; j < model.rowCount(rows.first()); ++j) {
+        const QModelIndex child = model.index(j, 0, rows.first());
+        addImageCandidate(child);
+        for (int k = 0; k < model.rowCount(child); ++k)
+            addImageCandidate(model.index(k, 0, child));
     }
 
     // Restore previous selection if possible

@@ -110,6 +110,14 @@ void QPsdExporterPlugin::Private::generateIndexMap(const QPersistentModelIndex &
                 for (int ci = 0; ci < model->rowCount(i); ++ci)
                     tryMerge(model->index(ci, 0, i));
             }
+            // Also pull from the button's own children/grandchildren so a
+            // Frame-style button (label nested inside) works.
+            for (int ci = 0; ci < model->rowCount(index); ++ci) {
+                const auto child = model->index(ci, 0, index);
+                tryMerge(child);
+                for (int gci = 0; gci < model->rowCount(child); ++gci)
+                    tryMerge(model->index(gci, 0, child));
+            }
         }
         // Backward compat: old Merged + componentName (push model)
         if (hint.type == QPsdExporterTreeItemModel::ExportHint::Merged

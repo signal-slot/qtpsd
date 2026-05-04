@@ -2842,6 +2842,8 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                             }
                             text += run.text;
                         }
+                        text = text.trimmed();
+                        text.replace("\n"_L1, "\\n"_L1);
                         const bool translatable = model()->layerHint(mergedIndex).properties.contains("translatable"_L1);
                         element.properties.insert("text",
                             translatable ? u"qsTr(\"%1\")"_s.arg(text) : u"\"%1\""_s.arg(text));
