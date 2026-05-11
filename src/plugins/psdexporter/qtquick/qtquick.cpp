@@ -2672,7 +2672,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
         element.id = id;
-        if (!hint.visible || (item && !item->isVisible()))
+        if (!hint.visible || (item && !item->isVisible() && !hint.properties.contains("visible"_L1)))
             element.properties.insert("visible", false);
         if (!id.isEmpty())
             exports->insert(id);
@@ -2799,7 +2799,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
                 Element touchArea { "MouseArea", id };
                 outputBase(index, &touchArea, imports);
                 touchArea.layers.clear();
-                if (!hint.visible || (item && !item->isVisible()))
+                if (!hint.visible || (item && !item->isVisible() && !hint.properties.contains("visible"_L1)))
                     touchArea.properties.insert("visible", "false");
                 element.id = QString();
                 element.properties.remove("x");
@@ -2902,7 +2902,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             break;
         }
         element.id = id;
-        if (!hint.visible || (item && !item->isVisible()))
+        if (!hint.visible || (item && !item->isVisible() && !hint.properties.contains("visible"_L1)))
             element.properties.insert("visible", false);
         if (!id.isEmpty())
             exports->insert(id);
@@ -2965,7 +2965,7 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
         if (!id.isEmpty())
             exports->insert(id);
         outputBase(index, &element, imports);
-        if (!hint.visible || (item && !item->isVisible()))
+        if (!hint.visible || (item && !item->isVisible() && !hint.properties.contains("visible"_L1)))
             element.properties.insert("visible", false);
         parent->children.append(element);
         break;
