@@ -52,6 +52,7 @@ public:
     Constraints constraints;
     QString componentName;
     QString referencedComponent;
+    QMap<QString, QString> variableBindings;
 };
 
 QPsdAbstractLayerItem::QPsdAbstractLayerItem(int width, int height)
@@ -796,6 +797,24 @@ QString QPsdAbstractLayerItem::referencedComponent() const
 void QPsdAbstractLayerItem::setReferencedComponent(const QString &referencedComponent)
 {
     d->referencedComponent = referencedComponent;
+}
+
+QMap<QString, QString> QPsdAbstractLayerItem::variableBindings() const
+{
+    return d->variableBindings;
+}
+
+void QPsdAbstractLayerItem::setVariableBinding(const QString &property, const QString &token)
+{
+    if (token.isEmpty())
+        d->variableBindings.remove(property);
+    else
+        d->variableBindings.insert(property, token);
+}
+
+void QPsdAbstractLayerItem::clearVariableBindings()
+{
+    d->variableBindings.clear();
 }
 
 QT_END_NAMESPACE

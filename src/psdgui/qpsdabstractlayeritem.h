@@ -117,6 +117,16 @@ public:
     QString referencedComponent() const;
     void setReferencedComponent(const QString &referencedComponent);
 
+    // Design-token (Figma Variables) bindings on this layer's primitive
+    // properties. Keys are exporter-facing tags: "fill" (primary fill colour),
+    // "stroke" (stroke colour). Values are token names that resolve against
+    // QPsdExporterTreeItemModel::designTokens(). The importer initially
+    // stores raw Figma variable ids and rewrites them to token names once
+    // the full design-tokens map is known.
+    QMap<QString, QString> variableBindings() const;
+    void setVariableBinding(const QString &property, const QString &token);
+    void clearVariableBindings();
+
     QImage image() const;
     QImage applyGradient(const QImage &image) const;
     QImage transparencyMask() const;

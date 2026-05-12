@@ -105,6 +105,16 @@ protected:
     // Invalid). Subclasses that don't honour blend modes simply ignore it.
     static QString blendModeString(QPsdBlend::Mode mode);
 
+    // Resolve a layer-property colour to either a `Theme.<token>` identifier
+    // (when the layer carries a Variables binding for `propertyKey`, e.g.
+    // "fill" or "stroke") or the literal `"#aarrggbb"` form. Callers append
+    // the result verbatim — the string is already syntactically correct for
+    // a QML property assignment.
+    QString colorOrBinding(const QPsdAbstractLayerItem *item,
+                           const QString &propertyKey,
+                           const QColor &fallback,
+                           ImportData *imports = nullptr) const;
+
     // Recursively clear element.layers (the layer.effect chain) so a previously
     // accumulated effect tree won't be serialised. Called when an element is
     // re-wrapped into a different container.

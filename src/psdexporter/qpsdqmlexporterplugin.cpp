@@ -41,6 +41,23 @@ void QPsdQmlExporterPlugin::onBeforeExport(const ExportConfig &) const {}
 void QPsdQmlExporterPlugin::onAfterExport(const ExportConfig &) const {}
 void QPsdQmlExporterPlugin::adjustComponentRoot(Element &, const QModelIndex &) const {}
 
+QString QPsdQmlExporterPlugin::colorOrBinding(const QPsdAbstractLayerItem *item,
+                                              const QString &propertyKey,
+                                              const QColor &fallback,
+                                              ImportData *imports) const
+{
+    if (item) {
+        const auto bindings = item->variableBindings();
+        const auto it = bindings.constFind(propertyKey);
+        if (it != bindings.constEnd() && !it.value().isEmpty()) {
+            if (imports)
+                imports->insert(u"\".\""_s);
+            return u"Theme.%1"_s.arg(it.value());
+        }
+    }
+    return u"\"%1\""_s.arg(fallback.name(QColor::HexArgb));
+}
+
 QString QPsdQmlExporterPlugin::blendModeString(QPsdBlend::Mode mode)
 {
     switch (mode) {
@@ -1364,6 +1381,7 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
 bool QPsdQmlExporterPlugin::outputText(const QModelIndex &textIndex, Element *element, ImportData *imports) const
 {
     const QPsdTextLayerItem *text = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(textIndex));
+    const QPsdAbstractLayerItem *textLayer = text;
     if (!text) {
         qWarning() << "Invalid text layer item for index" << textIndex;
         return false;
@@ -1437,7 +1455,7 @@ bool QPsdQmlExporterPlugin::outputText(const QModelIndex &textIndex, Element *el
             }
             element->properties.insert("lineHeight", ratio);
         }
-        element->properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
+        element->properties.insert("color", colorOrBinding(text, u"fill"_s, run.color, imports));
         element->properties.insert("horizontalAlignment",
             horizontalAlignmentString(run.alignment, {"Text.AlignLeft"_L1, "Text.AlignRight"_L1, "Text.AlignHCenter"_L1, "Text.AlignJustify"_L1}));
         {
@@ -1525,7 +1543,7 @@ bool QPsdQmlExporterPlugin::outputText(const QModelIndex &textIndex, Element *el
                     }
                     textElement.properties.insert("lineHeight", ratio);
                 }
-                textElement.properties.insert("color", u"\"%1\""_s.arg(run.color.name(QColor::HexArgb)));
+                textElement.properties.insert("color", colorOrBinding(textLayer, u"fill"_s, run.color, imports));
                 textElement.properties.insert("Layout.fillHeight", true);
                 if (isParagraph) {
                     textElement.properties.insert("Layout.fillWidth", true);
@@ -1824,7 +1842,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
             element->type = "Rectangle";
             if (!outputBase(shapeIndex, element, imports))
                 return false;
-            element->properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+            element->properties.insert("color", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
         }
         break; }
     case QPsdAbstractLayerItem::PathInfo::Rectangle: {
@@ -2106,7 +2124,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     else
                         shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
                 } else {
-                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("strokeColor", colorOrBinding(shape, u"stroke"_s, pen.color(), imports));
                 }
                 if (!pen.dashPattern().isEmpty() && pen.style() != Qt::SolidLine) {
                     QStringList dashValues;
@@ -2123,7 +2141,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 else if (pen.joinStyle() == Qt::BevelJoin)
                     shapePath.properties.insert("joinStyle", u"ShapePath.BevelJoin"_s);
                 if (shape->brush() != Qt::NoBrush)
-                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("fillColor", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                 else
                     shapePath.properties.insert("fillColor", u"\"transparent\""_s);
                 const qreal w = strokeRect.width() * horizontalScale;
@@ -2180,7 +2198,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
                 }
                 if (shape->brush() != Qt::NoBrush)
-                    rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    rectElement.properties.insert("color", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                 else
                     rectElement.properties.insert("color", "\"transparent\"");
                 if (filled)
@@ -2209,9 +2227,9 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 const QGradient *eg = effectiveGradient(shape);
                 if (eg) {
                     // TODO: gradient fill for ellipses
-                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("fillColor", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                 } else if (shape->brush() != Qt::NoBrush) {
-                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("fillColor", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                 }
                 // Stroke
                 const auto &pen = shape->pen();
@@ -2220,7 +2238,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
                 } else {
                     shapePath.properties.insert("strokeWidth", pen.widthF() * unitScale);
-                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("strokeColor", colorOrBinding(shape, u"stroke"_s, pen.color(), imports));
                 }
                 // Ellipse arc
                 const qreal cx = path.rect.center().x() * horizontalScale;
@@ -2490,7 +2508,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     else
                         shapePath.properties.insert("strokeColor", u"\"transparent\""_s);
                 } else {
-                    shapePath.properties.insert("strokeColor", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("strokeColor", colorOrBinding(shape, u"stroke"_s, pen.color(), imports));
                 }
                 if (!pen.dashPattern().isEmpty() && pen.style() != Qt::SolidLine) {
                     QStringList dashValues;
@@ -2507,7 +2525,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 else if (pen.joinStyle() == Qt::BevelJoin)
                     shapePath.properties.insert("joinStyle", u"ShapePath.BevelJoin"_s);
                 if (shape->brush() != Qt::NoBrush)
-                    shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    shapePath.properties.insert("fillColor", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                 else
                     shapePath.properties.insert("fillColor", u"\"transparent\""_s);
                 Element svgPath;
@@ -2547,7 +2565,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
                 }
                 if (shape->brush() != Qt::NoBrush)
-                    rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                    rectElement.properties.insert("color", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                 else
                     rectElement.properties.insert("color", "\"transparent\"");
             }
@@ -2591,7 +2609,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                         rectElement.properties.insert("border.color", u"\"%1\""_s.arg(pen.color().name(QColor::HexArgb)));
                     }
                     if (shape->brush() != Qt::NoBrush)
-                        rectElement.properties.insert("color", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                        rectElement.properties.insert("color", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
                     else
                         rectElement.properties.insert("color", "\"transparent\"");
                     if (filled)
@@ -2711,7 +2729,7 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
             }
         } else {
             if (shape->brush() != Qt::NoBrush)
-                shapePath.properties.insert("fillColor", u"\"%1\""_s.arg(shape->brush().color().name(QColor::HexArgb)));
+                shapePath.properties.insert("fillColor", colorOrBinding(shape, u"fill"_s, shape->brush().color(), imports));
         }
 
         if (!outputPath(path.path, &shapePath))

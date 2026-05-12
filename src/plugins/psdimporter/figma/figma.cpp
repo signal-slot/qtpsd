@@ -1668,6 +1668,24 @@ private:
                 if (brush.style() != Qt::NoBrush)
                     shapeItem->setBrush(brush);
             }
+            // Capture a Variables binding for the primary fill colour: first
+            // visible SOLID fill carrying boundVariables.color wins. Stored
+            // as the raw Figma variable id; the post-import pass rewrites it
+            // to the resolved Theme token name.
+            for (const auto &fillVal : fills) {
+                const auto fillObj = fillVal.toObject();
+                if (!fillObj.value("visible"_L1).toBool(true))
+                    continue;
+                if (fillObj.value("type"_L1).toString() != "SOLID"_L1)
+                    continue;
+                const auto bound = fillObj.value("boundVariables"_L1).toObject();
+                const auto colorRef = bound.value("color"_L1).toObject();
+                const auto varId = colorRef.value("id"_L1).toString();
+                if (!varId.isEmpty()) {
+                    shapeItem->setVariableBinding(u"fill"_s, varId);
+                    break;
+                }
+            }
 
             const auto strokes = nodeJson["strokes"_L1].toArray();
             // Effective stroke weight: individualStrokeWeights overrides
@@ -1750,6 +1768,24 @@ private:
                         }
 
                         shapeItem->setPen(pen);
+
+                        // Capture stroke colour variable binding (same shape
+                        // as fill: first visible SOLID stroke with
+                        // boundVariables.color).
+                        for (const auto &strokeVal : strokes) {
+                            const auto sObj = strokeVal.toObject();
+                            if (!sObj.value("visible"_L1).toBool(true))
+                                continue;
+                            if (sObj.value("type"_L1).toString() != "SOLID"_L1)
+                                continue;
+                            const auto bound = sObj.value("boundVariables"_L1).toObject();
+                            const auto colorRef = bound.value("color"_L1).toObject();
+                            const auto varId = colorRef.value("id"_L1).toString();
+                            if (!varId.isEmpty()) {
+                                shapeItem->setVariableBinding(u"stroke"_s, varId);
+                                break;
+                            }
+                        }
 
                         const auto strokeAlign = nodeJson["strokeAlign"_L1].toString();
                         if (strokeAlign == "INSIDE"_L1)
@@ -2286,6 +2322,9 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         result->setConstraints(src->constraints());
         result->setComponentName(src->componentName());
         result->setReferencedComponent(src->referencedComponent());
+        const auto bindings = src->variableBindings();
+        for (auto it = bindings.constBegin(); it != bindings.constEnd(); ++it)
+            result->setVariableBinding(it.key(), it.value());
     }
     return result;
 }
@@ -3220,6 +3259,11 @@ public:
         };
         collectFromBindings(fileJson.value("document"_L1).toObject());
 
+        // varId → token name resolved from whichever source succeeds. Used
+        // below to rewrite layer-item bindings from raw Figma ids to the
+        // names the QML exporter will reference (Theme.<tokenName>).
+        QHash<QString, QString> varIdToTokenName;
+
         const auto variablesJson = client.fetchVariablesLocal(fileKey);
         if (!variablesJson.contains("error"_L1)) {
             const auto meta = variablesJson.value("meta"_L1).toObject();
@@ -3294,7 +3338,9 @@ public:
                 } else {
                     continue;
                 }
-                tokens.insert(sanitize(name), token);
+                const auto qmlName = sanitize(name);
+                tokens.insert(qmlName, token);
+                varIdToTokenName.insert(varId, qmlName);
             }
             if (!tokens.isEmpty())
                 model->setDesignTokens(tokens);
@@ -3309,9 +3355,45 @@ public:
                 token.type = QPsdExporterTreeItemModel::DesignToken::Color;
                 token.value = it.value();
                 token.sourceId = it.key();
-                tokens.insert(u"color%1"_s.arg(++index, 3, 10, QChar('0'_L1)), token);
+                const auto qmlName = u"color%1"_s.arg(++index, 3, 10, QChar('0'_L1));
+                tokens.insert(qmlName, token);
+                varIdToTokenName.insert(it.key(), qmlName);
             }
             model->setDesignTokens(tokens);
+        }
+
+        // Rewrite raw Figma variable ids stored on each layer's
+        // variableBindings into the resolved Theme token names. Bindings
+        // whose variable id is unknown (e.g. external library variable not in
+        // this file) are dropped so the exporter falls back to the baked
+        // colour.
+        if (!varIdToTokenName.isEmpty()) {
+            std::function<void(const QModelIndex &)> rewriteBindings = [&](const QModelIndex &parentIndex) {
+                for (int row = 0; row < model->rowCount(parentIndex); ++row) {
+                    const QModelIndex idx = model->index(row, 0, parentIndex);
+                    if (auto *item = const_cast<QPsdAbstractLayerItem *>(model->layerItem(idx))) {
+                        const auto bindings = item->variableBindings();
+                        for (auto it = bindings.constBegin(); it != bindings.constEnd(); ++it) {
+                            const auto tokenName = varIdToTokenName.value(it.value());
+                            item->setVariableBinding(it.key(), tokenName);  // empty → removes
+                        }
+                    }
+                    rewriteBindings(idx);
+                }
+            };
+            rewriteBindings(QModelIndex());
+        } else {
+            // No tokens at all; clear any stale bindings so the exporter
+            // emits literal colours.
+            std::function<void(const QModelIndex &)> clearBindings = [&](const QModelIndex &parentIndex) {
+                for (int row = 0; row < model->rowCount(parentIndex); ++row) {
+                    const QModelIndex idx = model->index(row, 0, parentIndex);
+                    if (auto *item = const_cast<QPsdAbstractLayerItem *>(model->layerItem(idx)))
+                        item->clearVariableBindings();
+                    clearBindings(idx);
+                }
+            };
+            clearBindings(QModelIndex());
         }
 
         // Promote every COMPONENT master layer item to an ExportHint::Component
