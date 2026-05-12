@@ -1668,21 +1668,34 @@ private:
                 if (brush.style() != Qt::NoBrush)
                     shapeItem->setBrush(brush);
             }
-            // Capture a Variables binding for the primary fill colour: first
-            // visible SOLID fill carrying boundVariables.color wins. Stored
-            // as the raw Figma variable id; the post-import pass rewrites it
-            // to the resolved Theme token name.
+            // Capture Variables bindings on the primary visible fill. For
+            // SOLID fills the binding key is "fill"; for GRADIENT_* fills the
+            // per-stop binding keys are "fill.stop0..N". Stored as the raw
+            // Figma variable id; the post-import pass rewrites it to the
+            // resolved Theme token name.
             for (const auto &fillVal : fills) {
                 const auto fillObj = fillVal.toObject();
                 if (!fillObj.value("visible"_L1).toBool(true))
                     continue;
-                if (fillObj.value("type"_L1).toString() != "SOLID"_L1)
-                    continue;
-                const auto bound = fillObj.value("boundVariables"_L1).toObject();
-                const auto colorRef = bound.value("color"_L1).toObject();
-                const auto varId = colorRef.value("id"_L1).toString();
-                if (!varId.isEmpty()) {
-                    shapeItem->setVariableBinding(u"fill"_s, varId);
+                const auto fillType = fillObj.value("type"_L1).toString();
+                if (fillType == "SOLID"_L1) {
+                    const auto bound = fillObj.value("boundVariables"_L1).toObject();
+                    const auto colorRef = bound.value("color"_L1).toObject();
+                    const auto varId = colorRef.value("id"_L1).toString();
+                    if (!varId.isEmpty())
+                        shapeItem->setVariableBinding(u"fill"_s, varId);
+                    break;
+                }
+                if (fillType.startsWith("GRADIENT_"_L1)) {
+                    const auto stopsArr = fillObj.value("gradientStops"_L1).toArray();
+                    for (int si = 0; si < stopsArr.size(); ++si) {
+                        const auto stopObj = stopsArr.at(si).toObject();
+                        const auto bound = stopObj.value("boundVariables"_L1).toObject();
+                        const auto colorRef = bound.value("color"_L1).toObject();
+                        const auto varId = colorRef.value("id"_L1).toString();
+                        if (!varId.isEmpty())
+                            shapeItem->setVariableBinding(u"fill.stop%1"_s.arg(si), varId);
+                    }
                     break;
                 }
             }
@@ -1908,6 +1921,13 @@ private:
                 if (!eff.value("visible"_L1).toBool(true))
                     continue;
                 const auto effType = eff["type"_L1].toString();
+                auto captureShadowColorBinding = [&](const QString &bindingKey) {
+                    const auto bound = eff.value("boundVariables"_L1).toObject();
+                    const auto colorRef = bound.value("color"_L1).toObject();
+                    const auto varId = colorRef.value("id"_L1).toString();
+                    if (!varId.isEmpty())
+                        node.layerItem->setVariableBinding(bindingKey, varId);
+                };
                 if (effType == "DROP_SHADOW"_L1) {
                     const auto c = eff["color"_L1].toObject();
                     const auto offset = eff["offset"_L1].toObject();
@@ -1922,6 +1942,7 @@ private:
                     shadow.insert(QLatin1String("spread"), eff["spread"_L1].toDouble(0));
                     shadow.insert(QLatin1String("size"), eff["radius"_L1].toDouble(0));
                     node.layerItem->setDropShadow(shadow);
+                    captureShadowColorBinding(u"dropShadow.color"_s);
                 } else if (effType == "INNER_SHADOW"_L1) {
                     const auto c = eff["color"_L1].toObject();
                     const auto offset = eff["offset"_L1].toObject();
@@ -1935,6 +1956,7 @@ private:
                     shadow.insert(QLatin1String("distance"), std::sqrt(ox * ox + oy * oy));
                     shadow.insert(QLatin1String("size"), eff["radius"_L1].toDouble(0));
                     node.layerItem->setInnerShadow(shadow);
+                    captureShadowColorBinding(u"innerShadow.color"_s);
                 } else if (effType == "LAYER_BLUR"_L1) {
                     node.layerItem->setLayerBlur(eff["radius"_L1].toDouble(0));
                 }
@@ -3233,26 +3255,47 @@ public:
         // every variable id referenced by a fill. Used when the variables API
         // is forbidden so the Theme.qml still contains usable colour tokens.
         std::function<void(const QJsonObject &)> collectFromBindings = [&](const QJsonObject &node) {
+            auto captureColor = [&](const QString &varId, const QJsonObject &colorObj) {
+                if (varId.isEmpty() || sampleColorByVarId.contains(varId))
+                    return;
+                if (!colorObj.contains("r"_L1))
+                    return;
+                sampleColorByVarId.insert(varId, QColor::fromRgbF(
+                    colorObj.value("r"_L1).toDouble(),
+                    colorObj.value("g"_L1).toDouble(),
+                    colorObj.value("b"_L1).toDouble(),
+                    colorObj.value("a"_L1).toDouble(1.0)));
+            };
             auto scanPaintArray = [&](const QJsonArray &paints) {
                 for (const auto &paintVal : paints) {
                     const auto paint = paintVal.toObject();
-                    const auto bound = paint.value("boundVariables"_L1).toObject();
-                    const auto colorRef = bound.value("color"_L1).toObject();
-                    const auto varId = colorRef.value("id"_L1).toString();
-                    if (varId.isEmpty() || sampleColorByVarId.contains(varId))
-                        continue;
-                    const auto colorObj = paint.value("color"_L1).toObject();
-                    if (colorObj.contains("r"_L1)) {
-                        sampleColorByVarId.insert(varId, QColor::fromRgbF(
-                            colorObj.value("r"_L1).toDouble(),
-                            colorObj.value("g"_L1).toDouble(),
-                            colorObj.value("b"_L1).toDouble(),
-                            colorObj.value("a"_L1).toDouble(1.0)));
+                    // Solid: paint.boundVariables.color
+                    captureColor(paint.value("boundVariables"_L1).toObject()
+                                      .value("color"_L1).toObject()
+                                      .value("id"_L1).toString(),
+                                 paint.value("color"_L1).toObject());
+                    // Gradient: each stop has its own optional boundVariables.color.
+                    const auto stops = paint.value("gradientStops"_L1).toArray();
+                    for (const auto &stopVal : stops) {
+                        const auto stop = stopVal.toObject();
+                        captureColor(stop.value("boundVariables"_L1).toObject()
+                                          .value("color"_L1).toObject()
+                                          .value("id"_L1).toString(),
+                                     stop.value("color"_L1).toObject());
                     }
                 }
             };
             scanPaintArray(node.value("fills"_L1).toArray());
             scanPaintArray(node.value("strokes"_L1).toArray());
+            // Effects: drop / inner shadow colours can be bound too.
+            const auto effects = node.value("effects"_L1).toArray();
+            for (const auto &efVal : effects) {
+                const auto ef = efVal.toObject();
+                captureColor(ef.value("boundVariables"_L1).toObject()
+                                  .value("color"_L1).toObject()
+                                  .value("id"_L1).toString(),
+                             ef.value("color"_L1).toObject());
+            }
             const auto children = node.value("children"_L1).toArray();
             for (const auto &c : children)
                 collectFromBindings(c.toObject());

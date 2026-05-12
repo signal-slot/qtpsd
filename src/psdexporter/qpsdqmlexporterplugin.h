@@ -115,6 +115,15 @@ protected:
                            const QColor &fallback,
                            ImportData *imports = nullptr) const;
 
+    // Per-gradient-stop variant of colorOrBinding: the binding key is
+    // composed as "<prefix>.stop<index>" so importers can record one token
+    // per stop. `prefix` is typically "fill" or "stroke".
+    QString gradientStopColor(const QPsdAbstractLayerItem *item,
+                              const QString &prefix,
+                              int stopIndex,
+                              const QColor &fallback,
+                              ImportData *imports = nullptr) const;
+
     // Recursively clear element.layers (the layer.effect chain) so a previously
     // accumulated effect tree won't be serialised. Called when an element is
     // re-wrapped into a different container.

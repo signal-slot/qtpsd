@@ -58,6 +58,15 @@ QString QPsdQmlExporterPlugin::colorOrBinding(const QPsdAbstractLayerItem *item,
     return u"\"%1\""_s.arg(fallback.name(QColor::HexArgb));
 }
 
+QString QPsdQmlExporterPlugin::gradientStopColor(const QPsdAbstractLayerItem *item,
+                                                 const QString &prefix,
+                                                 int stopIndex,
+                                                 const QColor &fallback,
+                                                 ImportData *imports) const
+{
+    return colorOrBinding(item, u"%1.stop%2"_s.arg(prefix).arg(stopIndex), fallback, imports);
+}
+
 QString QPsdQmlExporterPlugin::blendModeString(QPsdBlend::Mode mode)
 {
     switch (mode) {
@@ -563,7 +572,7 @@ bool QPsdQmlExporterPlugin::outputBase(const QModelIndex &index, Element *elemen
             if (effectMode() == Qt5Effects) {
                 imports->insert("Qt5Compat.GraphicalEffects as GE");
                 effect.type = "GE.DropShadow";
-                effect.properties.insert("color", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
+                effect.properties.insert("color", colorOrBinding(item, u"dropShadow.color"_s, shadow->color, imports));
                 effect.properties.insert("horizontalOffset", offset.x());
                 effect.properties.insert("verticalOffset", offset.y());
                 effect.properties.insert("spread", shadow->spread * unitScale);
@@ -572,7 +581,7 @@ bool QPsdQmlExporterPlugin::outputBase(const QModelIndex &index, Element *elemen
                 imports->insert("QtQuick.Effects");
                 effect.type = "MultiEffect";
                 effect.properties.insert("shadowEnabled", true);
-                effect.properties.insert("shadowColor", u"\"%1\""_s.arg(shadow->color.name(QColor::HexArgb)));
+                effect.properties.insert("shadowColor", colorOrBinding(item, u"dropShadow.color"_s, shadow->color, imports));
                 effect.properties.insert("shadowHorizontalOffset", offset.x());
                 effect.properties.insert("shadowVerticalOffset", offset.y());
                 effect.properties.insert("shadowBlur", shadow->blur * unitScale);
@@ -1592,11 +1601,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     gradient.type = "gradient: Gradient";
                     if (simpleHorizontal)
                         gradient.properties.insert("orientation", "Gradient.Horizontal"_L1);
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", reversed ? 1.0 - stop.first : stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         gradient.children.append(stopElement);
                     }
                     element->type = "Rectangle";
@@ -1613,11 +1622,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     effect.properties.insert("end", QPointF(gradEnd.x() * horizontalScale, gradEnd.y() * verticalScale));
                     Element effectGradient;
                     effectGradient.type = "gradient: Gradient";
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         effectGradient.children.append(stopElement);
                     }
                     effect.children.append(effectGradient);
@@ -1638,11 +1647,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     fillGrad.properties.insert("y1", gradStart.y() * verticalScale);
                     fillGrad.properties.insert("x2", gradEnd.x() * horizontalScale);
                     fillGrad.properties.insert("y2", gradEnd.y() * verticalScale);
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -1683,11 +1692,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     effect.properties.insert("verticalRadius", radial->radius() * verticalScale);
                     Element gradient;
                     gradient.type = "gradient: Gradient";
-                    for (const auto &stop : radial->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         gradient.children.append(stopElement);
                     }
                     effect.children.append(gradient);
@@ -1710,11 +1719,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     fillGrad.properties.insert("focalX", radial->focalPoint().x() * horizontalScale);
                     fillGrad.properties.insert("focalY", radial->focalPoint().y() * verticalScale);
                     fillGrad.properties.insert("focalRadius", radial->focalRadius() * std::max(horizontalScale, verticalScale));
-                    for (const auto &stop : radial->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -1754,11 +1763,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 fillGrad.properties.insert("centerX", conical->center().x() * horizontalScale);
                 fillGrad.properties.insert("centerY", conical->center().y() * verticalScale);
                 fillGrad.properties.insert("angle", conical->angle());
-                for (const auto &stop : conical->stops()) {
+                int _stopIdx = 0; for (const auto &stop : conical->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     fillGrad.children.append(stopElement);
                 }
                 shapePath.children.append(fillGrad);
@@ -1872,11 +1881,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     gradient.type = "gradient: Gradient";
                     if (simpleHorizontal)
                         gradient.properties.insert("orientation", "Gradient.Horizontal"_L1);
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", reversed ? 1.0 - stop.first : stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         gradient.children.append(stopElement);
                     }
                     element->type = "Rectangle";
@@ -1895,11 +1904,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     effect.properties.insert("end", QPointF(gradEnd.x() * horizontalScale, gradEnd.y() * verticalScale));
                     Element effectGradient;
                     effectGradient.type = "gradient: Gradient";
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         effectGradient.children.append(stopElement);
                     }
                     effect.children.append(effectGradient);
@@ -1927,11 +1936,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     fillGrad.properties.insert("y1", gradStart.y() * verticalScale);
                     fillGrad.properties.insert("x2", gradEnd.x() * horizontalScale);
                     fillGrad.properties.insert("y2", gradEnd.y() * verticalScale);
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -1979,11 +1988,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     effect.properties.insert("verticalRadius", radial->radius() * verticalScale);
                     Element gradient;
                     gradient.type = "gradient: Gradient";
-                    for (const auto &stop : radial->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         gradient.children.append(stopElement);
                     }
                     effect.children.append(gradient);
@@ -2013,11 +2022,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     fillGrad.properties.insert("focalX", radial->focalPoint().x() * horizontalScale);
                     fillGrad.properties.insert("focalY", radial->focalPoint().y() * verticalScale);
                     fillGrad.properties.insert("focalRadius", radial->focalRadius() * std::max(horizontalScale, verticalScale));
-                    for (const auto &stop : radial->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -2064,11 +2073,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 fillGrad.properties.insert("centerX", conical->center().x() * horizontalScale);
                 fillGrad.properties.insert("centerY", conical->center().y() * verticalScale);
                 fillGrad.properties.insert("angle", conical->angle());
-                for (const auto &stop : conical->stops()) {
+                int _stopIdx = 0; for (const auto &stop : conical->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     fillGrad.children.append(stopElement);
                 }
                 shapePath.children.append(fillGrad);
@@ -2284,11 +2293,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 bool simpleVertical = qFuzzyCompare(gradStart.x(), gradEnd.x());
                 Element gradient;
                 gradient.type = "gradient: Gradient";
-                for (const auto &stop : linear->stops()) {
+                int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     gradient.children.append(stopElement);
                 }
 
@@ -2331,11 +2340,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     fillGrad.properties.insert("y1", gradStart.y() * verticalScale);
                     fillGrad.properties.insert("x2", gradEnd.x() * horizontalScale);
                     fillGrad.properties.insert("y2", gradEnd.y() * verticalScale);
-                    for (const auto &stop : linear->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -2373,11 +2382,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     effect.properties.insert("verticalRadius", radial->radius() * verticalScale);
                     Element gradient;
                     gradient.type = "gradient: Gradient";
-                    for (const auto &stop : radial->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         gradient.children.append(stopElement);
                     }
                     effect.children.append(gradient);
@@ -2407,11 +2416,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                     fillGrad.properties.insert("focalX", radial->focalPoint().x() * horizontalScale);
                     fillGrad.properties.insert("focalY", radial->focalPoint().y() * verticalScale);
                     fillGrad.properties.insert("focalRadius", radial->focalRadius() * std::max(horizontalScale, verticalScale));
-                    for (const auto &stop : radial->stops()) {
+                    int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                         Element stopElement;
                         stopElement.type = "GradientStop";
                         stopElement.properties.insert("position", stop.first);
-                        stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                        stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                         fillGrad.children.append(stopElement);
                     }
                     shapePath.children.append(fillGrad);
@@ -2454,11 +2463,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 fillGrad.properties.insert("centerX", conical->center().x() * horizontalScale);
                 fillGrad.properties.insert("centerY", conical->center().y() * verticalScale);
                 fillGrad.properties.insert("angle", conical->angle());
-                for (const auto &stop : conical->stops()) {
+                int _stopIdx = 0; for (const auto &stop : conical->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     fillGrad.children.append(stopElement);
                 }
                 shapePath.children.append(fillGrad);
@@ -2679,11 +2688,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 gradient.properties.insert("y1", gradStart.y() * verticalScale);
                 gradient.properties.insert("x2", gradEnd.x() * horizontalScale);
                 gradient.properties.insert("y2", gradEnd.y() * verticalScale);
-                for (const auto &stop : linear->stops()) {
+                int _stopIdx = 0; for (const auto &stop : linear->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     gradient.children.append(stopElement);
                 }
                 shapePath.children.append(gradient);
@@ -2698,11 +2707,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 gradient.properties.insert("focalX", radial->focalPoint().x() * horizontalScale);
                 gradient.properties.insert("focalY", radial->focalPoint().y() * verticalScale);
                 gradient.properties.insert("focalRadius", radial->focalRadius() * std::max(horizontalScale, verticalScale));
-                for (const auto &stop : radial->stops()) {
+                int _stopIdx = 0; for (const auto &stop : radial->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     gradient.children.append(stopElement);
                 }
                 shapePath.children.append(gradient);
@@ -2714,11 +2723,11 @@ bool QPsdQmlExporterPlugin::outputShape(const QModelIndex &shapeIndex, Element *
                 gradient.properties.insert("centerX", conical->center().x() * horizontalScale);
                 gradient.properties.insert("centerY", conical->center().y() * verticalScale);
                 gradient.properties.insert("angle", conical->angle());
-                for (const auto &stop : conical->stops()) {
+                int _stopIdx = 0; for (const auto &stop : conical->stops()) {
                     Element stopElement;
                     stopElement.type = "GradientStop";
                     stopElement.properties.insert("position", stop.first);
-                    stopElement.properties.insert("color", u"\"%1\""_s.arg(stop.second.name(QColor::HexArgb)));
+                    stopElement.properties.insert("color", gradientStopColor(shape, u"fill"_s, _stopIdx++, stop.second, imports));
                     gradient.children.append(stopElement);
                 }
                 shapePath.children.append(gradient);
