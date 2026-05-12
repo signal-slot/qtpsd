@@ -96,6 +96,16 @@ public:
         return getJson(url);
     }
 
+    // Local variables (design tokens) for the file. Requires the
+    // `file_variables:read` scope on the access token; returns {"error": ...}
+    // with HTTP 403 otherwise. Callers should treat absence of variables
+    // gracefully.
+    QJsonObject fetchVariablesLocal(const QString &fileKey)
+    {
+        QUrl url(u"https://api.figma.com/v1/files/%1/variables/local"_s.arg(fileKey));
+        return getJson(url);
+    }
+
     QImage downloadImage(const QUrl &url)
     {
         QNetworkRequest request(url);
@@ -3111,6 +3121,135 @@ public:
         model->setSourceModel(widgetModel);
         model->setSize(figmaModel.size());
         model->setCanvasColor(figmaModel.canvasColor());
+
+        // Design tokens (Figma Variables). Best-effort: requires the
+        // file_variables:read token scope; treated as absent on failure so
+        // restricted tokens still produce a valid (token-free) export.
+        QMap<QString, QPsdExporterTreeItemModel::DesignToken> fallbackTokens;
+        QHash<QString, QColor> sampleColorByVarId;
+        // Walk the document once to capture a representative baked colour for
+        // every variable id referenced by a fill. Used when the variables API
+        // is forbidden so the Theme.qml still contains usable colour tokens.
+        std::function<void(const QJsonObject &)> collectFromBindings = [&](const QJsonObject &node) {
+            auto scanPaintArray = [&](const QJsonArray &paints) {
+                for (const auto &paintVal : paints) {
+                    const auto paint = paintVal.toObject();
+                    const auto bound = paint.value("boundVariables"_L1).toObject();
+                    const auto colorRef = bound.value("color"_L1).toObject();
+                    const auto varId = colorRef.value("id"_L1).toString();
+                    if (varId.isEmpty() || sampleColorByVarId.contains(varId))
+                        continue;
+                    const auto colorObj = paint.value("color"_L1).toObject();
+                    if (colorObj.contains("r"_L1)) {
+                        sampleColorByVarId.insert(varId, QColor::fromRgbF(
+                            colorObj.value("r"_L1).toDouble(),
+                            colorObj.value("g"_L1).toDouble(),
+                            colorObj.value("b"_L1).toDouble(),
+                            colorObj.value("a"_L1).toDouble(1.0)));
+                    }
+                }
+            };
+            scanPaintArray(node.value("fills"_L1).toArray());
+            scanPaintArray(node.value("strokes"_L1).toArray());
+            const auto children = node.value("children"_L1).toArray();
+            for (const auto &c : children)
+                collectFromBindings(c.toObject());
+        };
+        collectFromBindings(fileJson.value("document"_L1).toObject());
+
+        const auto variablesJson = client.fetchVariablesLocal(fileKey);
+        if (!variablesJson.contains("error"_L1)) {
+            const auto meta = variablesJson.value("meta"_L1).toObject();
+            const auto variableDefs = meta.value("variables"_L1).toObject();
+            const auto collectionDefs = meta.value("variableCollections"_L1).toObject();
+            // Pick the default mode for each collection.
+            QHash<QString, QString> defaultModeByCollection;
+            for (auto it = collectionDefs.constBegin(); it != collectionDefs.constEnd(); ++it) {
+                const auto def = it.value().toObject();
+                defaultModeByCollection.insert(it.key(), def.value("defaultModeId"_L1).toString());
+            }
+            QMap<QString, QPsdExporterTreeItemModel::DesignToken> tokens;
+            QSet<QString> usedNames;
+            auto sanitize = [&usedNames](const QString &raw) {
+                QString s;
+                for (QChar c : raw) {
+                    if (c.isLetterOrNumber())
+                        s.append(c);
+                    else if (s.isEmpty() || s.endsWith('_'_L1))
+                        continue;
+                    else
+                        s.append('_'_L1);
+                }
+                while (s.endsWith('_'_L1))
+                    s.chop(1);
+                if (s.isEmpty() || s.at(0).isDigit())
+                    s.prepend('_'_L1);
+                if (!s.isEmpty())
+                    s[0] = s.at(0).toLower();
+                QString unique = s;
+                int n = 1;
+                while (usedNames.contains(unique))
+                    unique = u"%1_%2"_s.arg(s).arg(++n);
+                usedNames.insert(unique);
+                return unique;
+            };
+            for (auto it = variableDefs.constBegin(); it != variableDefs.constEnd(); ++it) {
+                const auto varId = it.key();
+                const auto def = it.value().toObject();
+                const auto name = def.value("name"_L1).toString();
+                const auto resolvedType = def.value("resolvedType"_L1).toString();
+                const auto collectionId = def.value("variableCollectionId"_L1).toString();
+                const auto modeId = defaultModeByCollection.value(collectionId);
+                const auto valuesByMode = def.value("valuesByMode"_L1).toObject();
+                if (modeId.isEmpty() || !valuesByMode.contains(modeId))
+                    continue;
+                const auto rawValue = valuesByMode.value(modeId);
+                QPsdExporterTreeItemModel::DesignToken token;
+                token.sourceId = varId;
+                if (resolvedType == "COLOR"_L1) {
+                    token.type = QPsdExporterTreeItemModel::DesignToken::Color;
+                    const auto colorObj = rawValue.toObject();
+                    if (colorObj.contains("r"_L1)) {
+                        QColor c = QColor::fromRgbF(
+                            colorObj.value("r"_L1).toDouble(),
+                            colorObj.value("g"_L1).toDouble(),
+                            colorObj.value("b"_L1).toDouble(),
+                            colorObj.value("a"_L1).toDouble(1.0));
+                        token.value = c;
+                    } else {
+                        continue;
+                    }
+                } else if (resolvedType == "FLOAT"_L1) {
+                    token.type = QPsdExporterTreeItemModel::DesignToken::Number;
+                    token.value = rawValue.toDouble();
+                } else if (resolvedType == "STRING"_L1) {
+                    token.type = QPsdExporterTreeItemModel::DesignToken::String;
+                    token.value = rawValue.toString();
+                } else if (resolvedType == "BOOLEAN"_L1) {
+                    token.type = QPsdExporterTreeItemModel::DesignToken::Boolean;
+                    token.value = rawValue.toBool();
+                } else {
+                    continue;
+                }
+                tokens.insert(sanitize(name), token);
+            }
+            if (!tokens.isEmpty())
+                model->setDesignTokens(tokens);
+        } else if (!sampleColorByVarId.isEmpty()) {
+            // Fallback: variables API forbidden, but boundVariables references
+            // exist. Emit opaque-named colour tokens from the baked usage so
+            // the Theme.qml still carries a usable palette.
+            QMap<QString, QPsdExporterTreeItemModel::DesignToken> tokens;
+            int index = 0;
+            for (auto it = sampleColorByVarId.constBegin(); it != sampleColorByVarId.constEnd(); ++it) {
+                QPsdExporterTreeItemModel::DesignToken token;
+                token.type = QPsdExporterTreeItemModel::DesignToken::Color;
+                token.value = it.value();
+                token.sourceId = it.key();
+                tokens.insert(u"color%1"_s.arg(++index, 3, 10, QChar('0'_L1)), token);
+            }
+            model->setDesignTokens(tokens);
+        }
 
         // Promote every COMPONENT master layer item to an ExportHint::Component
         // so the QML-emitting exporters write a standalone .ui.qml. INSTANCE

@@ -174,6 +174,20 @@ public:
     void loadHints(const QString &hintFilePath);
     void saveHints(const QString &hintFilePath);
 
+    // Design tokens (Figma Variables). Keyed by a QML-safe token name; the
+    // value carries the resolved primitive (QColor for color tokens, double
+    // for number tokens, QString for string tokens, bool for boolean tokens).
+    // Empty when the input format has no design-token concept or the
+    // importer could not access them.
+    struct DesignToken {
+        enum Type { Color, Number, String, Boolean };
+        Type type = Color;
+        QVariant value;
+        QString sourceId;
+    };
+    QMap<QString, DesignToken> designTokens() const;
+    void setDesignTokens(const QMap<QString, DesignToken> &tokens);
+
 public slots:
     void load(const QString &fileName);
     void save();

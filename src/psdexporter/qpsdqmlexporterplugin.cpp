@@ -183,6 +183,55 @@ bool QPsdQmlExporterPlugin::exportTo(const QPsdExporterTreeItemModel *model,  co
     if (!saveTo("MainWindow.ui", &window, imports, exports))
         return false;
 
+    // Emit Theme.qml when the input carries design tokens (Figma Variables).
+    // Pure documentation for now — generated layers still use baked values.
+    // Wiring boundVariables onto fill / stroke / text colours is intentionally
+    // a follow-up: this lets a designer hand off a token palette without
+    // forcing every emitted property through a rebinding pass.
+    const auto tokens = model->designTokens();
+    if (!tokens.isEmpty()) {
+        QFile theme(dir.absoluteFilePath(u"Theme.qml"_s));
+        if (theme.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QTextStream out(&theme);
+            writeLicenseHeader(out);
+            out << "pragma Singleton\n";
+            out << "import QtQuick\n\n";
+            out << "QtObject {\n";
+            for (auto it = tokens.constBegin(); it != tokens.constEnd(); ++it) {
+                const auto &token = it.value();
+                switch (token.type) {
+                case QPsdExporterTreeItemModel::DesignToken::Color: {
+                    const auto c = token.value.value<QColor>();
+                    out << "    readonly property color " << it.key()
+                        << ": \"" << c.name(QColor::HexArgb) << "\"\n";
+                    break;
+                }
+                case QPsdExporterTreeItemModel::DesignToken::Number:
+                    out << "    readonly property real " << it.key()
+                        << ": " << token.value.toDouble() << "\n";
+                    break;
+                case QPsdExporterTreeItemModel::DesignToken::String:
+                    out << "    readonly property string " << it.key()
+                        << ": \"" << token.value.toString() << "\"\n";
+                    break;
+                case QPsdExporterTreeItemModel::DesignToken::Boolean:
+                    out << "    readonly property bool " << it.key()
+                        << ": " << (token.value.toBool() ? "true" : "false") << "\n";
+                    break;
+                }
+            }
+            out << "}\n";
+            theme.close();
+            // Singleton registration so consumers can `import \".\"; Theme.tokenName`.
+            QFile qmldir(dir.absoluteFilePath(u"qmldir"_s));
+            if (qmldir.open(QIODevice::WriteOnly | QIODevice::Text)) {
+                QTextStream q(&qmldir);
+                q << "singleton Theme 1.0 Theme.qml\n";
+                qmldir.close();
+            }
+        }
+    }
+
     onAfterExport(config);
     return true;
 }

@@ -36,6 +36,7 @@ public:
 
     QMap<QString, ExportHint> layerHints;
     QMap<QString, QVariantMap> exportHints;
+    QMap<QString, QPsdExporterTreeItemModel::DesignToken> designTokens;
 
     // Fallback members for non-PSD data sources
     QSize size;
@@ -263,6 +264,16 @@ QVariantMap QPsdExporterTreeItemModel::exportHint(const QString& exporterKey) co
 void QPsdExporterTreeItemModel::updateExportHint(const QString &exporterKey, const QVariantMap &hint)
 {
     d->exportHints.insert(exporterKey, hint);
+}
+
+QMap<QString, QPsdExporterTreeItemModel::DesignToken> QPsdExporterTreeItemModel::designTokens() const
+{
+    return d->designTokens;
+}
+
+void QPsdExporterTreeItemModel::setDesignTokens(const QMap<QString, DesignToken> &tokens)
+{
+    d->designTokens = tokens;
 }
 
 QPsdExporterTreeItemModel::ExportHint QPsdExporterTreeItemModel::layerHint(const QModelIndex &index) const
