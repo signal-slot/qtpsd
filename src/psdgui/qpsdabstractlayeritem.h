@@ -94,6 +94,18 @@ public:
     AutoLayoutChild autoLayoutChild() const;
     void setAutoLayoutChild(const AutoLayoutChild &autoLayoutChild);
 
+    // Figma constraints. Per-axis: how a child reacts when the parent frame
+    // resizes. Scale is left as Min for now since it requires per-instance
+    // proportional metrics that Qt anchors can't express directly.
+    struct Constraints {
+        enum Axis { Min, Max, Center, Stretch, Scale };
+        Axis horizontal = Min;
+        Axis vertical = Min;
+        bool set = false;
+    };
+    Constraints constraints() const;
+    void setConstraints(const Constraints &constraints);
+
     QImage image() const;
     QImage applyGradient(const QImage &image) const;
     QImage transparencyMask() const;

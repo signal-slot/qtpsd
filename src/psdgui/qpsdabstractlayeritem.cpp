@@ -49,6 +49,7 @@ public:
     QVariantList effects;
     AutoLayout autoLayout;
     AutoLayoutChild autoLayoutChild;
+    Constraints constraints;
 };
 
 QPsdAbstractLayerItem::QPsdAbstractLayerItem(int width, int height)
@@ -763,6 +764,16 @@ QPsdAbstractLayerItem::AutoLayoutChild QPsdAbstractLayerItem::autoLayoutChild() 
 void QPsdAbstractLayerItem::setAutoLayoutChild(const AutoLayoutChild &autoLayoutChild)
 {
     d->autoLayoutChild = autoLayoutChild;
+}
+
+QPsdAbstractLayerItem::Constraints QPsdAbstractLayerItem::constraints() const
+{
+    return d->constraints;
+}
+
+void QPsdAbstractLayerItem::setConstraints(const Constraints &constraints)
+{
+    d->constraints = constraints;
 }
 
 QT_END_NAMESPACE

@@ -1436,21 +1436,43 @@ private:
                 quintptr childId = processNode(childJson, nodeId, childOffset);
                 if (childId != 0)
                     node.childIds.append(childId);
-                if (autoLayout.isValid() && childId != 0) {
-                    if (auto *childItem = m_nodes.value(childId).layerItem) {
-                        QPsdAbstractLayerItem::AutoLayoutChild alc;
-                        auto sizingFromString = [](const QString &v) {
-                            if (v == "FILL"_L1) return AL::Fill;
-                            if (v == "HUG"_L1) return AL::Hug;
-                            return AL::Fixed;
-                        };
-                        alc.horizontal = sizingFromString(childJson.value("layoutSizingHorizontal"_L1).toString());
-                        alc.vertical = sizingFromString(childJson.value("layoutSizingVertical"_L1).toString());
-                        alc.grow = childJson.value("layoutGrow"_L1).toDouble(0);
-                        alc.stretchSelf = childJson.value("layoutAlign"_L1).toString() == "STRETCH"_L1;
-                        alc.set = true;
-                        childItem->setAutoLayoutChild(alc);
-                    }
+                if (childId == 0)
+                    continue;
+                auto *childItem = m_nodes.value(childId).layerItem;
+                if (!childItem)
+                    continue;
+                if (autoLayout.isValid()) {
+                    QPsdAbstractLayerItem::AutoLayoutChild alc;
+                    auto sizingFromString = [](const QString &v) {
+                        if (v == "FILL"_L1) return AL::Fill;
+                        if (v == "HUG"_L1) return AL::Hug;
+                        return AL::Fixed;
+                    };
+                    alc.horizontal = sizingFromString(childJson.value("layoutSizingHorizontal"_L1).toString());
+                    alc.vertical = sizingFromString(childJson.value("layoutSizingVertical"_L1).toString());
+                    alc.grow = childJson.value("layoutGrow"_L1).toDouble(0);
+                    alc.stretchSelf = childJson.value("layoutAlign"_L1).toString() == "STRETCH"_L1;
+                    alc.set = true;
+                    childItem->setAutoLayoutChild(alc);
+                }
+                // Constraints apply regardless of Auto Layout; the exporter
+                // decides whether to honour them (Figma's docs say Auto
+                // Layout wins where both are set).
+                const auto constraintsJson = childJson.value("constraints"_L1).toObject();
+                if (!constraintsJson.isEmpty()) {
+                    using C = QPsdAbstractLayerItem::Constraints;
+                    auto mapAxis = [](const QString &v) {
+                        if (v == "MAX"_L1) return C::Max;
+                        if (v == "CENTER"_L1) return C::Center;
+                        if (v == "LEFT_RIGHT"_L1 || v == "TOP_BOTTOM"_L1) return C::Stretch;
+                        if (v == "SCALE"_L1) return C::Scale;
+                        return C::Min;
+                    };
+                    C c;
+                    c.horizontal = mapAxis(constraintsJson.value("horizontal"_L1).toString());
+                    c.vertical = mapAxis(constraintsJson.value("vertical"_L1).toString());
+                    c.set = true;
+                    childItem->setConstraints(c);
                 }
             }
 
@@ -2127,6 +2149,7 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
     if (result) {
         result->setAutoLayout(src->autoLayout());
         result->setAutoLayoutChild(src->autoLayoutChild());
+        result->setConstraints(src->constraints());
     }
     return result;
 }

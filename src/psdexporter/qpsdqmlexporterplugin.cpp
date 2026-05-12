@@ -264,7 +264,93 @@ bool QPsdQmlExporterPlugin::outputBase(const QModelIndex &index, Element *elemen
     } else if (rect.isEmpty()) {
         element->properties.insert("anchors.fill", "parent");
     } else {
-        outputRect(rect, element);
+        // Figma constraints (per-axis resize behaviour). Only applied when no
+        // explicit anchor hint is set and the parent has no Auto Layout
+        // policy — Auto Layout supersedes constraints in Figma.
+        const auto layerConstraints = item ? item->constraints()
+                                           : QPsdAbstractLayerItem::Constraints{};
+        bool useConstraints = layerConstraints.set;
+        if (useConstraints && index.parent().isValid()) {
+            if (const auto *parentItem = model()->layerItem(index.parent()))
+                useConstraints = !parentItem->autoLayout().isValid();
+        }
+        if (useConstraints) {
+            QSizeF parentSize;
+            if (index.parent().isValid())
+                parentSize = model()->rect(index.parent()).size();
+            else
+                parentSize = canvasSize();
+            using C = QPsdAbstractLayerItem::Constraints;
+            bool stretchH = false;
+            bool stretchV = false;
+            switch (layerConstraints.horizontal) {
+            case C::Min: case C::Scale:
+                element->properties.insert("anchors.left", "parent.left");
+                if (rect.x() != 0)
+                    element->properties.insert("anchors.leftMargin", rect.x() * horizontalScale);
+                break;
+            case C::Max: {
+                element->properties.insert("anchors.right", "parent.right");
+                const qreal m = parentSize.width() - rect.x() - rect.width();
+                if (!qFuzzyIsNull(m))
+                    element->properties.insert("anchors.rightMargin", m * horizontalScale);
+                break; }
+            case C::Center: {
+                element->properties.insert("anchors.horizontalCenter", "parent.horizontalCenter");
+                const qreal off = rect.x() + rect.width() / 2.0 - parentSize.width() / 2.0;
+                if (!qFuzzyIsNull(off))
+                    element->properties.insert("anchors.horizontalCenterOffset", off * horizontalScale);
+                break; }
+            case C::Stretch: {
+                element->properties.insert("anchors.left", "parent.left");
+                if (rect.x() != 0)
+                    element->properties.insert("anchors.leftMargin", rect.x() * horizontalScale);
+                element->properties.insert("anchors.right", "parent.right");
+                const qreal m = parentSize.width() - rect.x() - rect.width();
+                if (!qFuzzyIsNull(m))
+                    element->properties.insert("anchors.rightMargin", m * horizontalScale);
+                stretchH = true;
+                break; }
+            }
+            switch (layerConstraints.vertical) {
+            case C::Min: case C::Scale:
+                element->properties.insert("anchors.top", "parent.top");
+                if (rect.y() != 0)
+                    element->properties.insert("anchors.topMargin", rect.y() * verticalScale);
+                break;
+            case C::Max: {
+                element->properties.insert("anchors.bottom", "parent.bottom");
+                const qreal m = parentSize.height() - rect.y() - rect.height();
+                if (!qFuzzyIsNull(m))
+                    element->properties.insert("anchors.bottomMargin", m * verticalScale);
+                break; }
+            case C::Center: {
+                element->properties.insert("anchors.verticalCenter", "parent.verticalCenter");
+                const qreal off = rect.y() + rect.height() / 2.0 - parentSize.height() / 2.0;
+                if (!qFuzzyIsNull(off))
+                    element->properties.insert("anchors.verticalCenterOffset", off * verticalScale);
+                break; }
+            case C::Stretch: {
+                element->properties.insert("anchors.top", "parent.top");
+                if (rect.y() != 0)
+                    element->properties.insert("anchors.topMargin", rect.y() * verticalScale);
+                element->properties.insert("anchors.bottom", "parent.bottom");
+                const qreal m = parentSize.height() - rect.y() - rect.height();
+                if (!qFuzzyIsNull(m))
+                    element->properties.insert("anchors.bottomMargin", m * verticalScale);
+                stretchV = true;
+                break; }
+            }
+            // Two-edge stretch determines size from anchors; explicit width/
+            // height would conflict. Single-edge or center anchors still need
+            // an explicit size on the corresponding axis.
+            if (!stretchH)
+                element->properties.insert("width", rect.width() * horizontalScale);
+            if (!stretchV)
+                element->properties.insert("height", rect.height() * verticalScale);
+        } else {
+            outputRect(rect, element);
+        }
     }
 
     if (auto opac = displayOpacity(item))
