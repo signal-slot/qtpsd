@@ -9,6 +9,7 @@ add_subdirectory(figma)
 # Skip them for WASM builds or when explicitly disabled
 if(NOT EMSCRIPTEN AND NOT QT_PSD_SKIP_EXPORTER_PLUGINS)
     add_subdirectory(qtquick)
+    add_subdirectory(qtformcu)
     add_subdirectory(slint)
     add_subdirectory(flutter)
     add_subdirectory(reactnative)

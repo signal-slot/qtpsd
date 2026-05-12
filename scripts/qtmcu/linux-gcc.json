@@ -1,0 +1,58 @@
+{
+    "id": "linux-gcc",
+    "name": "Linux (GCC)",
+    "description": "Preview Qt for MCUs project on Linux using system Qt and GCC",
+    "variables": [
+        { "name": "QT_DIR",            "value": "${env:QT_DIR}" },
+        { "name": "QUL_ROOT",          "value": "${env:QUL_ROOT}" },
+        { "name": "CMAKE",             "value": "${env:CMAKE}" },
+        { "name": "NINJA",             "value": "${env:NINJA}" },
+        { "name": "QMLPROJECTEXPORTER", "value": "${QUL_ROOT}/bin/qmlprojectexporter" },
+        { "name": "QUL_INCLUDE_FOLDER", "value": "${QUL_ROOT}/include/qul" },
+        { "name": "CMAKE_PREFIX_PATH", "value": "${QT_DIR};${QUL_ROOT}/bin;${QUL_ROOT}/lib" }
+    ],
+    "workflows": [
+        {
+            "id": "deploy",
+            "name": "Deploy",
+            "description": "Full fresh deployment",
+            "recipe": [
+                {
+                    "command": "${QMLPROJECTEXPORTER}",
+                    "arguments": [
+                        "--platform", "qt",
+                        "--toolchain", "GNU",
+                        "--project-type", "cmake",
+                        "--outdir", "${OUT_DIR}",
+                        "--boarddefaults", "${QUL_ROOT}/platform/boards/qt/qt/cmake/BoardDefaults_32bpp_default.qmlprojectconfig",
+                        "--generate-entrypoint",
+                        "--include-dirs",
+                        "${QUL_INCLUDE_FOLDER},${QUL_INCLUDE_FOLDER}/Controls,${QUL_INCLUDE_FOLDER}/ControlsTemplates,${QUL_INCLUDE_FOLDER}/Default,${QUL_INCLUDE_FOLDER}/Extras,${QUL_INCLUDE_FOLDER}/Layers,${QUL_INCLUDE_FOLDER}/Layouts,${QUL_INCLUDE_FOLDER}/Profiling,${QUL_INCLUDE_FOLDER}/SafeRenderer,${QUL_INCLUDE_FOLDER}/Shapes,${QUL_INCLUDE_FOLDER}/StudioComponents,${QUL_INCLUDE_FOLDER}/Templates,${QUL_INCLUDE_FOLDER}/Timeline,${QUL_INCLUDE_FOLDER}/VirtualKeyboard",
+                        "${PROJECT_FILE_PATH}"
+                    ]
+                },
+                {
+                    "command": "${CMAKE}",
+                    "arguments": [
+                        "-S", "${OUT_DIR}",
+                        "-B", "${OUT_DIR}",
+                        "-G", "Ninja",
+                        "-DCMAKE_MAKE_PROGRAM=${NINJA}",
+                        "-DCMAKE_C_COMPILER=gcc",
+                        "-DCMAKE_CXX_COMPILER=g++",
+                        "-DCMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}",
+                        "-DCMAKE_BUILD_TYPE=Release"
+                    ]
+                },
+                {
+                    "command": "${CMAKE}",
+                    "arguments": [ "--build", "${OUT_DIR}", "--parallel" ]
+                },
+                {
+                    "command": "${OUT_DIR}/${PROJECT_BASE_NAME}",
+                    "detached": true
+                }
+            ]
+        }
+    ]
+}
