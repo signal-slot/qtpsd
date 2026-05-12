@@ -1,0 +1,21 @@
+import QmlProject 1.3
+
+Project {
+    mainFile: "MainWindow.ui.qml"
+    QmlFiles {
+        files: [
+            "MainWindow.ui.qml"
+        ]
+    }
+    ImageFiles {
+        directory: "images"
+    }
+    FontFiles {
+        files: [
+            "fonts/LINESeedJP_A_OTF_Rg.otf"
+        ]
+    }
+    MCU.Config {
+        defaultFontFamily: "LINE Seed JP App_OTF"
+    }
+}

@@ -17,12 +17,11 @@ Item {
             y: 0
         }
         Text {
-            clip: true
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 50
             font.weight: 500
-            height: 81
+            height: 72
             horizontalAlignment: Text.AlignHCenter
             text: "12pt"
             verticalAlignment: Text.AlignVCenter
@@ -31,18 +30,17 @@ Item {
             y: 16
         }
         Text {
-            clip: true
             color: "#ffffffff"
             font.family: "Source Han Sans"
             font.pixelSize: 150
             font.weight: 500
-            height: 242
+            height: 217
             horizontalAlignment: Text.AlignHCenter
             text: "150px"
             verticalAlignment: Text.AlignVCenter
             width: 478
             x: 150
-            y: 19
+            y: 18
         }
     }
 }

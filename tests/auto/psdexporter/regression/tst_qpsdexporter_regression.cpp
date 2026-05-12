@@ -3,6 +3,7 @@
 
 #include <QtPsdExporter/QPsdExporterPlugin>
 
+#include <QtCore/QDirIterator>
 #include <QtTest/QtTest>
 
 class tst_QPsdExporter_Regression : public QObject {
@@ -53,7 +54,15 @@ void tst_QPsdExporter_Regression::compareFile(const QString &path1, const QStrin
 
 QList<QFileInfo> tst_QPsdExporter_Regression::entryInfoList(const QDir &dir) {
     auto entriesInfo = dir.entryInfoList(QDir::Filter::AllDirs | QDir::Filter::Files | QDir::Filter::NoDotAndDotDot);
-    entriesInfo.removeIf([](const auto &entryInfo) { return entryInfo.fileName() == ".gitkeep"_L1; });
+    entriesInfo.removeIf([](const auto &entryInfo) {
+        if (entryInfo.fileName() == ".gitkeep"_L1)
+            return true;
+        // Bundled font binaries are megabytes each and depend on the host's
+        // fontconfig — neither comparable byte-for-byte nor worth committing.
+        // The qmlproject's text reference still catches structural changes.
+        const auto suffix = entryInfo.suffix().toLower();
+        return suffix == "otf"_L1 || suffix == "ttf"_L1;
+    });
 
     return entriesInfo;
 }
@@ -187,8 +196,16 @@ void tst_QPsdExporter_Regression::exporter() {
     }
 
     exporter->exportTo(&model, to, defaultConfig);
-    
+
     if (updateExpects && toInfo.isDir()) {
+        // Font binaries are bundled per-host and pulled in by the exporter
+        // from fontconfig. Don't snapshot them — entryInfoList() filters
+        // them out at compare time, so leaving them here would only bloat
+        // the committed expects.
+        QDirIterator it(to, {"*.otf"_L1, "*.ttf"_L1}, QDir::Files,
+                        QDirIterator::Subdirectories);
+        while (it.hasNext())
+            QFile::remove(it.next());
         createGitKeep(to);
     }
 
