@@ -475,10 +475,12 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
     QRect rect;
     if (rectBounds.isEmpty()) {
         rect = item->rect();
+        bool isTopLevelArtboard = false;
         if (!index.parent().isValid() && item->type() == QPsdAbstractLayerItem::Folder) {
             // Top-level artboard folder: override position based on layout mode.
             const auto *folder = static_cast<const QPsdFolderLayerItem *>(item);
             if (folder->artboardRect().isValid()) {
+                isTopLevelArtboard = true;
                 if (artboardToOrigin) {
                     // Stacking mode: all artboards at (0,0)
                     rect = QRect(QPoint(0, 0), folder->artboardRect().size());
@@ -496,7 +498,9 @@ QRect QPsdExporterPlugin::computeBaseRect(const QModelIndex &index, QRect rectBo
             if (parentItem)
                 rect.translate(-parentItem->rect().topLeft());
         }
-        if (makeCompact) {
+        // The top-level artboard *is* the screen; shrinking it to its children's
+        // bounding box would defeat the screen's canonical canvas size.
+        if (makeCompact && !isTopLevelArtboard) {
             rect = indexRectMap.value(index);
         }
     } else {
