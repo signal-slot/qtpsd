@@ -1388,6 +1388,41 @@ private:
                     needsGradientBg = true;
             }
 
+            // Auto Layout: read Figma's flex-style fields and attach to the folder.
+            // Figma already bakes Auto Layout into absoluteBoundingBox, so the
+            // exporter is free to honour or ignore this metadata.
+            using AL = QPsdAbstractLayerItem::AutoLayout;
+            AL autoLayout;
+            const QString layoutMode = nodeJson.value("layoutMode"_L1).toString();
+            if (layoutMode == "HORIZONTAL"_L1)
+                autoLayout.direction = AL::Row;
+            else if (layoutMode == "VERTICAL"_L1)
+                autoLayout.direction = AL::Column;
+            if (autoLayout.direction != AL::None) {
+                autoLayout.itemSpacing = nodeJson.value("itemSpacing"_L1).toDouble(0);
+                autoLayout.paddingLeft = nodeJson.value("paddingLeft"_L1).toDouble(0);
+                autoLayout.paddingTop = nodeJson.value("paddingTop"_L1).toDouble(0);
+                autoLayout.paddingRight = nodeJson.value("paddingRight"_L1).toDouble(0);
+                autoLayout.paddingBottom = nodeJson.value("paddingBottom"_L1).toDouble(0);
+                auto mapAlign = [](const QString &v) {
+                    if (v == "CENTER"_L1) return AL::Center;
+                    if (v == "MAX"_L1) return AL::Max;
+                    if (v == "SPACE_BETWEEN"_L1) return AL::SpaceBetween;
+                    if (v == "BASELINE"_L1) return AL::Baseline;
+                    return AL::Min;
+                };
+                autoLayout.primaryAxisAlign = mapAlign(nodeJson.value("primaryAxisAlignItems"_L1).toString());
+                autoLayout.counterAxisAlign = mapAlign(nodeJson.value("counterAxisAlignItems"_L1).toString());
+                auto mapSizing = [](const QString &v) {
+                    if (v == "AUTO"_L1) return AL::Hug;
+                    if (v == "FIXED"_L1) return AL::Fixed;
+                    return AL::Fixed;
+                };
+                autoLayout.primaryAxisSizing = mapSizing(nodeJson.value("primaryAxisSizingMode"_L1).toString());
+                autoLayout.counterAxisSizing = mapSizing(nodeJson.value("counterAxisSizingMode"_L1).toString());
+                folderItem->setAutoLayout(autoLayout);
+            }
+
             node.layerItem = folderItem;
             node.folderType = FolderType::OpenFolder;
 
@@ -1397,9 +1432,26 @@ private:
             const QPoint childOffset(absX, absY);
             const auto children = nodeJson["children"_L1].toArray();
             for (int ci = children.size() - 1; ci >= 0; --ci) {
-                quintptr childId = processNode(children.at(ci).toObject(), nodeId, childOffset);
+                const auto childJson = children.at(ci).toObject();
+                quintptr childId = processNode(childJson, nodeId, childOffset);
                 if (childId != 0)
                     node.childIds.append(childId);
+                if (autoLayout.isValid() && childId != 0) {
+                    if (auto *childItem = m_nodes.value(childId).layerItem) {
+                        QPsdAbstractLayerItem::AutoLayoutChild alc;
+                        auto sizingFromString = [](const QString &v) {
+                            if (v == "FILL"_L1) return AL::Fill;
+                            if (v == "HUG"_L1) return AL::Hug;
+                            return AL::Fixed;
+                        };
+                        alc.horizontal = sizingFromString(childJson.value("layoutSizingHorizontal"_L1).toString());
+                        alc.vertical = sizingFromString(childJson.value("layoutSizingVertical"_L1).toString());
+                        alc.grow = childJson.value("layoutGrow"_L1).toDouble(0);
+                        alc.stretchSelf = childJson.value("layoutAlign"_L1).toString() == "STRETCH"_L1;
+                        alc.set = true;
+                        childItem->setAutoLayoutChild(alc);
+                    }
+                }
             }
 
             // Synthetic background layers are appended in PSD front-to-back order:
@@ -2019,6 +2071,7 @@ private:
 static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, const QPsdLayerRecord &record)
 {
     if (!src) return nullptr;
+    QPsdAbstractLayerItem *result = nullptr;
     switch (src->type()) {
     case QPsdAbstractLayerItem::Text: {
         auto *s = static_cast<const QPsdTextLayerItem *>(src);
@@ -2030,7 +2083,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setDropShadow(s->dropShadow());
         d->setInnerShadow(s->innerShadow());
         d->setLayerBlur(s->layerBlur());
-        return d;
+        result = d;
+        break;
     }
     case QPsdAbstractLayerItem::Shape: {
         auto *s = static_cast<const QPsdShapeLayerItem *>(src);
@@ -2042,7 +2096,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setDropShadow(s->dropShadow());
         d->setInnerShadow(s->innerShadow());
         d->setLayerBlur(s->layerBlur());
-        return d;
+        result = d;
+        break;
     }
     case QPsdAbstractLayerItem::Image: {
         auto *s = static_cast<const QPsdImageLayerItem *>(src);
@@ -2051,7 +2106,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setDropShadow(s->dropShadow());
         d->setInnerShadow(s->innerShadow());
         d->setLayerBlur(s->layerBlur());
-        return d;
+        result = d;
+        break;
     }
     case QPsdAbstractLayerItem::Folder: {
         auto *s = static_cast<const QPsdFolderLayerItem *>(src);
@@ -2062,11 +2118,17 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         d->setDropShadow(s->dropShadow());
         d->setInnerShadow(s->innerShadow());
         d->setLayerBlur(s->layerBlur());
-        return d;
+        result = d;
+        break;
     }
     default:
         return nullptr;
     }
+    if (result) {
+        result->setAutoLayout(src->autoLayout());
+        result->setAutoLayoutChild(src->autoLayoutChild());
+    }
+    return result;
 }
 
 static void flattenFigmaTree(FigmaLayerTreeItemModel *figmaModel,

@@ -690,6 +690,125 @@ bool QPsdQmlExporterPlugin::outputFolder(const QModelIndex &folderIndex, Element
         }
     }
 
+    // Auto Layout: if the folder carries a Figma Auto Layout policy and the
+    // target supports FlexboxLayout, wrap the traversed children in a
+    // FlexboxLayout child element. Children added before traversal (artboard
+    // background / pattern fill / blend wrappers) stay as direct siblings so
+    // their absolute geometry is preserved.
+    const auto autoLayout = folder ? folder->autoLayout() : QPsdAbstractLayerItem::AutoLayout{};
+    if (autoLayout.isValid() && supportsFlexbox()) {
+        using AL = QPsdAbstractLayerItem::AutoLayout;
+        QList<Element> participants;
+        QList<Element> retained;
+        const int rowCount = model()->rowCount(folderIndex);
+        for (auto &c : element->children) {
+            const bool synthetic =
+                c.id.startsWith(u"_blend_"_s)
+                || c.id.startsWith(u"_mask_"_s)
+                || (c.id.isEmpty() && (c.type == u"Rectangle"_s || c.type == u"Image"_s)
+                    && c.properties.contains(u"color"_s) == false
+                    && !c.properties.contains(u"radius"_s));
+            if (synthetic)
+                retained.append(c);
+            else
+                participants.append(c);
+        }
+        // If nothing was classified as a participant the heuristic missed; do
+        // not wrap to avoid losing children.
+        if (!participants.isEmpty()) {
+            imports->insert(u"QtQuick.Layouts"_s);
+
+            Element flex;
+            flex.type = u"FlexboxLayout"_s;
+            flex.properties.insert(u"anchors.fill"_s, u"parent"_s);
+            if (autoLayout.paddingLeft != 0)
+                flex.properties.insert(u"anchors.leftMargin"_s, autoLayout.paddingLeft * horizontalScale);
+            if (autoLayout.paddingTop != 0)
+                flex.properties.insert(u"anchors.topMargin"_s, autoLayout.paddingTop * verticalScale);
+            if (autoLayout.paddingRight != 0)
+                flex.properties.insert(u"anchors.rightMargin"_s, autoLayout.paddingRight * horizontalScale);
+            if (autoLayout.paddingBottom != 0)
+                flex.properties.insert(u"anchors.bottomMargin"_s, autoLayout.paddingBottom * verticalScale);
+            flex.properties.insert(u"direction"_s,
+                autoLayout.direction == AL::Row
+                    ? u"FlexboxLayout.Row"_s
+                    : u"FlexboxLayout.Column"_s);
+            if (autoLayout.itemSpacing != 0)
+                flex.properties.insert(u"gap"_s, autoLayout.itemSpacing * horizontalScale);
+
+            auto justifyString = [](AL::Align a) {
+                switch (a) {
+                case AL::Center: return u"FlexboxLayout.JustifyCenter"_s;
+                case AL::Max: return u"FlexboxLayout.JustifyEnd"_s;
+                case AL::SpaceBetween: return u"FlexboxLayout.JustifySpaceBetween"_s;
+                default: return u"FlexboxLayout.JustifyStart"_s;
+                }
+            };
+            auto alignString = [](AL::Align a) {
+                switch (a) {
+                case AL::Center: return u"FlexboxLayout.AlignCenter"_s;
+                case AL::Max: return u"FlexboxLayout.AlignEnd"_s;
+                case AL::Baseline: return u"FlexboxLayout.AlignBaseline"_s;
+                default: return u"FlexboxLayout.AlignStart"_s;
+                }
+            };
+            if (autoLayout.primaryAxisAlign != AL::Min)
+                flex.properties.insert(u"justifyContent"_s, justifyString(autoLayout.primaryAxisAlign));
+            if (autoLayout.counterAxisAlign != AL::Min)
+                flex.properties.insert(u"alignItems"_s, alignString(autoLayout.counterAxisAlign));
+
+            // traverseTree appends in reverse model order to honour QML's
+            // back-to-front stacking. FlexboxLayout instead lays children out
+            // visually, which matches Figma's children[] order. Reverse the
+            // collected participants so the visual order matches the design.
+            std::reverse(participants.begin(), participants.end());
+
+            for (int idx = 0; idx < participants.size(); ++idx) {
+                auto &c = participants[idx];
+                static const QStringList stripped = {
+                    u"x"_s, u"y"_s,
+                    u"anchors.fill"_s, u"anchors.centerIn"_s,
+                    u"anchors.left"_s, u"anchors.right"_s, u"anchors.top"_s, u"anchors.bottom"_s,
+                    u"anchors.horizontalCenter"_s, u"anchors.verticalCenter"_s,
+                    u"anchors.leftMargin"_s, u"anchors.rightMargin"_s,
+                    u"anchors.topMargin"_s, u"anchors.bottomMargin"_s,
+                    u"anchors.horizontalCenterOffset"_s, u"anchors.verticalCenterOffset"_s,
+                };
+                for (const auto &k : stripped)
+                    c.properties.remove(k);
+
+                QPsdAbstractLayerItem::AutoLayoutChild alc;
+                const QModelIndex childIndex = model()->index(rowCount - 1 - idx, 0, folderIndex);
+                if (childIndex.isValid()) {
+                    if (const auto *childItem = model()->layerItem(childIndex))
+                        alc = childItem->autoLayoutChild();
+                }
+
+                const bool isRow = autoLayout.direction == AL::Row;
+                const bool fillW = alc.horizontal == AL::Fill
+                    || (isRow && alc.grow > 0)
+                    || (!isRow && alc.stretchSelf);
+                const bool fillH = alc.vertical == AL::Fill
+                    || (!isRow && alc.grow > 0)
+                    || (isRow && alc.stretchSelf);
+                if (fillW)
+                    c.properties.insert(u"Layout.fillWidth"_s, true);
+                if (fillH)
+                    c.properties.insert(u"Layout.fillHeight"_s, true);
+                // Keep width/height as preferred size. Stripping them when
+                // sizing == HUG can leave wrapper Items with zero implicit
+                // size, collapsing the cell. Figma's baked size is still the
+                // intent.
+                if (alc.stretchSelf && !fillH && !fillW)
+                    c.properties.insert(u"FlexboxLayout.alignSelf"_s, u"FlexboxLayout.AlignStretch"_s);
+            }
+
+            flex.children = participants;
+            element->children = retained;
+            element->children.append(flex);
+        }
+    }
+
     return true;
 }
 

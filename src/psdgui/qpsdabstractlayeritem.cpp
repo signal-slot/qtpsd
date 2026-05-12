@@ -47,6 +47,8 @@ public:
     quint8 layerMaskDensity = 255;  // Default: full density (mask fully applied)
     QPsdLinkedLayer::LinkedFile linkedFile;
     QVariantList effects;
+    AutoLayout autoLayout;
+    AutoLayoutChild autoLayoutChild;
 };
 
 QPsdAbstractLayerItem::QPsdAbstractLayerItem(int width, int height)
@@ -741,6 +743,26 @@ QImage QPsdAbstractLayerItem::applyGradient(const QImage &image) const
 QVariantList QPsdAbstractLayerItem::effects() const
 {
     return d->effects;
+}
+
+QPsdAbstractLayerItem::AutoLayout QPsdAbstractLayerItem::autoLayout() const
+{
+    return d->autoLayout;
+}
+
+void QPsdAbstractLayerItem::setAutoLayout(const AutoLayout &autoLayout)
+{
+    d->autoLayout = autoLayout;
+}
+
+QPsdAbstractLayerItem::AutoLayoutChild QPsdAbstractLayerItem::autoLayoutChild() const
+{
+    return d->autoLayoutChild;
+}
+
+void QPsdAbstractLayerItem::setAutoLayoutChild(const AutoLayoutChild &autoLayoutChild)
+{
+    d->autoLayoutChild = autoLayoutChild;
 }
 
 QT_END_NAMESPACE

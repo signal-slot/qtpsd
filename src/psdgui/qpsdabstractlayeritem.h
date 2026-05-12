@@ -65,6 +65,35 @@ public:
         QPainterPath path;
     };
     PathInfo vectorMask() const;
+
+    struct AutoLayout {
+        enum Direction { None, Row, Column };
+        enum Align { Min, Center, Max, SpaceBetween, Baseline };
+        enum SizingMode { Fixed, Hug, Fill };
+        Direction direction = None;
+        qreal itemSpacing = 0;
+        qreal paddingLeft = 0;
+        qreal paddingTop = 0;
+        qreal paddingRight = 0;
+        qreal paddingBottom = 0;
+        Align primaryAxisAlign = Min;
+        Align counterAxisAlign = Min;
+        SizingMode primaryAxisSizing = Fixed;
+        SizingMode counterAxisSizing = Fixed;
+        bool isValid() const { return direction != None; }
+    };
+    struct AutoLayoutChild {
+        AutoLayout::SizingMode horizontal = AutoLayout::Fixed;
+        AutoLayout::SizingMode vertical = AutoLayout::Fixed;
+        qreal grow = 0;
+        bool stretchSelf = false;
+        bool set = false;
+    };
+    AutoLayout autoLayout() const;
+    void setAutoLayout(const AutoLayout &autoLayout);
+    AutoLayoutChild autoLayoutChild() const;
+    void setAutoLayoutChild(const AutoLayoutChild &autoLayoutChild);
+
     QImage image() const;
     QImage applyGradient(const QImage &image) const;
     QImage transparencyMask() const;

@@ -70,6 +70,8 @@ protected:
     virtual bool supportsRectangleBorder() const { return true; }
     virtual bool supportsFontFamily() const { return true; }
     virtual bool buttonHighlightedSupported() const { return true; }
+    // FlexboxLayout (QtQuick.Layouts) is Qt 6.9+; MCU runtime lacks it.
+    virtual bool supportsFlexbox() const { return true; }
 
     // Called from traverseTree() in the Component case after the inner
     // component element is built and x/y are stripped. Default = no-op.

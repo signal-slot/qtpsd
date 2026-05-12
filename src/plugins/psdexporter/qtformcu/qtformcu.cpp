@@ -303,6 +303,9 @@ protected:
     // emission site; MCU.Config.defaultFontFamily covers the default font.
     bool supportsRectangleBorder() const override { return false; }
     bool supportsFontFamily() const override { return false; }
+    // Qt for MCUs has no QtQuick.Layouts.FlexboxLayout. Fall back to absolute
+    // positioning (already baked into Figma absoluteBoundingBox).
+    bool supportsFlexbox() const override { return false; }
 
     void adjustComponentRoot(Element &component, const QModelIndex &index) const override {
         // MCU's qmltocpp rejects `anchors.fill: parent` (and other anchors.*)
