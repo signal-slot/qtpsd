@@ -48,6 +48,7 @@
 #include <QtPsdGui/QPsdTextLayerItem>
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 #include <QtPsdExporter/QPsdExporterTreeItemModel>
+#include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdImporter/QPsdImporterPlugin>
 
 #include "fig_archive.h"
@@ -886,6 +887,26 @@ public:
             activeArtboardId = artboardId;
         }
 
+        // Pre-walk: collect every COMPONENT node id reachable from the page
+        // so INSTANCE nodes can decide whether their master is in-tree.
+        std::function<void(const QJsonObject &)> collectMasters = [&](const QJsonObject &node) {
+            if (node.value("type"_L1).toString() == "COMPONENT"_L1) {
+                const auto id = node.value("id"_L1).toString();
+                const auto name = node.value("name"_L1).toString();
+                if (!id.isEmpty()) {
+                    QString componentName = QPsdExporterPlugin::toUpperCamelCase(name);
+                    if (componentName.isEmpty())
+                        componentName = u"Component_%1"_s.arg(id).replace(':'_L1, '_'_L1);
+                    m_componentMasters.insert(id, componentName);
+                }
+            }
+            const auto children = node.value("children"_L1).toArray();
+            for (const auto &c : children)
+                collectMasters(c.toObject());
+        };
+        for (const auto &c : pageChildren)
+            collectMasters(c.toObject());
+
         for (int ci = pageChildren.size() - 1; ci >= 0; --ci) {
             const auto childObj = pageChildren.at(ci).toObject();
             const auto childId = childObj["id"_L1].toString();
@@ -1369,6 +1390,31 @@ private:
                 folderItem->setVectorMask(clipMask);
             }
 
+            // Figma component/instance handling.
+            //   COMPONENT  → master: emit a standalone .ui.qml. Recurse as usual.
+            //   INSTANCE   → if the master is in the imported subtree we record
+            //                only the reference and skip recursion (the instance
+            //                contains a fully resolved snapshot that we don't want
+            //                to inline). If the master is missing we fall back to
+            //                the snapshot so the visual is preserved.
+            QString instanceReference;
+            if (nodeType == "COMPONENT"_L1) {
+                QString masterName = m_componentMasters.value(figmaId);
+                if (masterName.isEmpty())
+                    masterName = QPsdExporterPlugin::toUpperCamelCase(name);
+                if (!masterName.isEmpty())
+                    folderItem->setComponentName(masterName);
+            } else if (nodeType == "INSTANCE"_L1) {
+                const auto componentId = nodeJson.value("componentId"_L1).toString();
+                if (!componentId.isEmpty()) {
+                    const auto masterName = m_componentMasters.value(componentId);
+                    if (!masterName.isEmpty()) {
+                        folderItem->setReferencedComponent(masterName);
+                        instanceReference = masterName;
+                    }
+                }
+            }
+
             bool needsGradientBg = false;
             if (isTopLevelFrame) {
                 folderItem->setArtboardRect(rect);
@@ -1425,6 +1471,16 @@ private:
 
             node.layerItem = folderItem;
             node.folderType = FolderType::OpenFolder;
+
+            // Instance with a local master: skip the resolved-snapshot
+            // children and any synthetic bg/imgbg appendage. The exporter
+            // emits a bare reference for this folder.
+            if (!instanceReference.isEmpty()) {
+                m_nodes.insert(nodeId, node);
+                m_nodeIdMap.insert(figmaId, nodeId);
+                m_layerItems.append(folderItem);
+                return nodeId;
+            }
 
             // Process children (reverse: Figma back-to-front → PSD front-to-back)
             // Pass absolute position so children use parent-relative coords.
@@ -2086,6 +2142,11 @@ private:
     QHash<QString, quintptr> m_nodeIdMap;
     QList<QPsdAbstractLayerItem *> m_layerItems;
     QList<ArtboardInfo> m_artboards;
+    // Figma node id (e.g. "3:293") of every COMPONENT master in the
+    // imported subtree → derived QML component name (PascalCase). Lets
+    // INSTANCE nodes whose master is local emit a reference instead of
+    // recursing into the resolved child snapshot.
+    QHash<QString, QString> m_componentMasters;
 };
 
 // ─── buildQPsdModel ────────────────────────────────────────────────────────
@@ -2150,6 +2211,8 @@ static QPsdAbstractLayerItem *cloneLayerItem(const QPsdAbstractLayerItem *src, c
         result->setAutoLayout(src->autoLayout());
         result->setAutoLayoutChild(src->autoLayoutChild());
         result->setConstraints(src->constraints());
+        result->setComponentName(src->componentName());
+        result->setReferencedComponent(src->referencedComponent());
     }
     return result;
 }
@@ -3048,6 +3111,27 @@ public:
         model->setSourceModel(widgetModel);
         model->setSize(figmaModel.size());
         model->setCanvasColor(figmaModel.canvasColor());
+
+        // Promote every COMPONENT master layer item to an ExportHint::Component
+        // so the QML-emitting exporters write a standalone .ui.qml. INSTANCE
+        // references are handled by the exporter directly from the layer
+        // item's referencedComponent() — no hint needed.
+        std::function<void(const QModelIndex &)> applyComponentHints = [&](const QModelIndex &parentIndex) {
+            for (int row = 0; row < model->rowCount(parentIndex); ++row) {
+                const QModelIndex idx = model->index(row, 0, parentIndex);
+                if (const QPsdAbstractLayerItem *item = model->layerItem(idx)) {
+                    const QString name = item->componentName();
+                    if (!name.isEmpty()) {
+                        auto hint = model->layerHint(idx);
+                        hint.type = QPsdExporterTreeItemModel::ExportHint::Component;
+                        hint.componentName = name;
+                        model->setLayerHint(idx, hint);
+                    }
+                }
+                applyComponentHints(idx);
+            }
+        };
+        applyComponentHints(QModelIndex());
 
         // Include page name in title for multi-page files
         const auto pages = fileJson["document"_L1].toObject()["children"_L1].toArray();

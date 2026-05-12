@@ -2798,6 +2798,23 @@ bool QPsdQmlExporterPlugin::traverseTree(const QModelIndex &index, Element *pare
     if (isMergedSource(index))
         return true;
 
+    // Instance reference: the layer points at a component master that has
+    // already been (or will be) emitted as its own .ui.qml. Emit a bare
+    // reference at the instance's geometry and skip the resolved snapshot.
+    if (item && !item->referencedComponent().isEmpty()) {
+        Element element;
+        element.type = item->referencedComponent();
+        element.id = id;
+        if (!id.isEmpty())
+            exports->insert(id);
+        if (!outputBase(index, &element, imports))
+            return false;
+        if (!hint.visible || !item->isVisible())
+            element.properties.insert("visible", false);
+        parent->children.append(element);
+        return true;
+    }
+
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
@@ -3095,7 +3112,13 @@ bool QPsdQmlExporterPlugin::traverseTree(const QModelIndex &index, Element *pare
         // empty.
         component.properties.remove("x");
         component.properties.remove("y");
-        component.properties.remove("anchors.fill");
+        // Strip every anchor-* property from the component root: the
+        // instance side decides positioning, never the master.
+        const auto anchorKeys = component.properties.keys();
+        for (const auto &k : anchorKeys) {
+            if (k.startsWith(u"anchors."_s))
+                component.properties.remove(k);
+        }
         adjustComponentRoot(component, index);
         if (!saveTo(hint.componentName + ".ui", &component, i, x))
             return false;

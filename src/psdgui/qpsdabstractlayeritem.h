@@ -106,6 +106,17 @@ public:
     Constraints constraints() const;
     void setConstraints(const Constraints &constraints);
 
+    // Component / Instance metadata for design-system inputs (Figma).
+    // `componentName` non-empty marks this layer as a reusable component
+    // master — exporters that support component extraction emit it as a
+    // standalone file. `referencedComponent` non-empty marks the layer as
+    // an instance reference — the exporter should emit a reference element
+    // instead of recursing into children.
+    QString componentName() const;
+    void setComponentName(const QString &componentName);
+    QString referencedComponent() const;
+    void setReferencedComponent(const QString &referencedComponent);
+
     QImage image() const;
     QImage applyGradient(const QImage &image) const;
     QImage transparencyMask() const;

@@ -50,6 +50,8 @@ public:
     AutoLayout autoLayout;
     AutoLayoutChild autoLayoutChild;
     Constraints constraints;
+    QString componentName;
+    QString referencedComponent;
 };
 
 QPsdAbstractLayerItem::QPsdAbstractLayerItem(int width, int height)
@@ -774,6 +776,26 @@ QPsdAbstractLayerItem::Constraints QPsdAbstractLayerItem::constraints() const
 void QPsdAbstractLayerItem::setConstraints(const Constraints &constraints)
 {
     d->constraints = constraints;
+}
+
+QString QPsdAbstractLayerItem::componentName() const
+{
+    return d->componentName;
+}
+
+void QPsdAbstractLayerItem::setComponentName(const QString &componentName)
+{
+    d->componentName = componentName;
+}
+
+QString QPsdAbstractLayerItem::referencedComponent() const
+{
+    return d->referencedComponent;
+}
+
+void QPsdAbstractLayerItem::setReferencedComponent(const QString &referencedComponent)
+{
+    d->referencedComponent = referencedComponent;
 }
 
 QT_END_NAMESPACE
