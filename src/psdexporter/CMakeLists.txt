@@ -9,6 +9,7 @@ qt_internal_add_module(PsdExporter
     SOURCES
         qpsdexporterglobal.h
         qpsdexporterplugin.h qpsdexporterplugin.cpp
+        qpsdqmlexporterplugin.h qpsdqmlexporterplugin.cpp
         qpsdimagestore.h qpsdimagestore.cpp
         qpsdexportertreeitemmodel.h qpsdexportertreeitemmodel.cpp
     INCLUDE_DIRECTORIES
