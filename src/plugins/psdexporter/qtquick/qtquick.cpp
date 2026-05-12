@@ -2953,9 +2953,14 @@ bool QPsdExporterQtQuickPlugin::traverseTree(const QModelIndex &index, Element *
             component.properties.insert("highlighted", (hint.baseElement == QPsdExporterTreeItemModel::ExportHint::NativeComponent::Button_Highlighted));
             break;
         }
-        // Component files have their own coordinate space; x/y belong on the instance side only
+        // Component files have their own coordinate space; x/y belong on the instance side only.
+        // anchors.fill: parent likewise belongs on the instance — putting it on the component
+        // root forces every instance to fill its parent regardless of x/y/width/height set on
+        // the instance side, breaking the reusable-component contract. The instance still
+        // receives anchors.fill from outputBase below when its source rect is empty.
         component.properties.remove("x");
         component.properties.remove("y");
+        component.properties.remove("anchors.fill");
         if (!saveTo(hint.componentName + ".ui", &component, i, x))
             return false;
 
