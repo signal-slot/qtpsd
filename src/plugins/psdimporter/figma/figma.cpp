@@ -899,23 +899,54 @@ public:
 
         // Pre-walk: collect every COMPONENT node id reachable from the page
         // so INSTANCE nodes can decide whether their master is in-tree.
-        std::function<void(const QJsonObject &)> collectMasters = [&](const QJsonObject &node) {
-            if (node.value("type"_L1).toString() == "COMPONENT"_L1) {
+        // COMPONENTs nested inside a COMPONENT_SET (variants) are
+        // disambiguated by prefixing the set name so multiple sets don't
+        // collide on identifiers like "Default" or "Hover".
+        QSet<QString> usedComponentNames;
+        auto uniqueComponentName = [&usedComponentNames](QString base) {
+            if (base.isEmpty())
+                base = u"Component"_s;
+            QString candidate = base;
+            int n = 1;
+            while (usedComponentNames.contains(candidate))
+                candidate = u"%1_%2"_s.arg(base).arg(++n);
+            usedComponentNames.insert(candidate);
+            return candidate;
+        };
+        std::function<void(const QJsonObject &, const QString &)> collectMasters =
+                [&](const QJsonObject &node, const QString &variantSetName) {
+            const auto type = node.value("type"_L1).toString();
+            if (type == "COMPONENT"_L1) {
                 const auto id = node.value("id"_L1).toString();
-                const auto name = node.value("name"_L1).toString();
+                const auto rawName = node.value("name"_L1).toString();
                 if (!id.isEmpty()) {
-                    QString componentName = QPsdExporterPlugin::toUpperCamelCase(name);
+                    QString componentName;
+                    if (!variantSetName.isEmpty()) {
+                        // Variant naming: a Figma variant's `name` is its
+                        // property-value list (e.g. "State=Hover, Size=Small").
+                        // Compose `<SetName>_<VariantPart>`.
+                        const auto variantPart = QPsdExporterPlugin::toUpperCamelCase(rawName);
+                        componentName = variantPart.isEmpty()
+                                ? variantSetName
+                                : u"%1_%2"_s.arg(variantSetName, variantPart);
+                    } else {
+                        componentName = QPsdExporterPlugin::toUpperCamelCase(rawName);
+                    }
                     if (componentName.isEmpty())
                         componentName = u"Component_%1"_s.arg(id).replace(':'_L1, '_'_L1);
+                    componentName = uniqueComponentName(componentName);
                     m_componentMasters.insert(id, componentName);
                 }
             }
+            const auto childSetName = (type == "COMPONENT_SET"_L1)
+                    ? QPsdExporterPlugin::toUpperCamelCase(node.value("name"_L1).toString())
+                    : variantSetName;
             const auto children = node.value("children"_L1).toArray();
             for (const auto &c : children)
-                collectMasters(c.toObject());
+                collectMasters(c.toObject(), childSetName);
         };
         for (const auto &c : pageChildren)
-            collectMasters(c.toObject());
+            collectMasters(c.toObject(), QString());
 
         for (int ci = pageChildren.size() - 1; ci >= 0; --ci) {
             const auto childObj = pageChildren.at(ci).toObject();
