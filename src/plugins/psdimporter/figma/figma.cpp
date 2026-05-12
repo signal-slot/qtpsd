@@ -9,6 +9,7 @@
 #include <QtCore/QJsonDocument>
 #include <QtCore/QJsonObject>
 #include <QtCore/QPointer>
+#include <QtCore/qmath.h>
 #include <QtCore/QRegularExpression>
 #include <QtCore/QSettings>
 #include <QtCore/QStandardPaths>
@@ -1669,7 +1670,25 @@ private:
             }
 
             const auto strokes = nodeJson["strokes"_L1].toArray();
-            const auto strokeWeight = nodeJson["strokeWeight"_L1].toDouble(0);
+            // Effective stroke weight: individualStrokeWeights overrides
+            // strokeWeight per side. When the four sides differ we still emit
+            // a uniform pen (max of the four) but log so users notice the
+            // limitation. Per-side stroke rendering (4 separate edge primitives)
+            // is a follow-up.
+            qreal strokeWeight = nodeJson["strokeWeight"_L1].toDouble(0);
+            const auto individualWeights = nodeJson["individualStrokeWeights"_L1].toObject();
+            if (!individualWeights.isEmpty()) {
+                const qreal t = individualWeights.value("top"_L1).toDouble(strokeWeight);
+                const qreal r = individualWeights.value("right"_L1).toDouble(strokeWeight);
+                const qreal b = individualWeights.value("bottom"_L1).toDouble(strokeWeight);
+                const qreal l = individualWeights.value("left"_L1).toDouble(strokeWeight);
+                strokeWeight = std::max({t, r, b, l});
+                if (!qFuzzyCompare(t, r) || !qFuzzyCompare(r, b) || !qFuzzyCompare(b, l)) {
+                    qWarning() << "Figma node" << figmaId << "uses non-uniform"
+                               << "individualStrokeWeights" << t << r << b << l
+                               << "— emitting a uniform pen of width" << strokeWeight;
+                }
+            }
             if (!strokes.isEmpty() && strokeWeight > 0) {
                 const auto strokeObj = strokes.first().toObject();
                 if (strokeObj.value("visible"_L1).toBool(true)) {
@@ -1708,6 +1727,19 @@ private:
                             pen.setJoinStyle(Qt::BevelJoin);
                         else
                             pen.setJoinStyle(Qt::MiterJoin);
+
+                        // Figma strokeMiterAngle (degrees) is the threshold
+                        // angle below which a miter join converts to a bevel.
+                        // Qt's miterLimit is the length-ratio cutoff: the
+                        // relation is miterLimit = 1 / sin(angle / 2).
+                        if (nodeJson.contains("strokeMiterAngle"_L1)) {
+                            const auto angleDeg = nodeJson.value("strokeMiterAngle"_L1).toDouble();
+                            if (angleDeg > 0 && angleDeg < 180) {
+                                const auto angleRad = qDegreesToRadians(angleDeg);
+                                const auto miterLimit = 1.0 / std::sin(angleRad / 2.0);
+                                pen.setMiterLimit(miterLimit);
+                            }
+                        }
 
                         const auto strokeDashes = nodeJson["strokeDashes"_L1].toArray();
                         if (!strokeDashes.isEmpty() && strokeWeight > 0) {
