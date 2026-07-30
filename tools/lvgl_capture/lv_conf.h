@@ -21,7 +21,9 @@
 /*====================
    MEMORY SETTINGS
  *====================*/
-#define LV_MEM_SIZE (8 * 1024 * 1024U)
+/* Host-side tool: use the C library allocator so large canvases and
+ * image decode/encode are not capped by LVGL's built-in heap */
+#define LV_USE_STDLIB_MALLOC LV_STDLIB_CLIB
 
 /*====================
    DISPLAY SETTINGS

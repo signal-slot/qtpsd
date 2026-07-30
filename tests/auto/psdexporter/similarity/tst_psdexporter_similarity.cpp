@@ -1080,7 +1080,7 @@ void tst_PsdExporterSimilarity::generateReport()
         const QString qtQuickSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/QtQuick/MainWindow.ui.qml";
         const QString slintSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/Slint/MainWindow.slint";
         const QString flutterSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/Flutter/main_window.dart";
-        const QString lvglSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/LVGL/MainScreen.xml";
+        const QString lvglSourceAbs = m_outputBaseDir + "/exports/" + m_sourceId + "/" + relNoExt + "/LVGL/main_screen.c";
 
         result.hasQtQuickSource = QFileInfo::exists(qtQuickSourceAbs);
         result.hasSlintSource = QFileInfo::exists(slintSourceAbs);
@@ -1226,7 +1226,7 @@ void tst_PsdExporterSimilarity::generateReport()
                 if (!exportPsd(psdPath, QStringLiteral("LVGL"), exportDir, &errorMessage)) {
                     qWarning().noquote() << "LVGL export failed:" << relPsdPath << "\n" << errorMessage;
                 } else {
-                    const QString lvglPath = exportDir + "/MainScreen.xml";
+                    const QString lvglPath = exportDir + "/main_screen.c";
                     result.hasLvglSource = QFileInfo::exists(lvglPath);
                     if (QFileInfo::exists(lvglPath)) {
                         lvglImage = renderLvgl(lvglPath, lvglAbs, &errorMessage);
@@ -1234,7 +1234,7 @@ void tst_PsdExporterSimilarity::generateReport()
                             qWarning().noquote() << "LVGL render failed:" << relPsdPath << "\n" << errorMessage;
                         }
                     } else {
-                        qWarning() << "LVGL output is missing MainScreen.xml:" << relPsdPath;
+                        qWarning() << "LVGL output is missing main_screen.c:" << relPsdPath;
                     }
                 }
             } else {
