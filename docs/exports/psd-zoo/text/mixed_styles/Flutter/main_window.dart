@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 20,
-            top: 75,
+            top: 72,
             width: 190,
             child: Text(
               "Normal Bold Italic", 

@@ -25,17 +25,16 @@ Item {
         }
     }
     Text {
-        clip: true
         color: "#ffffffff"
         font.bold: true
         font.family: "Roboto"
         font.pixelSize: 24
-        height: 32
+        height: 35
         horizontalAlignment: Text.AlignHCenter
         text: "CLICK ME"
         verticalAlignment: Text.AlignBottom
         width: 107
         x: 21
-        y: 90
+        y: 87
     }
 }

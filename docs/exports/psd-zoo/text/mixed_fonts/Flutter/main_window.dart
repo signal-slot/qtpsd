@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 20,
-            top: 75,
+            top: 72,
             width: 87,
             child: Text(
               "Regular", 
@@ -41,9 +41,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 145,
-            top: 75,
+            top: 72,
             width: 55,
             child: Text(
               "Bold", 

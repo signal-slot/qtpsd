@@ -12,16 +12,15 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 36
-        height: 48
+        height: 52
         horizontalAlignment: Text.AlignLeft
         text: "Warped Arc"
         verticalAlignment: Text.AlignBottom
         width: 186
         x: 80
-        y: 112
+        y: 108
     }
 }

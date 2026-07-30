@@ -12,17 +12,16 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 30
         font.strikeout: true
-        height: 39
+        height: 44
         horizontalAlignment: Text.AlignLeft
         text: "Strikethrough"
         verticalAlignment: Text.AlignBottom
         width: 179
         x: 20
-        y: 69
+        y: 65
     }
 }

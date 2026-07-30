@@ -12,7 +12,6 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 12
@@ -21,7 +20,7 @@ Item {
         text: "This paragraph has left and right indentation applied for testing margin parameters."
         verticalAlignment: Text.AlignBottom
         width: 281
-        wrapMode: Text.Wrap
+        wrapMode: Text.WordWrap
         x: 10
         y: 9
     }

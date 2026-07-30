@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 85,
-            top: 75,
+            top: 72,
             width: 130,
             child: Text(
               "Center Align", 

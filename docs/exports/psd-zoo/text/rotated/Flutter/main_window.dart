@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 28,
+            height: 30,
             left: 71,
-            top: 88,
+            top: 86,
             width: 99,
             child: Text(
               "Rotated", 

@@ -12,16 +12,15 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 72
-        height: 95
+        height: 105
         horizontalAlignment: Text.AlignLeft
         text: "Large Canvas"
         verticalAlignment: Text.AlignBottom
         width: 435
         x: 1800
-        y: 1925
+        y: 1916
     }
 }

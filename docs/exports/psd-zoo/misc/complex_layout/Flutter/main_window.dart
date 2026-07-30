@@ -55,9 +55,9 @@ class MainWindow extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  height: 26,
+                  height: 29,
                   left: 80,
-                  top: 59,
+                  top: 57,
                   width: 87,
                   child: Text(
                     "Card Title", 

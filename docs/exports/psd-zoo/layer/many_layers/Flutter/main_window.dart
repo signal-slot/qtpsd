@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 5,
+            top: 4,
             width: 45,
             child: Text(
               "Layer 1", 
@@ -41,9 +41,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 30,
+            top: 29,
             width: 45,
             child: Text(
               "Layer 2", 
@@ -59,9 +59,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 55,
+            top: 54,
             width: 45,
             child: Text(
               "Layer 3", 
@@ -77,9 +77,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 80,
+            top: 79,
             width: 45,
             child: Text(
               "Layer 4", 
@@ -95,9 +95,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 105,
+            top: 104,
             width: 45,
             child: Text(
               "Layer 5", 
@@ -113,9 +113,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 130,
+            top: 129,
             width: 45,
             child: Text(
               "Layer 6", 
@@ -131,9 +131,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 155,
+            top: 154,
             width: 45,
             child: Text(
               "Layer 7", 
@@ -149,9 +149,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 180,
+            top: 179,
             width: 45,
             child: Text(
               "Layer 8", 
@@ -167,9 +167,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 205,
+            top: 204,
             width: 45,
             child: Text(
               "Layer 9", 
@@ -185,9 +185,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 19,
+            height: 20,
             left: 10,
-            top: 230,
+            top: 229,
             width: 53,
             child: Text(
               "Layer 10", 

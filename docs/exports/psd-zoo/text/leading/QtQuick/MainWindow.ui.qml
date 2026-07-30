@@ -12,7 +12,6 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
@@ -23,6 +22,6 @@ Item {
         verticalAlignment: Text.AlignBottom
         width: 66
         x: 30
-        y: 35
+        y: 32
     }
 }

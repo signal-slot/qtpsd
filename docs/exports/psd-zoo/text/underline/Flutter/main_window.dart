@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 48,
+            height: 52,
             left: 30,
-            top: 62,
+            top: 58,
             width: 151,
             child: Text(
               "Underline", 

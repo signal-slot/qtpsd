@@ -12,30 +12,28 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 24
-        height: 32
+        height: 35
         horizontalAlignment: Text.AlignLeft
         text: "Regular"
         verticalAlignment: Text.AlignBottom
         width: 87
         x: 20
-        y: 75
+        y: 72
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.bold: true
         font.family: "Roboto"
         font.pixelSize: 24
-        height: 32
+        height: 35
         horizontalAlignment: Text.AlignLeft
         text: "Bold"
         verticalAlignment: Text.AlignBottom
         width: 55
         x: 145
-        y: 75
+        y: 72
     }
 }

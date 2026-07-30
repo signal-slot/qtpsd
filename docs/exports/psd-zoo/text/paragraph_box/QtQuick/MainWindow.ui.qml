@@ -12,7 +12,6 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 16
@@ -21,7 +20,7 @@ Item {
         text: "Paragraph text in a bounding box. This text wraps automatically when it reaches the edge of the box."
         verticalAlignment: Text.AlignBottom
         width: 354
-        wrapMode: Text.Wrap
+        wrapMode: Text.WordWrap
         x: 25
         y: 23
     }

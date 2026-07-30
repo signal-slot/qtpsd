@@ -12,16 +12,15 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 48
-        height: 63
+        height: 70
         horizontalAlignment: Text.AlignLeft
         text: "Landscape"
         verticalAlignment: Text.AlignBottom
         width: 234
         x: 800
-        y: 490
+        y: 484
     }
 }

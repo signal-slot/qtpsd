@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 95,
+            height: 105,
             left: 1800,
-            top: 1925,
+            top: 1916,
             width: 435,
             child: Text(
               "Large Canvas", 

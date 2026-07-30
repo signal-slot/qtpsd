@@ -22,9 +22,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 50,
-            top: 125,
+            top: 122,
             width: 174,
             child: Text(
               "Foreground Text", 

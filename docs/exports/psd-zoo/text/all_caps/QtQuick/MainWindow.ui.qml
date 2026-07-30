@@ -12,17 +12,16 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.capitalization: Font.AllUppercase
         font.family: "Roboto"
         font.pixelSize: 36
-        height: 48
+        height: 52
         horizontalAlignment: Text.AlignLeft
         text: "all caps"
         verticalAlignment: Text.AlignBottom
         width: 171
         x: 30
-        y: 62
+        y: 58
     }
 }

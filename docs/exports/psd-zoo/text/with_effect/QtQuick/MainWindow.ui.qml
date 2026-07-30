@@ -13,19 +13,18 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ffc83232"
         font.bold: true
         font.family: "Roboto"
         font.pixelSize: 48
-        height: 63
+        height: 70
         horizontalAlignment: Text.AlignLeft
         layer.enabled: true
         text: "STYLED"
         verticalAlignment: Text.AlignBottom
         width: 173
         x: 20
-        y: 90
+        y: 84
         layer.effect: MultiEffect {
             shadowBlur: 5
             shadowColor: "#bf000000"

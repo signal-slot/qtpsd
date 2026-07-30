@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 300,
-            top: 375,
+            top: 372,
             width: 66,
             child: Text(
               "Offset", 

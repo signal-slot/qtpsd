@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 264,
+            height: 290,
             left: 30,
-            top: -110,
+            top: -132,
             width: 699,
             child: Text(
               "600 DPI", 

@@ -12,7 +12,6 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.family: "Roboto"
         font.pixelSize: 14
@@ -21,7 +20,7 @@ Item {
         text: "Internationalization implementation characterization extraordinarily"
         verticalAlignment: Text.AlignBottom
         width: 160
-        wrapMode: Text.Wrap
+        wrapMode: Text.WordWrap
         x: 20
         y: 19
     }

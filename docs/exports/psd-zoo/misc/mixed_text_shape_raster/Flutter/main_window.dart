@@ -35,9 +35,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 37,
+            height: 40,
             left: 50,
-            top: 221,
+            top: 218,
             width: 183,
             child: Text(
               "Mixed Content", 

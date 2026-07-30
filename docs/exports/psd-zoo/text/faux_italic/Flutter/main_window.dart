@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 39,
+            height: 44,
             left: 20,
-            top: 69,
+            top: 65,
             width: 137,
             child: Text(
               "Faux Italic", 

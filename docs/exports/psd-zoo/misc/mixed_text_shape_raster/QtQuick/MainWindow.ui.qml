@@ -20,18 +20,17 @@ Item {
         y: 50
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.bold: true
         font.family: "Roboto"
         font.pixelSize: 28
-        height: 37
+        height: 40
         horizontalAlignment: Text.AlignLeft
         text: "Mixed Content"
         verticalAlignment: Text.AlignBottom
         width: 183
         x: 50
-        y: 221
+        y: 218
     }
     Item {
         height: 152

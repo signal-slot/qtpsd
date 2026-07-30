@@ -34,9 +34,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 32,
+            height: 35,
             left: 21,
-            top: 90,
+            top: 87,
             width: 107,
             child: Text(
               "CLICK ME", 

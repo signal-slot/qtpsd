@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 63,
+            height: 70,
             left: 100,
-            top: 100,
+            top: 94,
             width: 91,
             child: Text(
               "Flag", 

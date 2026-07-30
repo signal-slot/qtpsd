@@ -21,19 +21,18 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ffffffff"
         font.bold: true
         font.family: "Roboto"
         font.pixelSize: 36
-        height: 48
+        height: 52
         horizontalAlignment: Text.AlignLeft
         layer.enabled: true
         text: "Shadow"
         verticalAlignment: Text.AlignBottom
         width: 129
         x: 30
-        y: 82
+        y: 78
         layer.effect: MultiEffect {
             shadowBlur: 8
             shadowColor: "#e6000000"

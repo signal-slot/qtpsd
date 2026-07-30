@@ -12,17 +12,16 @@ Item {
         y: 0
     }
     Text {
-        clip: true
         color: "#ff000000"
         font.bold: true
         font.family: "Roboto"
         font.pixelSize: 30
-        height: 39
+        height: 44
         horizontalAlignment: Text.AlignLeft
         text: "Faux Bold"
         verticalAlignment: Text.AlignBottom
         width: 139
         x: 20
-        y: 69
+        y: 65
     }
 }

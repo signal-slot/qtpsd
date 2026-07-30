@@ -23,9 +23,9 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 48,
+            height: 52,
             left: 80,
-            top: 112,
+            top: 108,
             width: 186,
             child: Text(
               "Warped Arc", 
