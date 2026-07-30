@@ -68,12 +68,14 @@ RUN mkdir -p ${PUB_CACHE} \
     && chmod -R a+rwX ${PUB_CACHE}
 RUN cargo install slint-viewer --locked
 
-# Build LVGL headless capture tool
-COPY tools/lvgl_capture /tmp/lvgl_capture_src
-RUN cmake -S /tmp/lvgl_capture_src -B /tmp/lvgl_capture_build -G Ninja \
-    && cmake --build /tmp/lvgl_capture_build \
-    && cp /tmp/lvgl_capture_build/lvgl_capture /usr/local/bin/lvgl_capture \
-    && rm -rf /tmp/lvgl_capture_build /tmp/lvgl_capture_src
+# Build LVGL headless capture harness. The exporter-generated main_screen.c
+# is compiled against this per export by scripts/lvgl2png.sh, so the build
+# tree (LVGL sources + static libs) must stay in the image.
+COPY tools/lvgl_capture /opt/lvgl_capture_src
+RUN cmake -S /opt/lvgl_capture_src -B /opt/lvgl_capture_build -G Ninja \
+    && cmake --build /opt/lvgl_capture_build \
+    && chmod -R a+rX /opt/lvgl_capture_src /opt/lvgl_capture_build
+ENV LVGL_CAPTURE_ENV=/opt/lvgl_capture_build/capture_env.sh
 
 WORKDIR /workspace
 

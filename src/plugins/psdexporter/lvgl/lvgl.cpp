@@ -6,9 +6,9 @@
 
 #include <QtCore/QCborMap>
 #include <QtCore/QDir>
+#include <QtCore/QTextStream>
 
 #include <optional>
-#include <QtCore/QXmlStreamWriter>
 #include <QtGui/QBrush>
 #include <QtGui/QConicalGradient>
 #include <QtGui/QFontMetrics>
@@ -20,6 +20,10 @@
 
 QT_BEGIN_NAMESPACE
 
+// Generates plain C code against the MIT-licensed LVGL C API.
+// The LVGL XML format is intentionally not used: since LVGL 9.5 the XML
+// engine is a commercial component and the XML specification's license
+// prohibits third-party tools from writing it.
 class QPsdExporterLvglPlugin : public QPsdExporterPlugin
 {
     Q_OBJECT
@@ -48,13 +52,16 @@ private:
 
     struct GradientStop {
         int offset; // 0-255
-        QString color; // "0xRRGGBB"
+        quint32 rgb; // 0xRRGGBB
         int opa; // 0-255
     };
     struct GradientDef {
         QString name;
-        QString type; // "linear", "radial", "conical"
-        QMap<QString, QString> attributes;
+        enum Type { Linear, Radial, Conical } type = Linear;
+        // Linear: (p1x,p1y)-(p2x,p2y) start/end points
+        // Radial: (p1x,p1y) center, (p2x,p2y) point on the end circle
+        // Conical: (p1x,p1y) center, p2x start angle, p2y end angle (degrees)
+        int p1x = 0, p1y = 0, p2x = 0, p2y = 0;
         QList<GradientStop> stops;
     };
     mutable QList<GradientDef> exportedGradients;
@@ -74,8 +81,15 @@ private:
     QString generateGradientName(const QString &layerName) const;
     GradientDef makeGradientDef(const QString &name, const QGradient *gradient) const;
 
-    bool saveComponentXml(const QString &baseName, Element *element, const ExportData &exports) const;
-    bool saveGlobalsXml() const;
+    bool saveHeader(const QString &baseName, const ExportData &exports) const;
+    bool saveSource(const QString &baseName, const Element &root, const ExportData &exports, const QSize &targetSize) const;
+
+    static QString escapeCString(const QString &text);
+    static QString fontExpression(const QString &fontValue);
+    QString imageSourcePath(const QString &imageName) const;
+    void emitGradient(QTextStream &out, const GradientDef &grad) const;
+    void emitElement(QTextStream &out, const Element &element, const QString &parentVar,
+                     int indent, int *counter, const QSet<QString> &exportIds) const;
 };
 
 bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, const QString &to, const ExportConfig &config) const
@@ -92,7 +106,6 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
 
     Element view;
     view.type = "view";
-    view.attributes.insert("extends", "lv_obj");
     outputRect(QRect(QPoint(0, 0), targetSize), &view);
     view.attributes.insert("style_pad_all", "0");
     view.attributes.insert("scrollbar_mode", "off");
@@ -120,10 +133,11 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
         }
     }
 
-    if (!saveComponentXml("MainScreen", &view, exports))
+    const QString baseName = "main_screen"_L1;
+    if (!saveHeader(baseName, exports))
         return false;
 
-    if (!saveGlobalsXml())
+    if (!saveSource(baseName, view, exports, targetSize))
         return false;
 
     return true;
@@ -472,14 +486,14 @@ QPsdExporterLvglPlugin::GradientDef QPsdExporterLvglPlugin::makeGradientDef(cons
     for (const auto &stop : gradient->stops()) {
         GradientStop gs;
         gs.offset = qRound(stop.first * 255);
-        gs.color = u"0x%1"_s.arg(stop.second.rgb() & 0xFFFFFF, 6, 16, QChar('0'));
+        gs.rgb = stop.second.rgb() & 0xFFFFFF;
         gs.opa = stop.second.alpha();
         def.stops.append(gs);
     }
 
     switch (gradient->type()) {
     case QGradient::LinearGradient: {
-        def.type = "linear"_L1;
+        def.type = GradientDef::Linear;
         const auto *lg = static_cast<const QLinearGradient *>(gradient);
         QPointF s = lg->start();
         QPointF e = lg->finalStop();
@@ -499,26 +513,27 @@ QPsdExporterLvglPlugin::GradientDef QPsdExporterLvglPlugin::makeGradientDef(cons
                 stop.offset = 255 - stop.offset;
             std::reverse(def.stops.begin(), def.stops.end());
         }
-        def.attributes.insert("start"_L1, u"%1 %2"_s.arg(qRound(s.x())).arg(qRound(s.y())));
-        def.attributes.insert("end"_L1, u"%1 %2"_s.arg(qRound(e.x())).arg(qRound(e.y())));
-        def.attributes.insert("extend"_L1, "pad"_L1);
+        def.p1x = qRound(s.x());
+        def.p1y = qRound(s.y());
+        def.p2x = qRound(e.x());
+        def.p2y = qRound(e.y());
         break; }
     case QGradient::RadialGradient: {
-        def.type = "radial"_L1;
+        def.type = GradientDef::Radial;
         const auto *rg = static_cast<const QRadialGradient *>(gradient);
-        def.attributes.insert("center"_L1, u"%1 %2"_s.arg(qRound(rg->center().x())).arg(qRound(rg->center().y())));
+        def.p1x = qRound(rg->center().x());
+        def.p1y = qRound(rg->center().y());
         // edge point: center + radius in the x direction
-        int edgeX = qRound(rg->center().x() + rg->radius());
-        int edgeY = qRound(rg->center().y());
-        def.attributes.insert("edge"_L1, u"%1 %2"_s.arg(edgeX).arg(edgeY));
+        def.p2x = qRound(rg->center().x() + rg->radius());
+        def.p2y = qRound(rg->center().y());
         break; }
     case QGradient::ConicalGradient: {
-        def.type = "conical"_L1;
+        def.type = GradientDef::Conical;
         const auto *cg = static_cast<const QConicalGradient *>(gradient);
-        def.attributes.insert("center"_L1, u"%1 %2"_s.arg(qRound(cg->center().x())).arg(qRound(cg->center().y())));
-        // LVGL uses tenths of degrees (0-3600 range)
-        int startAngle = qRound(cg->angle()) * 10;
-        def.attributes.insert("angle"_L1, u"%1 %2"_s.arg(startAngle).arg(startAngle + 3600));
+        def.p1x = qRound(cg->center().x());
+        def.p1y = qRound(cg->center().y());
+        def.p2x = qRound(cg->angle());
+        def.p2y = qRound(cg->angle()) + 360;
         // LVGL uses clockwise like PSD, but Qt uses counter-clockwise.
         // brushFromGdFl reversed the stops for Qt — undo for LVGL.
         for (auto &stop : def.stops)
@@ -526,118 +541,262 @@ QPsdExporterLvglPlugin::GradientDef QPsdExporterLvglPlugin::makeGradientDef(cons
         std::reverse(def.stops.begin(), def.stops.end());
         break; }
     default:
-        def.type = "linear"_L1;
+        def.type = GradientDef::Linear;
         break;
     }
 
     return def;
 }
 
-bool QPsdExporterLvglPlugin::saveComponentXml(const QString &baseName, Element *element, const ExportData &exports) const
+QString QPsdExporterLvglPlugin::escapeCString(const QString &text)
 {
-    QFile file(dir.absoluteFilePath(baseName + ".xml"));
+    QString ret;
+    for (const QChar &ch : text) {
+        switch (ch.unicode()) {
+        case '"': ret += "\\\""_L1; break;
+        case '\\': ret += "\\\\"_L1; break;
+        case '\n': ret += "\\n"_L1; break;
+        case '\r': ret += "\\r"_L1; break;
+        case '\t': ret += "\\t"_L1; break;
+        default:
+            ret += ch;
+            break;
+        }
+    }
+    return ret;
+}
+
+QString QPsdExporterLvglPlugin::fontExpression(const QString &fontValue)
+{
+    // "montserrat <size>" → &lv_font_montserrat_<n> with n rounded to the
+    // nearest size LVGL actually ships (even numbers 8..48)
+    const auto parts = fontValue.split(QChar(' '));
+    int size = 14;
+    if (parts.size() == 2)
+        size = parts.at(1).toInt();
+    int rounded = qBound(8, (size + 1) / 2 * 2, 48);
+    return u"&lv_font_montserrat_%1"_s.arg(rounded);
+}
+
+QString QPsdExporterLvglPlugin::imageSourcePath(const QString &imageName) const
+{
+    for (const auto &pair : exportedImages) {
+        if (pair.first == imageName)
+            return u"A:images/%1"_s.arg(pair.second);
+    }
+    return u"A:images/%1.png"_s.arg(imageName);
+}
+
+void QPsdExporterLvglPlugin::emitGradient(QTextStream &out, const GradientDef &grad) const
+{
+    const QString n = grad.name;
+    out << "    static lv_grad_dsc_t grad_" << n << ";\n";
+    out << "    {\n";
+    out << "        static const lv_color_t stops_" << n << "_colors[] = {";
+    for (const auto &stop : grad.stops)
+        out << " LV_COLOR_MAKE(0x" << QString::number((stop.rgb >> 16) & 0xFF, 16)
+            << ", 0x" << QString::number((stop.rgb >> 8) & 0xFF, 16)
+            << ", 0x" << QString::number(stop.rgb & 0xFF, 16) << "),";
+    out << " };\n";
+    out << "        static const lv_opa_t stops_" << n << "_opa[] = {";
+    for (const auto &stop : grad.stops)
+        out << " " << stop.opa << ",";
+    out << " };\n";
+    out << "        static const uint8_t stops_" << n << "_fracs[] = {";
+    for (const auto &stop : grad.stops)
+        out << " " << stop.offset << ",";
+    out << " };\n";
+    switch (grad.type) {
+    case GradientDef::Linear:
+        out << "        lv_grad_linear_init(&grad_" << n << ", " << grad.p1x << ", " << grad.p1y
+            << ", " << grad.p2x << ", " << grad.p2y << ", LV_GRAD_EXTEND_PAD);\n";
+        break;
+    case GradientDef::Radial:
+        out << "        lv_grad_radial_init(&grad_" << n << ", " << grad.p1x << ", " << grad.p1y
+            << ", " << grad.p2x << ", " << grad.p2y << ", LV_GRAD_EXTEND_PAD);\n";
+        break;
+    case GradientDef::Conical:
+        out << "        lv_grad_conical_init(&grad_" << n << ", " << grad.p1x << ", " << grad.p1y
+            << ", " << grad.p2x << ", " << grad.p2y << ", LV_GRAD_EXTEND_PAD);\n";
+        break;
+    }
+    out << "        lv_grad_init_stops(&grad_" << n << ", stops_" << n << "_colors, stops_" << n
+        << "_opa, stops_" << n << "_fracs, " << grad.stops.size() << ");\n";
+    out << "    }\n";
+}
+
+void QPsdExporterLvglPlugin::emitElement(QTextStream &out, const Element &element, const QString &parentVar,
+                                         int indent, int *counter, const QSet<QString> &exportIds) const
+{
+    const QString pad(indent * 4, QChar(' '));
+    QString var = u"obj_%1"_s.arg((*counter)++);
+
+    QString createFunc = "lv_obj_create"_L1;
+    if (element.type == "lv_label"_L1)
+        createFunc = "lv_label_create"_L1;
+    else if (element.type == "lv_image"_L1)
+        createFunc = "lv_image_create"_L1;
+    else if (element.type == "lv_button"_L1)
+        createFunc = "lv_button_create"_L1;
+
+    out << pad << "{\n";
+    const QString ipad = pad + "    "_L1;
+    out << ipad << "lv_obj_t * " << var << " = " << createFunc << "(" << parentVar << ");\n";
+    if (!element.id.isEmpty() && exportIds.contains(element.id))
+        out << ipad << "s_" << element.id << " = " << var << ";\n";
+
+    // Position and size first
+    const auto &attrs = element.attributes;
+    if (attrs.contains("x"_L1) && attrs.contains("y"_L1))
+        out << ipad << "lv_obj_set_pos(" << var << ", " << attrs.value("x"_L1) << ", " << attrs.value("y"_L1) << ");\n";
+    if (attrs.contains("width"_L1) && attrs.contains("height"_L1))
+        out << ipad << "lv_obj_set_size(" << var << ", " << attrs.value("width"_L1) << ", " << attrs.value("height"_L1) << ");\n";
+
+    for (auto it = attrs.constBegin(); it != attrs.constEnd(); ++it) {
+        const QString &key = it.key();
+        const QString &value = it.value();
+        if (key == "x"_L1 || key == "y"_L1 || key == "width"_L1 || key == "height"_L1)
+            continue;
+        if (key == "hidden"_L1) {
+            if (value == "true"_L1)
+                out << ipad << "lv_obj_add_flag(" << var << ", LV_OBJ_FLAG_HIDDEN);\n";
+        } else if (key == "scrollbar_mode"_L1) {
+            if (value == "off"_L1)
+                out << ipad << "lv_obj_set_scrollbar_mode(" << var << ", LV_SCROLLBAR_MODE_OFF);\n";
+        } else if (key == "style_pad_all"_L1) {
+            out << ipad << "lv_obj_set_style_pad_all(" << var << ", " << value << ", 0);\n";
+        } else if (key == "style_opa"_L1) {
+            out << ipad << "lv_obj_set_style_opa(" << var << ", " << value << ", 0);\n";
+        } else if (key == "style_bg_color"_L1) {
+            out << ipad << "lv_obj_set_style_bg_color(" << var << ", lv_color_hex(" << value << "), 0);\n";
+        } else if (key == "style_bg_opa"_L1) {
+            out << ipad << "lv_obj_set_style_bg_opa(" << var << ", " << value << ", 0);\n";
+        } else if (key == "style_bg_grad"_L1) {
+            out << ipad << "lv_obj_set_style_bg_grad(" << var << ", &grad_" << value << ", 0);\n";
+        } else if (key == "style_radius"_L1) {
+            out << ipad << "lv_obj_set_style_radius(" << var << ", " << value << ", 0);\n";
+        } else if (key == "style_border_width"_L1) {
+            out << ipad << "lv_obj_set_style_border_width(" << var << ", " << value << ", 0);\n";
+        } else if (key == "style_border_color"_L1) {
+            out << ipad << "lv_obj_set_style_border_color(" << var << ", lv_color_hex(" << value << "), 0);\n";
+        } else if (key == "style_border_opa"_L1) {
+            out << ipad << "lv_obj_set_style_border_opa(" << var << ", " << value << ", 0);\n";
+        } else if (key == "style_shadow_width"_L1) {
+            out << ipad << "lv_obj_set_style_shadow_width(" << var << ", " << value << ", 0);\n";
+        } else if (key == "text"_L1) {
+            out << ipad << "lv_label_set_text(" << var << ", \"" << escapeCString(value) << "\");\n";
+        } else if (key == "style_text_color"_L1) {
+            out << ipad << "lv_obj_set_style_text_color(" << var << ", lv_color_hex(" << value << "), 0);\n";
+        } else if (key == "style_text_font"_L1) {
+            out << ipad << "lv_obj_set_style_text_font(" << var << ", " << fontExpression(value) << ", 0);\n";
+        } else if (key == "style_text_align"_L1) {
+            QString align;
+            if (value == "left"_L1)
+                align = "LV_TEXT_ALIGN_LEFT"_L1;
+            else if (value == "right"_L1)
+                align = "LV_TEXT_ALIGN_RIGHT"_L1;
+            else if (value == "center"_L1)
+                align = "LV_TEXT_ALIGN_CENTER"_L1;
+            if (!align.isEmpty())
+                out << ipad << "lv_obj_set_style_text_align(" << var << ", " << align << ", 0);\n";
+        } else if (key == "src"_L1) {
+            out << ipad << "lv_image_set_src(" << var << ", \"" << imageSourcePath(value) << "\");\n";
+        } else {
+            qWarning() << "lvgl exporter: unhandled attribute" << key << "=" << value;
+        }
+    }
+
+    for (const Element &child : element.children)
+        emitElement(out, child, var, indent + 1, counter, exportIds);
+
+    out << pad << "}\n";
+}
+
+bool QPsdExporterLvglPlugin::saveHeader(const QString &baseName, const ExportData &exports) const
+{
+    QFile file(dir.absoluteFilePath(baseName + ".h"_L1));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
 
-    QXmlStreamWriter xml(&file);
-    xml.setAutoFormatting(true);
-    xml.setAutoFormattingIndent(2);
-
-    xml.writeStartDocument();
-    xml.writeStartElement("component");
-
-    // Write API section
-    if (!exports.isEmpty()) {
-        xml.writeStartElement("api");
-        for (const auto &exp : exports) {
-            xml.writeStartElement("prop");
-            xml.writeAttribute("name", exp.first + "_visible");
-            xml.writeAttribute("type", exp.second);
-            xml.writeAttribute("default", "true");
-            xml.writeEndElement();
-        }
-        xml.writeEndElement(); // api
+    QTextStream out(&file);
+    const QString guard = baseName.toUpper() + "_H"_L1;
+    out << "/* Generated by Qt PSD Exporter - LVGL C exporter */\n";
+    out << "#ifndef " << guard << "\n";
+    out << "#define " << guard << "\n\n";
+    out << "#include \"lvgl.h\"\n\n";
+    out << "#ifdef __cplusplus\n";
+    out << "extern \"C\" {\n";
+    out << "#endif\n\n";
+    out << "extern const int32_t " << baseName << "_width;\n";
+    out << "extern const int32_t " << baseName << "_height;\n\n";
+    out << "/* Create the screen contents as a child of `parent`.\n";
+    out << " * Image assets are loaded from \"A:images/\"; register an LVGL\n";
+    out << " * filesystem driver for the 'A' drive letter accordingly. */\n";
+    out << "lv_obj_t * " << baseName << "_create(lv_obj_t * parent);\n";
+    for (const auto &exp : exports) {
+        out << "\nvoid " << baseName << "_set_" << exp.first << "_visible(bool visible);\n";
     }
-
-    // Write gradient definitions (must be in component scope for LVGL XML lookup)
-    if (!exportedGradients.isEmpty()) {
-        xml.writeStartElement("gradients");
-        for (const auto &grad : exportedGradients) {
-            xml.writeStartElement(grad.type);
-            xml.writeAttribute("name", grad.name);
-            QStringList gkeys = grad.attributes.keys();
-            gkeys.sort();
-            for (const QString &key : gkeys) {
-                xml.writeAttribute(key, grad.attributes.value(key));
-            }
-            for (const auto &stop : grad.stops) {
-                xml.writeStartElement("stop");
-                xml.writeAttribute("color", stop.color);
-                xml.writeAttribute("offset", QString::number(stop.offset));
-                xml.writeAttribute("opa", QString::number(stop.opa));
-                xml.writeEndElement();
-            }
-            xml.writeEndElement();
-        }
-        xml.writeEndElement(); // gradients
-    }
-
-    // Write view and children
-    std::function<void(const Element &)> writeElement;
-    writeElement = [&](const Element &el) {
-        xml.writeStartElement(el.type);
-        if (!el.id.isEmpty())
-            xml.writeAttribute("id", el.id);
-        // Write attributes in sorted order for consistency
-        QStringList keys = el.attributes.keys();
-        keys.sort();
-        for (const QString &key : keys) {
-            xml.writeAttribute(key, el.attributes.value(key));
-        }
-        for (const Element &child : el.children) {
-            writeElement(child);
-        }
-        xml.writeEndElement();
-    };
-
-    writeElement(*element);
-
-    xml.writeEndElement(); // component
-    xml.writeEndDocument();
-
+    out << "\n#ifdef __cplusplus\n";
+    out << "} /* extern \"C\" */\n";
+    out << "#endif\n\n";
+    out << "#endif /* " << guard << " */\n";
     return true;
 }
 
-bool QPsdExporterLvglPlugin::saveGlobalsXml() const
+bool QPsdExporterLvglPlugin::saveSource(const QString &baseName, const Element &root, const ExportData &exports, const QSize &targetSize) const
 {
-    QFile file(dir.absoluteFilePath("globals.xml"));
+    QFile file(dir.absoluteFilePath(baseName + ".c"_L1));
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text))
         return false;
 
-    QXmlStreamWriter xml(&file);
-    xml.setAutoFormatting(true);
-    xml.setAutoFormattingIndent(2);
+    QSet<QString> exportIds;
+    for (const auto &exp : exports)
+        exportIds.insert(exp.first);
 
-    xml.writeStartDocument();
-    xml.writeStartElement("globals");
-    xml.writeStartElement("images");
+    QTextStream out(&file);
+    out << "/* Generated by Qt PSD Exporter - LVGL C exporter */\n";
+    out << "#include \"" << baseName << ".h\"\n\n";
+    out << "const int32_t " << baseName << "_width = " << targetSize.width() << ";\n";
+    out << "const int32_t " << baseName << "_height = " << targetSize.height() << ";\n";
 
-    QSet<QString> writtenImages;
-    for (const auto &img : exportedImages) {
-        if (writtenImages.contains(img.first))
-            continue;
-        writtenImages.insert(img.first);
+    for (const QString &id : std::as_const(exportIds))
+        out << "\nstatic lv_obj_t * s_" << id << ";\n";
 
-        xml.writeStartElement("file");
-        xml.writeAttribute("name", img.first);
-        xml.writeAttribute("src_path", u"A:images/%1"_s.arg(img.second));
-        xml.writeEndElement();
+    out << "\nlv_obj_t * " << baseName << "_create(lv_obj_t * parent)\n";
+    out << "{\n";
+
+    for (const auto &grad : std::as_const(exportedGradients))
+        emitGradient(out, grad);
+    if (!exportedGradients.isEmpty())
+        out << "\n";
+
+    // Root object corresponds to the artboard/canvas
+    out << "    lv_obj_t * root = lv_obj_create(parent);\n";
+    Element rootCopy = root;
+    const auto &attrs = rootCopy.attributes;
+    out << "    lv_obj_set_pos(root, " << attrs.value("x"_L1, "0"_L1) << ", " << attrs.value("y"_L1, "0"_L1) << ");\n";
+    out << "    lv_obj_set_size(root, " << attrs.value("width"_L1) << ", " << attrs.value("height"_L1) << ");\n";
+    out << "    lv_obj_set_style_pad_all(root, 0, 0);\n";
+    out << "    lv_obj_set_style_border_width(root, 0, 0);\n";
+    out << "    lv_obj_set_style_radius(root, 0, 0);\n";
+    out << "    lv_obj_set_style_bg_opa(root, 0, 0);\n";
+    out << "    lv_obj_set_scrollbar_mode(root, LV_SCROLLBAR_MODE_OFF);\n";
+
+    int counter = 0;
+    for (const Element &child : std::as_const(rootCopy.children))
+        emitElement(out, child, "root"_L1, 1, &counter, exportIds);
+
+    out << "    return root;\n";
+    out << "}\n";
+
+    for (const auto &exp : exports) {
+        out << "\nvoid " << baseName << "_set_" << exp.first << "_visible(bool visible)\n";
+        out << "{\n";
+        out << "    if (s_" << exp.first << " == NULL) return;\n";
+        out << "    if (visible) lv_obj_remove_flag(s_" << exp.first << ", LV_OBJ_FLAG_HIDDEN);\n";
+        out << "    else lv_obj_add_flag(s_" << exp.first << ", LV_OBJ_FLAG_HIDDEN);\n";
+        out << "}\n";
     }
-
-    xml.writeEndElement(); // images
-
-    xml.writeEndElement(); // globals
-    xml.writeEndDocument();
 
     return true;
 }

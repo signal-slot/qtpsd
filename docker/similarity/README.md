@@ -31,4 +31,4 @@ The script expects these files to exist first:
 - `docs/exports/psd-zoo/**/QtQuick/MainWindow.ui.qml`
 - `docs/exports/psd-zoo/**/Slint/MainWindow.slint`
 - `docs/exports/psd-zoo/**/Flutter/main_window.dart`
-- `docs/exports/psd-zoo/**/LVGL/MainScreen.xml`
+- `docs/exports/psd-zoo/**/LVGL/main_screen.c`

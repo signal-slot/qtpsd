@@ -153,7 +153,7 @@ for capture_args in \
   "QtQuick|MainWindow.ui.qml|${qtquick_output_root}|${qml_capture_script}" \
   "Slint|MainWindow.slint|${slint_output_root}|${slint_capture_script}" \
   "Flutter|main_window.dart|${flutter_output_root}|${flutter_capture_script}" \
-  "LVGL|MainScreen.xml|${lvgl_output_root}|${lvgl_capture_script}"; do
+  "LVGL|main_screen.c|${lvgl_output_root}|${lvgl_capture_script}"; do
   IFS='|' read -r kind input_name output_root_dir script <<< "${capture_args}"
 
   while IFS= read -r input_path; do

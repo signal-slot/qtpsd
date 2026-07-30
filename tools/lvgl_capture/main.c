@@ -1,13 +1,14 @@
 /**
- * Headless LVGL XML capture tool.
+ * Headless LVGL capture harness.
  *
- * Loads an LVGL XML component (MainScreen.xml + globals.xml),
- * renders it using the real LVGL engine, takes a snapshot,
+ * Linked together with a generated main_screen.c (see the LVGL exporter),
+ * renders the screen with the real LVGL engine, takes a snapshot,
  * and writes the result as a PNG file.
  *
- * Usage: lvgl_capture <export_dir> <output.png>
+ * Usage: capture <export_dir> <output.png>
  *
- * The export_dir must contain MainScreen.xml, globals.xml, and images/.
+ * The export_dir must contain the images/ directory referenced by the
+ * generated code ("A:images/..." paths resolve relative to it).
  */
 
 #include "lvgl.h"
@@ -18,6 +19,11 @@
 #include <string.h>
 #include <time.h>
 #include <unistd.h>
+
+/* Provided by the generated main_screen.c */
+extern const int32_t main_screen_width;
+extern const int32_t main_screen_height;
+lv_obj_t * main_screen_create(lv_obj_t * parent);
 
 static uint32_t tick_get_cb(void)
 {
@@ -40,31 +46,6 @@ static void flush_cb(lv_display_t *disp, const lv_area_t *area, uint8_t *px_map)
         px_map += w * sizeof(uint32_t);
     }
     lv_display_flush_ready(disp);
-}
-
-static int parse_view_size(const char *xml_path, int32_t *w, int32_t *h)
-{
-    /* Quick parse: read the file and find width="..." height="..." in the <view> tag */
-    FILE *f = fopen(xml_path, "r");
-    if (!f) return -1;
-
-    char buf[4096];
-    size_t n = fread(buf, 1, sizeof(buf) - 1, f);
-    fclose(f);
-    buf[n] = '\0';
-
-    /* Find the view element */
-    char *view = strstr(buf, "<view ");
-    if (!view) view = strstr(buf, "<view\n");
-    if (!view) return -1;
-
-    char *width_attr = strstr(view, "width=\"");
-    char *height_attr = strstr(view, "height=\"");
-    if (!width_attr || !height_attr) return -1;
-
-    *w = atoi(width_attr + 7);
-    *h = atoi(height_attr + 8);
-    return (*w > 0 && *h > 0) ? 0 : -1;
 }
 
 static int write_png(const char *path, const uint32_t *pixels, int32_t w, int32_t h)
@@ -115,15 +96,10 @@ int main(int argc, char *argv[])
     const char *export_dir = argv[1];
     const char *output_png = argv[2];
 
-    /* Build paths */
-    char main_xml[1024], globals_xml[1024];
-    snprintf(main_xml, sizeof(main_xml), "%s/MainScreen.xml", export_dir);
-    snprintf(globals_xml, sizeof(globals_xml), "%s/globals.xml", export_dir);
-
-    /* Parse view dimensions from MainScreen.xml */
-    int32_t width = 0, height = 0;
-    if (parse_view_size(main_xml, &width, &height) != 0) {
-        fprintf(stderr, "Failed to parse view size from %s\n", main_xml);
+    int32_t width = main_screen_width;
+    int32_t height = main_screen_height;
+    if (width <= 0 || height <= 0) {
+        fprintf(stderr, "Invalid screen size %dx%d\n", (int)width, (int)height);
         return 1;
     }
 
@@ -160,29 +136,8 @@ int main(int argc, char *argv[])
     /* Set screen background to transparent */
     lv_obj_set_style_bg_opa(lv_screen_active(), LV_OPA_TRANSP, 0);
 
-    /* Register globals.xml (images, gradients, styles)
-     * Use "A:./" prefix so lv_fs_get_last() finds the '/' separator
-     * and correctly extracts the filename (e.g. "globals" not "A:globals") */
-    if (access(globals_xml, F_OK) == 0) {
-        lv_result_t res = lv_xml_component_register_from_file("A:./globals.xml");
-        if (res != LV_RESULT_OK) {
-            fprintf(stderr, "Warning: failed to register globals.xml\n");
-        }
-    }
-
-    /* Register MainScreen component */
-    lv_result_t res = lv_xml_component_register_from_file("A:./MainScreen.xml");
-    if (res != LV_RESULT_OK) {
-        fprintf(stderr, "Failed to register MainScreen.xml\n");
-        free(framebuffer);
-        free(draw_buf);
-        return 1;
-    }
-
-    /* Create the component */
-    lv_obj_t *screen = (lv_obj_t *)lv_xml_create(lv_screen_active(), "MainScreen", NULL);
-    if (!screen) {
-        fprintf(stderr, "Failed to create MainScreen component\n");
+    if (main_screen_create(lv_screen_active()) == NULL) {
+        fprintf(stderr, "main_screen_create failed\n");
         free(framebuffer);
         free(draw_buf);
         return 1;

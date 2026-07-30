@@ -3,7 +3,7 @@
 ## Policy
 
 - Host: generate `Image Data`, `QPsdView`, and exporter outputs (`QtQuick`, `Slint`, `Flutter`, `LVGL`).
-- Docker: convert exported `MainWindow.ui.qml` / `MainWindow.slint` / `main_window.dart` / `MainScreen.xml` to PNG screenshots only.
+- Docker: convert exported `MainWindow.ui.qml` / `MainWindow.slint` / `main_window.dart` / `main_screen.c` to PNG screenshots only.
 - Host: calculate similarity and regenerate `docs/similarity_report_psd-zoo.md`.
 
 ## One-command update
