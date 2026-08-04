@@ -355,7 +355,10 @@ double tst_PsdExporterSimilarity::compareImages(const QImage &img1, const QImage
 
             const double sDiff = qAbs(s1 - s2);
             const double vDiff = qAbs(v1 - v2);
-            const double pixelDiff = hDiff * 0.3 + sDiff * 0.3 + vDiff * 0.4;
+            // Brightness-only gaps must not be diluted by the weighting:
+            // a blank white render over a flat gray design used to score 92%
+            // because vDiff * 0.4 stayed under the difference threshold.
+            const double pixelDiff = qMax(hDiff * 0.3 + sDiff * 0.3 + vDiff * 0.4, vDiff);
 
             totalDiff += pixelDiff;
             if (pixelDiff > 0.1) {

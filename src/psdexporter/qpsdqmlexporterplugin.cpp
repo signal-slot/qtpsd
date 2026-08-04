@@ -1378,9 +1378,15 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
         return;
     }
 
-    // Bind curvesLUT to the LUT image if one was created
+    // Bind curvesLUT to the LUT image if one was created. The sampler is
+    // declared unconditionally in adjustment.frag, and since Qt 6.5 a
+    // declared sampler without a matching property renders black — bind a
+    // dummy source when this adjustment doesn't use a LUT.
     if (!lutImageId.isEmpty())
         effect.properties.insert("property var curvesLUT", lutImageId);
+    else
+        effect.properties.insert("property var curvesLUT",
+                                 u"ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }"_s);
 
     wrapper.layers.append(effect);
     parent->children.append(wrapper);

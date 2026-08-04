@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM ubuntu:26.04
 
 ARG DEBIAN_FRONTEND=noninteractive
 
@@ -32,11 +32,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     qml6-module-qtquick-window \
     qml6-module-qtquick-layouts \
     qml6-module-qtquick-shapes \
+    qml6-module-qtquick-effects \
     libgl1-mesa-dev \
     libgl1-mesa-dri \
     libegl1-mesa-dev \
     libxkbcommon-x11-0 \
     libxcb-cursor0 \
+    libx11-6 \
+    libxcursor1 \
+    libxrandr2 \
+    libxi6 \
     xvfb \
     xcompmgr \
     xdotool \
