@@ -92,6 +92,7 @@ Item {
             property real thresholdLevel: 0.5
             property real vibrance: 0.5
             property real vibranceSat: 20
+            property var curvesLUT: ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }
         }
     }
 }
