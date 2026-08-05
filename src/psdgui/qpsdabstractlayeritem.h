@@ -50,6 +50,8 @@ public:
     qreal gradientOpacity() const;
     QCborMap dropShadow() const;
     QCborMap innerShadow() const;
+    QCborMap innerGlow() const;
+    QCborMap satin() const;
     QPsdBorder *border() const;
     QPsdPatternFill *patternFill() const;
     struct PathInfo {

@@ -156,8 +156,44 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         }
     }
 
+    // Inner effects (satin, inner glow) blended into the layer content,
+    // masked by the content's own coverage
+    {
+        const QCborMap satinParams = layer->satin();
+        const QCborMap glowParams = layer->innerGlow();
+        if ((!satinParams.isEmpty() || !glowParams.isEmpty()) && !image.isNull()) {
+            QImage work = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+            const int w = work.width();
+            const int h = work.height();
+            auto alphaAt = [&](int x, int y) -> int {
+                return qAlpha(reinterpret_cast<const QRgb *>(work.constScanLine(y))[x]);
+            };
+            auto blendEffect = [&](const QCborMap &params, const QVector<float> &field) {
+                const QImage fx = psdEffectColorImage(w, h, QColor(params.value(QLatin1String("color")).toString()),
+                                                      field, params.value(QLatin1String("opacity")).toDouble(1.0), alphaAt)
+                                      .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                QtPsdGui::customBlend(work, fx,
+                                      QPsdBlend::from(params.value(QLatin1String("mode")).toString().toLatin1()), 1.0);
+            };
+            if (!satinParams.isEmpty()) {
+                blendEffect(satinParams,
+                            psdSatinField(w, h, satinParams.value(QLatin1String("angle")).toDouble(),
+                                          satinParams.value(QLatin1String("distance")).toDouble(),
+                                          satinParams.value(QLatin1String("size")).toDouble(),
+                                          satinParams.value(QLatin1String("invert")).toBool(), alphaAt));
+            }
+            if (!glowParams.isEmpty()) {
+                blendEffect(glowParams,
+                            psdInnerGlowField(psdDistanceFromEdge(w, h, alphaAt),
+                                              glowParams.value(QLatin1String("size")).toDouble(),
+                                              glowParams.value(QLatin1String("center")).toBool()));
+            }
+            image = work.convertToFormat(QImage::Format_ARGB32);
+        }
+    }
+
     const auto effects = layer->effects();
-    
+
     // First pass: Draw drop shadows (they go behind the layer)
     for (const auto &effect : effects) {
         if (effect.canConvert<QPsdShadowEffect>()) {
@@ -314,9 +350,21 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
                 p.fillRect(image.rect(), color);
                 p.end();
                 break; }
-            default:
-                qWarning() << sofi.blendMode() << "not supported blend mode";
-                break;
+            default: {
+                // Blend the overlay color onto the content, masked by its coverage
+                QImage work = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
+                QImage fx(work.size(), QImage::Format_ARGB32);
+                for (int y = 0; y < work.height(); ++y) {
+                    const QRgb *src = reinterpret_cast<const QRgb *>(work.constScanLine(y));
+                    QRgb *out = reinterpret_cast<QRgb *>(fx.scanLine(y));
+                    for (int x = 0; x < work.width(); ++x)
+                        out[x] = qRgba(color.red(), color.green(), color.blue(),
+                                       qAlpha(src[x]) * color.alpha() / 255);
+                }
+                QtPsdGui::customBlend(work, fx.convertToFormat(QImage::Format_ARGB32_Premultiplied),
+                                      sofi.blendMode(), 1.0);
+                image = work.convertToFormat(QImage::Format_ARGB32);
+                break; }
             }
         }
     }

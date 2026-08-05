@@ -14,6 +14,8 @@
 
 #include <QtPsdCore/QPsdEffectsLayer>
 #include <QtPsdCore/QPsdEnum>
+#include <QtPsdCore/QPsdOglwEffect>
+#include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdCore/QPsdUnitFloat>
 
 QT_BEGIN_NAMESPACE
@@ -35,6 +37,8 @@ public:
     qreal gradientOpacity = 1.0;
     QCborMap dropShadow;
     QCborMap innerShadow;
+    QCborMap innerGlow;
+    QCborMap satin;
     qreal layerBlur = 0;
     QScopedPointer<QPsdBorder> border;
     QScopedPointer<QPsdPatternFill> patternFill;
@@ -336,6 +340,66 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
                 d->border.reset(new QPsdBorder(frFX));
             }
         }
+
+        auto descriptorColor = [](const QHash<QByteArray, QVariant> &data) -> QColor {
+            const auto clr_ = data.value("Clr ").value<QPsdDescriptor>().data();
+            return QColor::fromRgbF(clr_.value("Rd  ").toDouble() / 255.0,
+                                    clr_.value("Grn ").toDouble() / 255.0,
+                                    clr_.value("Bl  ").toDouble() / 255.0);
+        };
+
+        // Color overlay
+        if (fx.contains("SoFi")) {
+            const auto sofi = fx.take("SoFi").value<QPsdDescriptor>().data();
+            if (sofi.value("enab", false).toBool()) {
+                // lrFX carries a legacy copy of the same effect; the lfx2
+                // descriptor is authoritative, so drop the legacy one
+                for (int i = d->effects.size() - 1; i >= 0; --i) {
+                    const auto &existing = d->effects.at(i);
+                    if (existing.canConvert<QPsdSofiEffect>() && !existing.canConvert<QPsdOglwEffect>())
+                        d->effects.removeAt(i);
+                }
+                QPsdSofiEffect effect;
+                effect.setBlendMode(sofi.value("Md  ").value<QPsdEnum>().value());
+                const auto opct = sofi.value("Opct").value<QPsdUnitFloat>();
+                effect.setOpacity(qRound(opct.value() / 100.0 * 255.0));
+                effect.setNativeColor(descriptorColor(sofi).name());
+                d->effects.append(QVariant::fromValue(effect));
+            }
+        }
+
+        // Inner glow
+        if (fx.contains("IrGl")) {
+            const auto irgl = fx.take("IrGl").value<QPsdDescriptor>().data();
+            if (irgl.value("enab", false).toBool()) {
+                QCborMap glow;
+                glow.insert("color"_L1, descriptorColor(irgl).name());
+                glow.insert("mode"_L1, QString::fromUtf8(irgl.value("Md  ").value<QPsdEnum>().value()));
+                glow.insert("opacity"_L1, irgl.value("Opct").value<QPsdUnitFloat>().value() / 100.0);
+                glow.insert("size"_L1, irgl.value("blur").value<QPsdUnitFloat>().value());
+                glow.insert("choke"_L1, irgl.value("Ckmt").value<QPsdUnitFloat>().value());
+                // Glow source: edge (SrcE, default) or center (SrcC)
+                glow.insert("center"_L1, irgl.value("glwS").value<QPsdEnum>().value() == "SrcC");
+                d->innerGlow = glow;
+            }
+        }
+
+        // Satin
+        if (fx.contains("ChFX")) {
+            const auto chfx = fx.take("ChFX").value<QPsdDescriptor>().data();
+            if (chfx.value("enab", false).toBool()) {
+                QCborMap satin;
+                satin.insert("color"_L1, descriptorColor(chfx).name());
+                satin.insert("mode"_L1, QString::fromUtf8(chfx.value("Md  ").value<QPsdEnum>().value()));
+                satin.insert("opacity"_L1, chfx.value("Opct").value<QPsdUnitFloat>().value() / 100.0);
+                satin.insert("angle"_L1, chfx.value("lagl").value<QPsdUnitFloat>().value());
+                satin.insert("distance"_L1, chfx.value("Dstn").value<QPsdUnitFloat>().value());
+                satin.insert("size"_L1, chfx.value("blur").value<QPsdUnitFloat>().value());
+                satin.insert("invert"_L1, chfx.value("Invr").toBool());
+                d->satin = satin;
+            }
+        }
+
         const auto keys = fx.keys();
         for (const auto &key : keys) {
             const auto value = fx.value(key);
@@ -495,6 +559,16 @@ QCborMap QPsdAbstractLayerItem::dropShadow() const
 QCborMap QPsdAbstractLayerItem::innerShadow() const
 {
     return d->innerShadow;
+}
+
+QCborMap QPsdAbstractLayerItem::innerGlow() const
+{
+    return d->innerGlow;
+}
+
+QCborMap QPsdAbstractLayerItem::satin() const
+{
+    return d->satin;
 }
 
 QPsdBorder *QPsdAbstractLayerItem::border() const

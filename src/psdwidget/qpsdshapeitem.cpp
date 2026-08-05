@@ -32,6 +32,61 @@ static void drawShapePath(QPainter *p, const QPsdAbstractLayerItem::PathInfo &pa
     }
 }
 
+// 8-bit coverage of the shape path within the layer-local rect
+static QImage shapeCoverage(const QPsdAbstractLayerItem::PathInfo &pathInfo,
+                            const QRect &fallbackRect, const QSize &size)
+{
+    QImage mask(size, QImage::Format_ARGB32_Premultiplied);
+    mask.fill(Qt::transparent);
+    QPainter mp(&mask);
+    mp.setRenderHint(QPainter::Antialiasing);
+    mp.setPen(Qt::NoPen);
+    mp.setBrush(Qt::white);
+    if (pathInfo.type == QPsdAbstractLayerItem::PathInfo::None)
+        mp.drawRect(QRect(QPoint(0, 0), fallbackRect.size()));
+    else
+        drawShapePath(&mp, pathInfo);
+    mp.end();
+    return mask;
+}
+
+static void renderShapeInnerEffects(QPainter *p, const QPsdShapeLayerItem *layer,
+                                    const QPsdAbstractLayerItem::PathInfo &pathInfo)
+{
+    const QCborMap satin = layer->satin();
+    const QCborMap glow = layer->innerGlow();
+    if (satin.isEmpty() && glow.isEmpty())
+        return;
+    const QSize size = layer->rect().size();
+    if (size.isEmpty())
+        return;
+
+    const QImage mask = shapeCoverage(pathInfo, layer->rect(), size);
+    const int w = size.width();
+    const int h = size.height();
+    auto alphaAt = [&](int x, int y) -> int {
+        return qAlpha(reinterpret_cast<const QRgb *>(mask.constScanLine(y))[x]);
+    };
+    auto blend = [&](const QCborMap &params, const QVector<float> &field) {
+        const QImage fx = psdEffectColorImage(w, h, QColor(params.value(QLatin1String("color")).toString()),
+                                              field, params.value(QLatin1String("opacity")).toDouble(1.0), alphaAt);
+        drawCustomBlended(p, fx, QRectF(QPointF(0, 0), QSizeF(size)),
+                          QPsdBlend::from(params.value(QLatin1String("mode")).toString().toLatin1()), 1.0);
+    };
+
+    if (!satin.isEmpty()) {
+        blend(satin, psdSatinField(w, h, satin.value(QLatin1String("angle")).toDouble(),
+                                   satin.value(QLatin1String("distance")).toDouble(),
+                                   satin.value(QLatin1String("size")).toDouble(),
+                                   satin.value(QLatin1String("invert")).toBool(), alphaAt));
+    }
+    if (!glow.isEmpty()) {
+        blend(glow, psdInnerGlowField(psdDistanceFromEdge(w, h, alphaAt),
+                                      glow.value(QLatin1String("size")).toDouble(),
+                                      glow.value(QLatin1String("center")).toBool()));
+    }
+}
+
 QPsdShapeItem::QPsdShapeItem(const QModelIndex &index, const QPsdShapeLayerItem *psdData, const QPsdAbstractLayerItem *maskItem, const QMap<quint32, QString> group, QGraphicsItem *parent)
     : QPsdAbstractItem(index, psdData, maskItem, group, parent)
 {}
@@ -378,6 +433,11 @@ void QPsdShapeItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
         p->drawImage(isOffset.toPoint() - QPoint(margin, margin), silhouette);
         p->restore();
     }
+
+    // Inner effects clipped to the shape: color overlay, satin, inner glow.
+    // They blend against the freshly drawn fill, so painting them here works
+    // for both the direct and the temp-image path.
+    renderShapeInnerEffects(p, layer, pathInfo);
 
     // Apply raster layer mask and/or custom blend, then draw result
     if (needTempImage) {
