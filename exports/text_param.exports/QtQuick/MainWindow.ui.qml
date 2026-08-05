@@ -18,7 +18,6 @@ Item {
         }
         Text {
             anchors.fill: parent
-            clip: true
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50
@@ -54,7 +53,6 @@ Item {
             }
         }
         Text {
-            clip: true
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 50

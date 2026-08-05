@@ -17,12 +17,11 @@ Item {
             y: 0
         }
         Text {
-            clip: true
             color: "#ff000000"
             font.family: "Source Han Sans"
             font.pixelSize: 30
             font.weight: 500
-            height: 49
+            height: 44
             horizontalAlignment: Text.AlignHCenter
             text: "."
             verticalAlignment: Text.AlignVCenter

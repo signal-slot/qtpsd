@@ -62,12 +62,11 @@ Item {
                 }
             }
             Text {
-                clip: true
                 color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
                 font.weight: 500
-                height: 49
+                height: 44
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
@@ -122,12 +121,11 @@ Item {
                 }
             }
             Text {
-                clip: true
                 color: "#ff000000"
                 font.family: "Source Han Sans"
                 font.pixelSize: 30
                 font.weight: 500
-                height: 49
+                height: 44
                 horizontalAlignment: Text.AlignHCenter
                 text: "Example1"
                 verticalAlignment: Text.AlignVCenter
