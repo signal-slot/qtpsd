@@ -116,8 +116,9 @@ static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLay
             return;
         }
     }
-    if (maskData.isEmpty()) {
-        // Empty mask data: just write length 0
+    if (maskData.isNull()) {
+        // Absent mask section: just write length 0. Note that a mask with an
+        // empty rect is meaningful (whole layer takes the default color).
         QPsdSection::writeU32(dest, 0);
     } else {
         QBuffer buf;
@@ -127,18 +128,10 @@ static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLay
         QPsdSection::writeU8(&buf, maskData.defaultColor());
         QPsdSection::writeU8(&buf, maskData.flags());
 
-        if (maskData.hasRealUserMask()) {
-            // Real flags (1) + real default color (1) + real user mask rect (16) = 18 bytes
-            QPsdSection::writeU8(&buf, maskData.realFlags());
-            QPsdSection::writeU8(&buf, maskData.realDefaultColor());
-            QPsdSection::writeRectangle(&buf, maskData.realUserMaskRect());
-        } else {
-            // Padding to get to 20 bytes minimum
-            buf.write(QByteArray(2, '\0'));
-        }
-
         // Mask parameters — only present if bit 4 of flags is set
-        if (maskData.flags() & 0x10) {
+        auto writeMaskParameters = [&] {
+            if (!(maskData.flags() & 0x10))
+                return;
             const quint8 params = maskData.maskParameters();
             QPsdSection::writeU8(&buf, params);
             if (params & 0x01)
@@ -149,6 +142,20 @@ static void writeLayerMaskData(QIODevice *dest, const QPsdLayerMaskAdjustmentLay
                 QPsdSection::writeU8(&buf, maskData.vectorMaskDensity());
             if (params & 0x08)
                 QPsdSection::writeDouble(&buf, maskData.vectorMaskFeather());
+        };
+
+        if (maskData.hasRealUserMask()) {
+            // Real flags (1) + real default color (1) + real user mask rect (16) = 18 bytes
+            QPsdSection::writeU8(&buf, maskData.realFlags());
+            QPsdSection::writeU8(&buf, maskData.realDefaultColor());
+            QPsdSection::writeRectangle(&buf, maskData.realUserMaskRect());
+            writeMaskParameters();
+        } else if (maskData.flags() & 0x10) {
+            // Short form: parameters follow the flags directly
+            writeMaskParameters();
+        } else {
+            // Padding to get to 20 bytes minimum
+            buf.write(QByteArray(2, '\0'));
         }
         buf.close();
 

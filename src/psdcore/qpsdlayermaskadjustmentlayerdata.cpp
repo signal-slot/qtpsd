@@ -64,19 +64,10 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
     // bit 4 = indicates that the user and/or vector masks have parameters applied to them
     d->flags = readU8(source, &length);
 
-    if (length >= 18) {
-        d->hasRealUserMask = true;
-        // Real Flags. Same as Flags information above.
-        d->realFlags = readU8(source, &length);
-        // Real user mask background. 0 or 255.
-        d->realDefaultColor = readU8(source, &length);
-
-        // Rectangle enclosing layer mask: Top, left, bottom, right.
-        d->realUserMaskRect = readRectangle(source, &length);
-    }
-
-    // Mask Parameters. Only present if bit 4 of Flags set above and extended format was used.
-    if ((d->flags & 0x10) && d->hasRealUserMask) {
+    // Mask Parameters. Only present if bit 4 of Flags set above.
+    auto readMaskParameters = [&] {
+        if (!(d->flags & 0x10))
+            return;
         d->maskParameters = readU8(source, &length);
 
         if (d->maskParameters & 0x01) {
@@ -91,6 +82,23 @@ QPsdLayerMaskAdjustmentLayerData::QPsdLayerMaskAdjustmentLayerData(QIODevice *so
         if (d->maskParameters & 0x08) {
             d->vectorMaskFeather = readDouble(source, &length);
         }
+    };
+
+    if (length < 18) {
+        // Short (20-byte) records place the parameters right after the flags
+        readMaskParameters();
+    } else {
+        // Extended records carry the real-user-mask block first
+        d->hasRealUserMask = true;
+        // Real Flags. Same as Flags information above.
+        d->realFlags = readU8(source, &length);
+        // Real user mask background. 0 or 255.
+        d->realDefaultColor = readU8(source, &length);
+
+        // Rectangle enclosing layer mask: Top, left, bottom, right.
+        d->realUserMaskRect = readRectangle(source, &length);
+
+        readMaskParameters();
     }
 }
 
