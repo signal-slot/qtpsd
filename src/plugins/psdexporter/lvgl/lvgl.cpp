@@ -324,6 +324,23 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
 bool QPsdExporterLvglPlugin::outputText(const QModelIndex &textIndex, Element *element) const
 {
     const auto *text = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(textIndex));
+
+    // Warped text: the layer raster contains Photoshop's warped rendering,
+    // which lv_label cannot reproduce
+    if (text->isWarped() && !text->image().isNull()) {
+        QPsdImageStore imageStore(dir, "images"_L1);
+        const QString name = imageStore.save(imageFileName(text->name(), "PNG"_L1), text->image(), "PNG");
+        if (!name.isEmpty()) {
+            QFileInfo fi(name);
+            exportedImages.append(qMakePair(fi.completeBaseName(), name));
+            element->type = "lv_image";
+            if (!outputBase(textIndex, element))
+                return false;
+            element->attributes.insert("src", fi.completeBaseName());
+            return true;
+        }
+    }
+
     const auto runs = text->runs();
     if (runs.isEmpty())
         return true;

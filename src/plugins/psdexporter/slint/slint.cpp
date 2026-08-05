@@ -521,6 +521,21 @@ bool QPsdExporterSlintPlugin::outputText(const QModelIndex &textIndex, Element *
         qWarning() << "Invalid text layer item for index" << textIndex;
         return false;
     }
+    // Warped text: the layer raster contains Photoshop's warped rendering,
+    // which run-based Text elements cannot reproduce
+    if (text->isWarped()) {
+        imageStore = QPsdImageStore(dir, "images"_L1);
+        const QString name = saveLayerImage(static_cast<const QPsdAbstractLayerItem *>(text));
+        if (!name.isEmpty()) {
+            element->type = "Image";
+            if (!outputBase(textIndex, element, imports))
+                return false;
+            element->properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
+            element->properties.insert("image-fit", "contain");
+            return true;
+        }
+    }
+
     const bool translatable = model()->layerHint(textIndex).properties.contains("translatable"_L1);
     auto formatText = [translatable](const QString &literal) {
         return translatable ? u"@tr(\"%1\")"_s.arg(literal) : u"\"%1\""_s.arg(literal);

@@ -449,6 +449,20 @@ bool QPsdExporterFlutterPlugin::outputTextElement(const QPsdTextLayerItem::Run r
 bool QPsdExporterFlutterPlugin::outputText(const QModelIndex &textIndex, Element *element) const
 {
     const auto *text = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(textIndex));
+
+    // Warped text: the layer raster contains Photoshop's warped rendering,
+    // which run-based Text widgets cannot reproduce
+    if (text->isWarped()) {
+        const QString name = saveLayerImage(static_cast<const QPsdAbstractLayerItem *>(text));
+        if (!name.isEmpty()) {
+            element->type = "Image.asset";
+            element->noNamedParam = u"\"%1\""_s.arg(imagePath(name));
+            outputRectProp(text->rect(), element);
+            element->properties.insert("fit", "BoxFit.contain");
+            return true;
+        }
+    }
+
     const auto runs = text->runs();
 
     Element columnElem;

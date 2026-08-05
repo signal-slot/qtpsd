@@ -10,6 +10,7 @@
 
 #include <QtPsdCore/QPsdTypeToolObjectSetting>
 #include <QtPsdCore/QPsdEngineDataParser>
+#include <QtPsdCore/QPsdEnum>
 
 QT_BEGIN_NAMESPACE
 
@@ -26,6 +27,7 @@ public:
     QRectF textFrame;
     TextType textType = TextType::PointText;
     QPointF textOrigin; // Text baseline anchor (tx, ty from transform)
+    bool warped = false;
 };
 
 QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
@@ -43,6 +45,11 @@ QPsdTextLayerItem::QPsdTextLayerItem(const QPsdLayerRecord &record)
 
     const auto additionalLayerInformation = record.additionalLayerInformation();
     const auto tysh = additionalLayerInformation.value("TySh").value<QPsdTypeToolObjectSetting>();
+    const auto warpDescriptor = tysh.warpData().data();
+    if (warpDescriptor.contains("warpStyle")) {
+        const auto warpStyle = warpDescriptor.value("warpStyle").value<QPsdEnum>().value();
+        d->warped = !warpStyle.isEmpty() && warpStyle != "warpNone";
+    }
     const auto textData = tysh.textData();
     const auto transformParam = tysh.transform();
     // Use identity matrix as default if transform parameters are missing or incomplete
@@ -350,6 +357,10 @@ QRectF QPsdTextLayerItem::bounds() const {
 
 QPsdTextLayerItem::TextType QPsdTextLayerItem::textType() const {
     return d->textType;
+}
+
+bool QPsdTextLayerItem::isWarped() const {
+    return d->warped;
 }
 
 QPointF QPsdTextLayerItem::textOrigin() const {

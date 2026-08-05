@@ -40,6 +40,13 @@ void QPsdTextItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opti
 
     const auto *layer = this->layer<QPsdTextLayerItem>();
 
+    // Warped text: the run-based layout cannot reproduce the distortion,
+    // but the layer raster already contains Photoshop's warped rendering
+    if (layer->isWarped() && !layer->image().isNull()) {
+        painter->drawImage(QRect(QPoint(0, 0), layer->rect().size()), layer->image());
+        return;
+    }
+
     // Determine the effective blend mode
     const auto blendMode = groupCompositionMode() != QPainter::CompositionMode_SourceOver
         ? QPsdBlend::Mode::Normal

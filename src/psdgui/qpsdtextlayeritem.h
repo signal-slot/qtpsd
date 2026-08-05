@@ -53,6 +53,11 @@ public:
     QRectF bounds() const;
     TextType textType() const;
 
+    // True when a Photoshop warp (arc, bulge, ...) is applied; the layer
+    // raster contains the warped rendering, so consumers should prefer it
+    // over re-laying-out the text runs.
+    bool isWarped() const;
+
     // Returns the text origin point (tx, ty from the transform)
     // For point text, this is the baseline anchor position
     QPointF textOrigin() const;
