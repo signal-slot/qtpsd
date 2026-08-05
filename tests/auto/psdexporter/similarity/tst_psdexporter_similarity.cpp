@@ -322,15 +322,53 @@ double tst_PsdExporterSimilarity::compareImages(const QImage &img1, const QImage
         return {h, s, v};
     };
 
+    // Perceptual distance between two composited pixels: HSV blend, but a
+    // brightness-only gap counts on its own so a blank render over a flat
+    // design cannot hide behind the weighting.
+    auto pixelDist = [&](QRgb p1, QRgb p2) -> double {
+        const auto [cr1, cg1, cb1] = compositeOverWhite(qRed(p1), qGreen(p1), qBlue(p1), qAlpha(p1));
+        const auto [cr2, cg2, cb2] = compositeOverWhite(qRed(p2), qGreen(p2), qBlue(p2), qAlpha(p2));
+
+        const auto [h1, s1, v1] = rgbToHsv(cr1, cg1, cb1);
+        const auto [h2, s2, v2] = rgbToHsv(cr2, cg2, cb2);
+
+        double hDiff = qAbs(h1 - h2);
+        if (hDiff > 180.0) {
+            hDiff = 360.0 - hDiff;
+        }
+        hDiff /= 180.0;
+
+        const double sDiff = qAbs(s1 - s2);
+        const double vDiff = qAbs(v1 - v2);
+        return qMax(hDiff * 0.3 + sDiff * 0.3 + vDiff * 0.4, vDiff);
+    };
+
+    // Distances below rampStart are invisible (anti-aliasing and hinting
+    // noise); above rampFull the pixels read as entirely different colors.
+    // In between, similarity degrades linearly instead of falling off a
+    // hard threshold cliff, so slight tone shifts lose points gradually.
+    constexpr double rampStart = 0.08;
+    constexpr double rampFull = 0.30;
+    auto ramp = [](double d) -> double {
+        return qBound(0.0, (d - rampStart) / (rampFull - rampStart), 1.0);
+    };
+
+    const int w = a.width();
+    const int h = a.height();
+    QList<const QRgb *> linesA(h), linesB(h);
+    for (int y = 0; y < h; ++y) {
+        linesA[y] = reinterpret_cast<const QRgb *>(a.scanLine(y));
+        linesB[y] = reinterpret_cast<const QRgb *>(b.scanLine(y));
+    }
+
     double totalDiff = 0.0;
     qint64 pixelsWithContent = 0;
-    qint64 pixelsDifferent = 0;
 
-    for (int y = 0; y < a.height(); ++y) {
-        const QRgb *lineA = reinterpret_cast<const QRgb *>(a.scanLine(y));
-        const QRgb *lineB = reinterpret_cast<const QRgb *>(b.scanLine(y));
+    for (int y = 0; y < h; ++y) {
+        const QRgb *lineA = linesA[y];
+        const QRgb *lineB = linesB[y];
 
-        for (int x = 0; x < a.width(); ++x) {
+        for (int x = 0; x < w; ++x) {
             const QRgb p1 = lineA[x];
             const QRgb p2 = lineB[x];
 
@@ -344,26 +382,26 @@ double tst_PsdExporterSimilarity::compareImages(const QImage &img1, const QImage
 
             ++pixelsWithContent;
 
-            const auto [h1, s1, v1] = rgbToHsv(cr1, cg1, cb1);
-            const auto [h2, s2, v2] = rgbToHsv(cr2, cg2, cb2);
-
-            double hDiff = qAbs(h1 - h2);
-            if (hDiff > 180.0) {
-                hDiff = 360.0 - hDiff;
+            double d = pixelDist(p1, p2);
+            if (d > rampStart) {
+                // Tolerate one-pixel misalignment (font hinting, rounding):
+                // look for a better match in the 3x3 neighborhood, in both
+                // directions so missing and extra content still count.
+                for (int dy = -1; dy <= 1 && d > rampStart; ++dy) {
+                    const int ny = y + dy;
+                    if (ny < 0 || ny >= h)
+                        continue;
+                    for (int dx = -1; dx <= 1 && d > rampStart; ++dx) {
+                        const int nx = x + dx;
+                        if (nx < 0 || nx >= w || (dx == 0 && dy == 0))
+                            continue;
+                        d = qMin(d, pixelDist(p1, linesB[ny][nx]));
+                        d = qMin(d, pixelDist(linesA[ny][nx], p2));
+                    }
+                }
             }
-            hDiff /= 180.0;
 
-            const double sDiff = qAbs(s1 - s2);
-            const double vDiff = qAbs(v1 - v2);
-            // Brightness-only gaps must not be diluted by the weighting:
-            // a blank white render over a flat gray design used to score 92%
-            // because vDiff * 0.4 stayed under the difference threshold.
-            const double pixelDiff = qMax(hDiff * 0.3 + sDiff * 0.3 + vDiff * 0.4, vDiff);
-
-            totalDiff += pixelDiff;
-            if (pixelDiff > 0.1) {
-                ++pixelsDifferent;
-            }
+            totalDiff += ramp(d);
         }
     }
 
@@ -371,9 +409,7 @@ double tst_PsdExporterSimilarity::compareImages(const QImage &img1, const QImage
         return 100.0;
     }
 
-    const double contentBasedSimilarity = 100.0 * (1.0 - static_cast<double>(pixelsDifferent) / static_cast<double>(pixelsWithContent));
-    const double hsvBasedSimilarity = 100.0 * (1.0 - totalDiff / static_cast<double>(pixelsWithContent));
-    return qMin(contentBasedSimilarity, hsvBasedSimilarity);
+    return 100.0 * (1.0 - totalDiff / static_cast<double>(pixelsWithContent));
 }
 
 QImage tst_PsdExporterSimilarity::createDiffImage(const QImage &img1, const QImage &img2) const

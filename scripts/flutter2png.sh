@@ -128,9 +128,14 @@ void main() {
         debugShowCheckedModeBanner: false,
         home: Material(
           child: Center(
-            child: RepaintBoundary(
-              key: boundaryKey,
-              child: exported.MainWindow(),
+            // UnconstrainedBox lets the exported widget lay out at its
+            // natural size even when it exceeds the 800x600 test viewport,
+            // so large canvases are captured at full resolution.
+            child: UnconstrainedBox(
+              child: RepaintBoundary(
+                key: boundaryKey,
+                child: exported.MainWindow(),
+              ),
             ),
           ),
         ),
