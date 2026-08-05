@@ -343,15 +343,11 @@ void QPsdImageItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *opt
             QColor color(sofi.nativeColor());
             color.setAlphaF(sofi.opacity());
             switch (sofi.blendMode()) {
-            case QPsdBlend::Mode::Normal: {
-                // override pixels in the image with the color and opacity
-                QPainter p(&image);
-                p.setCompositionMode(QPainter::CompositionMode_SourceIn);
-                p.fillRect(image.rect(), color);
-                p.end();
-                break; }
             default: {
-                // Blend the overlay color onto the content, masked by its coverage
+                // Blend the overlay color onto the content, masked by its
+                // coverage. Normal mode goes through the same path: the
+                // opacity must mix with the underlying pixels, which a
+                // SourceIn fill does not do.
                 QImage work = image.convertToFormat(QImage::Format_ARGB32_Premultiplied);
                 QImage fx(work.size(), QImage::Format_ARGB32);
                 for (int y = 0; y < work.height(); ++y) {
