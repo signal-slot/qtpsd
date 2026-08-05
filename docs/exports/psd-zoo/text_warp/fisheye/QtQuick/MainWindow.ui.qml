@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 52
-        horizontalAlignment: Text.AlignLeft
-        text: "FISHEYE"
-        verticalAlignment: Text.AlignBottom
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 32
+        source: "images/fisheye.png"
         width: 141
         x: 50
-        y: 78
+        y: 91
     }
 }

@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 52
-        horizontalAlignment: Text.AlignLeft
-        text: "TWIST"
-        verticalAlignment: Text.AlignBottom
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 27
+        source: "images/twist.png"
         width: 108
-        x: 50
-        y: 78
+        x: 51
+        y: 94
     }
 }

@@ -21,13 +21,10 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
         lv_image_set_src(obj_0, "A:images/background.png");
     }
     {
-        lv_obj_t * obj_1 = lv_label_create(root);
-        lv_obj_set_pos(obj_1, 50, 88);
-        lv_obj_set_size(obj_1, 132, 40);
-        lv_obj_set_style_text_align(obj_1, LV_TEXT_ALIGN_LEFT, 0);
-        lv_obj_set_style_text_color(obj_1, lv_color_hex(0x000000), 0);
-        lv_obj_set_style_text_font(obj_1, &lv_font_montserrat_28, 0);
-        lv_label_set_text(obj_1, "VDISTORT");
+        lv_obj_t * obj_1 = lv_image_create(root);
+        lv_obj_set_pos(obj_1, 39, 91);
+        lv_obj_set_size(obj_1, 155, 27);
+        lv_image_set_src(obj_1, "A:images/vdistort.png");
     }
     return root;
 }

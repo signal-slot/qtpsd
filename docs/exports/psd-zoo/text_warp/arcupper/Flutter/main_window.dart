@@ -23,21 +23,15 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 52,
+            height: 59,
             left: 50,
-            top: 78,
+            top: 61,
             width: 184,
-            child: Text(
-              "ARCUPPER", 
-              textAlign: TextAlign.left,
-              textScaler: TextScaler.linear(1),
-              style: TextStyle(
-                color: Color.fromARGB(255, 0, 0, 0),
-                fontFamily: "Roboto",
-                fontSize: 36,
-                fontVariations: [FontVariation.weight(800)],
-                height: 1,
-              ),
+            child: Image.asset(
+              "assets/images/arcupper.png", 
+              fit: BoxFit.contain,
+              height: 59,
+              width: 184,
             ),
           ),
         ],

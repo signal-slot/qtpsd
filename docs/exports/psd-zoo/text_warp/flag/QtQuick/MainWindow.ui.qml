@@ -11,16 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.family: "Roboto"
-        font.pixelSize: 48
-        height: 70
-        horizontalAlignment: Text.AlignLeft
-        text: "Flag"
-        verticalAlignment: Text.AlignBottom
-        width: 91
-        x: 100
-        y: 94
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 76
+        source: "images/warp_flag.png"
+        width: 85
+        x: 103
+        y: 100
     }
 }

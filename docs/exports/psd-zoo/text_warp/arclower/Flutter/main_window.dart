@@ -23,21 +23,15 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 52,
+            height: 56,
             left: 50,
-            top: 78,
+            top: 95,
             width: 189,
-            child: Text(
-              "ARCLOWER", 
-              textAlign: TextAlign.left,
-              textScaler: TextScaler.linear(1),
-              style: TextStyle(
-                color: Color.fromARGB(255, 0, 0, 0),
-                fontFamily: "Roboto",
-                fontSize: 36,
-                fontVariations: [FontVariation.weight(800)],
-                height: 1,
-              ),
+            child: Image.asset(
+              "assets/images/arclower.png", 
+              fit: BoxFit.contain,
+              height: 56,
+              width: 189,
             ),
           ),
         ],

@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 52
-        horizontalAlignment: Text.AlignLeft
-        text: "SHELLUPPER"
-        verticalAlignment: Text.AlignBottom
-        width: 220
-        x: 50
-        y: 78
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 58
+        source: "images/shellupper.png"
+        width: 258
+        x: 31
+        y: 64
     }
 }

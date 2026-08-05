@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 52
-        horizontalAlignment: Text.AlignLeft
-        text: "INFLATE"
-        verticalAlignment: Text.AlignBottom
-        width: 140
-        x: 50
-        y: 78
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 33
+        source: "images/inflate.png"
+        width: 171
+        x: 35
+        y: 90
     }
 }

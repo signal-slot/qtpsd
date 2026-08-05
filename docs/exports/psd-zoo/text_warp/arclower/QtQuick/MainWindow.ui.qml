@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 52
-        horizontalAlignment: Text.AlignLeft
-        text: "ARCLOWER"
-        verticalAlignment: Text.AlignBottom
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 56
+        source: "images/arclower.png"
         width: 189
         x: 50
-        y: 78
+        y: 95
     }
 }

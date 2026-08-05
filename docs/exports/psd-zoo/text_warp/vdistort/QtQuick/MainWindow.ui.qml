@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 28
-        height: 40
-        horizontalAlignment: Text.AlignLeft
-        text: "VDISTORT"
-        verticalAlignment: Text.AlignBottom
-        width: 132
-        x: 50
-        y: 88
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 27
+        source: "images/vdistort.png"
+        width: 155
+        x: 39
+        y: 91
     }
 }

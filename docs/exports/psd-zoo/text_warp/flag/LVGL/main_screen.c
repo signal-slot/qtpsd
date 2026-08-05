@@ -21,13 +21,10 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
         lv_image_set_src(obj_0, "A:images/background.png");
     }
     {
-        lv_obj_t * obj_1 = lv_label_create(root);
-        lv_obj_set_pos(obj_1, 100, 94);
-        lv_obj_set_size(obj_1, 91, 70);
-        lv_obj_set_style_text_align(obj_1, LV_TEXT_ALIGN_LEFT, 0);
-        lv_obj_set_style_text_color(obj_1, lv_color_hex(0x000000), 0);
-        lv_obj_set_style_text_font(obj_1, &lv_font_montserrat_48, 0);
-        lv_label_set_text(obj_1, "Flag");
+        lv_obj_t * obj_1 = lv_image_create(root);
+        lv_obj_set_pos(obj_1, 103, 100);
+        lv_obj_set_size(obj_1, 85, 76);
+        lv_image_set_src(obj_1, "A:images/warp_flag.png");
     }
     return root;
 }

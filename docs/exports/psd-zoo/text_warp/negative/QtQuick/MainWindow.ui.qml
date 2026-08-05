@@ -11,17 +11,12 @@ Item {
         x: 0
         y: 0
     }
-    Text {
-        color: "#ff000000"
-        font.bold: true
-        font.family: "Roboto"
-        font.pixelSize: 36
-        height: 52
-        horizontalAlignment: Text.AlignLeft
-        text: "NEGATIVE"
-        verticalAlignment: Text.AlignBottom
-        width: 169
-        x: 50
-        y: 78
+    Image {
+        fillMode: Image.PreserveAspectFit
+        height: 62
+        source: "images/negative.png"
+        width: 210
+        x: 30
+        y: 93
     }
 }

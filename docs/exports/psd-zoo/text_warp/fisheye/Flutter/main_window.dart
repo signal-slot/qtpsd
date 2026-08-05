@@ -23,21 +23,15 @@ class MainWindow extends StatelessWidget {
             ),
           ),
           Positioned(
-            height: 52,
+            height: 32,
             left: 50,
-            top: 78,
+            top: 91,
             width: 141,
-            child: Text(
-              "FISHEYE", 
-              textAlign: TextAlign.left,
-              textScaler: TextScaler.linear(1),
-              style: TextStyle(
-                color: Color.fromARGB(255, 0, 0, 0),
-                fontFamily: "Roboto",
-                fontSize: 36,
-                fontVariations: [FontVariation.weight(800)],
-                height: 1,
-              ),
+            child: Image.asset(
+              "assets/images/fisheye.png", 
+              fit: BoxFit.contain,
+              height: 32,
+              width: 141,
             ),
           ),
         ],
