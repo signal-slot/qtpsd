@@ -18,6 +18,7 @@ public:
     ~QPsdLayerMaskAdjustmentLayerData() override;
 
     bool isEmpty() const;
+    bool isNull() const;
     QRect rect() const;
     quint8 defaultColor() const;
     bool isPositionRelativeToLayer() const;

@@ -115,6 +115,14 @@ bool QPsdLayerMaskAdjustmentLayerData::isEmpty() const
     return d->rect.isEmpty();
 }
 
+bool QPsdLayerMaskAdjustmentLayerData::isNull() const
+{
+    // rawData is only captured when the section length is non-zero, so an
+    // absent mask section is distinguishable from a mask with an empty rect
+    // (e.g. a fully inverted mask stored as default color only).
+    return d->rawData.isEmpty();
+}
+
 QRect QPsdLayerMaskAdjustmentLayerData::rect() const
 {
     return d->rect;

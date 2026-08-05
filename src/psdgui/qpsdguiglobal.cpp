@@ -505,6 +505,67 @@ static inline void blendPixel(qreal sr, qreal sg, qreal sb,
         setLum(outR, outG, outB, luminance(sr, sg, sb));
         break;
     }
+    // Modes below also exist as QPainter composition modes, but callers
+    // like the isolated group compositor blend every mode through here.
+    case QPsdBlend::Mode::Darken:
+        outR = qMin(sr, dr); outG = qMin(sg, dg); outB = qMin(sb, db);
+        break;
+    case QPsdBlend::Mode::Multiply:
+        outR = sr * dr; outG = sg * dg; outB = sb * db;
+        break;
+    case QPsdBlend::Mode::ColorBurn: {
+        auto burn = [](qreal s, qreal d) -> qreal {
+            if (d >= 1.0) return 1.0;
+            if (s <= 0.0) return 0.0;
+            return 1.0 - qMin(1.0, (1.0 - d) / s);
+        };
+        outR = burn(sr, dr); outG = burn(sg, dg); outB = burn(sb, db);
+        break;
+    }
+    case QPsdBlend::Mode::Lighten:
+        outR = qMax(sr, dr); outG = qMax(sg, dg); outB = qMax(sb, db);
+        break;
+    case QPsdBlend::Mode::Screen:
+        outR = sr + dr - sr * dr; outG = sg + dg - sg * dg; outB = sb + db - sb * db;
+        break;
+    case QPsdBlend::Mode::ColorDodge: {
+        auto dodge = [](qreal s, qreal d) -> qreal {
+            if (d <= 0.0) return 0.0;
+            if (s >= 1.0) return 1.0;
+            return qMin(1.0, d / (1.0 - s));
+        };
+        outR = dodge(sr, dr); outG = dodge(sg, dg); outB = dodge(sb, db);
+        break;
+    }
+    case QPsdBlend::Mode::Overlay:
+    case QPsdBlend::Mode::HardLight: {
+        auto hardLight = [](qreal s, qreal d) -> qreal {
+            return s <= 0.5 ? 2.0 * s * d : 1.0 - 2.0 * (1.0 - s) * (1.0 - d);
+        };
+        if (mode == QPsdBlend::Mode::Overlay) {
+            // Overlay is HardLight with the operands swapped
+            outR = hardLight(dr, sr); outG = hardLight(dg, sg); outB = hardLight(db, sb);
+        } else {
+            outR = hardLight(sr, dr); outG = hardLight(sg, dg); outB = hardLight(sb, db);
+        }
+        break;
+    }
+    case QPsdBlend::Mode::SoftLight: {
+        auto softLight = [](qreal s, qreal d) -> qreal {
+            if (s <= 0.5)
+                return d - (1.0 - 2.0 * s) * d * (1.0 - d);
+            const qreal dd = d <= 0.25 ? ((16.0 * d - 12.0) * d + 4.0) * d : qSqrt(d);
+            return d + (2.0 * s - 1.0) * (dd - d);
+        };
+        outR = softLight(sr, dr); outG = softLight(sg, dg); outB = softLight(sb, db);
+        break;
+    }
+    case QPsdBlend::Mode::Difference:
+        outR = qAbs(sr - dr); outG = qAbs(sg - dg); outB = qAbs(sb - db);
+        break;
+    case QPsdBlend::Mode::Exclusion:
+        outR = sr + dr - 2.0 * sr * dr; outG = sg + dg - 2.0 * sg * dg; outB = sb + db - 2.0 * sb * db;
+        break;
     default:
         // Dissolve handled separately; fallback = normal
         outR = sr; outG = sg; outB = sb;
@@ -583,6 +644,14 @@ void customBlend(QImage &dest, const QImage &src,
             // Apply blend formula
             qreal outR, outG, outB;
             blendPixel(sr, sg, sb, dr, dg, db, mode, outR, outG, outB);
+
+            // The blend formula only applies where the backdrop has
+            // coverage; over transparency the source passes through
+            // (W3C compositing: Cs' = (1 - ab) * Cs + ab * B(Cb, Cs))
+            const qreal dstCoverage = da / 255.0;
+            outR = outR * dstCoverage + sr * (1.0 - dstCoverage);
+            outG = outG * dstCoverage + sg * (1.0 - dstCoverage);
+            outB = outB * dstCoverage + sb * (1.0 - dstCoverage);
 
             // Composite: result = blend(src,dst) * srcAlpha + dst * (1 - srcAlpha)
             const qreal invSrcAlpha = 1.0 - srcAlpha;

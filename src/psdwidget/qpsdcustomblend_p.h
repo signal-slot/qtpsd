@@ -42,6 +42,28 @@ inline void drawCustomBlended(QPainter *painter, const QImage &src,
         return;
     }
 
+    // QPixmap paint device — e.g. a QGraphicsEffect source being rendered
+    // inside an enclosing effect's subtree rasterization
+    QPixmap *pixmapDevice = dynamic_cast<QPixmap *>(painter->device());
+    if (pixmapDevice) {
+        const QRect clipped = deviceRect.intersected(pixmapDevice->rect());
+        if (clipped.isEmpty()) return;
+        QImage destRegion = pixmapDevice->copy(clipped).toImage()
+                                .convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        QImage srcRegion = src.copy(
+            clipped.x() - deviceRect.x(), clipped.y() - deviceRect.y(),
+            clipped.width(), clipped.height()
+        ).convertToFormat(QImage::Format_ARGB32_Premultiplied);
+        QtPsdGui::customBlend(destRegion, srcRegion, blendMode, opacity);
+        painter->save();
+        painter->resetTransform();
+        painter->setCompositionMode(QPainter::CompositionMode_Source);
+        painter->setOpacity(1.0);
+        painter->drawImage(clipped.topLeft(), destRegion);
+        painter->restore();
+        return;
+    }
+
     // OpenGL path: read back framebuffer via glReadPixels
     QOpenGLContext *ctx = QOpenGLContext::currentContext();
     if (ctx) {

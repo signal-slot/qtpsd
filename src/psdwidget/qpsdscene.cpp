@@ -15,7 +15,39 @@
 #include <QtWidgets/QGraphicsEffect>
 #include <QtWidgets/QGraphicsPixmapItem>
 
+#include "qpsdcustomblend_p.h"
+
 QT_BEGIN_NAMESPACE
+
+// Photoshop composites a group with a non-pass-through blend mode as an
+// isolated unit: the children are rendered against transparency first and
+// the finished unit is blended onto the backdrop with the group's mode.
+// A QGraphicsEffect receives exactly that subtree rendering as its source.
+class QPsdGroupBlendEffect : public QGraphicsEffect
+{
+public:
+    QPsdGroupBlendEffect(QPsdBlend::Mode mode, qreal opacity, QObject *parent = nullptr)
+        : QGraphicsEffect(parent), m_mode(mode), m_opacity(opacity)
+    {}
+
+protected:
+    void draw(QPainter *painter) override {
+        QPoint offset;
+        const QPixmap pixmap = sourcePixmap(Qt::DeviceCoordinates, &offset, QGraphicsEffect::NoPad);
+        if (pixmap.isNull())
+            return;
+        painter->save();
+        painter->resetTransform();
+        drawCustomBlended(painter, pixmap.toImage(),
+                          QRectF(offset, pixmap.deviceIndependentSize()),
+                          m_mode, m_opacity);
+        painter->restore();
+    }
+
+private:
+    QPsdBlend::Mode m_mode;
+    qreal m_opacity;
+};
 
 class QPsdScene::Private
 {
@@ -206,12 +238,16 @@ void QPsdScene::reset()
                 item = new QPsdFolderItem(index, reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, groupMap, parent);
                 nextParent = item;
                 const auto blendMode = layer->record().blendMode();
-                if (blendMode != QPsdBlend::PassThrough && blendMode != QPsdBlend::Invalid) {
-                    nextGroupMode = QtPsdGui::compositionMode(blendMode);
-                }
-                // Apply folder opacity as a compositing effect: render children first,
-                // then fade the whole group — correct for Figma group opacity
-                if (layer->opacity() < 1.0) {
+                if (blendMode != QPsdBlend::PassThrough && blendMode != QPsdBlend::Invalid
+                    && blendMode != QPsdBlend::Normal) {
+                    // Isolated group compositing: render the subtree against
+                    // transparency and blend the unit with the group's mode.
+                    // The mode must not leak into the children.
+                    item->setGraphicsEffect(new QPsdGroupBlendEffect(blendMode, layer->opacity()));
+                    nextGroupMode = QPainter::CompositionMode_SourceOver;
+                } else if (layer->opacity() < 1.0) {
+                    // Apply folder opacity as a compositing effect: render children first,
+                    // then fade the whole group — correct for Figma group opacity
                     auto *effect = new QGraphicsOpacityEffect();
                     effect->setOpacity(layer->opacity());
                     item->setGraphicsEffect(effect);

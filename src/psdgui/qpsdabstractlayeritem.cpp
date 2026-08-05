@@ -380,12 +380,12 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
     // - Mask is disabled
     // - Mask came from rendering other data (e.g. rasterized vector mask)
     // - Mask is from vector data (handled separately via vectorMask())
-    if (!layerMaskData.isEmpty() && !maskInfo.isEmpty() && !maskInfo.isLayerMaskDisabled()
+    if (!maskInfo.isNull() && !maskInfo.isLayerMaskDisabled()
         && !maskInfo.isLayerMaskFromRenderingOtherData()) {
         const auto maskRect = maskInfo.rect();
         const auto w = maskRect.width();
         const auto h = maskRect.height();
-        if (w > 0 && h > 0) {
+        if (!layerMaskData.isEmpty() && w > 0 && h > 0) {
             QImage maskImage(w, h, QImage::Format_Grayscale8);
             if (!maskImage.isNull() && static_cast<size_t>(layerMaskData.size()) >= static_cast<size_t>(w) * h) {
                 // Row-by-row copy to handle QImage row alignment (bytesPerLine may differ from width)
@@ -398,6 +398,19 @@ QPsdAbstractLayerItem::QPsdAbstractLayerItem(const QPsdLayerRecord &record)
                 if (maskInfo.maskParameters() & 0x01)
                     d->layerMaskDensity = maskInfo.userMaskDensity();
             }
+        } else if (maskInfo.defaultColor() != 255) {
+            // Photoshop stores an everywhere-hidden mask (e.g. a fully
+            // inverted mask) as an empty rect with default color 0: the
+            // whole layer takes the default color. Represent it as a 1x1
+            // mask so the outside-the-mask handling in every consumer
+            // applies the default.
+            QImage maskImage(1, 1, QImage::Format_Grayscale8);
+            maskImage.fill(maskInfo.defaultColor());
+            d->layerMask = maskImage;
+            d->layerMaskRect = QRect(maskRect.topLeft(), QSize(1, 1));
+            d->layerMaskDefaultColor = maskInfo.defaultColor();
+            if (maskInfo.maskParameters() & 0x01)
+                d->layerMaskDensity = maskInfo.userMaskDensity();
         }
     }
 
