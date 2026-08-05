@@ -144,6 +144,9 @@ echo "Max parallel capture jobs: ${max_capture_jobs}"
 
 export QT_QPA_PLATFORM=xcb
 export QML_VIEWER_BIN="${QML_VIEWER_BIN:-qml}"
+# Rasterize text natively: distance-field antialiasing differs visibly from
+# Photoshop's grayscale AA and dominates the diff on text-heavy designs
+export QML_DISABLE_DISTANCE_FIELD=1
 # Enable Mesa software OpenGL (LLVMpipe) for ShaderEffect rendering in Xvfb
 export LIBGL_ALWAYS_SOFTWARE=1
 export QSG_RHI_BACKEND=opengl
