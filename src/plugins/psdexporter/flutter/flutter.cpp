@@ -371,7 +371,9 @@ bool QPsdExporterFlutterPlugin::outputPositioned(const QModelIndex &index, Eleme
 bool QPsdExporterFlutterPlugin::outputPositionedTextBounds(const QModelIndex &index, Element *element) const
 {
     const auto *item = dynamic_cast<const QPsdTextLayerItem *>(model()->layerItem(index));
-    QRect rect = computeTextBounds(item);
+    // Warped text is exported as the layer raster; position it by the layer
+    // rect so the Positioned box matches the image dimensions
+    QRect rect = item->isWarped() ? item->rect() : computeTextBounds(item);
     if (model()->layerHint(index).type == QPsdExporterTreeItemModel::ExportHint::Merged) {
         auto parentIndex = indexMergeMap.key(index);
         while (parentIndex.isValid()) {
