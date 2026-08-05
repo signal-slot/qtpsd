@@ -110,13 +110,16 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
     view.attributes.insert("style_pad_all", "0");
     view.attributes.insert("scrollbar_mode", "off");
 
-    for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
-        QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &view, &exports, std::nullopt))
-            return false;
+    if (!needsRasterFallback()) {
+        for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
+            QModelIndex childIndex = model->index(i, 0, QModelIndex {});
+            if (!traverseTree(childIndex, &view, &exports, std::nullopt))
+                return false;
+        }
     }
 
-    // Flattened PSD fallback: if no layers were produced, use the merged image
+    // Flattened PSD fallback: used when no layers were produced or the
+    // document needs blend modes/adjustment layers LVGL cannot express
     if (view.children.isEmpty()) {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
         if (!merged.isNull()) {

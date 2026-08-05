@@ -250,6 +250,35 @@ bool QPsdExporterPlugin::isMergedSource(const QModelIndex &index) const
     return mergedSourceIndices.contains(QPersistentModelIndex(index));
 }
 
+bool QPsdExporterPlugin::needsRasterFallback() const
+{
+    // Targets without shader support cannot express Photoshop blend modes
+    // or adjustment layers. Like QPsdView, fall back to the pre-composited
+    // merged image when the document depends on either.
+    std::function<bool(const QModelIndex &)> scan = [&](const QModelIndex &index) -> bool {
+        if (index.isValid()) {
+            const auto hint = model()->layerHint(index);
+            if (hint.type == QPsdExporterTreeItemModel::ExportHint::Skip)
+                return false;
+            const QPsdAbstractLayerItem *item = model()->layerItem(index);
+            if (item && hint.visible) {
+                if (item->type() == QPsdAbstractLayerItem::Adjustment)
+                    return true;
+                const auto blendMode = item->record().blendMode();
+                if (blendMode != QPsdBlend::Normal && blendMode != QPsdBlend::PassThrough
+                    && blendMode != QPsdBlend::Invalid)
+                    return true;
+            }
+        }
+        for (int r = 0; r < model()->rowCount(index); ++r) {
+            if (scan(model()->index(r, 0, index)))
+                return true;
+        }
+        return false;
+    };
+    return scan(QModelIndex());
+}
+
 QVariantMap QPsdExporterPlugin::ExportConfig::toVariantMap() const
 {
     QVariantMap map;

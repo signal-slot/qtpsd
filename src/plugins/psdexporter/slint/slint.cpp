@@ -91,13 +91,16 @@ bool QPsdExporterSlintPlugin::exportTo(const QPsdExporterTreeItemModel *model, c
     outputRect(QRect { QPoint { 0, 0 }, canvasSize() }, &window);
     window.properties.insert("title", "\"\""_L1);
 
-    for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
-        QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &window, &imports, &exports, std::nullopt))
-            return false;
+    if (!needsRasterFallback()) {
+        for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
+            QModelIndex childIndex = model->index(i, 0, QModelIndex {});
+            if (!traverseTree(childIndex, &window, &imports, &exports, std::nullopt))
+                return false;
+        }
     }
 
-    // Flattened PSD fallback: if no layers were produced, use the merged image
+    // Flattened PSD fallback: used when no layers were produced or the
+    // document needs blend modes/adjustment layers Slint cannot express
     if (window.children.isEmpty()) {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
         if (!merged.isNull()) {

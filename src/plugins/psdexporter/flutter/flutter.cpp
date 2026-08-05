@@ -1040,13 +1040,16 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     Element container;
     container.type = "Stack";
 
-    for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
-        QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-        if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))
-            return false;
+    if (!needsRasterFallback()) {
+        for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
+            QModelIndex childIndex = model->index(i, 0, QModelIndex {});
+            if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))
+                return false;
+        }
     }
 
-    // Flattened PSD fallback: if no layers were produced, use the merged image
+    // Flattened PSD fallback: used when no layers were produced or the
+    // document needs blend modes/adjustment layers Flutter cannot express
     if (container.children.isEmpty()) {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
         if (!merged.isNull()) {

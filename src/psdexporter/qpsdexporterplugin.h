@@ -104,6 +104,7 @@ protected:
     // or imageSource. Such layers are absorbed into the button and must not
     // be emitted independently.
     bool isMergedSource(const QModelIndex &index) const;
+    bool needsRasterFallback() const;
 
     static QRect computeTextBounds(const QPsdTextLayerItem *text);
 
