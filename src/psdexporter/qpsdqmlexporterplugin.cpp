@@ -1283,10 +1283,14 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
         effect.properties.insert("property int adjustmentType", 7);
     } else if (key == "post") {
         effect.properties.insert("property int adjustmentType", 8);
-        setFloat("posterizeLevels", 4.0);
+        // "post" is a raw u16 (level count), not a descriptor map
+        const int postLevels = ali.value(key).toInt();
+        setFloat("posterizeLevels", postLevels > 1 ? postLevels : 4.0);
     } else if (key == "thrs") {
         effect.properties.insert("property int adjustmentType", 9);
-        setFloat("thresholdLevel", 128.0 / 255.0);
+        // "thrs" is a raw u16 (threshold level 1-255), not a descriptor map
+        const int thresholdLevel = ali.value(key).toInt();
+        setFloat("thresholdLevel", (thresholdLevel > 0 ? thresholdLevel : 128) / 255.0);
     } else if (key == "mixr") {
         effect.properties.insert("property int adjustmentType", 11);
         auto mono = data.value(u"monochrome"_s).toBool();

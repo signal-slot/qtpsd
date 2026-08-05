@@ -262,7 +262,9 @@ void main() {
     }
     else if (adjustmentType == ADJ_THRESHOLD) {
         float gray = lum(color);
-        color = vec3(gray >= thresholdLevel ? 1.0 : 0.0);
+        // Half-a-quantization-step epsilon: an 8-bit pixel exactly at the
+        // threshold level must count as >= despite float rounding
+        color = vec3(gray >= thresholdLevel - 0.5 / 255.0 ? 1.0 : 0.0);
     }
     else if (adjustmentType == ADJ_VIBRANCE) {
         // Vibrance: boost saturation of less-saturated pixels more

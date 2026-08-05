@@ -48,26 +48,26 @@ Item {
             property real gamma: 1
             property real hueShift: 0
             property real lightnessShift: 0
-            property real lvlB_highlightIn: 0
-            property real lvlB_highlightOut: 0
-            property real lvlB_midtone: 2.55
-            property real lvlB_shadowIn: 0.392157
-            property real lvlB_shadowOut: 1
-            property real lvlG_highlightIn: 0
-            property real lvlG_highlightOut: 0
-            property real lvlG_midtone: 2.55
-            property real lvlG_shadowIn: 0.392157
-            property real lvlG_shadowOut: 1
-            property real lvlR_highlightIn: 0
-            property real lvlR_highlightOut: 0
-            property real lvlR_midtone: 2.55
-            property real lvlR_shadowIn: 0.392157
-            property real lvlR_shadowOut: 1
-            property real lvl_highlightIn: 0
-            property real lvl_highlightOut: 0
-            property real lvl_midtone: 2.55
-            property real lvl_shadowIn: 0.00784314
-            property real lvl_shadowOut: 1
+            property real lvlB_highlightIn: 1
+            property real lvlB_highlightOut: 1
+            property real lvlB_midtone: 1
+            property real lvlB_shadowIn: 0
+            property real lvlB_shadowOut: 0
+            property real lvlG_highlightIn: 1
+            property real lvlG_highlightOut: 1
+            property real lvlG_midtone: 1
+            property real lvlG_shadowIn: 0
+            property real lvlG_shadowOut: 0
+            property real lvlR_highlightIn: 1
+            property real lvlR_highlightOut: 1
+            property real lvlR_midtone: 1
+            property real lvlR_shadowIn: 0
+            property real lvlR_shadowOut: 0
+            property real lvl_highlightIn: 1
+            property real lvl_highlightOut: 1
+            property real lvl_midtone: 1
+            property real lvl_shadowIn: 0
+            property real lvl_shadowOut: 0
             property real mixr_mono: 0
             property real mixr_outB_b: 100
             property real mixr_outB_c: 0

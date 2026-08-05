@@ -21,12 +21,17 @@ public:
 
         Q_ASSERT(length == 0x0278);
 
+        // Levels layer info starts with a 2-byte version (= 2); without
+        // consuming it every level record field is shifted by one.
+        const auto version = readU16(source, &length);
+        Q_ASSERT(version == 2);
+
         const auto rgb = readLevels(source, &length);
         const auto red = readLevels(source, &length);
         const auto green = readLevels(source, &length);
         const auto blue = readLevels(source, &length);
 
-        // has many unknown data.. (592 bytes)
+        // has many unknown data.. (590 bytes)
         const auto unknownData = readByteArray(source, length, &length);
 
         QVariantMap result;
@@ -43,6 +48,7 @@ public:
         QBuffer io(&buf);
         io.open(QIODevice::WriteOnly);
         const auto map = data.toMap();
+        writeU16(&io, 2); // version
         const auto writeLevels = [&](const QString &key) {
             const auto l = map.value(key).toMap();
             writeU16(&io, static_cast<quint16>(l.value(u"shadowInput"_s).toUInt()));
@@ -55,12 +61,12 @@ public:
         writeLevels(u"red"_s);
         writeLevels(u"green"_s);
         writeLevels(u"blue"_s);
-        // Unknown data (592 bytes typically)
+        // Unknown data (590 bytes typically)
         const auto unknownData = map.value(u"unknownData"_s).toByteArray();
         if (!unknownData.isEmpty()) {
             io.write(unknownData);
         } else {
-            io.write(QByteArray(592, '\0'));
+            io.write(QByteArray(590, '\0'));
         }
         return buf;
     }

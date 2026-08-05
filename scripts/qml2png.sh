@@ -70,4 +70,19 @@ if [[ -z "${window_id}" ]]; then
 fi
 
 sleep "${capture_delay}"
+
+# Shader compilation and async image loading can take a while (especially
+# under parallel capture load), and an early grab records a stale frame.
+# Capture repeatedly until two consecutive screenshots are identical.
+prev_png="${TMPDIR:-/tmp}/qml-preview-$$-prev.png"
+trap 'rm -f "${prev_png}"; cleanup' EXIT
 import -window "${window_id}" "${output_png}"
+for _ in $(seq 1 20); do
+  sleep 0.3
+  mv "${output_png}" "${prev_png}"
+  import -window "${window_id}" "${output_png}"
+  diff_count="$( (magick compare -metric AE "${prev_png}" "${output_png}" null: 2>&1 || true) | awk '{print $1; exit}')"
+  if [[ "${diff_count}" == "0" ]]; then
+    break
+  fi
+done
