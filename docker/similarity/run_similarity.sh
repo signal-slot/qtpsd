@@ -147,6 +147,10 @@ export QML_VIEWER_BIN="${QML_VIEWER_BIN:-qml}"
 # Rasterize text natively: distance-field antialiasing differs visibly from
 # Photoshop's grayscale AA and dominates the diff on text-heavy designs
 export QML_DISABLE_DISTANCE_FIELD=1
+# ShaderEffect items show a stable placeholder frame until the shader is
+# compiled, which can fool the consecutive-identical-frame capture check
+# under load; wait it out before the first grab
+export QML_CAPTURE_DELAY=2
 # Enable Mesa software OpenGL (LLVMpipe) for ShaderEffect rendering in Xvfb
 export LIBGL_ALWAYS_SOFTWARE=1
 export QSG_RHI_BACKEND=opengl
