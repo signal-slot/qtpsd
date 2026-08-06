@@ -48,6 +48,12 @@ private:
         bool hasFlutterSource = false;
         bool hasLvglSource = false;
 
+        // 0 = native elements, 1 = individual layers baked from the merged
+        // image, 2 = whole document exported as the merged image
+        int slintBakeState = 0;
+        int flutterBakeState = 0;
+        int lvglBakeState = 0;
+
         QString imageDataRel;
         QString psdViewRel;
         QString psdViewDiffRel;
@@ -878,7 +884,25 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
            << QString::number(qtAvg, 'f', 2) << "% | "
            << QString::number(slAvg, 'f', 2) << "% | "
            << QString::number(flAvg, 'f', 2) << "% | "
-           << QString::number(lvAvg, 'f', 2) << "% |\n\n";
+           << QString::number(lvAvg, 'f', 2) << "% |\n";
+
+    // Transparency: how many documents rely on the Photoshop-merged raster
+    int slPartial = 0, slBaked = 0, flPartial = 0, flBaked = 0, lvPartial = 0, lvBaked = 0;
+    for (const auto &result : results) {
+        slPartial += result.slintBakeState == 1;
+        slBaked += result.slintBakeState == 2;
+        flPartial += result.flutterBakeState == 1;
+        flBaked += result.flutterBakeState == 2;
+        lvPartial += result.lvglBakeState == 1;
+        lvBaked += result.lvglBakeState == 2;
+    }
+    stream << "| Partially baked docs | - | - | " << slPartial << " | " << flPartial << " | " << lvPartial << " |\n";
+    stream << "| Fully baked docs | - | - | " << slBaked << " | " << flBaked << " | " << lvBaked << " |\n\n";
+    stream << "*baked* cells export the Photoshop-merged raster for the whole document, "
+              "*partial* cells replace only unexpressible layers with their merged region; "
+              "their similarity measures output fidelity, not native feature support. "
+              "QPsdView renders documents with adjustment layers or CMYK color from the "
+              "merged composite by design.\n\n";
 
     auto encoded = [](QString path) {
         return path.replace(" ", "%20");
@@ -915,11 +939,21 @@ void tst_PsdExporterSimilarity::writeReport(const QList<Result> &results) const
             return QStringLiteral("[FAILED](%1/)").arg(path);
         }
         const QString value = QString::number(metricSimilarity(r, metric), 'f', 2) + QStringLiteral("%");
+        int bake = 0;
+        switch (metric) {
+        case Metric::ImageDataVsSlint: bake = r.slintBakeState; break;
+        case Metric::ImageDataVsFlutter: bake = r.flutterBakeState; break;
+        case Metric::ImageDataVsLvgl: bake = r.lvglBakeState; break;
+        default: break;
+        }
+        const QString suffix = bake == 2 ? QStringLiteral(" *baked*")
+                             : bake == 1 ? QStringLiteral(" *partial*")
+                                         : QString();
         if (exportDir.isEmpty()) {
-            return value;
+            return value + suffix;
         }
         const QString path = encoded(exportDir);
-        return QStringLiteral("[%1](%2/)").arg(value, path);
+        return QStringLiteral("[%1](%2/)%3").arg(value, path, suffix);
     };
 
     auto imageCell = [&](const QString &relPath, bool available) {
@@ -1125,6 +1159,20 @@ void tst_PsdExporterSimilarity::generateReport()
         result.hasSlintSource = QFileInfo::exists(slintSourceAbs);
         result.hasFlutterSource = QFileInfo::exists(flutterSourceAbs);
         result.hasLvglSource = QFileInfo::exists(lvglSourceAbs);
+
+        // Classify how much of the export is baked from the merged image
+        auto bakeState = [&](const QString &exporterDir, const QString &imagesSub) -> int {
+            const QString imagesDir = m_outputBaseDir + "/exports/" + m_sourceId + "/"
+                + relNoExt + "/" + exporterDir + "/" + imagesSub;
+            if (QFileInfo::exists(imagesDir + "/merged.png"))
+                return 2;
+            if (!QDir(imagesDir).entryList({QStringLiteral("*_baked.*")}, QDir::Files).isEmpty())
+                return 1;
+            return 0;
+        };
+        result.slintBakeState = bakeState(QStringLiteral("Slint"), QStringLiteral("images"));
+        result.flutterBakeState = bakeState(QStringLiteral("Flutter"), QStringLiteral("assets/images"));
+        result.lvglBakeState = bakeState(QStringLiteral("LVGL"), QStringLiteral("images"));
 
         QImage imageDataImage(imageDataAbs);
         QImage psdViewImage(psdViewAbs);
