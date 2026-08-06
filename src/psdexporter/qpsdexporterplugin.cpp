@@ -250,34 +250,96 @@ bool QPsdExporterPlugin::isMergedSource(const QModelIndex &index) const
     return mergedSourceIndices.contains(QPersistentModelIndex(index));
 }
 
+bool QPsdExporterPlugin::layerNeedsRasterBake(const QModelIndex &index, const QList<QPsdBlend::Mode> &nativeBlendModes) const
+{
+    const auto hint = model()->layerHint(index);
+    if (hint.type == QPsdExporterTreeItemModel::ExportHint::Skip || !hint.visible)
+        return false;
+    const QPsdAbstractLayerItem *item = model()->layerItem(index);
+    if (!item)
+        return false;
+    if (item->type() == QPsdAbstractLayerItem::Adjustment)
+        return true;
+    const auto blendMode = item->record().blendMode();
+    return blendMode != QPsdBlend::Normal && blendMode != QPsdBlend::PassThrough
+        && blendMode != QPsdBlend::Invalid && !nativeBlendModes.contains(blendMode);
+}
+
+QRect QPsdExporterPlugin::rasterBakeRect(const QModelIndex &index) const
+{
+    const QPsdAbstractLayerItem *item = model()->layerItem(index);
+    if (item && item->type() == QPsdAbstractLayerItem::Adjustment) {
+        // Adjustment layers affect everything below across the canvas
+        return QRect(QPoint(0, 0), canvasSize());
+    }
+    return item ? item->rect() : QRect();
+}
+
+QImage QPsdExporterPlugin::rasterBakeImage(const QModelIndex &index) const
+{
+    const auto *guiModel = model()->guiLayerTreeItemModel();
+    if (!guiModel)
+        return QImage();
+    const QImage merged = guiModel->mergedImage();
+    if (merged.isNull())
+        return QImage();
+    return merged.copy(rasterBakeRect(index));
+}
+
 bool QPsdExporterPlugin::needsRasterFallback(const QList<QPsdBlend::Mode> &nativeBlendModes) const
 {
     // Targets without shader support cannot express Photoshop blend modes
-    // or adjustment layers. Like QPsdView, fall back to the pre-composited
-    // merged image when the document depends on either. Modes the target
-    // supports natively can be passed in to keep such documents structural.
-    std::function<bool(const QModelIndex &)> scan = [&](const QModelIndex &index) -> bool {
-        if (index.isValid()) {
-            const auto hint = model()->layerHint(index);
-            if (hint.type == QPsdExporterTreeItemModel::ExportHint::Skip)
-                return false;
-            const QPsdAbstractLayerItem *item = model()->layerItem(index);
-            if (item && hint.visible) {
-                if (item->type() == QPsdAbstractLayerItem::Adjustment)
-                    return true;
-                const auto blendMode = item->record().blendMode();
-                if (blendMode != QPsdBlend::Normal && blendMode != QPsdBlend::PassThrough
-                    && blendMode != QPsdBlend::Invalid && !nativeBlendModes.contains(blendMode))
+    // or adjustment layers. Such layers are normally partially baked: the
+    // layer alone is replaced with the pre-composited merged region, which
+    // reproduces its appearance as long as nothing renders on top of it.
+    // Only when that condition fails does the whole document fall back to
+    // the merged image, as QPsdView does.
+    const auto *guiModel = model()->guiLayerTreeItemModel();
+    if (!guiModel || guiModel->mergedImage().isNull()) {
+        // No merged image to bake from: any unexpressible layer forces the
+        // (also merged-image based) full fallback, which then degrades to
+        // whatever the exporter can do.
+        std::function<bool(const QModelIndex &)> scan = [&](const QModelIndex &index) -> bool {
+            if (index.isValid() && layerNeedsRasterBake(index, nativeBlendModes))
+                return true;
+            for (int r = 0; r < model()->rowCount(index); ++r) {
+                if (scan(model()->index(r, 0, index)))
                     return true;
             }
+            return false;
+        };
+        return scan(QModelIndex());
+    }
+
+    // Collect renderable layers in back-to-front paint order
+    QList<QModelIndex> paintOrder;
+    std::function<void(const QModelIndex &)> collect = [&](const QModelIndex &parent) {
+        for (int r = model()->rowCount(parent) - 1; r >= 0; --r) {
+            const QModelIndex idx = model()->index(r, 0, parent);
+            paintOrder.append(idx);
+            collect(idx);
         }
-        for (int r = 0; r < model()->rowCount(index); ++r) {
-            if (scan(model()->index(r, 0, index)))
+    };
+    collect(QModelIndex());
+
+    for (int i = 0; i < paintOrder.size(); ++i) {
+        if (!layerNeedsRasterBake(paintOrder.at(i), nativeBlendModes))
+            continue;
+        const QRect bakeRect = rasterBakeRect(paintOrder.at(i));
+        // Partial bake only reproduces the final appearance if no visible
+        // layer paints on top of the baked region afterwards
+        for (int j = i + 1; j < paintOrder.size(); ++j) {
+            const auto hint = model()->layerHint(paintOrder.at(j));
+            if (hint.type == QPsdExporterTreeItemModel::ExportHint::Skip || !hint.visible)
+                continue;
+            const QPsdAbstractLayerItem *above = model()->layerItem(paintOrder.at(j));
+            if (!above || above->type() == QPsdAbstractLayerItem::Folder)
+                continue;
+            if (above->rect().intersects(bakeRect))
                 return true;
         }
-        return false;
-    };
-    return scan(QModelIndex());
+    }
+    return false;
 }
 
 QVariantMap QPsdExporterPlugin::ExportConfig::toVariantMap() const

@@ -858,6 +858,30 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
     if (isMergedSource(index))
         return true;
 
+    // Partial bake: replace an unexpressible layer with the pre-composited
+    // merged region so the rest of the document keeps its structure
+    if (layerNeedsRasterBake(index, nativeBlendModes())) {
+        const QImage baked = rasterBakeImage(index);
+        if (!baked.isNull()) {
+            imageStore = QPsdImageStore(dir, "assets/images"_L1);
+            const QString name = imageStore.save(imageFileName(item->name() + "_baked"_L1, "PNG"_L1), baked, "PNG");
+            if (!name.isEmpty()) {
+                const QRect bakeRect = rasterBakeRect(index);
+                Element img;
+                img.type = "Image.asset";
+                img.noNamedParam = u"\"%1\""_s.arg(imagePath(name));
+                outputRectProp(bakeRect, &img);
+                img.properties.insert("fit", "BoxFit.contain");
+                Element positioned;
+                positioned.type = "Positioned";
+                outputRectProp(bakeRect, &positioned, false, true);
+                positioned.properties.insert("child", QVariant::fromValue(img));
+                parent->children.append(positioned);
+            }
+        }
+        return true;
+    }
+
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;

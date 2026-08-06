@@ -189,6 +189,25 @@ bool QPsdExporterSlintPlugin::traverseTree(const QModelIndex &index, Element *pa
     if (isMergedSource(index))
         return true;
 
+    // Partial bake: replace an unexpressible layer with the pre-composited
+    // merged region so the rest of the document keeps its structure
+    if (layerNeedsRasterBake(index)) {
+        const QImage baked = rasterBakeImage(index);
+        if (!baked.isNull()) {
+            imageStore = QPsdImageStore(dir, "images"_L1);
+            const QString name = imageStore.save(imageFileName(item->name() + "_baked"_L1, "PNG"_L1), baked, "PNG");
+            if (!name.isEmpty()) {
+                Element element;
+                outputRect(rasterBakeRect(index), &element);
+                element.type = "Image";
+                element.properties.insert("source", u"@image-url(\"images/%1\")"_s.arg(name));
+                element.properties.insert("image-fit", "contain");
+                parent->children.append(element);
+            }
+        }
+        return true;
+    }
+
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;

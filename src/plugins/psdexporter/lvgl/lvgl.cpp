@@ -235,6 +235,26 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
     if (isMergedSource(index))
         return true;
 
+    // Partial bake: replace an unexpressible layer with the pre-composited
+    // merged region so the rest of the document keeps its structure
+    if (layerNeedsRasterBake(index, nativeBlendModes())) {
+        const QImage baked = rasterBakeImage(index);
+        if (!baked.isNull()) {
+            QPsdImageStore imageStore(dir, "images"_L1);
+            const QString name = imageStore.save(imageFileName(item->name() + "_baked"_L1, "PNG"_L1), baked, "PNG");
+            if (!name.isEmpty()) {
+                QFileInfo fi(name);
+                exportedImages.append(qMakePair(fi.completeBaseName(), name));
+                Element element;
+                element.type = "lv_image";
+                outputRect(rasterBakeRect(index), &element);
+                element.attributes.insert("src", fi.completeBaseName());
+                parent->children.append(element);
+            }
+        }
+        return true;
+    }
+
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
