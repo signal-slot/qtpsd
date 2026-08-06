@@ -10,53 +10,11 @@ class MainWindow extends StatelessWidget {
       width: 200,
       child: Stack(
         children: [
-          Positioned(
+          Image.asset(
+            "assets/images/merged.png", 
+            fit: BoxFit.contain,
             height: 200,
-            left: 0,
-            top: 0,
             width: 200,
-            child: Image.asset(
-              "assets/images/background.png", 
-              fit: BoxFit.contain,
-              height: 200,
-              width: 200,
-            ),
-          ),
-          Positioned(
-            height: 120,
-            left: 40,
-            top: 40,
-            width: 120,
-            child: Image.asset(
-              "assets/images/clip_base.png", 
-              fit: BoxFit.contain,
-              height: 120,
-              width: 120,
-            ),
-          ),
-          Positioned(
-            height: 200,
-            left: 0,
-            top: 0,
-            width: 200,
-            child: Image.asset(
-              "assets/images/clipped_1.png", 
-              fit: BoxFit.contain,
-              height: 200,
-              width: 200,
-            ),
-          ),
-          Positioned(
-            height: 100,
-            left: 0,
-            top: 0,
-            width: 200,
-            child: Image.asset(
-              "assets/images/clipped_2.png", 
-              fit: BoxFit.contain,
-              height: 100,
-              width: 200,
-            ),
           ),
         ],
       ),

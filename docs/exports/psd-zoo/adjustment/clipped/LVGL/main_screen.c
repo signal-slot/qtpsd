@@ -18,7 +18,25 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
         lv_obj_t * obj_0 = lv_image_create(root);
         lv_obj_set_pos(obj_0, 0, 0);
         lv_obj_set_size(obj_0, 200, 200);
-        lv_image_set_src(obj_0, "A:images/merged.png");
+        lv_image_set_src(obj_0, "A:images/background.png");
+    }
+    {
+        lv_obj_t * obj_1 = lv_image_create(root);
+        lv_obj_set_pos(obj_1, 0, 0);
+        lv_obj_set_size(obj_1, 200, 200);
+        lv_image_set_src(obj_1, "A:images/base.png");
+    }
+    {
+        lv_obj_t * obj_2 = lv_image_create(root);
+        lv_obj_set_pos(obj_2, 50, 50);
+        lv_obj_set_size(obj_2, 100, 100);
+        lv_image_set_src(obj_2, "A:images/top_content.png");
+    }
+    {
+        lv_obj_t * obj_3 = lv_image_create(root);
+        lv_obj_set_pos(obj_3, 0, 0);
+        lv_obj_set_size(obj_3, 200, 200);
+        lv_image_set_src(obj_3, "A:images/contrast_1_baked.png");
     }
     return root;
 }

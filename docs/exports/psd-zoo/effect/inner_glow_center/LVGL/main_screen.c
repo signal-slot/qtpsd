@@ -24,7 +24,7 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
         lv_obj_t * obj_1 = lv_image_create(root);
         lv_obj_set_pos(obj_1, 20, 20);
         lv_obj_set_size(obj_1, 160, 160);
-        lv_image_set_src(obj_1, "A:images/inner_glow_center.png");
+        lv_image_set_src(obj_1, "A:images/inner_glow_center_baked.png");
     }
     return root;
 }

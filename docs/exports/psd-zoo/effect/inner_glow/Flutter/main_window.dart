@@ -28,7 +28,7 @@ class MainWindow extends StatelessWidget {
             top: 25,
             width: 200,
             child: Image.asset(
-              "assets/images/inner_glow_layer.png", 
+              "assets/images/inner_glow_layer_baked.png", 
               fit: BoxFit.contain,
               height: 150,
               width: 200,

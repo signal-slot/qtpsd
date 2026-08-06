@@ -17,27 +17,8 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
     {
         lv_obj_t * obj_0 = lv_image_create(root);
         lv_obj_set_pos(obj_0, 0, 0);
-        lv_obj_set_size(obj_0, 0, 0);
-        lv_image_set_src(obj_0, "A:images/");
-    }
-    {
-        lv_obj_t * obj_1 = lv_image_create(root);
-        lv_obj_set_pos(obj_1, 30, 30);
-        lv_obj_set_size(obj_1, 140, 140);
-        lv_image_set_src(obj_1, "A:images/base.png");
-    }
-    {
-        lv_obj_t * obj_2 = lv_image_create(root);
-        lv_obj_set_pos(obj_2, 0, 0);
-        lv_obj_set_size(obj_2, 200, 200);
-        lv_image_set_src(obj_2, "A:images/clip_1.png");
-    }
-    {
-        lv_obj_t * obj_3 = lv_image_create(root);
-        lv_obj_set_pos(obj_3, 0, 0);
-        lv_obj_set_size(obj_3, 200, 100);
-        lv_image_set_src(obj_3, "A:images/clip_2.png");
-        lv_obj_set_style_opa(obj_3, 128, 0);
+        lv_obj_set_size(obj_0, 200, 200);
+        lv_image_set_src(obj_0, "A:images/merged.png");
     }
     return root;
 }
