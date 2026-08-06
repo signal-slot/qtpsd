@@ -81,6 +81,21 @@ private:
     QString generateGradientName(const QString &layerName) const;
     GradientDef makeGradientDef(const QString &name, const QGradient *gradient) const;
 
+    // Photoshop blend modes LVGL can express natively
+    static QString lvglBlendMode(QPsdBlend::Mode mode) {
+        switch (mode) {
+        case QPsdBlend::Mode::Multiply: return "LV_BLEND_MODE_MULTIPLY"_L1;
+        case QPsdBlend::Mode::LinearDodge: return "LV_BLEND_MODE_ADDITIVE"_L1;
+        case QPsdBlend::Mode::Subtract: return "LV_BLEND_MODE_SUBTRACTIVE"_L1;
+        case QPsdBlend::Mode::Difference: return "LV_BLEND_MODE_DIFFERENCE"_L1;
+        default: return QString();
+        }
+    }
+    static QList<QPsdBlend::Mode> nativeBlendModes() {
+        return { QPsdBlend::Mode::Multiply, QPsdBlend::Mode::LinearDodge,
+                 QPsdBlend::Mode::Subtract, QPsdBlend::Mode::Difference };
+    }
+
     bool saveHeader(const QString &baseName, const ExportData &exports) const;
     bool saveSource(const QString &baseName, const Element &root, const ExportData &exports, const QSize &targetSize) const;
 
@@ -110,7 +125,7 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
     view.attributes.insert("style_pad_all", "0");
     view.attributes.insert("scrollbar_mode", "off");
 
-    if (!needsRasterFallback()) {
+    if (!needsRasterFallback(nativeBlendModes())) {
         for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
             QModelIndex childIndex = model->index(i, 0, QModelIndex {});
             if (!traverseTree(childIndex, &view, &exports, std::nullopt))
@@ -252,6 +267,10 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
 
         if (!hint.visible)
             element.attributes.insert("hidden", "true");
+
+        const QString lvBlend = lvglBlendMode(item->record().blendMode());
+        if (!lvBlend.isEmpty())
+            element.attributes.insert("blend_mode", lvBlend);
 
         if (!id.isEmpty()) {
             if (hint.interactive) {
@@ -680,6 +699,8 @@ void QPsdExporterLvglPlugin::emitElement(QTextStream &out, const Element &elemen
         if (key == "hidden"_L1) {
             if (value == "true"_L1)
                 out << ipad << "lv_obj_add_flag(" << var << ", LV_OBJ_FLAG_HIDDEN);\n";
+        } else if (key == "blend_mode"_L1) {
+            out << ipad << "lv_obj_set_style_blend_mode(" << var << ", " << value << ", 0);\n";
         } else if (key == "scrollbar_mode"_L1) {
             if (value == "off"_L1)
                 out << ipad << "lv_obj_set_scrollbar_mode(" << var << ", LV_SCROLLBAR_MODE_OFF);\n";
