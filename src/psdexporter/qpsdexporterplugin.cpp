@@ -260,6 +260,11 @@ bool QPsdExporterPlugin::layerNeedsRasterBake(const QModelIndex &index, const QL
         return false;
     if (item->type() == QPsdAbstractLayerItem::Adjustment)
         return true;
+    // Layer effects and clipping the targets cannot express
+    if (!item->satin().isEmpty() || !item->innerGlow().isEmpty())
+        return true;
+    if (item->record().clipping() == QPsdLayerRecord::Clipping::NonBase)
+        return true;
     const auto blendMode = item->record().blendMode();
     return blendMode != QPsdBlend::Normal && blendMode != QPsdBlend::PassThrough
         && blendMode != QPsdBlend::Invalid && !nativeBlendModes.contains(blendMode);
@@ -272,7 +277,16 @@ QRect QPsdExporterPlugin::rasterBakeRect(const QModelIndex &index) const
         // Adjustment layers affect everything below across the canvas
         return QRect(QPoint(0, 0), canvasSize());
     }
-    return item ? item->rect() : QRect();
+    QRect rect = item ? item->rect() : QRect();
+    if (item && item->type() == QPsdAbstractLayerItem::Folder) {
+        // Folder items often carry no geometry of their own
+        const QRect children = childrenRectMap.value(QPersistentModelIndex(index));
+        if (children.isValid())
+            rect = rect.isValid() && !rect.isEmpty() ? rect.united(children) : children;
+    }
+    if (rect.isEmpty())
+        rect = QRect(QPoint(0, 0), canvasSize());
+    return rect;
 }
 
 QImage QPsdExporterPlugin::rasterBakeImage(const QModelIndex &index) const
