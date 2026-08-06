@@ -92,6 +92,11 @@ private:
     bool outputImage(const QModelIndex &imageIndex, Element *element) const;
 
     bool traverseTree(const QModelIndex &index, Element *parent, ImportData *imports, ExportData *exports, std::optional<QPsdExporterTreeItemModel::ExportHint::Type> hintOverload = std::nullopt) const;
+
+    // Photoshop blend modes Flutter's BlendMode covers natively
+    static QString flutterBlendMode(QPsdBlend::Mode mode);
+    static QList<QPsdBlend::Mode> nativeBlendModes();
+    mutable bool m_needsBlendWidget = false;
 };
 
 Q_DECLARE_METATYPE(QPsdExporterFlutterPlugin::Element)
@@ -99,6 +104,39 @@ Q_DECLARE_METATYPE(QPsdExporterFlutterPlugin::Element)
 QByteArray QPsdExporterFlutterPlugin::indentString(int level)
 {
     return QByteArray(level * 2, ' ');
+}
+
+QString QPsdExporterFlutterPlugin::flutterBlendMode(QPsdBlend::Mode mode)
+{
+    switch (mode) {
+    case QPsdBlend::Mode::Darken: return "BlendMode.darken"_L1;
+    case QPsdBlend::Mode::Multiply: return "BlendMode.multiply"_L1;
+    case QPsdBlend::Mode::ColorBurn: return "BlendMode.colorBurn"_L1;
+    case QPsdBlend::Mode::Lighten: return "BlendMode.lighten"_L1;
+    case QPsdBlend::Mode::Screen: return "BlendMode.screen"_L1;
+    case QPsdBlend::Mode::ColorDodge: return "BlendMode.colorDodge"_L1;
+    case QPsdBlend::Mode::LinearDodge: return "BlendMode.plus"_L1;
+    case QPsdBlend::Mode::Overlay: return "BlendMode.overlay"_L1;
+    case QPsdBlend::Mode::SoftLight: return "BlendMode.softLight"_L1;
+    case QPsdBlend::Mode::HardLight: return "BlendMode.hardLight"_L1;
+    case QPsdBlend::Mode::Difference: return "BlendMode.difference"_L1;
+    case QPsdBlend::Mode::Exclusion: return "BlendMode.exclusion"_L1;
+    case QPsdBlend::Mode::Hue: return "BlendMode.hue"_L1;
+    case QPsdBlend::Mode::Saturation: return "BlendMode.saturation"_L1;
+    case QPsdBlend::Mode::Color: return "BlendMode.color"_L1;
+    case QPsdBlend::Mode::Luminosity: return "BlendMode.luminosity"_L1;
+    default: return QString();
+    }
+}
+
+QList<QPsdBlend::Mode> QPsdExporterFlutterPlugin::nativeBlendModes()
+{
+    return { QPsdBlend::Mode::Darken, QPsdBlend::Mode::Multiply, QPsdBlend::Mode::ColorBurn,
+             QPsdBlend::Mode::Lighten, QPsdBlend::Mode::Screen, QPsdBlend::Mode::ColorDodge,
+             QPsdBlend::Mode::LinearDodge, QPsdBlend::Mode::Overlay, QPsdBlend::Mode::SoftLight,
+             QPsdBlend::Mode::HardLight, QPsdBlend::Mode::Difference, QPsdBlend::Mode::Exclusion,
+             QPsdBlend::Mode::Hue, QPsdBlend::Mode::Saturation, QPsdBlend::Mode::Color,
+             QPsdBlend::Mode::Luminosity };
 }
 
 QString QPsdExporterFlutterPlugin::valueAsText(QVariant value)
@@ -320,6 +358,47 @@ bool QPsdExporterFlutterPlugin::saveTo(const QString &baseName, Element *element
     out << ";\n";
     out << indentString(1) << "}\n";
     out << "}\n";
+
+    if (m_needsBlendWidget) {
+        out << R"(
+// Composites its child against the backdrop with a Photoshop blend mode
+class PsdBlend extends SingleChildRenderObjectWidget {
+  const PsdBlend({super.key, required this.blendMode, super.child});
+
+  final BlendMode blendMode;
+
+  @override
+  RenderObject createRenderObject(BuildContext context) =>
+      _PsdBlendRender(blendMode);
+
+  @override
+  void updateRenderObject(
+      BuildContext context, covariant _PsdBlendRender renderObject) {
+    renderObject.blendMode = blendMode;
+  }
+}
+
+class _PsdBlendRender extends RenderProxyBox {
+  _PsdBlendRender(this._blendMode);
+
+  BlendMode _blendMode;
+  set blendMode(BlendMode value) {
+    if (value == _blendMode) return;
+    _blendMode = value;
+    markNeedsPaint();
+  }
+
+  @override
+  void paint(PaintingContext context, Offset offset) {
+    if (child == null) return;
+    context.canvas
+        .saveLayer(offset & size, Paint()..blendMode = _blendMode);
+    context.paintChild(child!, offset);
+    context.canvas.restore();
+  }
+}
+)";
+    }
 
     return true;
 }
@@ -846,6 +925,21 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
             pElement = &opacityElement;
         }
 
+        // Photoshop blend mode via a saveLayer-based wrapper; outermost of
+        // the content chain so the blend sees the real backdrop
+        Element blendElement;
+        {
+            const QString fm = flutterBlendMode(item->record().blendMode());
+            if (!fm.isEmpty()) {
+                m_needsBlendWidget = true;
+                imports->insert("package:flutter/rendering.dart");
+                blendElement.type = "PsdBlend";
+                blendElement.properties.insert("blendMode", fm);
+                blendElement.properties.insert("child", QVariant::fromValue(*pElement));
+                pElement = &blendElement;
+            }
+        }
+
         if (existsPositioned) {
             positionedElement.properties.insert("child"_L1, QVariant::fromValue(*pElement));
             pElement = &positionedElement;
@@ -1056,7 +1150,8 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     Element container;
     container.type = "Stack";
 
-    if (!needsRasterFallback()) {
+    m_needsBlendWidget = false;
+    if (!needsRasterFallback(nativeBlendModes())) {
         for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
             QModelIndex childIndex = model->index(i, 0, QModelIndex {});
             if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))

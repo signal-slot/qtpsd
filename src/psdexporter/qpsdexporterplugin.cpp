@@ -250,11 +250,12 @@ bool QPsdExporterPlugin::isMergedSource(const QModelIndex &index) const
     return mergedSourceIndices.contains(QPersistentModelIndex(index));
 }
 
-bool QPsdExporterPlugin::needsRasterFallback() const
+bool QPsdExporterPlugin::needsRasterFallback(const QList<QPsdBlend::Mode> &nativeBlendModes) const
 {
     // Targets without shader support cannot express Photoshop blend modes
     // or adjustment layers. Like QPsdView, fall back to the pre-composited
-    // merged image when the document depends on either.
+    // merged image when the document depends on either. Modes the target
+    // supports natively can be passed in to keep such documents structural.
     std::function<bool(const QModelIndex &)> scan = [&](const QModelIndex &index) -> bool {
         if (index.isValid()) {
             const auto hint = model()->layerHint(index);
@@ -266,7 +267,7 @@ bool QPsdExporterPlugin::needsRasterFallback() const
                     return true;
                 const auto blendMode = item->record().blendMode();
                 if (blendMode != QPsdBlend::Normal && blendMode != QPsdBlend::PassThrough
-                    && blendMode != QPsdBlend::Invalid)
+                    && blendMode != QPsdBlend::Invalid && !nativeBlendModes.contains(blendMode))
                     return true;
             }
         }
