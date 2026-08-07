@@ -104,10 +104,6 @@ protected:
     // or imageSource. Such layers are absorbed into the button and must not
     // be emitted independently.
     bool isMergedSource(const QModelIndex &index) const;
-    bool needsRasterFallback(const QList<QPsdBlend::Mode> &nativeBlendModes = {}) const;
-    bool layerNeedsRasterBake(const QModelIndex &index, const QList<QPsdBlend::Mode> &nativeBlendModes = {}) const;
-    QRect rasterBakeRect(const QModelIndex &index) const;
-    QImage rasterBakeImage(const QModelIndex &index) const;
 
     static QRect computeTextBounds(const QPsdTextLayerItem *text);
 

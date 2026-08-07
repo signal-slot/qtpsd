@@ -125,16 +125,13 @@ bool QPsdExporterLvglPlugin::exportTo(const QPsdExporterTreeItemModel *model, co
     view.attributes.insert("style_pad_all", "0");
     view.attributes.insert("scrollbar_mode", "off");
 
-    if (!needsRasterFallback(nativeBlendModes())) {
-        for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
-            QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-            if (!traverseTree(childIndex, &view, &exports, std::nullopt))
-                return false;
-        }
+    for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
+        QModelIndex childIndex = model->index(i, 0, QModelIndex {});
+        if (!traverseTree(childIndex, &view, &exports, std::nullopt))
+            return false;
     }
 
-    // Flattened PSD fallback: used when no layers were produced or the
-    // document needs blend modes/adjustment layers LVGL cannot express
+    // Flattened PSD fallback: if no layers were produced, use the merged image
     if (view.children.isEmpty()) {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
         if (!merged.isNull()) {
@@ -234,26 +231,6 @@ bool QPsdExporterLvglPlugin::traverseTree(const QModelIndex &index, Element *par
     // button emits its content, so don't emit this layer standalone.
     if (isMergedSource(index))
         return true;
-
-    // Partial bake: replace an unexpressible layer with the pre-composited
-    // merged region so the rest of the document keeps its structure
-    if (layerNeedsRasterBake(index, nativeBlendModes())) {
-        const QImage baked = rasterBakeImage(index);
-        if (!baked.isNull()) {
-            QPsdImageStore imageStore(dir, "images"_L1);
-            const QString name = imageStore.save(imageFileName(item->name() + "_baked"_L1, "PNG"_L1), baked, "PNG");
-            if (!name.isEmpty()) {
-                QFileInfo fi(name);
-                exportedImages.append(qMakePair(fi.completeBaseName(), name));
-                Element element;
-                element.type = "lv_image";
-                outputRect(rasterBakeRect(index), &element);
-                element.attributes.insert("src", fi.completeBaseName());
-                parent->children.append(element);
-            }
-        }
-        return true;
-    }
 
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {

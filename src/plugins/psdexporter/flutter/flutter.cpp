@@ -858,30 +858,6 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
     if (isMergedSource(index))
         return true;
 
-    // Partial bake: replace an unexpressible layer with the pre-composited
-    // merged region so the rest of the document keeps its structure
-    if (layerNeedsRasterBake(index, nativeBlendModes())) {
-        const QImage baked = rasterBakeImage(index);
-        if (!baked.isNull()) {
-            imageStore = QPsdImageStore(dir, "assets/images"_L1);
-            const QString name = imageStore.save(imageFileName(item->name() + "_baked"_L1, "PNG"_L1), baked, "PNG");
-            if (!name.isEmpty()) {
-                const QRect bakeRect = rasterBakeRect(index);
-                Element img;
-                img.type = "Image.asset";
-                img.noNamedParam = u"\"%1\""_s.arg(imagePath(name));
-                outputRectProp(bakeRect, &img);
-                img.properties.insert("fit", "BoxFit.contain");
-                Element positioned;
-                positioned.type = "Positioned";
-                outputRectProp(bakeRect, &positioned, false, true);
-                positioned.properties.insert("child", QVariant::fromValue(img));
-                parent->children.append(positioned);
-            }
-        }
-        return true;
-    }
-
     switch (type) {
     case QPsdExporterTreeItemModel::ExportHint::Embed: {
         Element element;
@@ -1175,16 +1151,13 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     container.type = "Stack";
 
     m_needsBlendWidget = false;
-    if (!needsRasterFallback(nativeBlendModes())) {
-        for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
-            QModelIndex childIndex = model->index(i, 0, QModelIndex {});
-            if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))
-                return false;
-        }
+    for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
+        QModelIndex childIndex = model->index(i, 0, QModelIndex {});
+        if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))
+            return false;
     }
 
-    // Flattened PSD fallback: used when no layers were produced or the
-    // document needs blend modes/adjustment layers Flutter cannot express
+    // Flattened PSD fallback: if no layers were produced, use the merged image
     if (container.children.isEmpty()) {
         const QImage merged = model->guiLayerTreeItemModel()->mergedImage();
         if (!merged.isNull()) {
