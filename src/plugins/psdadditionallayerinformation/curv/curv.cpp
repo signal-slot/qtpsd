@@ -81,8 +81,8 @@ public:
             writeU16(&io, static_cast<quint16>(points.size()));
             for (const auto &p : points) {
                 const auto pt = p.toMap();
-                writeS16(&io, static_cast<qint16>(pt.value(u"input"_s).toInt()));
                 writeS16(&io, static_cast<qint16>(pt.value(u"output"_s).toInt()));
+                writeS16(&io, static_cast<qint16>(pt.value(u"input"_s).toInt()));
             }
         };
 
@@ -130,8 +130,9 @@ public:
         Q_ASSERT(count * 2 <= *length);
         QVariantList points;
         for (quint16 i = 0; i < count; i++) {
-            const auto input = readS16(source, length);
+            // Curve points are stored output-first (same as .acv files)
             const auto output = readS16(source, length);
+            const auto input = readS16(source, length);
             QVariantMap point;
             point.insert(u"input"_s, input);
             point.insert(u"output"_s, output);

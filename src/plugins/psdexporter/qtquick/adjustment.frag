@@ -8,8 +8,10 @@ layout(std140, binding = 0) uniform buf {
     float qt_Opacity;
     int adjustmentType;
     // Brightness/Contrast (brit)
-    float brightness;   // -150..150, normalized to -1..1
+    float brightness;   // raw value / 255
     float contrast;     // -50..100, normalized
+    float brit_pivot;   // modern contrast pivot (means / 255)
+    float brit_modern;  // 1.0 = modern (contrast first), 0.0 = legacy
 
     // Levels (levl) — per-channel input/output
     float lvl_shadowIn;     // 0..255 normalized to 0..1
@@ -179,14 +181,24 @@ void main() {
     float alpha = texel.a;
 
     if (adjustmentType == ADJ_BRIGHTNESS) {
-        // Photoshop Brightness/Contrast (modern, non-legacy)
-        // brightness: -150..150 mapped to uniform as raw value / 150
-        // contrast: -50..100 mapped to uniform as raw value / 100
-        color = clamp(color + brightness, 0.0, 1.0);
-        if (contrast > 0.0) {
-            color = clamp((color - 0.5) * (1.0 / (1.0 - contrast)) + 0.5, 0.0, 1.0);
-        } else if (contrast < 0.0) {
-            color = clamp((color - 0.5) * (1.0 + contrast) + 0.5, 0.0, 1.0);
+        // Photoshop Brightness/Contrast
+        // brightness: raw value / 255; contrast: raw value / 100
+        // Legacy applies brightness then contrast around 0.5;
+        // modern applies contrast around brit_pivot first, then brightness
+        if (brit_modern > 0.5) {
+            if (contrast > 0.0) {
+                color = clamp((color - brit_pivot) * (1.0 / (1.0 - min(contrast, 0.999))) + brit_pivot, 0.0, 1.0);
+            } else if (contrast < 0.0) {
+                color = clamp((color - brit_pivot) * (1.0 + contrast) + brit_pivot, 0.0, 1.0);
+            }
+            color = clamp(color + brightness, 0.0, 1.0);
+        } else {
+            color = clamp(color + brightness, 0.0, 1.0);
+            if (contrast > 0.0) {
+                color = clamp((color - 0.5) * (1.0 / (1.0 - min(contrast, 0.999))) + 0.5, 0.0, 1.0);
+            } else if (contrast < 0.0) {
+                color = clamp((color - 0.5) * (1.0 + contrast) + 0.5, 0.0, 1.0);
+            }
         }
     }
     else if (adjustmentType == ADJ_LEVELS) {
@@ -209,8 +221,12 @@ void main() {
         color.b = texture(curvesLUT, vec2(master_b, 0.5)).b;
     }
     else if (adjustmentType == ADJ_EXPOSURE) {
-        // Exposure: linear light space
-        color = clamp(pow(max(vec3(0.0), color * pow(2.0, exposure) + offset), vec3(1.0 / gamma)), 0.0, 1.0);
+        // Exposure operates in linear light, not in the sRGB-encoded values
+        vec3 lin = mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)),
+                       step(0.04045, color));
+        lin = pow(max(vec3(0.0), lin * pow(2.0, exposure) + offset), vec3(1.0 / gamma));
+        color = clamp(mix(lin * 12.92, 1.055 * pow(lin, vec3(1.0 / 2.4)) - 0.055,
+                          step(0.0031308, lin)), 0.0, 1.0);
     }
     else if (adjustmentType == ADJ_HUE_SAT) {
         vec3 hsl = rgb2hsl(color);

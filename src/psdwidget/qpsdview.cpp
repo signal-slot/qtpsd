@@ -259,7 +259,25 @@ void QPsdView::contextMenuEvent(QContextMenuEvent *event)
 
 void QPsdView::paintEvent(QPaintEvent *event)
 {
-    QGraphicsView::paintEvent(event);
+    auto *psdScene = qobject_cast<QPsdScene *>(scene());
+    if (psdScene && psdScene->needsImageBackbuffer()) {
+        // Render through a QImage so items that read back the composited
+        // result (adjustment layers, document alpha mask) can work; painting
+        // directly onto the viewport widget gives them no readable backbuffer
+        const qreal dpr = devicePixelRatioF();
+        QImage buffer(viewport()->size() * dpr, QImage::Format_ARGB32_Premultiplied);
+        buffer.setDevicePixelRatio(dpr);
+        buffer.fill(Qt::transparent);
+        {
+            QPainter p(&buffer);
+            p.setRenderHints(renderHints());
+            render(&p, viewport()->rect(), viewport()->rect());
+        }
+        QPainter vp(viewport());
+        vp.drawImage(0, 0, buffer);
+    } else {
+        QGraphicsView::paintEvent(event);
+    }
 
     if (!d->rubberBandRect.isEmpty()) {
         QPainter painter(viewport());

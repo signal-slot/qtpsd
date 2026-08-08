@@ -10,6 +10,7 @@ qt_internal_add_module(PsdWidget
         qpsdview.h qpsdview.cpp
         qpsdscene.h qpsdscene.cpp
         qpsdabstractitem.h qpsdabstractitem.cpp
+        qpsdadjustmentitem.h qpsdadjustmentitem.cpp
         qpsdtextitem.h qpsdtextitem.cpp
         qpsdshapeitem.h qpsdshapeitem.cpp
         qpsdimageitem.h qpsdimageitem.cpp

@@ -1149,6 +1149,8 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
     effect.properties.insert("property int adjustmentType", -1);
     setFloat("brightness", 0);
     setFloat("contrast", 0);
+    setFloat("brit_pivot", 0.5);
+    setFloat("brit_modern", 0);
     // Levels defaults (identity: shadow=0, highlight=1, midtone=1)
     for (const auto &prefix : {u"lvl"_s, u"lvlR"_s, u"lvlG"_s, u"lvlB"_s}) {
         setFloat(prefix + "_shadowIn"_L1, 0);
@@ -1180,8 +1182,26 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
     // Override with actual adjustment values
     if (key == "brit") {
         effect.properties.insert("property int adjustmentType", 0);
-        setFloat("brightness", data.value(u"brightness"_s).toDouble() / 150.0);
-        setFloat("contrast", data.value(u"contrast"_s).toDouble() / 100.0);
+        // Legacy brightness adds the raw value; modern (non-legacy) parameters
+        // live in the CgEd descriptor and apply contrast before brightness
+        qreal brightness = data.value(u"brightness"_s).toDouble() / 255.0;
+        qreal contrast = data.value(u"contrast"_s).toDouble() / 100.0;
+        qreal pivot = 0.5;
+        bool modern = false;
+        const QVariant cged = ali.value("CgEd");
+        if (cged.canConvert<QPsdDescriptor>()) {
+            const auto hash = cged.value<QPsdDescriptor>().data();
+            if (hash.contains("Brgh") && !hash.value("useLegacy").toBool()) {
+                modern = true;
+                brightness = hash.value("Brgh").toDouble() / 255.0;
+                contrast = hash.value("Cntr").toDouble() / 100.0;
+                pivot = hash.value("means", 127.5).toDouble() / 255.0;
+            }
+        }
+        setFloat("brightness", brightness);
+        setFloat("contrast", contrast);
+        setFloat("brit_pivot", pivot);
+        setFloat("brit_modern", modern ? 1.0 : 0.0);
     } else if (key == "levl") {
         effect.properties.insert("property int adjustmentType", 1);
         auto setLevels = [&](const QString &prefix, const QVariantMap &ch) {
@@ -2981,8 +3001,10 @@ bool QPsdQmlExporterPlugin::traverseTree(const QModelIndex &index, Element *pare
             generated = outputImage(index, &element, imports);
             break; }
         case QPsdAbstractLayerItem::Adjustment: {
-            // Adjustment layers modify all layers below them via ShaderEffect
-            applyAdjustmentLayer(item, parent, imports);
+            // Adjustment layers modify all layers below them via ShaderEffect;
+            // a disabled adjustment layer must not affect the render
+            if (hint.visible && item->isVisible())
+                applyAdjustmentLayer(item, parent, imports);
             return true; }
         default:
             return true;

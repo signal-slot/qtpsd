@@ -5,6 +5,7 @@
 
 #include <QtPsdWidget/QPsdWidgetTreeItemModel>
 #include <QtPsdWidget/QPsdAbstractItem>
+#include <QtPsdWidget/QPsdAdjustmentItem>
 #include <QtPsdWidget/QPsdFolderItem>
 #include <QtPsdWidget/QPsdImageItem>
 #include <QtPsdWidget/QPsdShapeItem>
@@ -139,6 +140,18 @@ void QPsdScene::setCanvasColor(const QColor &color)
     invalidate(sceneRect(), QGraphicsScene::BackgroundLayer);
 }
 
+bool QPsdScene::needsImageBackbuffer() const
+{
+    if (!d->documentAlphaMask.isNull())
+        return true;
+    const auto allItems = items();
+    for (auto *item : allItems) {
+        if (dynamic_cast<QPsdAdjustmentItem *>(item))
+            return true;
+    }
+    return false;
+}
+
 void QPsdScene::setItemVisible(quint32 id, bool visible)
 {
     for (auto item : items()) {
@@ -175,26 +188,8 @@ void QPsdScene::reset()
         return;
     }
 
-    // Check if any layers are adjustment layers
-    bool hasAdjustmentLayers = false;
-    std::function<void(const QModelIndex)> scanForAdjustments = [&](const QModelIndex index) {
-        if (hasAdjustmentLayers) return;
-        if (index.isValid()) {
-            const QPsdAbstractLayerItem *layer = d->model->layerItem(index);
-            if (layer && layer->type() == QPsdAbstractLayerItem::Adjustment) {
-                hasAdjustmentLayers = true;
-                return;
-            }
-        }
-        for (int r = 0; r < d->model->rowCount(index); r++) {
-            scanForAdjustments(d->model->index(r, 0, index));
-        }
-    };
-    scanForAdjustments(QModelIndex());
-
-    if (hasAdjustmentLayers || d->model->colorMode() == QPsdFileHeader::CMYK) {
+    if (d->model->colorMode() == QPsdFileHeader::CMYK) {
         // Use the merged image from the Image Data section
-        // This image is pre-composited by Photoshop and includes all adjustment effects
         // For CMYK documents, this ensures correct color compositing in CMYK space
         QImage mergedImage = d->model->mergedImage();
         if (!mergedImage.isNull()) {
@@ -233,6 +228,9 @@ void QPsdScene::reset()
                 break; }
             case QPsdAbstractLayerItem::Image: {
                 item = new QPsdImageItem(index, reinterpret_cast<const QPsdImageLayerItem *>(layer), mask, groupMap, parent);
+                break; }
+            case QPsdAbstractLayerItem::Adjustment: {
+                item = new QPsdAdjustmentItem(index, reinterpret_cast<const QPsdAdjustmentLayerItem *>(layer), mask, groupMap, d->model->size(), parent);
                 break; }
             case QPsdAbstractLayerItem::Folder: {
                 item = new QPsdFolderItem(index, reinterpret_cast<const QPsdFolderLayerItem *>(layer), mask, groupMap, parent);

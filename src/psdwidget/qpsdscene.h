@@ -27,6 +27,10 @@ public:
     QImage patternImage(const QString &patternId) const;
     bool showChecker() const;
     QColor canvasColor() const;
+    // True when the scene contains items that read back the composited
+    // result (adjustment layers, document alpha mask) and therefore must be
+    // rendered onto a QImage paint device
+    bool needsImageBackbuffer() const;
 
 protected:
     void drawBackground(QPainter *painter, const QRectF &rect) override;
