@@ -1249,12 +1249,15 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
         auto redCurve = buildLUT(data.value(u"red"_s).toList());
         auto greenCurve = buildLUT(data.value(u"green"_s).toList());
         auto blueCurve = buildLUT(data.value(u"blue"_s).toList());
+        // Compose the master (rgb) curve into each channel curve. The alpha
+        // channel must stay opaque: Qt uploads textures premultiplied, so any
+        // data stored in alpha would corrupt the RGB texels
         for (int i = 0; i < 256; i++) {
             auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
-            pixel[0] = redCurve[i];
-            pixel[1] = greenCurve[i];
-            pixel[2] = blueCurve[i];
-            pixel[3] = rgbCurve[i];
+            pixel[0] = redCurve[rgbCurve[i]];
+            pixel[1] = greenCurve[rgbCurve[i]];
+            pixel[2] = blueCurve[rgbCurve[i]];
+            pixel[3] = 255;
         }
         const QString lutName = imageStore.save(imageFileName(item->name() + "_lut"_L1, "PNG"_L1), lut, "PNG");
         lutImageId = u"_adj_lut_%1"_s.arg(m_adjustmentCounter - 1);

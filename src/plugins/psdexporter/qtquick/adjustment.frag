@@ -211,14 +211,11 @@ void main() {
         color.b = applyLevels(color.b, lvl_shadowIn, lvl_highlightIn, lvl_shadowOut, lvl_highlightOut, lvl_midtone);
     }
     else if (adjustmentType == ADJ_CURVES) {
-        // Look up from 256x1 LUT texture
-        // curvesLUT: R channel = red curve, G = green curve, B = blue curve, A = rgb master
-        float master_r = texture(curvesLUT, vec2(color.r, 0.5)).a;
-        float master_g = texture(curvesLUT, vec2(color.g, 0.5)).a;
-        float master_b = texture(curvesLUT, vec2(color.b, 0.5)).a;
-        color.r = texture(curvesLUT, vec2(master_r, 0.5)).r;
-        color.g = texture(curvesLUT, vec2(master_g, 0.5)).g;
-        color.b = texture(curvesLUT, vec2(master_b, 0.5)).b;
+        // Look up from 256x1 LUT texture; the master (rgb) curve is already
+        // composed into each channel at export time and alpha is opaque
+        color.r = texture(curvesLUT, vec2(color.r, 0.5)).r;
+        color.g = texture(curvesLUT, vec2(color.g, 0.5)).g;
+        color.b = texture(curvesLUT, vec2(color.b, 0.5)).b;
     }
     else if (adjustmentType == ADJ_EXPOSURE) {
         // Exposure operates in linear light, not in the sRGB-encoded values
