@@ -26,6 +26,7 @@ Item {
         layer.effect: ShaderEffect {
             fragmentShader: "adjustment.frag.qsb"
             property int adjustmentType: 6
+            property real adjWeight: 1
             property real bal_hi_cr: 0
             property real bal_hi_mg: 0
             property real bal_hi_yb: 0
@@ -84,17 +85,19 @@ Item {
             property real mixr_outR_g: 0
             property real mixr_outR_r: 100
             property real offset: 0
-            property real phfl_b: 0.631373
+            property real phfl_b: 0
             property real phfl_density: 0.25
-            property real phfl_g: 0.027451
+            property real phfl_g: 0.541176
             property real phfl_preserveLum: 1
-            property real phfl_r: 0.360784
+            property real phfl_r: 0.92549
             property real posterizeLevels: 4
             property real saturationShift: 0
             property real thresholdLevel: 0.5
+            property real useWeightMask: 0
             property real vibrance: 0
             property real vibranceSat: 0
             property var curvesLUT: ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }
+            property var weightMask: ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }
         }
     }
 }

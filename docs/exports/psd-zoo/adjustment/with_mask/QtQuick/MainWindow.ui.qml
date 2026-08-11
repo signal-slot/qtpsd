@@ -3,6 +3,11 @@ import QtQuick
 Item {
     height: 200
     width: 200
+    Image {
+        id: _adj_weight_0
+        source: "images/contrast_1_weight.png"
+        visible: false
+    }
     Item {
         id: _adj_src_0
         anchors.fill: parent
@@ -26,6 +31,7 @@ Item {
         layer.effect: ShaderEffect {
             fragmentShader: "adjustment.frag.qsb"
             property int adjustmentType: 0
+            property real adjWeight: 1
             property real bal_hi_cr: 0
             property real bal_hi_mg: 0
             property real bal_hi_yb: 0
@@ -92,9 +98,11 @@ Item {
             property real posterizeLevels: 4
             property real saturationShift: 0
             property real thresholdLevel: 0.5
+            property real useWeightMask: 1
             property real vibrance: 0
             property real vibranceSat: 0
             property var curvesLUT: ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }
+            property var weightMask: _adj_weight_0
         }
     }
 }
