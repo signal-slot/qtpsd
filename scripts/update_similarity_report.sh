@@ -145,20 +145,20 @@ echo "Report only:    ${report_only}"
 
 if [[ "${report_only}" -eq 0 ]]; then
   echo "== Step 1/5: Host image generation (Image Data, QPsdView) =="
-  run_cmd env "${qt_plugin_env[@]}" \
+  run_cmd env -u QT_IM_MODULE "${qt_plugin_env[@]}" \
     QTPSD_IMAGE_OUTPUT_PATH="${docs_dir}" \
     QTPSD_IMAGE_SOURCES="${source_id}" \
     QT_QPA_PLATFORM=offscreen \
     "${image_data_test}" generateImages
 
-  run_cmd env "${qt_plugin_env[@]}" \
+  run_cmd env -u QT_IM_MODULE "${qt_plugin_env[@]}" \
     QTPSD_VIEW_OUTPUT_PATH="${docs_dir}" \
     QTPSD_VIEW_SOURCES="${source_id}" \
     QT_QPA_PLATFORM=offscreen \
     "${psdview_test}"
 
   echo "== Step 2/5: Host export (QtQuick/Slint/Flutter/LVGL sources) =="
-  run_cmd env "${qt_plugin_env[@]}" \
+  run_cmd env -u QT_IM_MODULE "${qt_plugin_env[@]}" \
     "${export_script}" "${build_dir}" "${source_root}" "${export_root}"
 
   echo "== Step 3/5: Clean previous captured PNGs for ${source_id} =="
@@ -175,7 +175,7 @@ if [[ "${report_only}" -eq 0 ]]; then
 fi
 
 echo "== Step 5/5: Host similarity calculation and report generation =="
-run_cmd env "${qt_plugin_env[@]}" \
+run_cmd env -u QT_IM_MODULE "${qt_plugin_env[@]}" \
   QT_QPA_PLATFORM=offscreen \
   QTPSD_SIMILARITY_OUTPUT_PATH="${docs_dir}" \
   QTPSD_SIMILARITY_SOURCE="${source_id}" \

@@ -63,7 +63,7 @@ run_export() {
   if [[ -d "${qt_plugin_path}" ]]; then
     env_args+=("QT_PLUGIN_PATH=${qt_plugin_path}${QT_PLUGIN_PATH:+:${QT_PLUGIN_PATH}}")
   fi
-  if ! env "${env_args[@]}" "${psdexporter_bin}" \
+  if ! env -u QT_IM_MODULE "${env_args[@]}" "${psdexporter_bin}" \
       --input "${psd_path}" \
       --type "${exporter_type}" \
       --outdir "${out_dir}" \
