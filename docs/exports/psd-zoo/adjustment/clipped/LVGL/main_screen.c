@@ -32,11 +32,5 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
         lv_obj_set_size(obj_2, 100, 100);
         lv_image_set_src(obj_2, "A:images/top_content.png");
     }
-    {
-        lv_obj_t * obj_3 = lv_image_create(root);
-        lv_obj_set_pos(obj_3, 0, 0);
-        lv_obj_set_size(obj_3, 200, 200);
-        lv_image_set_src(obj_3, "A:images/contrast_1_baked.png");
-    }
     return root;
 }

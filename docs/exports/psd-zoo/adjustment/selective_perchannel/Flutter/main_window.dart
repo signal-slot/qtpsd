@@ -34,17 +34,7 @@ class MainWindow extends StatelessWidget {
               width: 200,
             ),
           ),
-          Positioned(
-            height: 200,
-            left: 0,
-            top: 0,
-            width: 200,
-            child: Image.asset(
-              "assets/images/selective_color_1_baked.png", 
-              fit: BoxFit.contain,
-              height: 200,
-              width: 200,
-            ),
+          (
           ),
         ],
       ),

@@ -36,14 +36,16 @@ Item {
             property real bal_shadow_cr: 0
             property real bal_shadow_mg: 0
             property real bal_shadow_yb: 0
-            property real brightness: 0
+            property real brightness: 0.196078
+            property real brit_modern: 1
+            property real brit_pivot: 0.498039
             property real bw_blue: 20
             property real bw_cyan: 60
             property real bw_green: 40
             property real bw_magenta: 80
             property real bw_red: 40
             property real bw_yellow: 60
-            property real contrast: 0
+            property real contrast: 0.25
             property real exposure: 0
             property real gamma: 1
             property real hueShift: 0

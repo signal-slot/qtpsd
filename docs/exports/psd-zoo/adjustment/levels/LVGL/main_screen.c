@@ -26,11 +26,5 @@ lv_obj_t * main_screen_create(lv_obj_t * parent)
         lv_obj_set_size(obj_1, 200, 200);
         lv_image_set_src(obj_1, "A:images/base.png");
     }
-    {
-        lv_obj_t * obj_2 = lv_image_create(root);
-        lv_obj_set_pos(obj_2, 0, 0);
-        lv_obj_set_size(obj_2, 200, 200);
-        lv_image_set_src(obj_2, "A:images/levels_1_baked.png");
-    }
     return root;
 }

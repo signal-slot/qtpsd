@@ -42,6 +42,8 @@ Item {
             property real bal_shadow_mg: 0
             property real bal_shadow_yb: 0
             property real brightness: 0
+            property real brit_modern: 0
+            property real brit_pivot: 0.5
             property real bw_blue: 20
             property real bw_cyan: 60
             property real bw_green: 40

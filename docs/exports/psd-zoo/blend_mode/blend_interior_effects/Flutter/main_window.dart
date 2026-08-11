@@ -28,7 +28,7 @@ class MainWindow extends StatelessWidget {
             top: 30,
             width: 140,
             child: Image.asset(
-              "assets/images/interior_fx_baked.png", 
+              "assets/images/interior_fx.png", 
               fit: BoxFit.contain,
               height: 140,
               width: 140,

@@ -40,7 +40,7 @@ class MainWindow extends StatelessWidget {
             top: 0,
             width: 200,
             child: Image.asset(
-              "assets/images/darker_color_baked.png", 
+              "assets/images/darker_color.png", 
               fit: BoxFit.contain,
               height: 200,
               width: 200,
