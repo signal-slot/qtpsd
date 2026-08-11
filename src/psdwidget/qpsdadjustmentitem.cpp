@@ -47,98 +47,6 @@ QRectF QPsdAdjustmentItem::boundingRect() const
     return mapRectFromScene(QRectF(QPointF(0, 0), QSizeF(d->canvasSize)));
 }
 
-namespace {
-
-QImage buildDocumentWeightMask(const QPsdAdjustmentLayerItem *layer, const QSize &canvasSize)
-{
-    const QImage mask = layer->layerMask();
-    const QRect maskRect = layer->layerMaskRect();
-    const quint8 defaultColor = layer->layerMaskDefaultColor();
-    const qreal density = layer->layerMaskDensity() / 255.0;
-    const bool hasMaskImage = !mask.isNull() && maskRect.isValid() && !maskRect.isEmpty();
-
-    if (!hasMaskImage && defaultColor == 255)
-        return QImage(); // full weight everywhere
-
-    QImage doc(canvasSize, QImage::Format_Grayscale8);
-    doc.fill(defaultColor);
-    if (hasMaskImage) {
-        QPainter p(&doc);
-        p.drawImage(maskRect.topLeft(), mask.convertToFormat(QImage::Format_Grayscale8));
-    }
-    if (density < 1.0) {
-        // Reduced mask density fades the mask toward "no mask" (full weight)
-        for (int y = 0; y < doc.height(); ++y) {
-            uchar *line = doc.scanLine(y);
-            for (int x = 0; x < doc.width(); ++x)
-                line[x] = 255 - qRound(density * (255 - line[x]));
-        }
-    }
-    return doc;
-}
-
-// Coverage of the clipping-mask base layer (the layer the adjustment is
-// clipped to): the adjustment only affects pixels the base covers
-QImage clipBaseCoverage(const QPsdAbstractLayerItem *base, const QSize &canvasSize)
-{
-    QImage doc(canvasSize, QImage::Format_Grayscale8);
-    doc.fill(0);
-    QPainter p(&doc);
-    const QRect rect = base->rect();
-
-    QPsdAbstractLayerItem::PathInfo pathInfo;
-    if (base->type() == QPsdAbstractLayerItem::Shape)
-        pathInfo = reinterpret_cast<const QPsdShapeLayerItem *>(base)->pathInfo();
-    else
-        pathInfo = base->vectorMask();
-
-    if (pathInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
-        QPainterPath path;
-        switch (pathInfo.type) {
-        case QPsdAbstractLayerItem::PathInfo::Rectangle:
-            path.addRect(pathInfo.rect);
-            break;
-        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
-            path.addRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
-            break;
-        default:
-            path = pathInfo.path;
-            break;
-        }
-        p.setRenderHint(QPainter::Antialiasing);
-        p.translate(rect.topLeft());
-        p.fillPath(path, Qt::white);
-        return doc;
-    }
-
-    const QImage transparency = base->transparencyMask();
-    if (!transparency.isNull()) {
-        p.drawImage(rect.topLeft(), transparency);
-        return doc;
-    }
-
-    if (base->type() == QPsdAbstractLayerItem::Image) {
-        const QImage image = reinterpret_cast<const QPsdImageLayerItem *>(base)->image();
-        if (!image.isNull() && image.hasAlphaChannel()) {
-            const QImage argb = image.convertToFormat(QImage::Format_ARGB32);
-            QImage alpha(argb.size(), QImage::Format_Grayscale8);
-            for (int y = 0; y < argb.height(); ++y) {
-                const QRgb *src = reinterpret_cast<const QRgb *>(argb.constScanLine(y));
-                uchar *dst = alpha.scanLine(y);
-                for (int x = 0; x < argb.width(); ++x)
-                    dst[x] = qAlpha(src[x]);
-            }
-            p.drawImage(rect.topLeft(), alpha);
-            return doc;
-        }
-    }
-
-    p.fillRect(rect, Qt::white);
-    return doc;
-}
-
-} // namespace
-
 void QPsdAdjustmentItem::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget)
 {
     Q_UNUSED(option);
@@ -147,20 +55,7 @@ void QPsdAdjustmentItem::paint(QPainter *painter, const QStyleOptionGraphicsItem
     const auto *adj = layer<QPsdAdjustmentLayerItem>();
 
     if (!d->weightMaskBuilt) {
-        d->weightMask = buildDocumentWeightMask(adj, d->canvasSize);
-        if (d->clipBase) {
-            const QImage coverage = clipBaseCoverage(d->clipBase, d->canvasSize);
-            if (d->weightMask.isNull()) {
-                d->weightMask = coverage;
-            } else {
-                for (int y = 0; y < d->weightMask.height(); ++y) {
-                    uchar *w = d->weightMask.scanLine(y);
-                    const uchar *c = coverage.constScanLine(y);
-                    for (int x = 0; x < d->weightMask.width(); ++x)
-                        w[x] = (w[x] * c[x]) / 255;
-                }
-            }
-        }
+        d->weightMask = QtPsdGui::adjustmentWeightMask(adj, d->clipBase, d->canvasSize);
         d->weightMaskBuilt = true;
     }
 

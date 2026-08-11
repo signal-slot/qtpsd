@@ -22,6 +22,7 @@
 #include <QtPsdCore/QPsdSofiEffect>
 #include <QtPsdCore/QPsdUnitFloat>
 #include <QtPsdGui/QPsdAdjustmentLayerItem>
+#include <QtPsdGui/qpsdadjustments.h>
 #include <QtPsdGui/QPsdBorder>
 #include <QtPsdGui/QPsdGuiLayerTreeItemModel>
 #include <QtPsdGui/QPsdPatternFill>
@@ -1108,7 +1109,7 @@ void QPsdQmlExporterPlugin::applyBlendModes(Element *element, ImportData *import
     element->children = accumulated;
 }
 
-void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *item, Element *parent, ImportData * /*imports*/) const
+void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *item, Element *parent, ImportData * /*imports*/, const QPsdAbstractLayerItem *clipBase) const
 {
     const auto *adj = dynamic_cast<const QPsdAdjustmentLayerItem *>(item);
     if (!adj || parent->children.isEmpty())
@@ -1219,36 +1220,10 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
     } else if (key == "curv") {
         effect.properties.insert("property int adjustmentType", 2);
         QImage lut(256, 1, QImage::Format_RGBA8888);
-        auto buildLUT = [](const QVariantList &points) -> QVector<quint8> {
-            QVector<quint8> table(256);
-            if (points.isEmpty()) {
-                for (int i = 0; i < 256; i++) table[i] = i;
-                return table;
-            }
-            QVector<QPair<int, int>> pts;
-            for (const auto &p : points) {
-                auto m = p.toMap();
-                pts.append({m.value(u"input"_s).toInt(), m.value(u"output"_s).toInt()});
-            }
-            if (pts.first().first != 0)
-                pts.prepend({0, pts.first().second});
-            if (pts.last().first != 255)
-                pts.append({255, pts.last().second});
-            int seg = 0;
-            for (int i = 0; i < 256; i++) {
-                while (seg < pts.size() - 2 && i > pts[seg + 1].first)
-                    seg++;
-                int x0 = pts[seg].first, y0 = pts[seg].second;
-                int x1 = pts[seg + 1].first, y1 = pts[seg + 1].second;
-                double t = (x1 != x0) ? double(i - x0) / (x1 - x0) : 0.0;
-                table[i] = qBound(0, qRound(y0 + t * (y1 - y0)), 255);
-            }
-            return table;
-        };
-        auto rgbCurve = buildLUT(data.value(u"rgb"_s).toList());
-        auto redCurve = buildLUT(data.value(u"red"_s).toList());
-        auto greenCurve = buildLUT(data.value(u"green"_s).toList());
-        auto blueCurve = buildLUT(data.value(u"blue"_s).toList());
+        const auto rgbCurve = QtPsdGui::curveLut(data.value(u"rgb"_s).toList());
+        const auto redCurve = QtPsdGui::curveLut(data.value(u"red"_s).toList());
+        const auto greenCurve = QtPsdGui::curveLut(data.value(u"green"_s).toList());
+        const auto blueCurve = QtPsdGui::curveLut(data.value(u"blue"_s).toList());
         // Compose the master (rgb) curve into each channel curve. The alpha
         // channel must stay opaque: Qt uploads textures premultiplied, so any
         // data stored in alpha would corrupt the RGB texels
@@ -1339,44 +1314,13 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
     } else if (key == "grdm") {
         effect.properties.insert("property int adjustmentType", 13);
         QImage lut(256, 1, QImage::Format_RGBA8888);
-        lut.fill(Qt::black);
-        auto stops = data.value(u"colorStops"_s).toList();
-        if (!stops.isEmpty()) {
-            struct Stop { double pos; QColor color; };
-            QVector<Stop> gradStops;
-            for (const auto &s : stops) {
-                auto m = s.toMap();
-                double loc = m.value(u"location"_s).toDouble() / 4096.0;
-                QColor c = m.value(u"color"_s).value<QColor>();
-                if (c.isValid())
-                    gradStops.append({loc, c});
-            }
-            if (!gradStops.isEmpty()) {
-                for (int i = 0; i < 256; i++) {
-                    double t = i / 255.0;
-                    int idx = 0;
-                    while (idx < gradStops.size() - 1 && gradStops[idx + 1].pos < t)
-                        idx++;
-                    QColor c;
-                    if (idx >= gradStops.size() - 1) {
-                        c = gradStops.last().color;
-                    } else {
-                        double t0 = gradStops[idx].pos, t1 = gradStops[idx + 1].pos;
-                        double f = (t1 > t0) ? (t - t0) / (t1 - t0) : 0.0;
-                        const auto &c0 = gradStops[idx].color;
-                        const auto &c1 = gradStops[idx + 1].color;
-                        c = QColor::fromRgbF(
-                            c0.redF() + f * (c1.redF() - c0.redF()),
-                            c0.greenF() + f * (c1.greenF() - c0.greenF()),
-                            c0.blueF() + f * (c1.blueF() - c0.blueF()));
-                    }
-                    auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
-                    pixel[0] = c.red();
-                    pixel[1] = c.green();
-                    pixel[2] = c.blue();
-                    pixel[3] = 255;
-                }
-            }
+        const QList<QRgb> table = QtPsdGui::gradientMapLut(data);
+        for (int i = 0; i < 256; i++) {
+            auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
+            pixel[0] = qRed(table[i]);
+            pixel[1] = qGreen(table[i]);
+            pixel[2] = qBlue(table[i]);
+            pixel[3] = 255;
         }
         const QString lutName = imageStore.save(imageFileName(item->name() + "_lut"_L1, "PNG"_L1), lut, "PNG");
         lutImageId = u"_adj_lut_%1"_s.arg(m_adjustmentCounter - 1);
@@ -1398,7 +1342,7 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
     } else if (key == "vibA") {
         effect.properties.insert("property int adjustmentType", 10);
         setFloat("vibrance", data.value(u"vibrance"_s).toDouble() / 100.0);
-        setFloat("vibranceSat", data.value(u"Strt"_s).toDouble());
+        setFloat("vibranceSat", data.value(u"Strt"_s).toDouble() / 100.0);
     } else {
         // Unknown adjustment type — skip
         parent->children = wrapper.children;
@@ -1414,6 +1358,32 @@ void QPsdQmlExporterPlugin::applyAdjustmentLayer(const QPsdAbstractLayerItem *it
     else
         effect.properties.insert("property var curvesLUT",
                                  u"ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }"_s);
+
+    // Weight the adjustment by its raster mask and clipping-base coverage
+    // (plus the layer opacity) instead of applying it to the whole canvas
+    setFloat("adjWeight", adj->opacity());
+    const QImage weight = QtPsdGui::adjustmentWeightMask(adj, clipBase, canvasSize());
+    QString weightImageId;
+    if (!weight.isNull()) {
+        const QString weightName = imageStore.save(imageFileName(item->name() + "_weight"_L1, "PNG"_L1), weight, "PNG");
+        if (!weightName.isEmpty()) {
+            weightImageId = u"_adj_weight_%1"_s.arg(m_adjustmentCounter - 1);
+            Element weightItem;
+            weightItem.type = "Image";
+            weightItem.id = weightImageId;
+            weightItem.properties.insert("source", u"\"images/%1\""_s.arg(weightName));
+            weightItem.properties.insert("visible", false);
+            parent->children.append(weightItem);
+        }
+    }
+    if (!weightImageId.isEmpty()) {
+        effect.properties.insert("property var weightMask", weightImageId);
+        setFloat("useWeightMask", 1.0);
+    } else {
+        effect.properties.insert("property var weightMask",
+                                 u"ShaderEffectSource { sourceItem: Rectangle { width: 1; height: 1 } }"_s);
+        setFloat("useWeightMask", 0.0);
+    }
 
     wrapper.layers.append(effect);
     parent->children.append(wrapper);
@@ -2950,6 +2920,20 @@ bool QPsdQmlExporterPlugin::traverseTree(const QModelIndex &index, Element *pare
         const auto *guiModel = static_cast<const QPsdExporterTreeItemModel *>(model())->guiLayerTreeItemModel();
         const QModelIndex sourceIndex = static_cast<const QPsdExporterTreeItemModel *>(model())->mapToSource(index);
         const QModelIndex clipBaseSourceIndex = guiModel->clippingMaskIndex(sourceIndex);
+
+        // Adjustment layers modify all layers below them via ShaderEffect.
+        // Handle them before the clipping-mask branch: a clipped adjustment
+        // applies only within its base layer's coverage (previously it was
+        // silently dropped there). Disabled adjustments must not render.
+        if (item && item->type() == QPsdAbstractLayerItem::Adjustment) {
+            if (hint.visible && item->isVisible()) {
+                const QPsdAbstractLayerItem *clipBase = clipBaseSourceIndex.isValid()
+                    ? guiModel->layerItem(clipBaseSourceIndex) : nullptr;
+                applyAdjustmentLayer(item, parent, imports, clipBase);
+            }
+            break;
+        }
+
         if (clipBaseSourceIndex.isValid()) {
             const auto *baseItem = guiModel->layerItem(clipBaseSourceIndex);
             if (baseItem && item) {
@@ -3003,12 +2987,6 @@ bool QPsdQmlExporterPlugin::traverseTree(const QModelIndex &index, Element *pare
         case QPsdAbstractLayerItem::Image: {
             generated = outputImage(index, &element, imports);
             break; }
-        case QPsdAbstractLayerItem::Adjustment: {
-            // Adjustment layers modify all layers below them via ShaderEffect;
-            // a disabled adjustment layer must not affect the render
-            if (hint.visible && item->isVisible())
-                applyAdjustmentLayer(item, parent, imports);
-            return true; }
         default:
             return true;
         }

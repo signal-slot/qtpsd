@@ -92,21 +92,42 @@ QString QPsdColorSpace::toString() const
                 .arg(QString::number(b, 16).rightJustified(2, u'0'));
         }
     case Lab:
-        // Lab color space - simplified conversion to RGB
-        // L: 0-10000, a/b: -12800 to 12700
-        // This is a very basic approximation
+        // CIELAB (D50, values stored x100) -> XYZ -> Bradford D50->D65 -> sRGB
         {
-            double L = d->color.lab.lightness / 100.0;
-            double a = (static_cast<qint16>(d->color.lab.a) + 12800) / 255.0 - 50.0;
-            double b = (static_cast<qint16>(d->color.lab.b) + 12800) / 255.0 - 50.0;
-            // Simplified Lab to RGB (not accurate, just for display)
-            uint r = qBound(0.0, L + a * 2, 255.0);
-            uint g = qBound(0.0, L - a - b, 255.0);
-            uint bl = qBound(0.0, L + b * 2, 255.0);
+            const double L = static_cast<qint16>(d->color.lab.lightness) / 100.0;
+            const double a = static_cast<qint16>(d->color.lab.a) / 100.0;
+            const double b = static_cast<qint16>(d->color.lab.b) / 100.0;
+
+            const double fy = (L + 16.0) / 116.0;
+            const double fx = fy + a / 500.0;
+            const double fz = fy - b / 200.0;
+            const double e = 216.0 / 24389.0;
+            const double k = 24389.0 / 27.0;
+            auto finv = [&](double f) {
+                const double f3 = f * f * f;
+                return f3 > e ? f3 : (116.0 * f - 16.0) / k;
+            };
+            const double X = finv(fx) * 0.96422; // D50 white point
+            const double Y = finv(fy) * 1.0;
+            const double Z = finv(fz) * 0.82521;
+
+            // Bradford chromatic adaptation D50 -> D65
+            const double X2 = 0.9555766 * X - 0.0230393 * Y + 0.0631636 * Z;
+            const double Y2 = -0.0282895 * X + 1.0099416 * Y + 0.0210077 * Z;
+            const double Z2 = 0.0122982 * X - 0.0204830 * Y + 1.3299098 * Z;
+
+            const double Rl = 3.2404542 * X2 - 1.5371385 * Y2 - 0.4985314 * Z2;
+            const double Gl = -0.9692660 * X2 + 1.8760108 * Y2 + 0.0415560 * Z2;
+            const double Bl = 0.0556434 * X2 - 0.2040259 * Y2 + 1.0572252 * Z2;
+            auto enc = [](double c) {
+                c = qBound(0.0, c, 1.0);
+                c = c <= 0.0031308 ? 12.92 * c : 1.055 * std::pow(c, 1.0 / 2.4) - 0.055;
+                return uint(qRound(c * 255.0));
+            };
             return QStringLiteral("#%1%2%3")
-                .arg(QString::number(r, 16).rightJustified(2, u'0'))
-                .arg(QString::number(g, 16).rightJustified(2, u'0'))
-                .arg(QString::number(bl, 16).rightJustified(2, u'0'));
+                .arg(QString::number(enc(Rl), 16).rightJustified(2, u'0'))
+                .arg(QString::number(enc(Gl), 16).rightJustified(2, u'0'))
+                .arg(QString::number(enc(Bl), 16).rightJustified(2, u'0'));
         }
     case HSB:
         // HSB to RGB conversion

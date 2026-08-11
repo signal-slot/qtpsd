@@ -335,7 +335,7 @@ protected:
     }
 
     // No ShaderEffect: adjustment layers cannot be rendered at runtime.
-    void applyAdjustmentLayer(const QPsdAbstractLayerItem * /*item*/, Element * /*parent*/, ImportData * /*imports*/) const override {
+    void applyAdjustmentLayer(const QPsdAbstractLayerItem * /*item*/, Element * /*parent*/, ImportData * /*imports*/, const QPsdAbstractLayerItem * /*clipBase*/ = nullptr) const override {
     }
 
 private:

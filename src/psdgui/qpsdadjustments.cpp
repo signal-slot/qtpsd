@@ -3,12 +3,18 @@
 
 #include "qpsdadjustments.h"
 #include "qpsdadjustmentlayeritem.h"
+#include "qpsdimagelayeritem.h"
+#include "qpsdshapelayeritem.h"
 
 #include <QtPsdCore/qpsddescriptor.h>
+
+#include <QtGui/QPainter>
+#include <QtGui/QPainterPath>
 
 #include <QtCore/QtMath>
 #include <QtGui/QColor>
 
+#include <algorithm>
 #include <array>
 #include <functional>
 
@@ -69,6 +75,43 @@ Rgb hsl2rgb(const Hsl &hsl)
     return {hue2rgb(p, q, hsl.h + 1.0 / 3.0), hue2rgb(p, q, hsl.h), hue2rgb(p, q, hsl.h - 1.0 / 3.0)};
 }
 
+qreal srgbToLinear(qreal c)
+{
+    return c <= 0.04045 ? c / 12.92 : qPow((c + 0.055) / 1.055, 2.4);
+}
+
+qreal linearToSrgb(qreal c)
+{
+    c = qBound(0.0, c, 1.0);
+    return c <= 0.0031308 ? c * 12.92 : 1.055 * qPow(c, 1.0 / 2.4) - 0.055;
+}
+
+struct Oklab {
+    qreal L, a, b;
+};
+
+Oklab srgbToOklab(const Rgb &c)
+{
+    const qreal r = srgbToLinear(c.r), g = srgbToLinear(c.g), b = srgbToLinear(c.b);
+    const qreal l = qPow(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b, 1.0 / 3.0);
+    const qreal m = qPow(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b, 1.0 / 3.0);
+    const qreal s = qPow(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b, 1.0 / 3.0);
+    return { 0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+             1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+             0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s };
+}
+
+Rgb oklabToSrgb(const Oklab &c)
+{
+    const qreal l_ = c.L + 0.3963377774 * c.a + 0.2158037573 * c.b;
+    const qreal m_ = c.L - 0.1055613458 * c.a - 0.0638541728 * c.b;
+    const qreal s_ = c.L - 0.0894841775 * c.a - 1.2914855480 * c.b;
+    const qreal l = l_ * l_ * l_, m = m_ * m_ * m_, s = s_ * s_ * s_;
+    return { linearToSrgb(4.0767416621 * l - 3.3077115913 * m + 0.2307590544 * s),
+             linearToSrgb(-1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s),
+             linearToSrgb(-0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s) };
+}
+
 qreal applyLevels(qreal v, qreal sIn, qreal hIn, qreal sOut, qreal hOut, qreal mid)
 {
     qreal range = hIn - sIn;
@@ -78,35 +121,6 @@ qreal applyLevels(qreal v, qreal sIn, qreal hIn, qreal sOut, qreal hOut, qreal m
     if (mid > 0.0 && !qFuzzyCompare(mid, 1.0))
         v = qPow(v, 1.0 / mid);
     return sOut + (hOut - sOut) * v;
-}
-
-QVector<quint8> buildCurveTable(const QVariantList &points)
-{
-    QVector<quint8> table(256);
-    if (points.isEmpty()) {
-        for (int i = 0; i < 256; ++i)
-            table[i] = i;
-        return table;
-    }
-    QVector<QPair<int, int>> pts;
-    for (const auto &p : points) {
-        const auto m = p.toMap();
-        pts.append({m.value(u"input"_s).toInt(), m.value(u"output"_s).toInt()});
-    }
-    if (pts.first().first != 0)
-        pts.prepend({0, pts.first().second});
-    if (pts.last().first != 255)
-        pts.append({255, pts.last().second});
-    int seg = 0;
-    for (int i = 0; i < 256; ++i) {
-        while (seg < pts.size() - 2 && i > pts[seg + 1].first)
-            ++seg;
-        const int x0 = pts[seg].first, y0 = pts[seg].second;
-        const int x1 = pts[seg + 1].first, y1 = pts[seg + 1].second;
-        const double t = (x1 != x0) ? double(i - x0) / (x1 - x0) : 0.0;
-        table[i] = qBound(0, qRound(y0 + t * (y1 - y0)), 255);
-    }
-    return table;
 }
 
 } // namespace
@@ -189,10 +203,10 @@ bool applyAdjustmentToImage(QImage &image, const QPsdAdjustmentLayerItem *layer,
                      applyLevels(c.b, master.sIn, master.hIn, master.sOut, master.hOut, master.mid) };
         };
     } else if (key == "curv") {
-        const auto rgbCurve = buildCurveTable(data.value(u"rgb"_s).toList());
-        const auto redCurve = buildCurveTable(data.value(u"red"_s).toList());
-        const auto greenCurve = buildCurveTable(data.value(u"green"_s).toList());
-        const auto blueCurve = buildCurveTable(data.value(u"blue"_s).toList());
+        const auto rgbCurve = curveLut(data.value(u"rgb"_s).toList());
+        const auto redCurve = curveLut(data.value(u"red"_s).toList());
+        const auto greenCurve = curveLut(data.value(u"green"_s).toList());
+        const auto blueCurve = curveLut(data.value(u"blue"_s).toList());
         transform = [=](const Rgb &in) -> Rgb {
             auto idx = [](qreal v) { return qBound(0, qRound(v * 255.0), 255); };
             return { redCurve[rgbCurve[idx(in.r)]] / 255.0,
@@ -265,19 +279,31 @@ bool applyAdjustmentToImage(QImage &image, const QPsdAdjustmentLayerItem *layer,
     } else if (key == "phfl") {
         QColor filterColor = data.value(u"color"_s).value<QColor>();
         if (!filterColor.isValid())
-            filterColor = QColor(255, 147, 0);
-        const Rgb fc { filterColor.redF(), filterColor.greenF(), filterColor.blueF() };
+            filterColor = QColor(236, 138, 0); // Warming Filter (85)
         const qreal density = data.value(u"density"_s).toDouble() / 100.0;
         const bool preserveLum = data.value(u"preserveLuminosity"_s).toBool();
+        auto srgb2lin = [](qreal c) {
+            return c <= 0.04045 ? c / 12.92 : qPow((c + 0.055) / 1.055, 2.4);
+        };
+        auto lin2srgb = [](qreal c) {
+            c = qBound(0.0, c, 1.0);
+            return c <= 0.0031308 ? c * 12.92 : 1.055 * qPow(c, 1.0 / 2.4) - 0.055;
+        };
+        const Rgb fl { srgb2lin(filterColor.redF()), srgb2lin(filterColor.greenF()),
+                       srgb2lin(filterColor.blueF()) };
+        // Multiply with the filter color in linear light, mix at density,
+        // then restore the original luminosity (calibrated against
+        // Photoshop output)
         transform = [=](const Rgb &in) -> Rgb {
-            Rgb c { in.r + (in.r * fc.r - in.r) * density,
-                    in.g + (in.g * fc.g - in.g) * density,
-                    in.b + (in.b * fc.b - in.b) * density };
+            auto apply = [&](qreal v, qreal f) {
+                const qreal lin = srgb2lin(v);
+                return lin2srgb(lin + (lin * f - lin) * density);
+            };
+            Rgb c { apply(in.r, fl.r), apply(in.g, fl.g), apply(in.b, fl.b) };
             if (preserveLum) {
-                const qreal origLum = lum(in);
                 const qreal newLum = lum(c);
                 if (newLum > 0.0) {
-                    const qreal f = origLum / newLum;
+                    const qreal f = lum(in) / newLum;
                     c = {c.r * f, c.g * f, c.b * f};
                 }
             }
@@ -305,12 +331,23 @@ bool applyAdjustmentToImage(QImage &image, const QPsdAdjustmentLayerItem *layer,
         };
     } else if (key == "vibA") {
         const qreal vibrance = data.value(u"vibrance"_s).toDouble() / 100.0;
-        const qreal vibranceSat = data.value(u"Strt"_s).toDouble();
+        const qreal vibranceSat = data.value(u"Strt"_s).toDouble() / 100.0;
+        // Calibrated against Photoshop output: push each channel away from
+        // the max channel by the squared distance (protects already-saturated
+        // colors less aggressively than a linear model), then apply the
+        // saturation slider as a gentle spread around the channel average
         transform = [=](const Rgb &in) -> Rgb {
-            Hsl hsl = rgb2hsl(in);
-            hsl.s = qBound(0.0, hsl.s + vibrance * (1.0 - hsl.s), 1.0);
-            hsl.s = qBound(0.0, hsl.s + vibranceSat / 100.0, 1.0);
-            return hsl2rgb(hsl);
+            const qreal mx = qMax(in.r, qMax(in.g, in.b));
+            auto push = [&](qreal v) {
+                const qreal d = mx - v;
+                return v - d * d * 1.5 * vibrance;
+            };
+            const Rgb c { push(in.r), push(in.g), push(in.b) };
+            const qreal avg = (c.r + c.g + c.b) / 3.0;
+            auto spread = [&](qreal v) {
+                return qBound(0.0, avg + (v - avg) * (1.0 + 0.5 * vibranceSat), 1.0);
+            };
+            return { spread(c.r), spread(c.g), spread(c.b) };
         };
     } else if (key == "mixr") {
         const bool mono = data.value(u"monochrome"_s).toBool();
@@ -354,49 +391,22 @@ bool applyAdjustmentToImage(QImage &image, const QPsdAdjustmentLayerItem *layer,
             const qreal bW = qMax(0.0, 1.0 - qAbs(h - 240.0) / 60.0);
             const qreal mW = qMax(0.0, 1.0 - qAbs(h - 300.0) / 60.0);
             const qreal totalW = rW + yW + gW + cW + bW + mW;
-            qreal gray;
+            // The neutral point is the channel average, not Rec.601 luma
+            // (calibrated against Photoshop output)
+            const qreal avg = (in.r + in.g + in.b) / 3.0;
+            qreal gray = avg;
             if (totalW > 0.0) {
                 const qreal mixFactor = (rW * wr + yW * wy + gW * wg + cW * wc + bW * wb + mW * wm)
                     / (totalW * 100.0);
-                gray = qBound(0.0, lum(in) + (mixFactor - 0.5) * hsl.s, 1.0);
-            } else {
-                gray = lum(in);
+                gray = qBound(0.0, avg + (mixFactor - 0.5) * hsl.s, 1.0);
             }
             return {gray, gray, gray};
         };
     } else if (key == "grdm") {
-        QVector<Rgb> lut(256, {0.0, 0.0, 0.0});
-        const auto stops = data.value(u"colorStops"_s).toList();
-        struct Stop { double pos; QColor color; };
-        QVector<Stop> gradStops;
-        for (const auto &s : stops) {
-            const auto m = s.toMap();
-            const double loc = m.value(u"location"_s).toDouble() / 4096.0;
-            const QColor c = m.value(u"color"_s).value<QColor>();
-            if (c.isValid())
-                gradStops.append({loc, c});
-        }
-        if (!gradStops.isEmpty()) {
-            for (int i = 0; i < 256; ++i) {
-                const double t = i / 255.0;
-                int idx = 0;
-                while (idx < gradStops.size() - 1 && gradStops[idx + 1].pos < t)
-                    ++idx;
-                QColor c;
-                if (idx >= gradStops.size() - 1) {
-                    c = gradStops.last().color;
-                } else {
-                    const double t0 = gradStops[idx].pos, t1 = gradStops[idx + 1].pos;
-                    const double f = (t1 > t0) ? (t - t0) / (t1 - t0) : 0.0;
-                    const auto &c0 = gradStops[idx].color;
-                    const auto &c1 = gradStops[idx + 1].color;
-                    c = QColor::fromRgbF(c0.redF() + f * (c1.redF() - c0.redF()),
-                                         c0.greenF() + f * (c1.greenF() - c0.greenF()),
-                                         c0.blueF() + f * (c1.blueF() - c0.blueF()));
-                }
-                lut[i] = {c.redF(), c.greenF(), c.blueF()};
-            }
-        }
+        const QList<QRgb> rgbLut = gradientMapLut(data);
+        QVector<Rgb> lut(256);
+        for (int i = 0; i < 256; ++i)
+            lut[i] = { qRed(rgbLut[i]) / 255.0, qGreen(rgbLut[i]) / 255.0, qBlue(rgbLut[i]) / 255.0 };
         transform = [lut](const Rgb &in) -> Rgb {
             return lut[qBound(0, qRound(lum(in) * 255.0), 255)];
         };
@@ -431,6 +441,234 @@ bool applyAdjustmentToImage(QImage &image, const QPsdAdjustmentLayerItem *layer,
         }
     }
     return true;
+}
+
+namespace {
+
+QImage buildDocumentWeightMask(const QPsdAdjustmentLayerItem *layer, const QSize &canvasSize)
+{
+    const QImage mask = layer->layerMask();
+    const QRect maskRect = layer->layerMaskRect();
+    const quint8 defaultColor = layer->layerMaskDefaultColor();
+    const qreal density = layer->layerMaskDensity() / 255.0;
+    const bool hasMaskImage = !mask.isNull() && maskRect.isValid() && !maskRect.isEmpty();
+
+    if (!hasMaskImage && defaultColor == 255)
+        return QImage(); // full weight everywhere
+
+    QImage doc(canvasSize, QImage::Format_Grayscale8);
+    doc.fill(defaultColor);
+    if (hasMaskImage) {
+        QPainter p(&doc);
+        p.drawImage(maskRect.topLeft(), mask.convertToFormat(QImage::Format_Grayscale8));
+    }
+    if (density < 1.0) {
+        // Reduced mask density fades the mask toward "no mask" (full weight)
+        for (int y = 0; y < doc.height(); ++y) {
+            uchar *line = doc.scanLine(y);
+            for (int x = 0; x < doc.width(); ++x)
+                line[x] = 255 - qRound(density * (255 - line[x]));
+        }
+    }
+    return doc;
+}
+
+// Coverage of the clipping-mask base layer (the layer the adjustment is
+// clipped to): the adjustment only affects pixels the base covers
+QImage clipBaseCoverage(const QPsdAbstractLayerItem *base, const QSize &canvasSize)
+{
+    QImage doc(canvasSize, QImage::Format_Grayscale8);
+    doc.fill(0);
+    QPainter p(&doc);
+    const QRect rect = base->rect();
+
+    QPsdAbstractLayerItem::PathInfo pathInfo;
+    if (base->type() == QPsdAbstractLayerItem::Shape)
+        pathInfo = reinterpret_cast<const QPsdShapeLayerItem *>(base)->pathInfo();
+    else
+        pathInfo = base->vectorMask();
+
+    if (pathInfo.type != QPsdAbstractLayerItem::PathInfo::None) {
+        QPainterPath path;
+        switch (pathInfo.type) {
+        case QPsdAbstractLayerItem::PathInfo::Rectangle:
+            path.addRect(pathInfo.rect);
+            break;
+        case QPsdAbstractLayerItem::PathInfo::RoundedRectangle:
+            path.addRoundedRect(pathInfo.rect, pathInfo.radius, pathInfo.radius);
+            break;
+        default:
+            path = pathInfo.path;
+            break;
+        }
+        p.setRenderHint(QPainter::Antialiasing);
+        p.translate(rect.topLeft());
+        p.fillPath(path, Qt::white);
+        return doc;
+    }
+
+    const QImage transparency = base->transparencyMask();
+    if (!transparency.isNull()) {
+        p.drawImage(rect.topLeft(), transparency);
+        return doc;
+    }
+
+    if (base->type() == QPsdAbstractLayerItem::Image) {
+        const QImage image = reinterpret_cast<const QPsdImageLayerItem *>(base)->image();
+        if (!image.isNull() && image.hasAlphaChannel()) {
+            const QImage argb = image.convertToFormat(QImage::Format_ARGB32);
+            QImage alpha(argb.size(), QImage::Format_Grayscale8);
+            for (int y = 0; y < argb.height(); ++y) {
+                const QRgb *src = reinterpret_cast<const QRgb *>(argb.constScanLine(y));
+                uchar *dst = alpha.scanLine(y);
+                for (int x = 0; x < argb.width(); ++x)
+                    dst[x] = qAlpha(src[x]);
+            }
+            p.drawImage(rect.topLeft(), alpha);
+            return doc;
+        }
+    }
+
+    p.fillRect(rect, Qt::white);
+    return doc;
+}
+
+} // namespace
+
+QList<quint8> curveLut(const QVariantList &points)
+{
+    QList<quint8> table(256);
+    if (points.isEmpty()) {
+        for (int i = 0; i < 256; ++i)
+            table[i] = i;
+        return table;
+    }
+    QVector<QPair<int, int>> pts;
+    for (const auto &p : points) {
+        const auto m = p.toMap();
+        pts.append({m.value(u"input"_s).toInt(), m.value(u"output"_s).toInt()});
+    }
+    std::sort(pts.begin(), pts.end());
+    if (pts.first().first != 0)
+        pts.prepend({0, pts.first().second});
+    if (pts.last().first != 255)
+        pts.append({255, pts.last().second});
+
+    const int n = pts.size();
+    // Natural cubic spline through the points (matches Photoshop's Curves)
+    QVector<double> m(n, 0.0); // second derivatives; natural ends stay 0
+    if (n > 2) {
+        QVector<double> h(n - 1), alpha(n), l(n), mu(n), z(n);
+        for (int i = 0; i < n - 1; ++i)
+            h[i] = qMax(1, pts[i + 1].first - pts[i].first);
+        for (int i = 1; i < n - 1; ++i)
+            alpha[i] = 6.0 * ((pts[i + 1].second - pts[i].second) / h[i]
+                              - (pts[i].second - pts[i - 1].second) / h[i - 1]);
+        l[0] = 1.0; mu[0] = 0.0; z[0] = 0.0;
+        for (int i = 1; i < n - 1; ++i) {
+            l[i] = 2.0 * (pts[i + 1].first - pts[i - 1].first) - h[i - 1] * mu[i - 1];
+            mu[i] = h[i] / l[i];
+            z[i] = (alpha[i] - h[i - 1] * z[i - 1]) / l[i];
+        }
+        for (int i = n - 2; i >= 1; --i)
+            m[i] = z[i] - mu[i] * m[i + 1];
+    }
+
+    int seg = 0;
+    for (int i = 0; i < 256; ++i) {
+        while (seg < n - 2 && i > pts[seg + 1].first)
+            ++seg;
+        const double x0 = pts[seg].first, y0 = pts[seg].second;
+        const double x1 = pts[seg + 1].first, y1 = pts[seg + 1].second;
+        const double h = qMax(1.0, x1 - x0);
+        const double a = x1 - i, b = i - x0;
+        const double v = m[seg] / (6.0 * h) * a * a * a
+            + m[seg + 1] / (6.0 * h) * b * b * b
+            + (y0 / h - m[seg] * h / 6.0) * a
+            + (y1 / h - m[seg + 1] * h / 6.0) * b;
+        table[i] = qBound(0, qRound(v), 255);
+    }
+    return table;
+}
+
+QList<QRgb> gradientMapLut(const QVariantMap &grdmData)
+{
+    QList<QRgb> lut(256, qRgb(0, 0, 0));
+    struct Stop { double pos; QColor color; };
+    QVector<Stop> gradStops;
+    const auto stops = grdmData.value(u"colorStops"_s).toList();
+    for (const auto &s : stops) {
+        const auto m = s.toMap();
+        const double loc = m.value(u"location"_s).toDouble() / 4096.0;
+        const QColor c = m.value(u"color"_s).value<QColor>();
+        if (c.isValid())
+            gradStops.append({loc, c});
+    }
+    if (gradStops.isEmpty())
+        return lut;
+
+    const QString method = grdmData.value(u"method"_s).toString();
+    const bool perceptual = method == "Smoo"_L1 || method == "Perc"_L1;
+    const bool linear = method == "Lnr "_L1;
+
+    for (int i = 0; i < 256; ++i) {
+        const double t = i / 255.0;
+        int idx = 0;
+        while (idx < gradStops.size() - 1 && gradStops[idx + 1].pos < t)
+            ++idx;
+        Rgb out;
+        if (idx >= gradStops.size() - 1) {
+            const QColor &c = gradStops.last().color;
+            out = {c.redF(), c.greenF(), c.blueF()};
+        } else {
+            const double t0 = gradStops[idx].pos, t1 = gradStops[idx + 1].pos;
+            const double f = (t1 > t0) ? (t - t0) / (t1 - t0) : 0.0;
+            const QColor &q0 = gradStops[idx].color;
+            const QColor &q1 = gradStops[idx + 1].color;
+            const Rgb c0 {q0.redF(), q0.greenF(), q0.blueF()};
+            const Rgb c1 {q1.redF(), q1.greenF(), q1.blueF()};
+            if (perceptual) {
+                const Oklab l0 = srgbToOklab(c0);
+                const Oklab l1 = srgbToOklab(c1);
+                out = oklabToSrgb({ l0.L + f * (l1.L - l0.L),
+                                    l0.a + f * (l1.a - l0.a),
+                                    l0.b + f * (l1.b - l0.b) });
+            } else if (linear) {
+                auto lerpLin = [&](qreal a, qreal b) {
+                    const qreal la = srgbToLinear(a), lb = srgbToLinear(b);
+                    return linearToSrgb(la + f * (lb - la));
+                };
+                out = { lerpLin(c0.r, c1.r), lerpLin(c0.g, c1.g), lerpLin(c0.b, c1.b) };
+            } else {
+                out = { c0.r + f * (c1.r - c0.r),
+                        c0.g + f * (c1.g - c0.g),
+                        c0.b + f * (c1.b - c0.b) };
+            }
+        }
+        lut[i] = qRgb(qBound(0, qRound(out.r * 255.0), 255),
+                      qBound(0, qRound(out.g * 255.0), 255),
+                      qBound(0, qRound(out.b * 255.0), 255));
+    }
+    return lut;
+}
+
+QImage adjustmentWeightMask(const QPsdAdjustmentLayerItem *layer,
+                            const QPsdAbstractLayerItem *clipBase,
+                            const QSize &canvasSize)
+{
+    QImage weight = buildDocumentWeightMask(layer, canvasSize);
+    if (!clipBase)
+        return weight;
+    const QImage coverage = clipBaseCoverage(clipBase, canvasSize);
+    if (weight.isNull())
+        return coverage;
+    for (int y = 0; y < weight.height(); ++y) {
+        uchar *w = weight.scanLine(y);
+        const uchar *c = coverage.constScanLine(y);
+        for (int x = 0; x < weight.width(); ++x)
+            w[x] = (w[x] * c[x]) / 255;
+    }
+    return weight;
 }
 
 } // namespace QtPsdGui

@@ -98,7 +98,7 @@ protected:
     // Virtual so the MCU plugin can degrade these to no-ops (it cannot render
     // GPU-based blend modes or adjustment shaders).
     virtual void applyBlendModes(Element *element, ImportData *imports) const;
-    virtual void applyAdjustmentLayer(const QPsdAbstractLayerItem *item, Element *parent, ImportData *imports) const;
+    virtual void applyAdjustmentLayer(const QPsdAbstractLayerItem *item, Element *parent, ImportData *imports, const QPsdAbstractLayerItem *clipBase = nullptr) const;
 
     // Map a Photoshop blend mode to its Qt5Compat.GraphicalEffects.Blend.mode
     // string. Returns empty for modes with no direct mapping (PassThrough,

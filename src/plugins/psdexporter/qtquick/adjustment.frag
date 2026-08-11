@@ -99,11 +99,18 @@ layout(std140, binding = 0) uniform buf {
     float bw_cyan;
     float bw_blue;
     float bw_magenta;
+
+    // Per-pixel weighting: layer opacity and optional weight-mask texture
+    // (raster mask x density x clipping-base coverage)
+    float adjWeight;
+    float useWeightMask;
 };
 
 layout(binding = 1) uniform sampler2D source;
 // Curves LUT texture (256x1 RGBA): R=red curve, G=green curve, B=blue curve, A=rgb curve
 layout(binding = 2) uniform sampler2D curvesLUT;
+// Grayscale weight mask in canvas coordinates; sampled only when useWeightMask
+layout(binding = 3) uniform sampler2D weightMask;
 
 // Adjustment type constants
 const int ADJ_BRIGHTNESS    = 0;
@@ -179,6 +186,7 @@ void main() {
     // Unpremultiply
     vec3 color = texel.a > 0.0 ? texel.rgb / texel.a : vec3(0.0);
     float alpha = texel.a;
+    vec3 origColor = color;
 
     if (adjustmentType == ADJ_BRIGHTNESS) {
         // Photoshop Brightness/Contrast
@@ -252,18 +260,23 @@ void main() {
         }
     }
     else if (adjustmentType == ADJ_PHOTO_FILTER) {
+        // Multiply with the filter color in linear light, mix at density,
+        // then restore the original luminosity (calibrated against
+        // Photoshop output)
         vec3 filterColor = vec3(phfl_r, phfl_g, phfl_b);
-        float d = phfl_density;
+        vec3 lin = mix(color / 12.92, pow((color + 0.055) / 1.055, vec3(2.4)),
+                       step(0.04045, color));
+        vec3 flin = mix(filterColor / 12.92, pow((filterColor + 0.055) / 1.055, vec3(2.4)),
+                        step(0.04045, filterColor));
+        lin = mix(lin, lin * flin, phfl_density);
+        float origLum = lum(color);
+        color = clamp(mix(lin * 12.92, 1.055 * pow(lin, vec3(1.0 / 2.4)) - 0.055,
+                          step(0.0031308, lin)), 0.0, 1.0);
         if (phfl_preserveLum > 0.5) {
-            float origLum = lum(color);
-            color = mix(color, color * filterColor, d);
             float newLum = lum(color);
             if (newLum > 0.0)
-                color *= origLum / newLum;
-        } else {
-            color = mix(color, color * filterColor, d);
+                color = clamp(color * (origLum / newLum), 0.0, 1.0);
         }
-        color = clamp(color, 0.0, 1.0);
     }
     else if (adjustmentType == ADJ_INVERT) {
         color = 1.0 - color;
@@ -280,13 +293,15 @@ void main() {
         color = vec3(gray >= thresholdLevel - 0.5 / 255.0 ? 1.0 : 0.0);
     }
     else if (adjustmentType == ADJ_VIBRANCE) {
-        // Vibrance: boost saturation of less-saturated pixels more
-        vec3 hsl = rgb2hsl(color);
-        float satBoost = vibrance * (1.0 - hsl.y); // more boost for less saturated
-        hsl.y = clamp(hsl.y + satBoost, 0.0, 1.0);
-        // Also apply flat saturation shift
-        hsl.y = clamp(hsl.y + vibranceSat / 100.0, 0.0, 1.0);
-        color = hsl2rgb(hsl);
+        // Calibrated against Photoshop output: push each channel away from
+        // the max channel by the squared distance (protects already-saturated
+        // colors less aggressively than a linear model), then apply the
+        // saturation slider as a gentle spread around the channel average
+        float mx = max(color.r, max(color.g, color.b));
+        vec3 d = vec3(mx) - color;
+        color = color - d * d * 1.5 * vibrance;
+        float avg = (color.r + color.g + color.b) / 3.0;
+        color = clamp(vec3(avg) + (color - vec3(avg)) * (1.0 + 0.5 * vibranceSat), 0.0, 1.0);
     }
     else if (adjustmentType == ADJ_CHANNEL_MIXER) {
         vec3 result;
@@ -317,13 +332,16 @@ void main() {
         float mW = max(0.0, 1.0 - abs(h - 300.0) / 60.0);
 
         float totalW = rW + yW + gW + cW + bW + mW;
+        // The neutral point is the channel average, not Rec.601 luma
+        // (calibrated against Photoshop output)
+        float avg = (color.r + color.g + color.b) / 3.0;
         if (totalW > 0.0) {
             float mixFactor = (rW * bw_red + yW * bw_yellow + gW * bw_green +
                              cW * bw_cyan + bW * bw_blue + mW * bw_magenta) / (totalW * 100.0);
-            float gray = lum(color) + (mixFactor - 0.5) * hsl.y;
+            float gray = avg + (mixFactor - 0.5) * hsl.y;
             color = vec3(clamp(gray, 0.0, 1.0));
         } else {
-            color = vec3(lum(color));
+            color = vec3(avg);
         }
     }
     else if (adjustmentType == ADJ_GRADIENT_MAP) {
@@ -331,6 +349,12 @@ void main() {
         float gray = lum(color);
         color = texture(curvesLUT, vec2(gray, 0.5)).rgb;
     }
+
+    // Blend between original and adjusted by opacity and weight mask
+    float w = adjWeight;
+    if (useWeightMask > 0.5)
+        w *= texture(weightMask, qt_TexCoord0).r;
+    color = mix(origColor, color, clamp(w, 0.0, 1.0));
 
     // Re-premultiply
     fragColor = vec4(color * alpha, alpha) * qt_Opacity;
