@@ -8,9 +8,12 @@
 
 #include <QtCore/QFile>
 #include <QtCore/QJsonDocument>
+#include <QtCore/QList>
 #include <QtCore/QPointer>
 #include <QtCore/QSettings>
 #include <cmath>
+#include <numeric>
+#include <optional>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
@@ -23,6 +26,15 @@
 #include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdImporter/QPsdImporterPlugin>
 
+struct ImporterProjectState
+{
+    QString fileName;
+    ImporterProject data;
+    int tabStart;
+    QList<int> openPages; // tabIndex - tabStart: pageIndex
+    // TODO: track modified state and enable saveProject conditionally
+};
+
 class MainWindow::Private : public Ui::MainWindow
 {
 public:
@@ -31,12 +43,15 @@ public:
 
     QMessageBox::StandardButton checkModifiedAndSaved(int index = -1, bool confirm = true, bool all = false);
     void openFile(const QString &fileName);
-    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options);
+    void importProjectWith(QPsdImporterPlugin *importer, const ImporterProject &project,
+                           const QString &fileName);
 private:
     void connectViewer(PsdWidget *viewer);
     void openProjectFile(const QString &fileName);
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
+    void reapClosedProjectPage(int tabIndex);
+    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options);
     bool importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
                         const QString &tabTitle);
 
@@ -53,6 +68,8 @@ public:
     // instead of deleting state the nested event loop still uses.
     QPointer<QWidget> loadingTabWidget;
     QPsdImporterPlugin *loadingImporter = nullptr;
+    // No multiple projects support
+    std::optional<ImporterProjectState> currentImporterProject;
 };
 
 MainWindow::Private::Private(::MainWindow *parent)
@@ -167,11 +184,12 @@ MainWindow::Private::Private(::MainWindow *parent)
         QPsdImporterPlugin *importer = action->data().value<QPsdImporterPlugin *>();
         Q_ASSERT(importer);
 
+        const auto key = QString::fromUtf8(importer->key());
         const auto options = importer->execImportDialog(q);
         if (options.isEmpty())
             return;
 
-        importWith(importer, options);
+        importProjectWith(importer, { key, options }, {});
     });
 
     connect(save, &QAction::triggered, q, [this]() {
@@ -197,6 +215,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         const auto ret = checkModifiedAndSaved(index);
         if (ret == QMessageBox::Cancel)
             return;
+        reapClosedProjectPage(index);
         tabWidget->widget(index)->deleteLater();
         tabWidget->removeTab(index);
         updateFileMenus();
@@ -276,6 +295,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         auto ret = checkModifiedAndSaved(index);
         if (ret == QMessageBox::Cancel)
             return;
+        reapClosedProjectPage(index);
         tabWidget->widget(index)->deleteLater();
         tabWidget->removeTab(index);
         updateFileMenus();
@@ -492,7 +512,7 @@ void MainWindow::Private::openProjectFile(const QString &fileName)
         return;
     }
 
-    importWith(importer, project.options);
+    importProjectWith(importer, project, fileName);
 }
 
 void MainWindow::Private::updateRecentFiles(const QString &fileName)
@@ -538,6 +558,34 @@ void MainWindow::Private::updateFileMenus()
     copySelectedLayer->setEnabled(hasPsdWidget);
     fontMapping->setEnabled(hasPsdWidget);
     imports->setEnabled(true); // imports always enabled since they create new tabs
+}
+
+void MainWindow::Private::importProjectWith(QPsdImporterPlugin *importer,
+                                            const ImporterProject &project, const QString &fileName)
+{
+    currentImporterProject.reset();
+    const int tabStart = tabWidget->count();
+    importWith(importer, project.options);
+    QList<int> openPages(tabWidget->count() - tabStart);
+    std::iota(openPages.begin(), openPages.end(), 0);
+    currentImporterProject = { fileName, project, tabStart, openPages };
+}
+
+void MainWindow::Private::reapClosedProjectPage(int tabIndex)
+{
+    if (!currentImporterProject)
+        return;
+    const int index = tabIndex - currentImporterProject->tabStart;
+    if (index < 0) {
+        --currentImporterProject->tabStart; // closed left tab
+        return;
+    }
+    if (index >= currentImporterProject->openPages.size())
+        return; // closed right tab
+    currentImporterProject->openPages.remove(index);
+    if (currentImporterProject->openPages.isEmpty()) {
+        currentImporterProject.reset();
+    }
 }
 
 void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVariantMap &options)
@@ -665,6 +713,7 @@ void MainWindow::importFromUrl(const QUrl &url)
         return;
     }
 
+    const auto key = QString::fromUtf8(importer->key());
     auto options = importer->optionsFromUrl(url);
     if (!options.contains("apiKey"_L1) || options.value("apiKey"_L1).toString().isEmpty()) {
         // No API key available — fall back to the interactive dialog
@@ -673,9 +722,8 @@ void MainWindow::importFromUrl(const QUrl &url)
             return;
     }
 
-    d->importWith(importer, options);
+    d->importProjectWith(importer, { key, options }, {});
 }
-
 
 void MainWindow::showEvent(QShowEvent *event)
 {
