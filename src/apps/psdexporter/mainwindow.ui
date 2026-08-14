@@ -69,6 +69,7 @@
      </property>
     </widget>
     <addaction name="open"/>
+    <addaction name="openProject"/>
     <addaction name="openRecentFile"/>
     <addaction name="reload"/>
     <addaction name="save"/>
@@ -146,6 +147,11 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="openProject">
+   <property name="text">
+    <string>Open &amp;Project...</string>
    </property>
   </action>
   <action name="close">

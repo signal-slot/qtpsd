@@ -1,10 +1,13 @@
 // Copyright (C) 2024 Signal Slot Inc.
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include "importerproject.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "psdwidget.h"
 
+#include <QtCore/QFile>
+#include <QtCore/QJsonDocument>
 #include <QtCore/QPointer>
 #include <QtCore/QSettings>
 #include <cmath>
@@ -31,6 +34,7 @@ public:
     void importWith(QPsdImporterPlugin *importer, const QVariantMap &options);
 private:
     void connectViewer(PsdWidget *viewer);
+    void openProjectFile(const QString &fileName);
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
     bool importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
@@ -80,6 +84,18 @@ MainWindow::Private::Private(::MainWindow *parent)
                 settings.endGroup();
             }
         }
+    });
+
+    connect(openProject, &QAction::triggered, q, [this]() {
+        const QStringList filters{
+            tr("Project files (*.figproject)"),
+            tr("All files (*)"),
+        };
+        const auto fileName =
+                QFileDialog::getOpenFileName(q, tr("Open Project"), {}, filters.join(";;"_L1));
+        if (fileName.isEmpty())
+            return;
+        openProjectFile(fileName);
     });
 
     connect(openRecentFile, &QMenu::triggered, q, [this](QAction *action) {
@@ -451,6 +467,32 @@ void MainWindow::Private::openFile(const QString &fileName)
     } else {
         delete viewer;
     }
+}
+
+void MainWindow::Private::openProjectFile(const QString &fileName)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(q, tr("Open Project Failed"), file.errorString());
+        return;
+    }
+
+    const auto document = QJsonDocument::fromJson(file.readAll());
+    const auto project = ImporterProject::fromVariantMap(document.object().toVariantMap());
+    if (project.key.isEmpty()) {
+        QMessageBox::critical(q, tr("Open Project Failed"),
+                              tr("The project does not specify an importer."));
+        return;
+    }
+
+    auto *importer = QPsdImporterPlugin::plugin(project.key.toUtf8());
+    if (!importer) {
+        QMessageBox::critical(q, tr("Open Project Failed"),
+                              tr("No importer plugin found for '%1'.").arg(project.key));
+        return;
+    }
+
+    importWith(importer, project.options);
 }
 
 void MainWindow::Private::updateRecentFiles(const QString &fileName)
