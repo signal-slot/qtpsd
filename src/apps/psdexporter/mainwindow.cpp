@@ -48,6 +48,7 @@ public:
 private:
     void connectViewer(PsdWidget *viewer);
     void openProjectFile(const QString &fileName);
+    void saveProjectFile(const QString &fileName);
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
     void reapClosedProjectPage(int tabIndex);
@@ -196,6 +197,24 @@ MainWindow::Private::Private(::MainWindow *parent)
         int index = tabWidget->currentIndex();
         auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
         psdWidget->save();
+    });
+
+    connect(saveProject, &QAction::triggered, q, [this]() {
+        Q_ASSERT(currentImporterProject && !currentImporterProject->fileName.isEmpty());
+        saveProjectFile(currentImporterProject->fileName);
+    });
+
+    connect(saveProjectAs, &QAction::triggered, q, [this]() {
+        Q_ASSERT(currentImporterProject);
+        const QStringList filters{
+            tr("Project files (*.figproject)"),
+            tr("All files (*)"),
+        };
+        const auto fileName = QFileDialog::getSaveFileName(
+                q, tr("Save Project as"), currentImporterProject->fileName, filters.join(";;"_L1));
+        if (fileName.isEmpty())
+            return;
+        saveProjectFile(fileName);
     });
 
     connect(q, &QWidget::windowTitleChanged, q, [this]() {
@@ -512,7 +531,30 @@ void MainWindow::Private::openProjectFile(const QString &fileName)
         return;
     }
 
+    // TODO: load apiKey from somewhere
     importProjectWith(importer, project, fileName);
+}
+
+void MainWindow::Private::saveProjectFile(const QString &fileName)
+{
+    Q_ASSERT(currentImporterProject);
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(q, tr("Save Project Failed"), file.errorString());
+        return;
+    }
+
+    auto projectToSave = currentImporterProject->data;
+    projectToSave.options.remove("apiKey"_L1); // secret
+    const auto data =
+            QJsonDocument(QJsonObject::fromVariantMap(projectToSave.toVariantMap())).toJson();
+    if (file.write(data) != data.size()) {
+        QMessageBox::critical(q, tr("Save Project Failed"), file.errorString());
+    }
+
+    currentImporterProject->fileName = fileName;
+    updateFileMenus();
 }
 
 void MainWindow::Private::updateRecentFiles(const QString &fileName)
@@ -553,6 +595,8 @@ void MainWindow::Private::updateFileMenus()
     exportToolBar->setEnabled(hasPsdWidget);
     reload->setEnabled(hasPsdWidget);
     save->setEnabled(hasPsdWidget && q->isWindowModified());
+    saveProject->setEnabled(currentImporterProject && !currentImporterProject->fileName.isEmpty());
+    saveProjectAs->setEnabled(currentImporterProject.has_value());
     close->setEnabled(hasTabs);
     copyView->setEnabled(hasPsdWidget);
     copySelectedLayer->setEnabled(hasPsdWidget);
@@ -569,6 +613,7 @@ void MainWindow::Private::importProjectWith(QPsdImporterPlugin *importer,
     QList<int> openPages(tabWidget->count() - tabStart);
     std::iota(openPages.begin(), openPages.end(), 0);
     currentImporterProject = { fileName, project, tabStart, openPages };
+    updateFileMenus();
 }
 
 void MainWindow::Private::reapClosedProjectPage(int tabIndex)

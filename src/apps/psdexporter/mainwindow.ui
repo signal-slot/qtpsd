@@ -73,6 +73,8 @@
     <addaction name="openRecentFile"/>
     <addaction name="reload"/>
     <addaction name="save"/>
+    <addaction name="saveProject"/>
+    <addaction name="saveProjectAs"/>
     <addaction name="imports"/>
     <addaction name="exports"/>
     <addaction name="close"/>
@@ -195,6 +197,16 @@
    </property>
    <property name="shortcut">
     <string>Ctrl+S</string>
+   </property>
+  </action>
+  <action name="saveProject">
+   <property name="text">
+    <string>Save Project</string>
+   </property>
+  </action>
+  <action name="saveProjectAs">
+   <property name="text">
+    <string>Save Project &amp;as...</string>
    </property>
   </action>
   <action name="reload">
