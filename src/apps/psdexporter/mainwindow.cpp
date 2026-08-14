@@ -43,7 +43,7 @@ public:
 
     QMessageBox::StandardButton checkModifiedAndSaved(int index = -1, bool confirm = true, bool all = false);
     void openFile(const QString &fileName);
-    void importProjectWith(QPsdImporterPlugin *importer, const ImporterProject &project,
+    void importProjectWith(QPsdImporterPlugin *importer, ImporterProject project,
                            const QString &fileName);
 private:
     void connectViewer(PsdWidget *viewer);
@@ -52,9 +52,10 @@ private:
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
     void reapClosedProjectPage(int tabIndex);
-    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options);
+    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                    const QList<QVariantMap> &pageHints);
     bool importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
-                        const QString &tabTitle);
+                        const std::optional<QVariantMap> &hints, const QString &tabTitle);
 
 private:
     ::MainWindow *q;
@@ -190,7 +191,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         if (options.isEmpty())
             return;
 
-        importProjectWith(importer, { key, options }, {});
+        importProjectWith(importer, { key, options, {} }, {});
     });
 
     connect(save, &QAction::triggered, q, [this]() {
@@ -539,6 +540,15 @@ void MainWindow::Private::saveProjectFile(const QString &fileName)
 {
     Q_ASSERT(currentImporterProject);
 
+    // Copy back hints from the widgets
+    for (int i = 0; i < currentImporterProject->openPages.size(); ++i) {
+        const int pageIndex = currentImporterProject->openPages[i];
+        const int tabIndex = currentImporterProject->tabStart + i;
+        const auto *viewer = qobject_cast<PsdWidget *>(tabWidget->widget(tabIndex));
+        Q_ASSERT(viewer);
+        currentImporterProject->data.pageHints[pageIndex] = viewer->hintsToJson().toVariantMap();
+    }
+
     QFile file(fileName);
     if (!file.open(QIODevice::WriteOnly)) {
         QMessageBox::critical(q, tr("Save Project Failed"), file.errorString());
@@ -604,14 +614,24 @@ void MainWindow::Private::updateFileMenus()
     imports->setEnabled(true); // imports always enabled since they create new tabs
 }
 
-void MainWindow::Private::importProjectWith(QPsdImporterPlugin *importer,
-                                            const ImporterProject &project, const QString &fileName)
+void MainWindow::Private::importProjectWith(QPsdImporterPlugin *importer, ImporterProject project,
+                                            const QString &fileName)
 {
     currentImporterProject.reset();
     const int tabStart = tabWidget->count();
-    importWith(importer, project.options);
+    importWith(importer, project.options, project.pageHints);
     QList<int> openPages(tabWidget->count() - tabStart);
     std::iota(openPages.begin(), openPages.end(), 0);
+
+    // Allocate page hints array and copy back; the importer may update hints
+    if (project.pageHints.size() < openPages.size())
+        project.pageHints.resize(openPages.size());
+    for (int i = 0; i < openPages.size(); ++i) {
+        const auto *viewer = qobject_cast<PsdWidget *>(tabWidget->widget(tabStart + i));
+        Q_ASSERT(viewer);
+        project.pageHints[i] = viewer->hintsToJson().toVariantMap();
+    }
+
     currentImporterProject = { fileName, project, tabStart, openPages };
     updateFileMenus();
 }
@@ -633,7 +653,8 @@ void MainWindow::Private::reapClosedProjectPage(int tabIndex)
     }
 }
 
-void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVariantMap &options)
+void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                                     const QList<QVariantMap> &pageHints)
 {
     // Determine page indices to import
     QList<int> pageIndices;
@@ -653,23 +674,27 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
             pageNames.append(v.toString());
     }
 
-    for (int pageIdx : pageIndices) {
+    for (qsizetype i = 0; i < pageIndices.size(); ++i) {
+        const int pageIdx = pageIndices.at(i);
         const QString tabTitle = (pageIdx < pageNames.size())
             ? tr("Importing %1...").arg(pageNames.at(pageIdx))
             : tr("Importing...");
 
         // Prepare per-page options
         QVariantMap pageOptions = options;
+        pageOptions.remove("pageHints"_L1);
         pageOptions["pageIndex"_L1] = pageIdx;
         if (hasExplicitPages)
             pageOptions["pageIndexExplicit"_L1] = true;
+        const auto hints = (i < pageHints.size()) ? std::make_optional(pageHints[i]) : std::nullopt;
 
-        if (!importPageWith(importer, pageOptions, tabTitle))
+        if (!importPageWith(importer, pageOptions, hints, tabTitle))
             break;
     }
 }
 
 bool MainWindow::Private::importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                                         const std::optional<QVariantMap> &hints,
                                          const QString &tabTitle)
 {
     // Create a loading tab with progress bar
@@ -700,7 +725,7 @@ bool MainWindow::Private::importPageWith(QPsdImporterPlugin *importer, const QVa
 
     QApplication::setOverrideCursor(Qt::BusyCursor);
     auto *viewer = new PsdWidget(q);
-    const bool ok = viewer->importFrom(importer, options);
+    const bool ok = viewer->importFrom(importer, options, hints);
     QApplication::restoreOverrideCursor();
 
     importer->setProgressCallback(nullptr);
@@ -767,7 +792,7 @@ void MainWindow::importFromUrl(const QUrl &url)
             return;
     }
 
-    d->importProjectWith(importer, { key, options }, {});
+    d->importProjectWith(importer, { key, options, {} }, {});
 }
 
 void MainWindow::showEvent(QShowEvent *event)
