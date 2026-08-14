@@ -443,33 +443,7 @@ static QJsonObject serializeLayerHints(QPsdExporterTreeItemModel *self)
 
 void QPsdExporterTreeItemModel::save()
 {
-    QJsonObject layerHintsJson = serializeLayerHints(this);
-
-    QJsonObject exportHintsJson;
-    for (const auto &exporterKey : d->exportHints.keys()) {
-        exportHintsJson.insert(exporterKey, QJsonObject::fromVariantMap(d->exportHints.value(exporterKey)));
-    }
-
-    // Get font mappings for this PSD file
-    const QString psdPath = fileName();
-    QJsonObject fontMappingJson = QPsdFontMapper::instance()->toHint(psdPath);
-
-    QJsonObject root;
-    root.insert(HINTFILE_MAGIC_KEY, HINTFILE_MAGIC_VERSION);
-    root.insert(HINTFILE_LAYER_HINTS_KEY, layerHintsJson);
-    root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHintsJson);
-    if (!fontMappingJson.isEmpty()) {
-        root.insert(HINTFILE_FONT_MAPPING_KEY, fontMappingJson);
-    }
-
-    QJsonDocument doc;
-    doc.setObject(root);
-
-    QFile file(d->hintFileInfo.absoluteFilePath());
-    if (!file.open(QIODevice::WriteOnly))
-        return;
-    file.write(doc.toJson());
-    file.close();
+    saveHints(d->hintFileInfo.absoluteFilePath());
 }
 
 void QPsdExporterTreeItemModel::loadHints(const QString &hintFilePath)
@@ -488,10 +462,16 @@ void QPsdExporterTreeItemModel::saveHints(const QString &hintFilePath)
         exportHintsJson.insert(exporterKey, QJsonObject::fromVariantMap(d->exportHints.value(exporterKey)));
     }
 
+    // Get font mappings for this PSD file
+    const QJsonObject fontMappingJson = QPsdFontMapper::instance()->toHint(fileName());
+
     QJsonObject root;
     root.insert(HINTFILE_MAGIC_KEY, HINTFILE_MAGIC_VERSION);
     root.insert(HINTFILE_LAYER_HINTS_KEY, layerHintsJson);
     root.insert(HINTFILE_EXPORT_HINTS_KEY, exportHintsJson);
+    if (!fontMappingJson.isEmpty()) {
+        root.insert(HINTFILE_FONT_MAPPING_KEY, fontMappingJson);
+    }
 
     QJsonDocument doc;
     doc.setObject(root);
