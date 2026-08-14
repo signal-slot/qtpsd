@@ -15,7 +15,9 @@
 #include <QtGui/QPen>
 
 #include <QtPsdCore/QPsdSofiEffect>
+#include <QtPsdGui/QPsdAdjustmentLayerItem>
 #include <QtPsdGui/QPsdBorder>
+#include <QtPsdGui/qpsdadjustments.h>
 
 QT_BEGIN_NAMESPACE
 
@@ -97,6 +99,7 @@ private:
     static QString flutterBlendMode(QPsdBlend::Mode mode);
     static QList<QPsdBlend::Mode> nativeBlendModes();
     mutable bool m_needsBlendWidget = false;
+    mutable bool m_needsAdjustmentWidget = false;
 };
 
 Q_DECLARE_METATYPE(QPsdExporterFlutterPlugin::Element)
@@ -880,6 +883,54 @@ bool QPsdExporterFlutterPlugin::traverseTree(const QModelIndex &index, Element *
             outputImage(index, &element);
             existsPositioned = outputPositioned(index, &positionedElement);
             break; }
+        case QPsdAbstractLayerItem::Adjustment: {
+            // Adjustment layers modify all layers below them: rasterize the
+            // previously emitted siblings through the psd_adjustment.frag
+            // fragment shader. Disabled adjustments must not render.
+            if (!hint.visible || !item->isVisible())
+                return true;
+            const auto *adj = dynamic_cast<const QPsdAdjustmentLayerItem *>(item);
+            const auto params = QtPsdGui::adjustmentShaderParams(adj);
+            if (params.type < 0 || parent->children.isEmpty())
+                return true;
+
+            const auto *guiModel = model()->guiLayerTreeItemModel();
+            const QModelIndex sourceIndex = model()->mapToSource(index);
+            const QModelIndex clipBaseSourceIndex = guiModel->clippingMaskIndex(sourceIndex);
+            const QPsdAbstractLayerItem *clipBase = clipBaseSourceIndex.isValid()
+                ? guiModel->layerItem(clipBaseSourceIndex) : nullptr;
+
+            QString paramText = u"const {'uType': %1.0"_s.arg(params.type);
+            for (auto it = params.floats.cbegin(); it != params.floats.cend(); ++it)
+                paramText += u", '%1': %2"_s.arg(it.key()).arg(it.value());
+            paramText += u"}"_s;
+
+            Element adjustment;
+            adjustment.type = "PsdAdjustment"_L1;
+            adjustment.properties.insert("params"_L1, paramText);
+            if (!params.lut.isNull()) {
+                const QString lutName = imageStore.save(
+                    imageFileName(item->name() + "_lut"_L1, "PNG"_L1), params.lut, "PNG");
+                if (!lutName.isEmpty())
+                    adjustment.properties.insert("lutAsset"_L1, u"\"%1\""_s.arg(imagePath(lutName)));
+            }
+            const QImage weight = QtPsdGui::adjustmentWeightMask(adj, clipBase, canvasSize());
+            if (!weight.isNull()) {
+                const QString weightName = imageStore.save(
+                    imageFileName(item->name() + "_weight"_L1, "PNG"_L1), weight, "PNG");
+                if (!weightName.isEmpty())
+                    adjustment.properties.insert("weightAsset"_L1, u"\"%1\""_s.arg(imagePath(weightName)));
+            }
+
+            Element stack;
+            stack.type = "Stack"_L1;
+            stack.children = parent->children;
+            parent->children.clear();
+            adjustment.properties.insert("child"_L1, QVariant::fromValue(stack));
+            parent->children.append(adjustment);
+            imports->insert(u"./psd_adjustment.dart"_s);
+            m_needsAdjustmentWidget = true;
+            return true; }
         default:
             break;
         }
@@ -1151,10 +1202,27 @@ bool QPsdExporterFlutterPlugin::exportTo(const QPsdExporterTreeItemModel *model,
     container.type = "Stack";
 
     m_needsBlendWidget = false;
+    m_needsAdjustmentWidget = false;
     for (int i = model->rowCount(QModelIndex {}) - 1; i >= 0; i--) {
         QModelIndex childIndex = model->index(i, 0, QModelIndex {});
         if (!traverseTree(childIndex, &container, &imports, &exports, std::nullopt))
             return false;
+    }
+
+    if (m_needsAdjustmentWidget) {
+        QFile widgetSrc(":/flutter/psd_adjustment.dart"_L1);
+        if (widgetSrc.open(QIODevice::ReadOnly)) {
+            QFile widgetDst(dir.absoluteFilePath("psd_adjustment.dart"_L1));
+            if (widgetDst.open(QIODevice::WriteOnly))
+                widgetDst.write(widgetSrc.readAll());
+        }
+        dir.mkpath("shaders"_L1);
+        QFile shaderSrc(":/flutter/psd_adjustment.frag"_L1);
+        if (shaderSrc.open(QIODevice::ReadOnly)) {
+            QFile shaderDst(dir.absoluteFilePath("shaders/psd_adjustment.frag"_L1));
+            if (shaderDst.open(QIODevice::WriteOnly))
+                shaderDst.write(shaderSrc.readAll());
+        }
     }
 
     // Flattened PSD fallback: if no layers were produced, use the merged image

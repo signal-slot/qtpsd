@@ -9,6 +9,7 @@ qt_internal_add_plugin(QPsdExporterFlutterPlugin
     LIBRARIES
         Qt::Core
         Qt::PsdExporter
+        Qt::PsdGui
 )
 
 qt_internal_add_resource(QPsdExporterFlutterPlugin "flutter"
@@ -16,4 +17,6 @@ qt_internal_add_resource(QPsdExporterFlutterPlugin "flutter"
     FILES
         flutter.png
         qtpsd_path.dart
+        psd_adjustment.dart
+        psd_adjustment.frag
 )

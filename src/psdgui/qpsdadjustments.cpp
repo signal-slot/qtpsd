@@ -591,6 +591,171 @@ QList<quint8> curveLut(const QVariantList &points)
     return table;
 }
 
+QPsdAdjustmentShaderParams adjustmentShaderParams(const QPsdAdjustmentLayerItem *layer)
+{
+    QPsdAdjustmentShaderParams params;
+    if (!layer)
+        return params;
+
+    const QByteArray key = layer->adjustmentKey();
+    const auto ali = layer->record().additionalLayerInformation();
+    // ALI data may be a QVariantMap (custom plugins) or QPsdDescriptor (v16descriptor plugin)
+    QVariantMap data = ali.value(key).toMap();
+    if (data.isEmpty() && ali.value(key).canConvert<QPsdDescriptor>()) {
+        const auto desc = ali.value(key).value<QPsdDescriptor>();
+        const auto hash = desc.data();
+        for (auto it = hash.cbegin(); it != hash.cend(); ++it)
+            data.insert(QString::fromLatin1(it.key()), it.value());
+    }
+
+    auto set = [&](const QString &name, qreal value) {
+        params.floats.insert(name, value);
+    };
+
+    if (key == "brit") {
+        params.type = 0;
+        qreal brightness = data.value(u"brightness"_s).toDouble() / 255.0;
+        qreal contrast = data.value(u"contrast"_s).toDouble() / 100.0;
+        qreal pivot = 0.5;
+        bool modern = false;
+        const QVariant cged = ali.value("CgEd");
+        if (cged.canConvert<QPsdDescriptor>()) {
+            const auto hash = cged.value<QPsdDescriptor>().data();
+            if (hash.contains("Brgh") && !hash.value("useLegacy").toBool()) {
+                modern = true;
+                brightness = hash.value("Brgh").toDouble() / 255.0;
+                contrast = hash.value("Cntr").toDouble() / 100.0;
+                pivot = hash.value("means", 127.5).toDouble() / 255.0;
+            }
+        }
+        set(u"brightness"_s, brightness);
+        set(u"contrast"_s, contrast);
+        set(u"brit_pivot"_s, pivot);
+        set(u"brit_modern"_s, modern ? 1.0 : 0.0);
+    } else if (key == "levl") {
+        params.type = 1;
+        auto setLevels = [&](const QString &prefix, const QVariantMap &ch) {
+            set(prefix + u"_shadowIn"_s, ch.value(u"shadowInput"_s).toDouble() / 255.0);
+            set(prefix + u"_highlightIn"_s, ch.value(u"highlightInput"_s).toDouble() / 255.0);
+            set(prefix + u"_shadowOut"_s, ch.value(u"shadowOutput"_s).toDouble() / 255.0);
+            set(prefix + u"_highlightOut"_s, ch.value(u"highlightOutput"_s).toDouble() / 255.0);
+            set(prefix + u"_midtone"_s, ch.value(u"midtoneInput"_s, 100).toDouble() / 100.0);
+        };
+        setLevels(u"lvl"_s, data.value(u"rgb"_s).toMap());
+        setLevels(u"lvlR"_s, data.value(u"red"_s).toMap());
+        setLevels(u"lvlG"_s, data.value(u"green"_s).toMap());
+        setLevels(u"lvlB"_s, data.value(u"blue"_s).toMap());
+    } else if (key == "curv") {
+        params.type = 2;
+        const auto rgbCurve = curveLut(data.value(u"rgb"_s).toList());
+        const auto redCurve = curveLut(data.value(u"red"_s).toList());
+        const auto greenCurve = curveLut(data.value(u"green"_s).toList());
+        const auto blueCurve = curveLut(data.value(u"blue"_s).toList());
+        // The master (rgb) curve is composed into each channel; alpha stays
+        // opaque because textures upload premultiplied
+        QImage lut(256, 1, QImage::Format_RGBA8888);
+        for (int i = 0; i < 256; ++i) {
+            auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
+            pixel[0] = redCurve[rgbCurve[i]];
+            pixel[1] = greenCurve[rgbCurve[i]];
+            pixel[2] = blueCurve[rgbCurve[i]];
+            pixel[3] = 255;
+        }
+        params.lut = lut;
+    } else if (key == "expA") {
+        params.type = 3;
+        set(u"exposure"_s, data.value(u"exposure"_s).toDouble());
+        set(u"offset"_s, data.value(u"offset"_s).toDouble());
+        set(u"gamma"_s, data.value(u"gamma"_s, 1.0).toDouble());
+    } else if (key == "hue2") {
+        params.type = 4;
+        const auto master = data.value(u"master"_s).toMap();
+        set(u"hueShift"_s, master.value(u"hue"_s).toDouble());
+        set(u"saturationShift"_s, master.value(u"saturation"_s).toDouble());
+        set(u"lightnessShift"_s, master.value(u"lightness"_s).toDouble());
+    } else if (key == "blnc") {
+        params.type = 5;
+        const auto shadows = data.value(u"shadows"_s).toMap();
+        const auto midtones = data.value(u"midtones"_s).toMap();
+        const auto highlights = data.value(u"highlights"_s).toMap();
+        set(u"bal_shadow_cr"_s, shadows.value(u"cyanRed"_s).toDouble());
+        set(u"bal_shadow_mg"_s, shadows.value(u"magentaGreen"_s).toDouble());
+        set(u"bal_shadow_yb"_s, shadows.value(u"yellowBlue"_s).toDouble());
+        set(u"bal_mid_cr"_s, midtones.value(u"cyanRed"_s).toDouble());
+        set(u"bal_mid_mg"_s, midtones.value(u"magentaGreen"_s).toDouble());
+        set(u"bal_mid_yb"_s, midtones.value(u"yellowBlue"_s).toDouble());
+        set(u"bal_hi_cr"_s, highlights.value(u"cyanRed"_s).toDouble());
+        set(u"bal_hi_mg"_s, highlights.value(u"magentaGreen"_s).toDouble());
+        set(u"bal_hi_yb"_s, highlights.value(u"yellowBlue"_s).toDouble());
+        set(u"bal_preserveLum"_s, data.value(u"preserveLuminosity"_s).toBool() ? 1.0 : 0.0);
+    } else if (key == "phfl") {
+        params.type = 6;
+        QColor c = data.value(u"color"_s).value<QColor>();
+        if (!c.isValid())
+            c = QColor(236, 138, 0); // Warming Filter (85)
+        set(u"phfl_r"_s, c.redF());
+        set(u"phfl_g"_s, c.greenF());
+        set(u"phfl_b"_s, c.blueF());
+        set(u"phfl_density"_s, data.value(u"density"_s).toDouble() / 100.0);
+        set(u"phfl_preserveLum"_s, data.value(u"preserveLuminosity"_s).toBool() ? 1.0 : 0.0);
+    } else if (key == "nvrt") {
+        params.type = 7;
+    } else if (key == "post") {
+        params.type = 8;
+        const int levels = ali.value(key).toInt();
+        set(u"post_levels"_s, levels > 1 ? levels : 4);
+    } else if (key == "thrs") {
+        params.type = 9;
+        const int level = ali.value(key).toInt();
+        set(u"threshold"_s, (level > 0 ? level : 128) / 255.0);
+    } else if (key == "vibA") {
+        params.type = 10;
+        set(u"vibrance"_s, data.value(u"vibrance"_s).toDouble() / 100.0);
+        set(u"vibranceSat"_s, data.value(u"Strt"_s).toDouble() / 100.0);
+    } else if (key == "mixr") {
+        params.type = 11;
+        const bool mono = data.value(u"monochrome"_s).toBool();
+        const auto red = data.value(u"red"_s).toMap();
+        const auto green = data.value(u"green"_s).toMap();
+        const auto blue = data.value(u"blue"_s).toMap();
+        const auto src = mono ? data.value(u"gray"_s).toMap() : red;
+        auto setMixer = [&](const QString &prefix, const QVariantMap &ch) {
+            set(prefix + u"_r"_s, ch.value(u"red"_s).toDouble());
+            set(prefix + u"_g"_s, ch.value(u"green"_s).toDouble());
+            set(prefix + u"_b"_s, ch.value(u"blue"_s).toDouble());
+            set(prefix + u"_c"_s, ch.value(u"constant"_s).toDouble());
+        };
+        setMixer(u"mixr_outR"_s, src);
+        setMixer(u"mixr_outG"_s, green);
+        setMixer(u"mixr_outB"_s, blue);
+        set(u"mixr_mono"_s, mono ? 1.0 : 0.0);
+    } else if (key == "blwh") {
+        params.type = 12;
+        set(u"bw_red"_s, data.value(u"Rd  "_s).toDouble());
+        set(u"bw_yellow"_s, data.value(u"Yllw"_s).toDouble());
+        set(u"bw_green"_s, data.value(u"Grn "_s).toDouble());
+        set(u"bw_cyan"_s, data.value(u"Cyn "_s).toDouble());
+        set(u"bw_blue"_s, data.value(u"Bl  "_s).toDouble());
+        set(u"bw_magenta"_s, data.value(u"Mgnt"_s).toDouble());
+    } else if (key == "grdm") {
+        params.type = 13;
+        const QList<QRgb> table = gradientMapLut(data);
+        QImage lut(256, 1, QImage::Format_RGBA8888);
+        for (int i = 0; i < 256; ++i) {
+            auto *pixel = reinterpret_cast<quint8 *>(lut.scanLine(0)) + i * 4;
+            pixel[0] = qRed(table[i]);
+            pixel[1] = qGreen(table[i]);
+            pixel[2] = qBlue(table[i]);
+            pixel[3] = 255;
+        }
+        params.lut = lut;
+    }
+
+    if (params.type >= 0)
+        set(u"adjWeight"_s, layer->opacity());
+    return params;
+}
+
 QList<QRgb> gradientMapLut(const QVariantMap &grdmData)
 {
     QList<QRgb> lut(256, qRgb(0, 0, 0));

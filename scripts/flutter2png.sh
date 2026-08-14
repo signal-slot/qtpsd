@@ -70,6 +70,17 @@ flutter:
     - assets/images/
 YAML
 
+# Exports with adjustment layers ship a fragment shader that must be
+# declared in the pubspec so impellerc compiles it into the bundle
+if [[ -f "${work_dir}/lib/export/shaders/psd_adjustment.frag" ]]; then
+  mkdir -p "${work_dir}/shaders"
+  cp "${work_dir}/lib/export/shaders/psd_adjustment.frag" "${work_dir}/shaders/"
+  cat >>"${work_dir}/pubspec.yaml" <<'YAML'
+  shaders:
+    - shaders/psd_adjustment.frag
+YAML
+fi
+
 cat >"${work_dir}/test_capture.dart" <<DART
 import 'dart:io';
 import 'dart:typed_data';
