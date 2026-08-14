@@ -7,6 +7,7 @@ qt_internal_add_app(psdexporter
         mainwindow.h mainwindow.cpp mainwindow.ui
         psdwidget.h psdwidget.cpp psdwidget.ui
         exportdialog.h exportdialog.cpp exportdialog.ui
+        importerproject.h importerproject.cpp
         psdtreeitemmodel.h psdtreeitemmodel.cpp
     LIBRARIES
         Qt::Widgets
