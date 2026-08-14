@@ -33,6 +33,8 @@ private:
     void connectViewer(PsdWidget *viewer);
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
+    bool importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                        const QString &tabTitle);
 
 private:
     ::MainWindow *q;
@@ -517,25 +519,9 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
     }
 
     for (int pageIdx : pageIndices) {
-        // Create a loading tab with progress bar
-        auto *loadingWidget = new QWidget(q);
-        auto *loadingLayout = new QVBoxLayout(loadingWidget);
-        loadingLayout->setAlignment(Qt::AlignCenter);
-        auto *progressLabel = new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
-        progressLabel->setAlignment(Qt::AlignCenter);
-        auto *progressBar = new QProgressBar();
-        progressBar->setRange(0, 0); // indeterminate
-        progressBar->setFixedWidth(300);
-        loadingLayout->addWidget(progressLabel);
-        loadingLayout->addWidget(progressBar);
         const QString tabTitle = (pageIdx < pageNames.size())
             ? tr("Importing %1...").arg(pageNames.at(pageIdx))
             : tr("Importing...");
-        int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
-        tabWidget->setCurrentIndex(index);
-        loadingTabWidget = loadingWidget;
-        loadingImporter = importer;
-        updateFileMenus();
 
         // Prepare per-page options
         QVariantMap pageOptions = options;
@@ -543,52 +529,77 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
         if (hasExplicitPages)
             pageOptions["pageIndexExplicit"_L1] = true;
 
-        QPointer<QProgressBar> progressBarGuard(progressBar);
-        importer->setProgressCallback([progressBarGuard](int value, int maximum) {
-            if (!progressBarGuard)
-                return;
-            progressBarGuard->setRange(0, maximum);
-            progressBarGuard->setValue(value);
-        });
-
-        QApplication::setOverrideCursor(Qt::BusyCursor);
-        auto viewer = new PsdWidget(q);
-        const bool ok = viewer->importFrom(importer, pageOptions);
-        QApplication::restoreOverrideCursor();
-
-        importer->setProgressCallback(nullptr);
-        const bool cancelled = importer->isCancelRequested();
-        loadingTabWidget.clear();
-        loadingImporter = nullptr;
-
-        // Replace loading tab with result. The loading tab may have been
-        // removed already if the user triggered cancellation, but in our
-        // current flow we keep it until importFrom returns, so removeTab
-        // here is safe.
-        int loadingIdx = tabWidget->indexOf(loadingWidget);
-        if (loadingIdx >= 0)
-            tabWidget->removeTab(loadingIdx);
-        loadingWidget->deleteLater();
-
-        if (ok) {
-            const int insertAt = loadingIdx >= 0 ? loadingIdx : tabWidget->count();
-            int newIndex = tabWidget->insertTab(insertAt, viewer, viewer->windowIcon(), viewer->windowTitle());
-            connectViewer(viewer);
-            tabWidget->setCurrentIndex(newIndex);
-            updateFileMenus();
-        } else {
-            delete viewer;
-            if (cancelled) {
-                updateFileMenus();
-                break;  // silent: user chose to cancel
-            }
-            const QString err = importer->errorMessage();
-            if (!err.isEmpty())
-                QMessageBox::critical(q, tr("Import Failed"), err);
-            updateFileMenus();
+        if (!importPageWith(importer, pageOptions, tabTitle))
             break;
-        }
     }
+}
+
+bool MainWindow::Private::importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                                         const QString &tabTitle)
+{
+    // Create a loading tab with progress bar
+    auto *loadingWidget = new QWidget(q);
+    auto *loadingLayout = new QVBoxLayout(loadingWidget);
+    loadingLayout->setAlignment(Qt::AlignCenter);
+    auto *progressLabel =
+            new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
+    progressLabel->setAlignment(Qt::AlignCenter);
+    auto *progressBar = new QProgressBar();
+    progressBar->setRange(0, 0); // indeterminate
+    progressBar->setFixedWidth(300);
+    loadingLayout->addWidget(progressLabel);
+    loadingLayout->addWidget(progressBar);
+    int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
+    tabWidget->setCurrentIndex(index);
+    loadingTabWidget = loadingWidget;
+    loadingImporter = importer;
+    updateFileMenus();
+
+    QPointer<QProgressBar> progressBarGuard(progressBar);
+    importer->setProgressCallback([progressBarGuard](int value, int maximum) {
+        if (!progressBarGuard)
+            return;
+        progressBarGuard->setRange(0, maximum);
+        progressBarGuard->setValue(value);
+    });
+
+    QApplication::setOverrideCursor(Qt::BusyCursor);
+    auto *viewer = new PsdWidget(q);
+    const bool ok = viewer->importFrom(importer, options);
+    QApplication::restoreOverrideCursor();
+
+    importer->setProgressCallback(nullptr);
+    const bool cancelled = importer->isCancelRequested();
+    loadingTabWidget.clear();
+    loadingImporter = nullptr;
+
+    // Replace loading tab with result. The loading tab may have been
+    // removed already if the user triggered cancellation, but in our
+    // current flow we keep it until importFrom returns, so removeTab
+    // here is safe.
+    int loadingIdx = tabWidget->indexOf(loadingWidget);
+    if (loadingIdx >= 0)
+        tabWidget->removeTab(loadingIdx);
+    loadingWidget->deleteLater();
+
+    if (ok) {
+        const int insertAt = loadingIdx >= 0 ? loadingIdx : tabWidget->count();
+        int newIndex =
+                tabWidget->insertTab(insertAt, viewer, viewer->windowIcon(), viewer->windowTitle());
+        connectViewer(viewer);
+        tabWidget->setCurrentIndex(newIndex);
+        updateFileMenus();
+        return true;
+    }
+
+    delete viewer;
+    if (!cancelled) {
+        const QString err = importer->errorMessage();
+        if (!err.isEmpty())
+            QMessageBox::critical(q, tr("Import Failed"), err);
+    }
+    updateFileMenus();
+    return false;
 }
 
 MainWindow::MainWindow(QWidget *parent)
