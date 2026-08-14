@@ -1,6 +1,6 @@
 # PSD Photoshop Similarity Report
 
-Generated: 2026-08-11T18:40:36
+Generated: 2026-08-14T14:30:30
 
 Compares **PSD composite image** (Photoshop's pre-composited Image Data section) vs **Photoshop rendering of round-trip PSD** (PNG screenshots).
 

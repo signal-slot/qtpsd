@@ -1,6 +1,6 @@
 # PSD Writer Visual Round-Trip Report
 
-Generated: 2026-08-11T18:40:36
+Generated: 2026-08-14T14:30:30
 
 Reconstruction mode: `useRawBytes=false` (all data written from parsed fields)
 

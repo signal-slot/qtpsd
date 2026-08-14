@@ -34,8 +34,6 @@ class MainWindow extends StatelessWidget {
               width: 200,
             ),
           ),
-          (
-          ),
         ],
       ),
     );
