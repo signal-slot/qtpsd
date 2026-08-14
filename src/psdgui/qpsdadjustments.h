@@ -11,6 +11,7 @@
 
 QT_BEGIN_NAMESPACE
 
+class QPsdAbstractLayerItem;
 class QPsdAdjustmentLayerItem;
 
 namespace QtPsdGui {
@@ -42,6 +43,19 @@ Q_PSDGUI_EXPORT QList<QRgb> gradientMapLut(const QVariantMap &grdmData);
 // (list of {input, output} maps) using natural cubic spline interpolation,
 // matching Photoshop's Curves adjustment. Empty input yields identity.
 Q_PSDGUI_EXPORT QList<quint8> curveLut(const QVariantList &points);
+
+// Shader-oriented view of an adjustment layer: the adjustment type constant
+// (matching the ADJ_* values used by the QtQuick and Flutter shaders), the
+// non-default float uniforms by name, and the 256x1 lookup table for
+// curves / gradient-map adjustments (null when unused). type is -1 for
+// unsupported adjustments.
+struct QPsdAdjustmentShaderParams {
+    int type = -1;
+    QMap<QString, qreal> floats;
+    QImage lut;
+};
+
+Q_PSDGUI_EXPORT QPsdAdjustmentShaderParams adjustmentShaderParams(const QPsdAdjustmentLayerItem *layer);
 
 }
 
