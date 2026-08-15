@@ -16,6 +16,9 @@ struct ImporterProject
 
     static ImporterProject fromVariantMap(const QVariantMap &root);
     QVariantMap toVariantMap() const;
+
+    void makeSourceRelativeTo(const QString &fileName);
+    void makeSourceResolvedFrom(const QString &fileName);
 };
 
 #endif // IMPORTERPROJECT_H

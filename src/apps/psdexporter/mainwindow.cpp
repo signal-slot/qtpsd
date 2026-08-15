@@ -518,7 +518,7 @@ void MainWindow::Private::openProjectFile(const QString &fileName)
     }
 
     const auto document = QJsonDocument::fromJson(file.readAll());
-    const auto project = ImporterProject::fromVariantMap(document.object().toVariantMap());
+    auto project = ImporterProject::fromVariantMap(document.object().toVariantMap());
     if (project.key.isEmpty()) {
         QMessageBox::critical(q, tr("Open Project Failed"),
                               tr("The project does not specify an importer."));
@@ -533,6 +533,7 @@ void MainWindow::Private::openProjectFile(const QString &fileName)
     }
 
     // TODO: load apiKey from somewhere
+    project.makeSourceResolvedFrom(fileName);
     importProjectWith(importer, project, fileName);
 }
 
@@ -557,6 +558,7 @@ void MainWindow::Private::saveProjectFile(const QString &fileName)
 
     auto projectToSave = currentImporterProject->data;
     projectToSave.options.remove("apiKey"_L1); // secret
+    projectToSave.makeSourceRelativeTo(fileName);
     const auto data =
             QJsonDocument(QJsonObject::fromVariantMap(projectToSave.toVariantMap())).toJson();
     if (file.write(data) != data.size()) {

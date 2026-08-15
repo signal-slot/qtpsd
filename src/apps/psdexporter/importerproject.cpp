@@ -3,6 +3,10 @@
 
 #include "importerproject.h"
 
+#include <QtCore/QDir>
+#include <QtCore/QFileInfo>
+#include <QtCore/QUrl>
+
 using namespace Qt::StringLiterals;
 
 namespace {
@@ -27,6 +31,11 @@ QVariantList toVariantList(const QList<QVariantMap> &list)
     return varList;
 }
 
+bool looksLikeLocalPath(const QString &source)
+{
+    return !source.isEmpty() && QUrl(source).scheme().isEmpty();
+}
+
 } // namespace
 
 ImporterProject ImporterProject::fromVariantMap(const QVariantMap &root)
@@ -45,4 +54,22 @@ QVariantMap ImporterProject::toVariantMap() const
         { "options"_L1, options },
         { "pageHints"_L1, toVariantList(pageHints) },
     };
+}
+
+void ImporterProject::makeSourceRelativeTo(const QString &fileName)
+{
+    const QString source = options.value("source"_L1).toString();
+    if (looksLikeLocalPath(source) && QFileInfo(source).isAbsolute()) {
+        const QDir baseDir(QFileInfo(fileName).absolutePath());
+        options.insert("source"_L1, baseDir.relativeFilePath(source));
+    }
+}
+
+void ImporterProject::makeSourceResolvedFrom(const QString &fileName)
+{
+    const QString source = options.value("source"_L1).toString();
+    if (looksLikeLocalPath(source) && QFileInfo(source).isRelative()) {
+        const QDir baseDir(QFileInfo(fileName).absolutePath());
+        options.insert("source"_L1, baseDir.absoluteFilePath(source));
+    }
 }
