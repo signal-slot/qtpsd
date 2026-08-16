@@ -174,6 +174,9 @@ public:
     void loadHints(const QString &hintFilePath);
     void saveHints(const QString &hintFilePath);
 
+    void setHintsFromJson(const QJsonObject &root);
+    QJsonObject hintsToJson() const;
+
     // Design tokens (Figma Variables). Keyed by a QML-safe token name; the
     // value carries the resolved primitive (QColor for color tokens, double
     // for number tokens, QString for string tokens, bool for boolean tokens).

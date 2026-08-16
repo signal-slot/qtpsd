@@ -1293,9 +1293,13 @@ void PsdWidget::exportTo(QPsdExporterPlugin *exporter, QSettings *settings)
     }
 }
 
-bool PsdWidget::importFrom(QPsdImporterPlugin *importer, const QVariantMap options)
+bool PsdWidget::importFrom(QPsdImporterPlugin *importer, const QVariantMap options,
+                           const std::optional<QVariantMap> &hints)
 {
     const bool ok = importer->importFrom(&d->model, options);
+    if (ok && hints) {
+        d->model.setHintsFromJson(QJsonObject::fromVariantMap(*hints)); // overwrite
+    }
 
     if (ok) {
         d->treeView->reset();
@@ -1320,6 +1324,11 @@ QString PsdWidget::fileName() const
 QString PsdWidget::errorMessage() const
 {
     return d->model.errorMessage();
+}
+
+QJsonObject PsdWidget::hintsToJson() const
+{
+    return d->model.hintsToJson();
 }
 
 QVariantMap PsdWidget::exportHint(const QString& exporterKey) const

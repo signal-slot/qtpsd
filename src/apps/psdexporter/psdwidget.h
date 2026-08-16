@@ -4,7 +4,10 @@
 #ifndef PSDWIDGET_H
 #define PSDWIDGET_H
 
+#include <optional>
+#include <QtCore/QJsonObject>
 #include <QtCore/QSettings>
+#include <QtCore/QVariantMap>
 #include <QtWidgets/QSplitter>
 
 #include <QtPsdGui/QPsdFolderLayerItem>
@@ -21,6 +24,7 @@ public:
     QString fileName() const;
 
     QString errorMessage() const;
+    QJsonObject hintsToJson() const;
     QVariantMap exportHint(const QString& exporterKey) const;
     void updateExportHint(const QString &key, const QVariantMap &hint);
 
@@ -36,7 +40,8 @@ public slots:
     void reload();
     void save();
     void exportTo(QPsdExporterPlugin *exporter, QSettings *settings);
-    bool importFrom(QPsdImporterPlugin *importer, const QVariantMap options);
+    bool importFrom(QPsdImporterPlugin *importer, const QVariantMap options,
+                    const std::optional<QVariantMap> &hints);
     void copyViewToClipboard();
     void copySelectedLayerToClipboard();
     void setViewScale(qreal scale);

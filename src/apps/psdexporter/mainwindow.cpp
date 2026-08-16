@@ -1,13 +1,19 @@
 // Copyright (C) 2024 Signal Slot Inc.
 // SPDX-License-Identifier: BSD-3-Clause
 
+#include "importerproject.h"
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 #include "psdwidget.h"
 
+#include <QtCore/QFile>
+#include <QtCore/QJsonDocument>
+#include <QtCore/QList>
 #include <QtCore/QPointer>
 #include <QtCore/QSettings>
 #include <cmath>
+#include <numeric>
+#include <optional>
 #include <QtGui/QCloseEvent>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QFileDialog>
@@ -20,6 +26,15 @@
 #include <QtPsdExporter/QPsdExporterPlugin>
 #include <QtPsdImporter/QPsdImporterPlugin>
 
+struct ImporterProjectState
+{
+    QString fileName;
+    ImporterProject data;
+    int tabStart;
+    QList<int> openPages; // tabIndex - tabStart: pageIndex
+    // TODO: track modified state and enable saveProject conditionally
+};
+
 class MainWindow::Private : public Ui::MainWindow
 {
 public:
@@ -28,11 +43,19 @@ public:
 
     QMessageBox::StandardButton checkModifiedAndSaved(int index = -1, bool confirm = true, bool all = false);
     void openFile(const QString &fileName);
-    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options);
+    void importProjectWith(QPsdImporterPlugin *importer, ImporterProject project,
+                           const QString &fileName);
 private:
     void connectViewer(PsdWidget *viewer);
+    void openProjectFile(const QString &fileName);
+    void saveProjectFile(const QString &fileName);
     void updateRecentFiles(const QString &fileName = QString());
     void updateFileMenus();
+    void reapClosedProjectPage(int tabIndex);
+    void importWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                    const QList<QVariantMap> &pageHints);
+    bool importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                        const std::optional<QVariantMap> &hints, const QString &tabTitle);
 
 private:
     ::MainWindow *q;
@@ -47,6 +70,8 @@ public:
     // instead of deleting state the nested event loop still uses.
     QPointer<QWidget> loadingTabWidget;
     QPsdImporterPlugin *loadingImporter = nullptr;
+    // No multiple projects support
+    std::optional<ImporterProjectState> currentImporterProject;
 };
 
 MainWindow::Private::Private(::MainWindow *parent)
@@ -78,6 +103,18 @@ MainWindow::Private::Private(::MainWindow *parent)
                 settings.endGroup();
             }
         }
+    });
+
+    connect(openProject, &QAction::triggered, q, [this]() {
+        const QStringList filters{
+            tr("Project files (*.figproject)"),
+            tr("All files (*)"),
+        };
+        const auto fileName =
+                QFileDialog::getOpenFileName(q, tr("Open Project"), {}, filters.join(";;"_L1));
+        if (fileName.isEmpty())
+            return;
+        openProjectFile(fileName);
     });
 
     connect(openRecentFile, &QMenu::triggered, q, [this](QAction *action) {
@@ -149,17 +186,36 @@ MainWindow::Private::Private(::MainWindow *parent)
         QPsdImporterPlugin *importer = action->data().value<QPsdImporterPlugin *>();
         Q_ASSERT(importer);
 
+        const auto key = QString::fromUtf8(importer->key());
         const auto options = importer->execImportDialog(q);
         if (options.isEmpty())
             return;
 
-        importWith(importer, options);
+        importProjectWith(importer, { key, options, {} }, {});
     });
 
     connect(save, &QAction::triggered, q, [this]() {
         int index = tabWidget->currentIndex();
         auto psdWidget = qobject_cast<PsdWidget *>(tabWidget->widget(index));
         psdWidget->save();
+    });
+
+    connect(saveProject, &QAction::triggered, q, [this]() {
+        Q_ASSERT(currentImporterProject && !currentImporterProject->fileName.isEmpty());
+        saveProjectFile(currentImporterProject->fileName);
+    });
+
+    connect(saveProjectAs, &QAction::triggered, q, [this]() {
+        Q_ASSERT(currentImporterProject);
+        const QStringList filters{
+            tr("Project files (*.figproject)"),
+            tr("All files (*)"),
+        };
+        const auto fileName = QFileDialog::getSaveFileName(
+                q, tr("Save Project as"), currentImporterProject->fileName, filters.join(";;"_L1));
+        if (fileName.isEmpty())
+            return;
+        saveProjectFile(fileName);
     });
 
     connect(q, &QWidget::windowTitleChanged, q, [this]() {
@@ -179,6 +235,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         const auto ret = checkModifiedAndSaved(index);
         if (ret == QMessageBox::Cancel)
             return;
+        reapClosedProjectPage(index);
         tabWidget->widget(index)->deleteLater();
         tabWidget->removeTab(index);
         updateFileMenus();
@@ -258,6 +315,7 @@ MainWindow::Private::Private(::MainWindow *parent)
         auto ret = checkModifiedAndSaved(index);
         if (ret == QMessageBox::Cancel)
             return;
+        reapClosedProjectPage(index);
         tabWidget->widget(index)->deleteLater();
         tabWidget->removeTab(index);
         updateFileMenus();
@@ -451,6 +509,66 @@ void MainWindow::Private::openFile(const QString &fileName)
     }
 }
 
+void MainWindow::Private::openProjectFile(const QString &fileName)
+{
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly)) {
+        QMessageBox::critical(q, tr("Open Project Failed"), file.errorString());
+        return;
+    }
+
+    const auto document = QJsonDocument::fromJson(file.readAll());
+    auto project = ImporterProject::fromVariantMap(document.object().toVariantMap());
+    if (project.key.isEmpty()) {
+        QMessageBox::critical(q, tr("Open Project Failed"),
+                              tr("The project does not specify an importer."));
+        return;
+    }
+
+    auto *importer = QPsdImporterPlugin::plugin(project.key.toUtf8());
+    if (!importer) {
+        QMessageBox::critical(q, tr("Open Project Failed"),
+                              tr("No importer plugin found for '%1'.").arg(project.key));
+        return;
+    }
+
+    // TODO: load apiKey from somewhere
+    project.makeSourceResolvedFrom(fileName);
+    importProjectWith(importer, project, fileName);
+}
+
+void MainWindow::Private::saveProjectFile(const QString &fileName)
+{
+    Q_ASSERT(currentImporterProject);
+
+    // Copy back hints from the widgets
+    for (int i = 0; i < currentImporterProject->openPages.size(); ++i) {
+        const int pageIndex = currentImporterProject->openPages[i];
+        const int tabIndex = currentImporterProject->tabStart + i;
+        const auto *viewer = qobject_cast<PsdWidget *>(tabWidget->widget(tabIndex));
+        Q_ASSERT(viewer);
+        currentImporterProject->data.pageHints[pageIndex] = viewer->hintsToJson().toVariantMap();
+    }
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::WriteOnly)) {
+        QMessageBox::critical(q, tr("Save Project Failed"), file.errorString());
+        return;
+    }
+
+    auto projectToSave = currentImporterProject->data;
+    projectToSave.options.remove("apiKey"_L1); // secret
+    projectToSave.makeSourceRelativeTo(fileName);
+    const auto data =
+            QJsonDocument(QJsonObject::fromVariantMap(projectToSave.toVariantMap())).toJson();
+    if (file.write(data) != data.size()) {
+        QMessageBox::critical(q, tr("Save Project Failed"), file.errorString());
+    }
+
+    currentImporterProject->fileName = fileName;
+    updateFileMenus();
+}
+
 void MainWindow::Private::updateRecentFiles(const QString &fileName)
 {
     settings.beginGroup("Menu");
@@ -489,6 +607,8 @@ void MainWindow::Private::updateFileMenus()
     exportToolBar->setEnabled(hasPsdWidget);
     reload->setEnabled(hasPsdWidget);
     save->setEnabled(hasPsdWidget && q->isWindowModified());
+    saveProject->setEnabled(currentImporterProject && !currentImporterProject->fileName.isEmpty());
+    saveProjectAs->setEnabled(currentImporterProject.has_value());
     close->setEnabled(hasTabs);
     copyView->setEnabled(hasPsdWidget);
     copySelectedLayer->setEnabled(hasPsdWidget);
@@ -496,7 +616,47 @@ void MainWindow::Private::updateFileMenus()
     imports->setEnabled(true); // imports always enabled since they create new tabs
 }
 
-void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVariantMap &options)
+void MainWindow::Private::importProjectWith(QPsdImporterPlugin *importer, ImporterProject project,
+                                            const QString &fileName)
+{
+    currentImporterProject.reset();
+    const int tabStart = tabWidget->count();
+    importWith(importer, project.options, project.pageHints);
+    QList<int> openPages(tabWidget->count() - tabStart);
+    std::iota(openPages.begin(), openPages.end(), 0);
+
+    // Allocate page hints array and copy back; the importer may update hints
+    if (project.pageHints.size() < openPages.size())
+        project.pageHints.resize(openPages.size());
+    for (int i = 0; i < openPages.size(); ++i) {
+        const auto *viewer = qobject_cast<PsdWidget *>(tabWidget->widget(tabStart + i));
+        Q_ASSERT(viewer);
+        project.pageHints[i] = viewer->hintsToJson().toVariantMap();
+    }
+
+    currentImporterProject = { fileName, project, tabStart, openPages };
+    updateFileMenus();
+}
+
+void MainWindow::Private::reapClosedProjectPage(int tabIndex)
+{
+    if (!currentImporterProject)
+        return;
+    const int index = tabIndex - currentImporterProject->tabStart;
+    if (index < 0) {
+        --currentImporterProject->tabStart; // closed left tab
+        return;
+    }
+    if (index >= currentImporterProject->openPages.size())
+        return; // closed right tab
+    currentImporterProject->openPages.remove(index);
+    if (currentImporterProject->openPages.isEmpty()) {
+        currentImporterProject.reset();
+    }
+}
+
+void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                                     const QList<QVariantMap> &pageHints)
 {
     // Determine page indices to import
     QList<int> pageIndices;
@@ -516,79 +676,92 @@ void MainWindow::Private::importWith(QPsdImporterPlugin *importer, const QVarian
             pageNames.append(v.toString());
     }
 
-    for (int pageIdx : pageIndices) {
-        // Create a loading tab with progress bar
-        auto *loadingWidget = new QWidget(q);
-        auto *loadingLayout = new QVBoxLayout(loadingWidget);
-        loadingLayout->setAlignment(Qt::AlignCenter);
-        auto *progressLabel = new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
-        progressLabel->setAlignment(Qt::AlignCenter);
-        auto *progressBar = new QProgressBar();
-        progressBar->setRange(0, 0); // indeterminate
-        progressBar->setFixedWidth(300);
-        loadingLayout->addWidget(progressLabel);
-        loadingLayout->addWidget(progressBar);
+    for (qsizetype i = 0; i < pageIndices.size(); ++i) {
+        const int pageIdx = pageIndices.at(i);
         const QString tabTitle = (pageIdx < pageNames.size())
             ? tr("Importing %1...").arg(pageNames.at(pageIdx))
             : tr("Importing...");
-        int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
-        tabWidget->setCurrentIndex(index);
-        loadingTabWidget = loadingWidget;
-        loadingImporter = importer;
-        updateFileMenus();
 
         // Prepare per-page options
         QVariantMap pageOptions = options;
+        pageOptions.remove("pageHints"_L1);
         pageOptions["pageIndex"_L1] = pageIdx;
         if (hasExplicitPages)
             pageOptions["pageIndexExplicit"_L1] = true;
+        const auto hints = (i < pageHints.size()) ? std::make_optional(pageHints[i]) : std::nullopt;
 
-        QPointer<QProgressBar> progressBarGuard(progressBar);
-        importer->setProgressCallback([progressBarGuard](int value, int maximum) {
-            if (!progressBarGuard)
-                return;
-            progressBarGuard->setRange(0, maximum);
-            progressBarGuard->setValue(value);
-        });
-
-        QApplication::setOverrideCursor(Qt::BusyCursor);
-        auto viewer = new PsdWidget(q);
-        const bool ok = viewer->importFrom(importer, pageOptions);
-        QApplication::restoreOverrideCursor();
-
-        importer->setProgressCallback(nullptr);
-        const bool cancelled = importer->isCancelRequested();
-        loadingTabWidget.clear();
-        loadingImporter = nullptr;
-
-        // Replace loading tab with result. The loading tab may have been
-        // removed already if the user triggered cancellation, but in our
-        // current flow we keep it until importFrom returns, so removeTab
-        // here is safe.
-        int loadingIdx = tabWidget->indexOf(loadingWidget);
-        if (loadingIdx >= 0)
-            tabWidget->removeTab(loadingIdx);
-        loadingWidget->deleteLater();
-
-        if (ok) {
-            const int insertAt = loadingIdx >= 0 ? loadingIdx : tabWidget->count();
-            int newIndex = tabWidget->insertTab(insertAt, viewer, viewer->windowIcon(), viewer->windowTitle());
-            connectViewer(viewer);
-            tabWidget->setCurrentIndex(newIndex);
-            updateFileMenus();
-        } else {
-            delete viewer;
-            if (cancelled) {
-                updateFileMenus();
-                break;  // silent: user chose to cancel
-            }
-            const QString err = importer->errorMessage();
-            if (!err.isEmpty())
-                QMessageBox::critical(q, tr("Import Failed"), err);
-            updateFileMenus();
+        if (!importPageWith(importer, pageOptions, hints, tabTitle))
             break;
-        }
     }
+}
+
+bool MainWindow::Private::importPageWith(QPsdImporterPlugin *importer, const QVariantMap &options,
+                                         const std::optional<QVariantMap> &hints,
+                                         const QString &tabTitle)
+{
+    // Create a loading tab with progress bar
+    auto *loadingWidget = new QWidget(q);
+    auto *loadingLayout = new QVBoxLayout(loadingWidget);
+    loadingLayout->setAlignment(Qt::AlignCenter);
+    auto *progressLabel =
+            new QLabel(tr("Importing from %1...").arg(QString(importer->name()).remove('&')));
+    progressLabel->setAlignment(Qt::AlignCenter);
+    auto *progressBar = new QProgressBar();
+    progressBar->setRange(0, 0); // indeterminate
+    progressBar->setFixedWidth(300);
+    loadingLayout->addWidget(progressLabel);
+    loadingLayout->addWidget(progressBar);
+    int index = tabWidget->addTab(loadingWidget, importer->icon(), tabTitle);
+    tabWidget->setCurrentIndex(index);
+    loadingTabWidget = loadingWidget;
+    loadingImporter = importer;
+    updateFileMenus();
+
+    QPointer<QProgressBar> progressBarGuard(progressBar);
+    importer->setProgressCallback([progressBarGuard](int value, int maximum) {
+        if (!progressBarGuard)
+            return;
+        progressBarGuard->setRange(0, maximum);
+        progressBarGuard->setValue(value);
+    });
+
+    QApplication::setOverrideCursor(Qt::BusyCursor);
+    auto *viewer = new PsdWidget(q);
+    const bool ok = viewer->importFrom(importer, options, hints);
+    QApplication::restoreOverrideCursor();
+
+    importer->setProgressCallback(nullptr);
+    const bool cancelled = importer->isCancelRequested();
+    loadingTabWidget.clear();
+    loadingImporter = nullptr;
+
+    // Replace loading tab with result. The loading tab may have been
+    // removed already if the user triggered cancellation, but in our
+    // current flow we keep it until importFrom returns, so removeTab
+    // here is safe.
+    int loadingIdx = tabWidget->indexOf(loadingWidget);
+    if (loadingIdx >= 0)
+        tabWidget->removeTab(loadingIdx);
+    loadingWidget->deleteLater();
+
+    if (ok) {
+        const int insertAt = loadingIdx >= 0 ? loadingIdx : tabWidget->count();
+        int newIndex =
+                tabWidget->insertTab(insertAt, viewer, viewer->windowIcon(), viewer->windowTitle());
+        connectViewer(viewer);
+        tabWidget->setCurrentIndex(newIndex);
+        updateFileMenus();
+        return true;
+    }
+
+    delete viewer;
+    if (!cancelled) {
+        const QString err = importer->errorMessage();
+        if (!err.isEmpty())
+            QMessageBox::critical(q, tr("Import Failed"), err);
+    }
+    updateFileMenus();
+    return false;
 }
 
 MainWindow::MainWindow(QWidget *parent)
@@ -612,6 +785,7 @@ void MainWindow::importFromUrl(const QUrl &url)
         return;
     }
 
+    const auto key = QString::fromUtf8(importer->key());
     auto options = importer->optionsFromUrl(url);
     if (!options.contains("apiKey"_L1) || options.value("apiKey"_L1).toString().isEmpty()) {
         // No API key available — fall back to the interactive dialog
@@ -620,9 +794,8 @@ void MainWindow::importFromUrl(const QUrl &url)
             return;
     }
 
-    d->importWith(importer, options);
+    d->importProjectWith(importer, { key, options, {} }, {});
 }
-
 
 void MainWindow::showEvent(QShowEvent *event)
 {
